@@ -28,10 +28,11 @@ async function handle(req: PocRequest): Promise<unknown> {
   switch (req.op) {
     case 'search': {
       // 実行したクエリ形・バインド値・返却行の所有者を観測できるかを確かめる（spec §8.3）
+      const select = 'SELECT id, owner_id, title FROM memos WHERE';
       const { sql, bind } =
         req.mode === 'param'
-          ? { sql: 'SELECT id, owner_id, title FROM memos WHERE owner_id = ? AND title LIKE ?', bind: [req.ownerId, `%${req.q}%`] }
-          : { sql: `SELECT id, owner_id, title FROM memos WHERE owner_id = ${req.ownerId} AND title LIKE '%${req.q}%'`, bind: [] };
+          ? { sql: `${select} owner_id = ? AND title LIKE ?`, bind: [req.ownerId, `%${req.q}%`] }
+          : { sql: `${select} owner_id = ${req.ownerId} AND title LIKE '%${req.q}%'`, bind: [] };
       const rows = db.selectObjects(sql, bind);
       return { sql, bind, rows, owners: [...new Set(rows.map((r) => r.owner_id))] };
     }
@@ -46,11 +47,10 @@ async function handle(req: PocRequest): Promise<unknown> {
   }
 }
 
-self.addEventListener('message', async (e: MessageEvent<{ id: number; req: PocRequest }>) => {
-  const { id, req } = e.data;
+self.addEventListener('message', async (e: MessageEvent<PocRequest>) => {
   try {
-    self.postMessage({ id, ok: true, result: await handle(req) });
+    self.postMessage({ ok: true, result: await handle(e.data) });
   } catch (err) {
-    self.postMessage({ id, ok: false, error: String(err) });
+    self.postMessage({ ok: false, error: String(err) });
   }
 });

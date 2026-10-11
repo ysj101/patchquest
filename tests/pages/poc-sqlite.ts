@@ -3,17 +3,15 @@ import type { PocRequest } from './poc-sqlite.worker';
 
 class TimeoutError extends Error {}
 
+// 検証は1件ずつ順に呼び出すため、実行中の呼び出しは常に高々1つ
 let worker: Worker | undefined;
-let nextId = 0;
-const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+let pending: { resolve: (v: unknown) => void; reject: (e: Error) => void } | undefined;
 
 function spawn(): Worker {
   const w = new Worker(new URL('./poc-sqlite.worker.js', import.meta.url), { type: 'module' });
-  w.addEventListener('message', (e: MessageEvent<{ id: number; ok: boolean; result?: unknown; error?: string }>) => {
-    const p = pending.get(e.data.id);
-    pending.delete(e.data.id);
-    if (e.data.ok) p?.resolve(e.data.result);
-    else p?.reject(new Error(e.data.error));
+  w.addEventListener('message', (e: MessageEvent<{ ok: boolean; result?: unknown; error?: string }>) => {
+    if (e.data.ok) pending?.resolve(e.data.result);
+    else pending?.reject(new Error(e.data.error));
   });
   return w;
 }
@@ -21,26 +19,26 @@ function spawn(): Worker {
 function terminate(): void {
   worker?.terminate();
   worker = undefined;
-  for (const p of pending.values()) p.reject(new Error('stopped'));
-  pending.clear();
+  pending?.reject(new Error('stopped'));
 }
 
 function call<T>(req: PocRequest, timeoutMs = 5000): Promise<T> {
   if (!worker) throw new Error('Worker がありません');
-  const id = nextId++;
+  if (pending) throw new Error('前の呼び出しが実行中です');
   const w = worker;
   return new Promise<T>((resolve, reject) => {
+    const settle = () => (clearTimeout(timer), (pending = undefined));
     const timer = setTimeout(() => {
       // 実行中のWASMは外から中断できないため、Workerごと破棄する
-      pending.delete(id);
+      settle();
       if (worker === w) terminate();
       reject(new TimeoutError(`timeout after ${timeoutMs}ms`));
     }, timeoutMs);
-    pending.set(id, {
-      resolve: (v) => (clearTimeout(timer), resolve(v as T)),
-      reject: (e) => (clearTimeout(timer), reject(e)),
-    });
-    w.postMessage({ id, req });
+    pending = {
+      resolve: (v) => (settle(), resolve(v as T)),
+      reject: (e) => (settle(), reject(e)),
+    };
+    w.postMessage(req);
   });
 }
 

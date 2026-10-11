@@ -21,25 +21,22 @@ const common = {
 await rm(outdir, { recursive: true, force: true });
 await mkdir(`${outdir}/assets`, { recursive: true });
 
-await build({
-  ...common,
-  entryPoints: { main: 'platform/main.ts', styles: 'platform/styles.css' },
-  outdir: `${outdir}/assets`,
-});
-await cp('platform/index.html', `${outdir}/index.html`);
+const tasks = [
+  build({ ...common, entryPoints: { main: 'platform/main.ts', styles: 'platform/styles.css' }, outdir: `${outdir}/assets` }),
+  cp('platform/index.html', `${outdir}/index.html`),
+];
 
 if (testMode) {
   // SQLite WASMは、それを読み込むWorkerと同じディレクトリから取得される
   const pages = 'tests/pages';
   const files = await readdir(pages);
-  await build({
-    ...common,
-    entryPoints: files.filter((f) => f.endsWith('.ts')).map((f) => `${pages}/${f}`),
-    outdir: `${outdir}/test`,
-  });
-  await Promise.all(files.filter((f) => f.endsWith('.html')).map((f) => cp(`${pages}/${f}`, `${outdir}/test/${f}`)));
-  await cp(sqliteWasm, `${outdir}/test/sqlite3.wasm`);
+  tasks.push(
+    build({ ...common, entryPoints: files.filter((f) => f.endsWith('.ts')).map((f) => `${pages}/${f}`), outdir: `${outdir}/test` }),
+    ...files.filter((f) => f.endsWith('.html')).map((f) => cp(`${pages}/${f}`, `${outdir}/test/${f}`)),
+    cp(sqliteWasm, `${outdir}/test/sqlite3.wasm`),
+  );
 }
 
+await Promise.all(tasks);
 await assertNoExternalRefs(outdir);
 console.log(`ビルド完了: ${outdir}/${testMode ? '（検証ページを含む）' : ''}`);
