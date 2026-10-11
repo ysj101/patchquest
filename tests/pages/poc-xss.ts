@@ -48,15 +48,21 @@ localStorage.setItem('pq-host-secret', 'host-secret');
 
 const settle = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** フレームが描画を終えたことを待ち、非同期に起きる事象（画像のエラーや遷移）のためにさらに waitMs 待つ */
+async function rendered(frame: Frame, waitMs: number): Promise<void> {
+  for (let i = 0; i < 100 && !frame.events.some((e) => e.type === 'rendered'); i++) await settle(20);
+  await settle(waitMs);
+}
+
 const poc = {
   ready: () => Object.values(frameByName).every((f) => f.events.some((e) => e.type === 'ready')),
 
-  async render(name: FrameName, mode: 'html' | 'text', comments: string[], navigationGuard = true, waitMs = 300) {
+  async render(name: FrameName, mode: 'html' | 'text', comments: string[], navigationGuard = true, waitMs = 150) {
     const frame = frameByName[name];
     frame.runId = crypto.randomUUID();
     frame.events = [];
     frame.el.contentWindow!.postMessage({ type: 'render', runId: frame.runId, mode, comments, navigationGuard }, '*');
-    await settle(waitMs);
+    await rendered(frame, waitMs);
     return { events: frame.events, loads: frame.loads };
   },
 
@@ -68,7 +74,7 @@ const poc = {
     frame.runId = crypto.randomUUID();
     frame.events = [];
     frame.el.contentWindow!.postMessage({ type: 'render', runId: frame.runId, mode: 'text', comments, navigationGuard: true }, '*');
-    await settle(300);
+    await rendered(frame, 50);
     return { first, current: frame.runId, events: frame.events };
   },
 

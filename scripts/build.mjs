@@ -22,6 +22,17 @@ const common = {
 
 const sha256 = (text) => `'sha256-${createHash('sha256').update(text).digest('base64')}'`;
 
+// 同じスクリプトを複数の文書へインライン化するときは1回だけビルドする
+const inlineScripts = new Map();
+
+function buildInlineScript(entry) {
+  if (!inlineScripts.has(entry)) {
+    const bundled = build({ ...common, entryPoints: [entry], format: 'iife', write: false, sourcemap: false, legalComments: 'eof' });
+    inlineScripts.set(entry, bundled.then(({ outputFiles }) => outputFiles[0].text.replaceAll('</script', '<\\/script')));
+  }
+  return inlineScripts.get(entry);
+}
+
 /**
  * 隔離iframe用の文書を作る。sandboxで不透明なoriginになるため、スクリプトは
  * <!--inline-script:相対パス--> の位置へクラシックスクリプトとしてインライン化し、
@@ -31,15 +42,7 @@ async function buildSandboxDocument(template, out) {
   const source = await readFile(template, 'utf8');
   const marker = source.match(/<!--inline-script:(\S+)-->/);
   if (!marker) throw new Error(`${template}: <!--inline-script:...--> がありません`);
-  const { outputFiles } = await build({
-    ...common,
-    entryPoints: [join(dirname(template), marker[1])],
-    format: 'iife',
-    write: false,
-    sourcemap: false,
-    legalComments: 'eof',
-  });
-  const script = outputFiles[0].text.replaceAll('</script', '<\\/script');
+  const script = await buildInlineScript(join(dirname(template), marker[1]));
   const html = source
     .replace(/\{\{sha256:(.+?)\}\}/g, (_, text) => sha256(text))
     .replaceAll('{{SCRIPT_HASH}}', sha256(script))
@@ -66,11 +69,12 @@ if (testMode) {
       entryPoints: files.filter((f) => f.endsWith('.ts') && !f.endsWith('.inline.ts')).map((f) => `${pages}/${f}`),
       outdir: `${outdir}/test`,
     }),
-    ...files.map((f) =>
-      f.endsWith('.sandbox.html')
-        ? buildSandboxDocument(`${pages}/${f}`, `${outdir}/test/${f.replace('.sandbox.html', '.html')}`)
-        : f.endsWith('.html') && cp(`${pages}/${f}`, `${outdir}/test/${f}`),
-    ),
+    ...files
+      .filter((f) => f.endsWith('.sandbox.html'))
+      .map((f) => buildSandboxDocument(`${pages}/${f}`, `${outdir}/test/${f.replace('.sandbox.html', '.html')}`)),
+    ...files
+      .filter((f) => f.endsWith('.html') && !f.endsWith('.sandbox.html'))
+      .map((f) => cp(`${pages}/${f}`, `${outdir}/test/${f}`)),
     cp(sqliteWasm, `${outdir}/test/sqlite3.wasm`),
   );
 }

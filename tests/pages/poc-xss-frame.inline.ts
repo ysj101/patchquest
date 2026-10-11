@@ -32,18 +32,27 @@ document.addEventListener('securitypolicyviolation', (e) =>
   report({ type: 'csp-violation', directive: e.effectiveDirective, blockedURI: e.blockedURI }),
 );
 
-// 自由入力のHTMLがフレーム自体を遷移させて外部へ通信しないよう、遷移を起こす要素を描画前に取り除く。
-// イベントハンドラーの実行可否はCSPのハッシュで制御するため、ここでは扱わない
+// 自由入力のHTMLがフレーム自体を遷移させて外部へ通信しないよう、描画前に許可した要素・属性だけを残す。
+// イベントハンドラー（on*）の実行可否はCSPのハッシュで制御するため、ここでは残す
+const ALLOWED_ELEMENTS = new Set(['B', 'I', 'EM', 'STRONG', 'U', 'S', 'SMALL', 'MARK', 'CODE', 'SPAN', 'P', 'BR', 'UL', 'OL', 'LI', 'IMG', 'svg']);
+const isAllowedAttribute = (el: Element, name: string) =>
+  name.startsWith('on') || name === 'alt' || name === 'title' || (name === 'src' && el.tagName === 'IMG');
+
 if (trustedTypes) {
+  // DOMParser.parseFromString も Trusted Types の対象のため、default ポリシーの中で文字列を渡すと
+  // default ポリシー自身が再び呼ばれる。解析用に何もしない別ポリシーを通す
   const inert = trustedTypes.createPolicy('pq-inert', { createHTML: (s) => s });
   trustedTypes.createPolicy('default', {
     createHTML: (html) => {
       if (!navigationGuard) return html;
       const doc = new DOMParser().parseFromString(inert.createHTML(html) as string, 'text/html');
-      doc.querySelectorAll('meta, base, link, form, iframe, frame, object, embed').forEach((el) => el.remove());
-      doc.querySelectorAll('[href], [xlink\\:href], [action], [formaction]').forEach((el) => {
-        for (const attr of ['href', 'xlink:href', 'action', 'formaction']) el.removeAttribute(attr);
-      });
+      for (const el of [...doc.body.querySelectorAll('*')]) {
+        if (!ALLOWED_ELEMENTS.has(el.tagName)) {
+          el.remove();
+          continue;
+        }
+        for (const { name } of [...el.attributes]) if (!isAllowedAttribute(el, name)) el.removeAttribute(name);
+      }
       return doc.body.innerHTML;
     },
   });
