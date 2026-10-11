@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 const ALLOWED_PREFIXES = [
   // XML名前空間の識別子。通信は発生しない
   'http://www.w3.org/',
+  // SQLite WASM がOPFSを使えないときの警告文に含む説明ページ
+  'https://sqlite.org/wasm/doc/trunk/persistence.md#coop-coep',
 ];
 
 const ABSOLUTE_URL = /\bhttps?:\/\/[^\s"'`<>()\\]+/gi;
