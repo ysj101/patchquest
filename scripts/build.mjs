@@ -1,7 +1,7 @@
 // 静的配信用の成果物を dist/ に生成する。外部CDNや実行時ダウンロードは使わない（spec §12）。
 import { build } from 'esbuild';
 import { cp, mkdir, rm } from 'node:fs/promises';
-import { checkDirectory } from './check-external-refs.mjs';
+import { assertNoExternalRefs } from './check-external-refs.mjs';
 
 const outdir = 'dist';
 
@@ -22,9 +22,5 @@ await build({
 
 await cp('platform/index.html', `${outdir}/index.html`);
 
-const violations = await checkDirectory(outdir);
-if (violations.length > 0) {
-  for (const v of violations) console.error(`外部参照: ${v.path}: ${v.match}`);
-  process.exit(1);
-}
+await assertNoExternalRefs(outdir);
 console.log(`ビルド完了: ${outdir}/`);

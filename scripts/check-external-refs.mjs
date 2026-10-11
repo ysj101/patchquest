@@ -1,28 +1,21 @@
 // ビルド成果物が外部のURLを読み込んでいないかを検査する（spec §12）。
-// 実行時の通信の有無はE2Eテストで実測する。ここでは明らかな記述ミスを機械的に止める。
+// 読み込み方法を列挙せず、出荷するファイル中の外部URLをすべて違反とし、
+// 読み込みに使われないと確認したURLだけを ALLOWED_PREFIXES で許可する。
+// 実行時の通信の有無はE2Eテストで実測する。
 import { readdir, readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const EXTERNAL = String.raw`(?:https?:)?//`;
+const ALLOWED_PREFIXES = [
+  // XML名前空間の識別子。通信は発生しない
+  'http://www.w3.org/',
+];
 
-const RULES = {
-  '.html': [
-    new RegExp(String.raw`\b(?:src|href|action|srcset|poster|data|formaction)\s*=\s*["']?\s*${EXTERNAL}`, 'gi'),
-    new RegExp(String.raw`url\(\s*["']?\s*${EXTERNAL}`, 'gi'),
-    new RegExp(String.raw`@import\s+["']\s*${EXTERNAL}`, 'gi'),
-  ],
-  '.css': [
-    new RegExp(String.raw`url\(\s*["']?\s*${EXTERNAL}`, 'gi'),
-    new RegExp(String.raw`@import\s+["']\s*${EXTERNAL}`, 'gi'),
-  ],
-  '.js': [
-    new RegExp(
-      String.raw`(?:\bimport\s*\(|\bfrom\s*|\bimportScripts\s*\(|\bfetch\s*\(|\bnew\s+(?:Worker|SharedWorker|WebSocket|EventSource)\s*\(|\bsendBeacon\s*\()\s*["'\x60]${EXTERNAL}`,
-      'g',
-    ),
-  ],
-};
+const ABSOLUTE_URL = /\bhttps?:\/\/[^\s"'`<>()\\]+/gi;
+// プロトコル相対URL（//host/...）はHTML属性とCSSのurl()・@importで外部読み込みになる
+const PROTOCOL_RELATIVE = /(?:=\s*["']?|url\(\s*["']?|@import\s+["'])\s*(\/\/[^\s"'`<>()\\]+)/gi;
+
+const SCANNED = new Set(['.html', '.css', '.js']);
 
 /**
  * @param {{ path: string, content: string }[]} files
@@ -31,30 +24,29 @@ const RULES = {
 export function findExternalRefs(files) {
   const violations = [];
   for (const { path, content } of files) {
-    for (const rule of RULES[extname(path)] ?? []) {
-      for (const m of content.matchAll(rule)) {
-        violations.push({ path, match: m[0] });
-      }
+    const ext = extname(path);
+    if (!SCANNED.has(ext)) continue;
+    const urls = [...content.matchAll(ABSOLUTE_URL)].map((m) => m[0]);
+    if (ext !== '.js') urls.push(...[...content.matchAll(PROTOCOL_RELATIVE)].map((m) => m[1]));
+    for (const url of urls) {
+      if (!ALLOWED_PREFIXES.some((p) => url.startsWith(p))) violations.push({ path, match: url });
     }
   }
   return violations;
 }
 
-async function listFiles(dir) {
+/** 違反を表示し、1件でもあればプロセスを失敗終了させる */
+export async function assertNoExternalRefs(dir) {
   const entries = await readdir(dir, { withFileTypes: true, recursive: true });
-  return entries.filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name));
-}
-
-export async function checkDirectory(dir) {
-  const paths = (await listFiles(dir)).filter((p) => extname(p) in RULES);
+  const paths = entries.filter((e) => e.isFile() && SCANNED.has(extname(e.name))).map((e) => join(e.parentPath, e.name));
   const files = await Promise.all(paths.map(async (path) => ({ path, content: await readFile(path, 'utf8') })));
-  return findExternalRefs(files);
+  const violations = findExternalRefs(files);
+  for (const v of violations) console.error(`外部参照: ${v.path}: ${v.match}`);
+  if (violations.length > 0) process.exit(1);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const dir = process.argv[2] ?? 'dist';
-  const violations = await checkDirectory(dir);
-  for (const v of violations) console.error(`外部参照: ${v.path}: ${v.match}`);
-  if (violations.length > 0) process.exit(1);
+  await assertNoExternalRefs(dir);
   console.log(`外部参照なし: ${dir}`);
 }
