@@ -9,7 +9,7 @@
     "check:external": "node scripts/check-external-refs.mjs dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:e2e": "npm run build && playwright test",
+    "test:e2e": "node scripts/build.mjs --test && playwright test",
     "serve": "python3 -m http.server 8000 --bind 127.0.0.1 --directory dist"
   },
   "devDependencies": {
@@ -18,5 +18,8 @@
     "esbuild": "0.28.2",
     "typescript": "7.0.2",
     "vitest": "5.0.3"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2"
   }
 }

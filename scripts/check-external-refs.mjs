@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 const ALLOWED_PREFIXES = [
   // XML名前空間の識別子。通信は発生しない
   'http://www.w3.org/',
+  // SQLite WASM の警告文に含まれる説明ページ（同梱コードは読み込みに使わない）
+  'https://sqlite.org/wasm/doc/',
 ];
 
 const ABSOLUTE_URL = /\bhttps?:\/\/[^\s"'`<>()\\]+/gi;
