@@ -1,0 +1,22 @@
+{
+  "name": "patchquest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ブラウザ上の教材アプリに脆弱性を課題パックとして注入して学ぶ学習プラットフォーム",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check:external": "node scripts/check-external-refs.mjs dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "npm run build && playwright test",
+    "serve": "python3 -m http.server 8000 --bind 127.0.0.1 --directory dist"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}
