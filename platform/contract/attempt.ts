@@ -44,6 +44,8 @@ export interface TestOutcome {
   passed: boolean;
   expected: string;
   actual: string;
+  /** 基盤エラー（タイムアウトなど）で判定できなかった。学習上の不合格には数えない */
+  error?: string;
 }
 
 export interface VerificationReport {
