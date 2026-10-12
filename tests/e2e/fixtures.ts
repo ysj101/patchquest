@@ -24,6 +24,8 @@ export { expect };
 
 /** 演習画面の教材アプリ（隔離 iframe） */
 export const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
+/** 検証結果のパネル */
+export const verifyResults = (page: Page) => page.locator('[data-anchor="results"]');
 /** 演習票の達成印 */
 export const ticketSeals = (page: Page) => page.locator('.ticket').getByRole('list', { name: '達成印' });
 
