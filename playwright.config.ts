@@ -2,6 +2,12 @@ import { defineConfig } from '@playwright/test';
 
 const port = 4173;
 
+/** 対応ブラウザはPC版のChrome・Edge（spec §2）。インストール済みのブラウザを使う */
+export const BROWSERS = [
+  { name: 'chrome', use: { channel: 'chrome' } },
+  { name: 'msedge', use: { channel: 'msedge' } },
+];
+
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
@@ -10,11 +16,7 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${port}`,
   },
-  // 対応ブラウザはPC版のChrome・Edge（spec §2）。インストール済みのブラウザを使う
-  projects: [
-    { name: 'chrome', use: { channel: 'chrome' } },
-    { name: 'msedge', use: { channel: 'msedge' } },
-  ],
+  projects: BROWSERS,
   // 配布物と同じく、ビルド成果物をlocalhost限定の静的サーバで配信する
   webServer: {
     command: `python3 -m http.server ${port} --bind 127.0.0.1 --directory dist`,
