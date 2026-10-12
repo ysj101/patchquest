@@ -4,13 +4,7 @@ import { ANONYMOUS, type AppRequest, type AppResponse, type ImplementationSelect
 import type { AppModule, ViewContext } from '../app-module';
 import type { FromFrame, ToFrame } from '../protocol';
 import { findApp, resolveHook } from '../registry';
-
-interface TrustedTypePolicy {
-  createHTML(input: string): unknown;
-}
-interface TrustedTypePolicyFactory {
-  createPolicy(name: string, rules: { createHTML: (s: string) => string }): TrustedTypePolicy;
-}
+import { installNavigationGuard } from './navigation-guard';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -27,38 +21,7 @@ Object.assign(window, {
   pqMarker: () => current && send({ type: 'event', runId: current.runId, event: { type: 'dom.marker', data: {} } }),
 });
 
-// 自由入力の HTML がフレーム自体を遷移させて外部へ通信しないよう、HTML として描画する前に
-// 許可した要素・属性だけを残す。on* の実行可否は CSP のハッシュで決まる（docs/poc/xss-isolation.md）
-const ALLOWED_ELEMENTS = new Set(['B', 'I', 'EM', 'STRONG', 'U', 'S', 'SMALL', 'MARK', 'CODE', 'SPAN', 'P', 'BR', 'UL', 'OL', 'LI', 'IMG', 'svg']);
-const isAllowedAttribute = (el: Element, name: string) =>
-  name.startsWith('on') || name === 'alt' || name === 'title' || (name === 'src' && el.tagName === 'IMG');
-const trustedTypes = (window as { trustedTypes?: TrustedTypePolicyFactory }).trustedTypes;
-// DOMParser.parseFromString も Trusted Types の対象のため、解析用に何もしない別ポリシーを通す
-const inert = trustedTypes?.createPolicy('pq-inert', { createHTML: (s) => s });
-
-function allowlisted(html: string): string {
-  const doc = new DOMParser().parseFromString((inert?.createHTML(html) ?? html) as string, 'text/html');
-  for (const el of [...doc.body.querySelectorAll('*')]) {
-    if (!ALLOWED_ELEMENTS.has(el.tagName)) {
-      el.remove();
-      continue;
-    }
-    for (const { name } of [...el.attributes]) if (!isAllowedAttribute(el, name)) el.removeAttribute(name);
-  }
-  return doc.body.innerHTML;
-}
-
-if (trustedTypes) trustedTypes.createPolicy('default', { createHTML: allowlisted });
-else {
-  // Trusted Types がない環境でもガードが消えないよう、innerHTML への代入を差し替える
-  const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML')!;
-  Object.defineProperty(Element.prototype, 'innerHTML', {
-    ...descriptor,
-    set(this: Element, html: string) {
-      descriptor.set!.call(this, allowlisted(String(html)));
-    },
-  });
-}
+installNavigationGuard();
 
 function request(runId: string, req: AppRequest): Promise<AppResponse> {
   const requestId = nextRequestId++;

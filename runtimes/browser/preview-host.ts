@@ -60,6 +60,8 @@ export interface RenderParams {
   session: SessionToken | null;
   implementations: ImplementationSelection;
   timeoutMs: number;
+  /** 描画完了の通知から結果を返すまで待つ時間 */
+  settleMs: number;
 }
 
 interface FrameContext {
@@ -74,9 +76,6 @@ interface Collector {
   rendered: (route: string) => void;
   failed: (message: string) => void;
 }
-
-/** 描画後、画像のエラーなど非同期に起きる事象を待つ時間 */
-const SETTLE_MS = 150;
 
 export class PreviewFrame {
   readonly element = document.createElement('iframe');
@@ -117,7 +116,7 @@ export class PreviewFrame {
       const timer = setTimeout(() => reject(new RuntimeError('timeout', '画面の描画が時間内に終わりませんでした')), params.timeoutMs);
       this.collector = {
         events,
-        rendered: () => (clearTimeout(timer), setTimeout(resolve, SETTLE_MS)),
+        rendered: () => (clearTimeout(timer), setTimeout(resolve, params.settleMs)),
         failed: (message) => (clearTimeout(timer), reject(new RuntimeError('crashed', message))),
       };
     });

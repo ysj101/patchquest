@@ -1,16 +1,9 @@
 // PoC: XSS演習用の隔離iframe（Issue #3）の中で動くスクリプト。
 // 親から受け取ったコメントを text / html のどちらかで描画し、観測した事象を親へ報告する。
 
-type RenderMessage = { type: 'render'; runId: string; mode: 'html' | 'text'; comments: string[]; navigationGuard: boolean };
+import { installNavigationGuard } from '../../runtimes/browser/preview/navigation-guard';
 
-interface TrustedTypePolicy {
-  createHTML(input: string): unknown;
-}
-interface TrustedTypePolicyFactory {
-  createPolicy(name: string, rules: { createHTML: (s: string) => string }): TrustedTypePolicy;
-}
-// 未対応のブラウザでは識別子そのものが存在しないため、window のプロパティとして参照する
-const trustedTypes = (window as { trustedTypes?: TrustedTypePolicyFactory }).trustedTypes;
+type RenderMessage = { type: 'render'; runId: string; mode: 'html' | 'text'; comments: string[]; navigationGuard: boolean };
 
 let runId: string | null = null;
 let navigationGuard = false;
@@ -36,38 +29,15 @@ document.addEventListener('securitypolicyviolation', (e) =>
   report({ type: 'csp-violation', directive: e.effectiveDirective, blockedURI: e.blockedURI }),
 );
 
-// 自由入力のHTMLがフレーム自体を遷移させて外部へ通信しないよう、描画前に許可した要素・属性だけを残す。
-// イベントハンドラー（on*）の実行可否はCSPのハッシュで制御するため、ここでは残す
-const ALLOWED_ELEMENTS = new Set(['B', 'I', 'EM', 'STRONG', 'U', 'S', 'SMALL', 'MARK', 'CODE', 'SPAN', 'P', 'BR', 'UL', 'OL', 'LI', 'IMG', 'svg']);
-const isAllowedAttribute = (el: Element, name: string) =>
-  name.startsWith('on') || name === 'alt' || name === 'title' || (name === 'src' && el.tagName === 'IMG');
-
-// DOMParser.parseFromString も Trusted Types の対象のため、default ポリシーの中で文字列を渡すと
-// default ポリシー自身が再び呼ばれる。解析用に何もしない別ポリシーを通す
-const inert = trustedTypes?.createPolicy('pq-inert', { createHTML: (s) => s });
-
-function allowlisted(html: string): string {
-  const doc = new DOMParser().parseFromString((inert?.createHTML(html) ?? html) as string, 'text/html');
-  for (const el of [...doc.body.querySelectorAll('*')]) {
-    if (!ALLOWED_ELEMENTS.has(el.tagName)) {
-      el.remove();
-      continue;
-    }
-    for (const { name } of [...el.attributes]) if (!isAllowedAttribute(el, name)) el.removeAttribute(name);
-  }
-  return doc.body.innerHTML;
-}
-
-// Trusted Types があれば innerHTML への代入はすべて default ポリシーを通る。
-// ない環境でもガードが消えないよう、描画時に直接 allowlisted を通す（下の render）
-trustedTypes?.createPolicy('default', { createHTML: (html) => (navigationGuard ? allowlisted(html) : html) });
+// 本番のプレビューと同じ遷移ガード。PoC では無効にしたときの挙動も確かめる
+installNavigationGuard(() => navigationGuard);
 
 window.addEventListener('message', (e: MessageEvent<RenderMessage>) => {
   if (e.source !== parent || e.data?.type !== 'render') return;
   ({ runId, navigationGuard } = e.data);
   const items = e.data.comments.map((comment) => {
     const li = document.createElement('li');
-    if (e.data.mode === 'html') li.innerHTML = navigationGuard && !trustedTypes ? allowlisted(comment) : comment;
+    if (e.data.mode === 'html') li.innerHTML = comment;
     else li.textContent = comment;
     return li;
   });

@@ -15,7 +15,7 @@ import {
 import type { AppModule, ServerContext } from './app-module';
 import { lockdown } from './lockdown';
 import type { WorkerEnvelope, WorkerReply, WorkerRequest, WorkerResult } from './protocol';
-import { checkImplementation, findApp, realmOf, resolveHook } from './registry';
+import { checkImplementation, findApp, resolveHook, splitByRealm } from './registry';
 import { openMemoryDatabase, type Database } from './sqlite';
 
 interface State {
@@ -37,9 +37,7 @@ async function snapshotHash(db: Database): Promise<string> {
 
 async function prepare(options: PrepareOptions, selection: ImplementationSelection): Promise<FixtureData> {
   const app = findApp(options.app.id, options.app.version);
-  for (const [hook, implementation] of Object.entries(selection)) {
-    if (realmOf(app, hook) === 'server') checkImplementation(app, hook, implementation, 'server');
-  }
+  const { server } = splitByRealm(app, selection);
   const generate = app.fixtures[options.fixture.generator];
   if (!generate) throw new RuntimeError('unknown-app', `fixture ${options.fixture.generator} はありません`);
 
@@ -49,7 +47,7 @@ async function prepare(options: PrepareOptions, selection: ImplementationSelecti
   const refs = generate(db, options.fixture.seed);
   const hash = await snapshotHash(db);
   state?.db.close();
-  state = { app, db, options, selection: { ...selection }, sessions: new Map() };
+  state = { app, db, options, selection: server, sessions: new Map() };
   return { refs, hash };
 }
 

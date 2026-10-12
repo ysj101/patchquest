@@ -2,6 +2,7 @@
 import { catalog } from '@catalog';
 import {
   RuntimeError,
+  type HookDescriptor,
   type HookId,
   type HookRealm,
   type ImplementationId,
@@ -22,25 +23,33 @@ export function findApp(id: string, version?: string): AppModule {
   return app;
 }
 
-/** 実装の切り替えを検査する。登録済みで、対象フック用で、指定した実行場所のフックであること */
-export function checkImplementation(app: AppModule, hook: HookId, implementation: ImplementationId, realm?: HookRealm): void {
+export function hookDescriptor(app: AppModule, hook: HookId): HookDescriptor {
   const descriptor = app.descriptor.hooks.find((h) => h.id === hook);
-  const entry = implementations[implementation];
-  if (!descriptor || (realm && descriptor.realm !== realm) || entry?.hook !== hook) {
+  if (!descriptor) throw new RuntimeError('unknown-implementation', `フック ${hook} はありません`);
+  return descriptor;
+}
+
+/** 実装の切り替えを検査する。登録済みで、対象フック用で、指定した実行場所のフックであること */
+export function checkImplementation(app: AppModule, hook: HookId, implementation: ImplementationId, realm: HookRealm): void {
+  if (hookDescriptor(app, hook).realm !== realm || implementations[implementation]?.hook !== hook) {
     throw new RuntimeError('unknown-implementation', `フック ${hook} に実装 ${implementation} は使えません`);
   }
 }
 
-export function realmOf(app: AppModule, hook: HookId): HookRealm {
-  const descriptor = app.descriptor.hooks.find((h) => h.id === hook);
-  if (!descriptor) throw new RuntimeError('unknown-implementation', `フック ${hook} はありません`);
-  return descriptor.realm;
+/** 実装の選択を実行場所ごとに分け、それぞれ検査する */
+export function splitByRealm(app: AppModule, selection: ImplementationSelection): Record<HookRealm, ImplementationSelection> {
+  const split: Record<HookRealm, ImplementationSelection> = { server: {}, view: {} };
+  for (const [hook, implementation] of Object.entries(selection)) {
+    const { realm } = hookDescriptor(app, hook);
+    checkImplementation(app, hook, implementation, realm);
+    split[realm][hook] = implementation;
+  }
+  return split;
 }
 
 /** 選ばれた実装（未選択なら基準実装）の関数を返す */
 export function resolveHook<F extends HookFunction>(app: AppModule, selection: ImplementationSelection, hook: HookId): F {
-  const descriptor = app.descriptor.hooks.find((h) => h.id === hook);
-  const entry = implementations[selection[hook] ?? descriptor?.baseline ?? ''];
-  if (!entry || entry.hook !== hook) throw new Error(`フック ${hook} の実装が見つかりません`);
+  const entry = implementations[selection[hook] ?? hookDescriptor(app, hook).baseline];
+  if (entry?.hook !== hook) throw new Error(`フック ${hook} の実装が見つかりません`);
   return entry.run as F;
 }

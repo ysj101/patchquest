@@ -19,8 +19,8 @@ import {
 } from '../../platform/contract';
 import type { AppModule } from './app-module';
 import { PreviewFrame } from './preview-host';
-import type { WorkerReply, WorkerRequest, WorkerResult } from './protocol';
-import { checkImplementation, findApp, realmOf } from './registry';
+import type { WorkerEnvelope, WorkerReply, WorkerRequest, WorkerResult } from './protocol';
+import { checkImplementation, findApp, hookDescriptor, splitByRealm } from './registry';
 
 export interface RuntimeLimits {
   /** 1 回の呼び出し・描画の上限（初期案: テスト 1 件 5 秒、spec §14） */
@@ -30,6 +30,9 @@ export interface RuntimeLimits {
 }
 
 export const DEFAULT_LIMITS: RuntimeLimits = { timeoutMs: 5000, maxInputBytes: 4096 };
+
+/** 検証の描画では、画像のエラーなど描画後に非同期で起きる事象も集めるため少し待つ */
+const RENDER_SETTLE_MS = 150;
 
 export interface BrowserRuntimeOptions {
   /** 画面を表示する要素。省略すると非表示のプレビューを使う（検証用インスタンス） */
@@ -74,19 +77,14 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   async prepare(options: PrepareOptions): Promise<FixtureData> {
     this.assertAlive();
     const app = findApp(options.app.id, options.app.version);
-    const viewSelection: ImplementationSelection = {};
-    for (const [hook, implementation] of Object.entries(options.implementations)) {
-      if (realmOf(app, hook) !== 'view') continue;
-      checkImplementation(app, hook, implementation, 'view');
-      viewSelection[hook] = implementation;
-    }
+    const { view } = splitByRealm(app, options.implementations);
     this.terminateWorker('stopped');
     this.frame?.detach();
     this.worker = new Worker(new URL('runtime-worker.js', this.assetsBase), { type: 'module', name: 'patchquest-runtime' });
     this.worker.addEventListener('message', (e: MessageEvent<WorkerReply>) => this.receive(e.data));
     this.worker.addEventListener('error', () => this.terminateWorker('crashed'));
     this.prepared = { options, app };
-    this.viewSelection = viewSelection;
+    this.viewSelection = view;
     this.sessionActors.clear();
     return (await this.call({ op: 'prepare', options }, `prepare:${options.attemptId}`, this.limits.timeoutMs * 2)) as FixtureData;
   }
@@ -103,7 +101,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
 
   async invoke(call: InvokeCall, options: InvokeOptions): Promise<InvokeResult> {
     const timeoutMs = options.timeoutMs ?? this.limits.timeoutMs;
-    if (call.kind === 'render') return this.render(call.view.route, call.session, options.runId, timeoutMs);
+    if (call.kind === 'render') return this.render(call.view.route, call.session, options.runId, timeoutMs, RENDER_SETTLE_MS);
     if (call.kind === 'request' && inputSize(call.request) > this.limits.maxInputBytes) {
       throw new RuntimeError('input-too-large', `入力が上限（${this.limits.maxInputBytes} バイト）を超えています`);
     }
@@ -118,17 +116,12 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
    */
   async showView(actor: ActorKey, route: string, runId: string): Promise<void> {
     const { session } = await this.invoke({ kind: 'session', actor }, { runId });
-    await this.render(route, session ?? null, runId, this.limits.timeoutMs);
-  }
-
-  /** プレビューに表示中の画面 */
-  get currentRoute(): string | null {
-    return this.frame?.route ?? null;
+    await this.render(route, session ?? null, runId, this.limits.timeoutMs, 0);
   }
 
   async setImplementation(hook: HookId, implementation: ImplementationId): Promise<void> {
     const { app } = this.requirePrepared();
-    if (realmOf(app, hook) === 'view') {
+    if (hookDescriptor(app, hook).realm === 'view') {
       checkImplementation(app, hook, implementation, 'view');
       this.viewSelection = { ...this.viewSelection, [hook]: implementation };
       return;
@@ -161,7 +154,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     return this.frame?.rejected ?? 0;
   }
 
-  private async render(route: string, session: SessionToken | null, runId: string, timeoutMs: number): Promise<InvokeResult> {
+  private async render(route: string, session: SessionToken | null, runId: string, timeoutMs: number, settleMs: number): Promise<InvokeResult> {
     const { app } = this.requirePrepared();
     if (!this.frame) throw new RuntimeError('not-prepared', 'プレビューが開始されていません');
     const started = performance.now();
@@ -174,6 +167,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
       session,
       implementations: this.viewSelection,
       timeoutMs,
+      settleMs,
     });
     return { events, elapsedMs: performance.now() - started };
   }
@@ -202,7 +196,8 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
         resolve: (result) => (clearTimeout(timer), resolve(result)),
         reject: (error) => (clearTimeout(timer), reject(error)),
       });
-      worker.postMessage({ callId, attemptId, runId, request });
+      const envelope: WorkerEnvelope = { callId, attemptId, runId, request };
+      worker.postMessage(envelope);
     });
   }
 
