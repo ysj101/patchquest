@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { satisfies } from '../contract';
+import { ANONYMOUS, RuntimeError, satisfies, type ActorKey, type AppRequest, type Exchange } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { ProgressStore } from '../progress/store';
@@ -23,14 +23,21 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   let orchestrator: Orchestrator;
   const preflightView = new PreflightView({
-    begin: () => show('exercise'),
+    begin: () => void beginExercise(),
     retry: () => void orchestrator.retryPreflight(),
     back: () => void showList(),
   });
-  const exerciseView = new ExerciseView({ back: () => void showList() });
+  /** プレビューと調査パネルで、いま操作している利用者 */
+  let viewer: ActorKey = ANONYMOUS;
+  const exerciseView = new ExerciseView({
+    back: () => void showList(),
+    switchUser: (actor) => void showViewer(actor),
+    reloadView: () => void showViewer(viewer),
+    send: (request) => send(request),
+  });
   const exercise = new BrowserRuntimeAdapter({
     container: exerciseView.previewSlot,
-    onExchange: (exchange) => orchestrator.onExchange(exchange),
+    onExchange: (exchange) => observe(exchange),
   });
   orchestrator = new Orchestrator({
     apps: catalog.apps,
@@ -115,6 +122,55 @@ export async function startApp(root: HTMLElement): Promise<void> {
     announce(live, '開始前チェックを始めました');
     const snapshot = await run();
     announce(live, snapshot.attempt.state === 'Prepared' ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
+  }
+
+  const currentApp = () => catalog.apps.find((a) => a.descriptor.id === orchestrator.snapshot?.attempt.appId);
+
+  /** 観測したやり取りを進行（再現の判定）と観測ログへ渡す。画面の表示だけのやり取りは事象があるときだけ記録する */
+  function observe(exchange: Exchange): void {
+    const hadReproduction = orchestrator.snapshot?.attempt.badges.reproduction.achieved;
+    orchestrator.onExchange(exchange);
+    if (exchange.kind === 'request' || exchange.events.length > 0) exerciseView.investigation.record(exchange, exerciseView.label(exchange.actor));
+    if (!hadReproduction && orchestrator.snapshot?.attempt.badges.reproduction.achieved) announce(live, '再現の検印を押しました。事故を自分の操作で再現できました');
+  }
+
+  /** 信頼された演習ハーネスとして、表示する利用者を切り替えて最初の画面を開く */
+  async function showViewer(actor: ActorKey): Promise<void> {
+    const app = currentApp();
+    if (!app) return;
+    viewer = actor;
+    exerciseView.setViewer(actor);
+    try {
+      await exercise.showView(actor, app.descriptor.entryRoute, orchestrator.newRunId());
+      announce(live, `${exerciseView.label(actor)} として表示しています`);
+    } catch (e) {
+      announce(live, `画面を表示できませんでした：${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function beginExercise(): Promise<void> {
+    const snapshot = orchestrator.snapshot;
+    const app = currentApp();
+    if (!snapshot || !app) return;
+    viewer = app.descriptor.users[0] ?? ANONYMOUS;
+    exerciseView.setup(snapshot, app.descriptor, viewer);
+    show('exercise');
+    await showViewer(viewer);
+  }
+
+  /** 現在の利用者として、ブラウザ内の呼び出しを送る。基盤エラーは理由を返し、不合格には数えない */
+  async function send(request: AppRequest): Promise<string | null> {
+    const runId = orchestrator.newRunId();
+    try {
+      const { session } = await exercise.invoke({ kind: 'session', actor: viewer }, { runId });
+      const { response, events } = await exercise.invoke({ kind: 'request', session: session ?? null, request }, { runId });
+      observe({ runId, actor: viewer, kind: 'request', request, response, events });
+      return null;
+    } catch (e) {
+      if (e instanceof RuntimeError && e.code === 'input-too-large') return '入力が大きすぎます（1 件 4KB まで）。内容を短くしてください。';
+      if (e instanceof RuntimeError) return `実行環境のエラーで送れませんでした（不合格には数えません）：${e.message}`;
+      throw e;
+    }
   }
 
   async function exportProgress(): Promise<void> {

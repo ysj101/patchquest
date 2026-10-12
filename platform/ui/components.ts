@@ -76,3 +76,60 @@ export function confirmDialog(options: { title: string; body: string; confirm: s
     dialog.showModal();
   });
 }
+
+export interface TabSpec {
+  id: string;
+  label: string;
+  panel: HTMLElement;
+}
+
+/**
+ * タブ（WAI-ARIA の tablist）。左右の矢印キー・Home・End で切り替え、選んだタブだけを Tab キーで移動できる。
+ * select でコードから切り替えられる
+ */
+export function tabs(name: string, specs: TabSpec[]): { element: HTMLElement; select(id: string): void } {
+  const buttons = specs.map((spec, i) =>
+    h(
+      'button',
+      {
+        type: 'button',
+        role: 'tab',
+        id: `tab-${spec.id}`,
+        class: 'tab',
+        'aria-controls': `panel-${spec.id}`,
+        'aria-selected': i === 0 ? 'true' : 'false',
+        tabIndex: i === 0 ? 0 : -1,
+        on: { click: () => select(spec.id) },
+      },
+      spec.label,
+    ),
+  );
+  const panels = specs.map((spec, i) => {
+    spec.panel.id = `panel-${spec.id}`;
+    spec.panel.setAttribute('role', 'tabpanel');
+    spec.panel.setAttribute('aria-labelledby', `tab-${spec.id}`);
+    spec.panel.tabIndex = 0;
+    spec.panel.hidden = i !== 0;
+    return spec.panel;
+  });
+  function select(id: string, focus = false): void {
+    specs.forEach((spec, i) => {
+      const selected = spec.id === id;
+      buttons[i]!.setAttribute('aria-selected', String(selected));
+      buttons[i]!.tabIndex = selected ? 0 : -1;
+      panels[i]!.hidden = !selected;
+      if (selected && focus) buttons[i]!.focus();
+    });
+  }
+  const list = h('div', { role: 'tablist', 'aria-label': name, class: 'tablist' }, ...buttons);
+  list.addEventListener('keydown', (e) => {
+    const current = buttons.findIndex((b) => b === document.activeElement);
+    if (current < 0) return;
+    const last = buttons.length - 1;
+    const next = { ArrowRight: current === last ? 0 : current + 1, ArrowLeft: current === 0 ? last : current - 1, Home: 0, End: last }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    select(specs[next]!.id, true);
+  });
+  return { element: h('div', { class: 'tabs' }, list, ...panels), select: (id) => select(id) };
+}

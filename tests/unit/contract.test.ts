@@ -15,6 +15,7 @@ const app: AppDescriptor = {
   version: '1.2.0',
   features: ['memo'],
   users: ['alice', 'bob'],
+  entryRoute: '/memos',
   hooks: [{ id: 'memo.read.authorize', realm: 'server', contract: 1, baseline: 'memo/owner-check', description: '' }],
 };
 

@@ -69,6 +69,7 @@ export const testApp: AppModule = {
     version: '1.0.0',
     features: ['notes'],
     users: ['alice', 'bob'],
+    entryRoute: '/notes',
     hooks: [
       { id: 'note.read', realm: 'server', contract: 1, baseline: 'test-app/owner-only', description: 'ID 指定でノートを読む' },
       { id: 'note.render', realm: 'view', contract: 1, baseline: 'test-app/text', description: 'ノート本文を描画する' },

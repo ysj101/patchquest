@@ -13,6 +13,7 @@ export const memoApp: AppModule = {
     version: '1.0.0',
     features: ['memo', 'comments', 'search'],
     users: [...USERS],
+    entryRoute: '/memos',
     hooks: HOOKS,
   },
   schema: SCHEMA,
