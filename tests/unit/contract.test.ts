@@ -164,6 +164,14 @@ describe('validatePack', () => {
     expect(validatePack(pack, { app })).toEqual([expect.stringMatching(/実装はフック「comment\.render」用です/)]);
   });
 
+  it('画面（view）のフックを交換するパックは dom-preview を要求していなければ拒否する', () => {
+    const withView: AppDescriptor = { ...app, hooks: [...app.hooks, { id: 'comment.render', realm: 'view', contract: 1, baseline: 'memo/comment-text', description: '' }] };
+    const pack = withManifest((m) => m.hooks.push({ id: 'comment.render', contract: 1 }));
+    expect(validatePack(pack, { app: withView })).toEqual([expect.stringMatching(/dom-preview が必要です/)]);
+    pack.manifest.runtime.capabilities.push('dom-preview');
+    expect(validatePack(pack, { app: withView })).toEqual([]);
+  });
+
   it('アプリ共通のテスト ID を target に指定できる', () => {
     const pack = withManifest((m) => (m.tests.target = ['memo.read.other-denied']));
     expect(validatePack(pack, { app, appTestIds: ['memo.read.other-denied'] })).toEqual([]);

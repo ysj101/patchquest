@@ -96,7 +96,7 @@
 1. `missions/<パックID>/` に `manifest` と `implementations` を作る。
 2. `catalog/` にパックを登録する。コアUIに課題 ID の条件分岐を書かない。
 3. `validatePack(pack, { app, appTestIds, sharedImplementations })` がエラーなしで通ることを確かめる。
-4. パック出荷前検証（Orchestrator で提供予定）で、次の 3 点を確かめる。
+4. パック出荷前検証（`npm run verify:packs`）で、次の 3 点を確かめる。対策は `expected` どおりの結果になることも確かめる。
    - 基準状態 S で全テストが通る。
    - 脆弱な状態 V では `tests.target` のテストだけが失敗し、`verify.probes` の攻撃が成立する。
    - `expected: 'secure'` の対策を適用すると全テストが通る。

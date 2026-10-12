@@ -23,6 +23,11 @@ export function canTransition(from: ExerciseState, to: ExerciseState): boolean {
   return TRANSITIONS[from].includes(to);
 }
 
+/** 演習中（開始後で、対策を選べる状態）か。遷移表から導く */
+export function isInExercise(state: ExerciseState): boolean {
+  return state === 'Repairing' || canTransition(state, 'Repairing');
+}
+
 export type BadgeKind = 'reproduction' | 'defense' | 'understanding';
 
 export interface Badge {
