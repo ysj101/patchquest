@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { assertNoExternalRefs } from './check-external-refs.mjs';
+import { checkBoundaries } from './check-boundaries.mjs';
 import { findUnsafeDom } from './check-dom-safety.mjs';
 
 const outdir = 'dist';
@@ -56,6 +57,11 @@ async function buildSandboxDocument(template, out) {
 const unsafeDom = await findUnsafeDom();
 if (unsafeDom.length > 0) {
   for (const v of unsafeDom) console.error(`HTML として挿入する API は使えません: ${v}`);
+  process.exit(1);
+}
+const crossings = await checkBoundaries();
+if (crossings.length > 0) {
+  for (const v of crossings) console.error(`依存の境界を越えています: ${v}`);
   process.exit(1);
 }
 

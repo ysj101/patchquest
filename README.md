@@ -24,7 +24,7 @@ python3 -m http.server 8000 --bind 127.0.0.1   # Windows は py -m http.server 8
 
 ```sh
 npm ci              # 依存のインストール（インストールスクリプトは実行しない設定）
-npm run build       # dist/ に静的成果物を生成し、外部参照がないことを検査
+npm run build       # dist/ に静的成果物を生成する（DOM 安全性・依存の境界・外部参照も検査）
 npm run serve       # http://127.0.0.1:8000/ で dist/ を配信
 npm run typecheck   # 型検査
 npm test            # ユニットテスト
@@ -32,8 +32,13 @@ npm run test:e2e    # ビルドしてから Chrome・Edge で E2E テスト
 npm run verify:packs  # 同梱パックの出荷前検証（基準・レシピ・対策が期待どおりか）
 npm run package     # 配布用の ZIP を release/ に作る
 npm run test:dist   # ZIP を展開して localhost で開き、Chrome・Edge で確かめる
+npm run check:boundaries  # 課題同士・プラットフォームと課題の依存の境界（ビルドでも実行）
 node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API を使っていないか（ビルドでも実行）
 ```
+
+push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）が次を実行します。
+- 型検査、ユニットテスト、ビルド、外部参照の検査
+- 出荷前検証、Chrome・Edge の E2E、配布物の確認
 
 課題パックの作り方は [docs/pack-authoring.md](docs/pack-authoring.md) を参照してください。
 

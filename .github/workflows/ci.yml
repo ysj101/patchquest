@@ -1,0 +1,59 @@
+# CI。push（main）と PR ごとに、型チェック・Unit テスト・ビルド（DOM 安全性と依存境界の検査を含む）・外部参照の検査と、
+# パックの出荷前検証・E2E（Chrome・Edge）・配布物の確認を行う
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: 型チェック・Unit テスト・ビルド
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:external
+
+  browsers:
+    name: パックの出荷前検証・E2E・配布物（Chrome・Edge）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Chrome はランナーに入っている。Edge だけ入れる
+      - run: npx playwright install msedge
+      - run: npm run verify:packs
+      - run: npm run test:e2e
+      - run: npm run test:dist
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7
