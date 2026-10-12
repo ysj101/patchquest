@@ -217,7 +217,7 @@ export class Orchestrator {
     const { attempt, pack } = c.snapshot;
     const defense = defenseId === null ? null : pack.manifest.defenses.find((d) => d.id === defenseId);
     if (defense === undefined) throw new Error(`対策 ${defenseId} はありません`);
-    if (!isInExercise(attempt.state)) throw new Error(`${attempt.state} では対策を適用できません`);
+    if (!isInExercise(attempt.state) || attempt.state === 'Verifying') throw new Error(`${attempt.state} では対策を適用できません`);
 
     await this.switchImplementations(withChanges(c.vulnerable, defense?.apply ?? []));
     c.snapshot.defenseCurrent = false;
