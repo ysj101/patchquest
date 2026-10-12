@@ -1,14 +1,9 @@
 // 学習UI：対策パネル・検証結果・ヒント・振り返り（Issue #13）
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
-
-const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
-const seals = (page: Page) => page.locator('.ticket').getByRole('list', { name: '達成印' });
+import { expect, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
 
 async function startExercise(page: Page): Promise<void> {
-  await page.goto('/');
-  await page.locator('[data-mission="test-pack"]').getByRole('button', { name: 'この課題を始める' }).click();
-  await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await startMission(page, 'test-pack');
   await expect(preview(page).getByRole('heading', { name: 'ノート（alice）' })).toBeVisible();
 }
 
@@ -22,14 +17,6 @@ async function reproduce(page: Page): Promise<void> {
   await page.getByLabel('ノート ID').fill(String(id));
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await expect(seals(page)).toContainText('再現：達成');
-}
-
-async function verifyWith(page: Page, defense: string): Promise<void> {
-  await page.getByRole('tab', { name: '対策' }).click();
-  await page.getByRole('radio', { name: new RegExp(defense) }).check();
-  await page.getByRole('button', { name: 'この対策を適用する' }).click();
-  await expect(page.getByText(`適用中の対策：${defense}`)).toBeVisible();
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
 }
 
 test.beforeEach(async ({ page }) => {

@@ -163,6 +163,7 @@ export const GUIDE_ANCHORS = [
   'story',
   'user-switcher',
   'app-preview',
+  'actions',
   'request-editor',
   'investigation-log',
   'hints',

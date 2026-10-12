@@ -62,7 +62,7 @@ export class InvestigationPanel {
     this.element = h(
       'div',
       { class: 'investigation' },
-      h('section', { class: 'tool-section', 'aria-labelledby': 'actions-title' }, h('h3', { id: 'actions-title' }, '操作'), this.actionList),
+      h('section', { class: 'tool-section', 'aria-labelledby': 'actions-title', 'data-anchor': 'actions' }, h('h3', { id: 'actions-title' }, '操作'), this.actionList),
       h(
         'section',
         { class: 'tool-section', 'aria-labelledby': 'editor-title', 'data-anchor': 'request-editor' },

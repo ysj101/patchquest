@@ -5,7 +5,7 @@
 | ファイル | 内容 |
 | - | - |
 | `server.ts` | 教材ロジック（`/api/me`、`/api/memos` の CRUD、`/api/pages`（共有ページとコメント）、`/api/search`（自分のメモの検索））。主体はセッションから解決し、リクエストの値は使わない |
-| `hooks.ts` | 交換点と基準実装。`memo.read.authorize`（ID 指定の取得と認可）、`memo.search.query`（検索クエリの組み立て。値はバインドし所有者条件を付ける）、`comment.render`（コメントの描画。画面側、textContent）。いずれも契約 1 |
+| `hooks.ts` | 交換点と基準実装。`memo.read.authorize`（ID 指定の取得と認可）、`memo.search.query`（検索クエリの組み立て。値はバインドし所有者条件を付ける）、`comment.render`（コメントの描画。画面側、textContent）、`memo.title.validate`（保存するタイトルの文字数の検証）、`memo.title.input`（作成・編集画面のタイトル入力欄の上限。画面側）。いずれも契約 1 |
 | `fixtures.ts` | seed から架空の利用者（alice・bob・carol）とメモを作る `memo.default` |
 | `tests.ts` | アプリ共通のテスト。基準実装ではすべて通る |
 | `view.ts` | 隔離 iframe 内の画面。教材データは textContent でだけ表示する |

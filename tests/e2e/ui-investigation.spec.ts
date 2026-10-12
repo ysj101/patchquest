@@ -1,13 +1,9 @@
 // 学習UI：演習画面と調査パネル（Issue #12）
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
-
-const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
+import { expect, preview, startMission, test } from './fixtures';
 
 async function startExercise(page: Page): Promise<void> {
-  await page.goto('/');
-  await page.locator('[data-mission="test-pack"]').getByRole('button', { name: 'この課題を始める' }).click();
-  await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await startMission(page, 'test-pack');
   await expect(preview(page).getByRole('heading', { name: 'ノート（alice）' })).toBeVisible();
 }
 

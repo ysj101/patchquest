@@ -28,6 +28,17 @@ export interface CatalogApp {
   implementations: ImplementationRegistry;
 }
 
+/** パックが対応する版の教材アプリ */
+export function compatibleApp<A extends CatalogApp>(apps: readonly A[], pack: MissionPack): A | undefined {
+  const { appId, versions } = pack.manifest.appCompatibility;
+  return apps.find((a) => a.descriptor.id === appId && satisfies(a.descriptor.version, versions));
+}
+
+/** パックを教材アプリの契約（フック・機能・利用者・共通テスト・基準実装）に照らして検証する */
+export function validateForApp(pack: MissionPack, app: CatalogApp): string[] {
+  return validatePack(pack, { app: app.descriptor, appTestIds: app.tests.map((t) => t.id), sharedImplementations: app.implementations });
+}
+
 export type PreflightStep = 'compatibility' | 'baseline' | 'inject' | 'prepare';
 
 export interface PreflightEntry {
@@ -133,9 +144,7 @@ export class Orchestrator {
     const { manifest } = pack;
     const variant = manifest.fixtures.variants.find((v) => v.id === (variantId ?? manifest.fixtures.variants[0]?.id));
     const recipe = manifest.mutationRecipes.find((r) => r.id === variant?.recipe);
-    const app =
-      this.deps.apps.find((a) => a.descriptor.id === manifest.appCompatibility.appId && satisfies(a.descriptor.version, manifest.appCompatibility.versions)) ??
-      this.deps.apps.find((a) => a.descriptor.id === manifest.appCompatibility.appId);
+    const app = compatibleApp(this.deps.apps, pack) ?? this.deps.apps.find((a) => a.descriptor.id === manifest.appCompatibility.appId);
 
     // 続きから始めるときは、達成印・ヒント・回答を記録から引き継ぐ。検証結果は再検証するまで古いものとして扱う
     const carried = resume && {
@@ -316,11 +325,7 @@ export class Orchestrator {
         const { app } = c;
         const { appId, versions } = pack.manifest.appCompatibility;
         if (!app) throw new Blocked({ kind: 'incompatible', message: `対応する教材アプリ ${appId} ${versions} がありません` });
-        const errors = validatePack(pack, {
-          app: app.descriptor,
-          appTestIds: app.tests.map((t) => t.id),
-          sharedImplementations: app.implementations,
-        });
+        const errors = validateForApp(pack, app);
         const missing = pack.manifest.runtime.capabilities.filter((cap) => !this.deps.exercise.capabilities.includes(cap));
         if (missing.length) errors.push(`実行環境に必要な機能がありません: ${missing.join(', ')}`);
         if (!attempt.recipeId) errors.push('開始条件（バリエーション）に対応するレシピがありません');
