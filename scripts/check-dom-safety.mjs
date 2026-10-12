@@ -6,7 +6,7 @@ import { listFiles } from './scan.mjs';
 
 const ROOTS = ['platform', 'runtimes/browser'];
 const EXCLUDED = ['runtimes/browser/preview'];
-const FORBIDDEN = [/\.innerHTML\s*=/, /\.outerHTML\s*=/, /insertAdjacentHTML/, /document\.write/, /\beval\s*\(/, /new\s+Function\s*\(/];
+const FORBIDDEN = [/\.innerHTML\s*=/, /\.outerHTML\s*=/, /\b(innerHTML|outerHTML|srcdoc)\s*:/, /insertAdjacentHTML/, /document\.write/, /\beval\s*\(/, /new\s+Function\s*\(/];
 
 export async function findUnsafeDom() {
   const violations = [];

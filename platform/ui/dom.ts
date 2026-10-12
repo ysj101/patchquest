@@ -3,6 +3,9 @@ type Child = Node | string | number | null | undefined | false;
 type Handlers = { [K in keyof HTMLElementEventMap]?: (event: HTMLElementEventMap[K]) => void };
 export type Attrs = { [key: string]: unknown; on?: Handlers };
 
+/** HTML として解釈される・スクリプトを実行しうるプロパティは設定させない */
+const FORBIDDEN_PROPERTIES = new Set(['innerHTML', 'outerHTML', 'srcdoc']);
+
 export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ...children: Child[]): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -14,6 +17,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = 
     } else if (key.startsWith('aria-') || key.startsWith('data-') || key === 'role' || key === 'for') {
       el.setAttribute(key, value === true ? 'true' : String(value));
     } else {
+      if (FORBIDDEN_PROPERTIES.has(key) || key.startsWith('on')) throw new Error(`h() では ${key} を設定できません`);
       (el as unknown as Record<string, unknown>)[key] = value;
     }
   }
