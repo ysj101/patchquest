@@ -11,6 +11,7 @@ import {
 } from './manifest';
 import { ANONYMOUS, CAPABILITIES, HTTP_METHODS, type AppDescriptor, type ImplementationRegistry } from './runtime';
 import { STEP_KINDS, TEST_CATEGORIES } from './scenario';
+import { Checker, isObj } from './checker';
 import { isVersion, isVersionRange, satisfies } from './version';
 
 export interface ValidationContext {
@@ -23,64 +24,6 @@ export interface ValidationContext {
 }
 
 const PACK_ID = /^[a-z][a-z0-9-]*$/;
-type Obj = Record<string, unknown>;
-const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
-
-class Checker {
-  readonly errors: string[] = [];
-
-  fail(path: string, message: string): void {
-    this.errors.push(`${path}: ${message}`);
-  }
-
-  obj(path: string, v: unknown): Obj {
-    if (isObj(v)) return v;
-    this.fail(path, 'オブジェクトが必要です');
-    return {};
-  }
-
-  text(path: string, v: unknown): string {
-    if (typeof v === 'string' && v.trim() !== '') return v;
-    this.fail(path, '空でない文字列が必要です');
-    return '';
-  }
-
-  list(path: string, v: unknown, nonEmpty = false): unknown[] {
-    if (!Array.isArray(v)) {
-      this.fail(path, '配列が必要です');
-      return [];
-    }
-    if (nonEmpty && v.length === 0) this.fail(path, '1件以上必要です');
-    return v;
-  }
-
-  texts(path: string, v: unknown, nonEmpty = false): string[] {
-    return this.list(path, v, nonEmpty).map((item, i) => this.text(`${path}[${i}]`, item));
-  }
-
-  oneOf(path: string, v: unknown, options: readonly unknown[]): void {
-    if (!options.includes(v)) this.fail(path, `${options.join(' / ')} のいずれかが必要です`);
-  }
-
-  /** 各要素をオブジェクトとして検査し、key の値が一意かを確かめて ID の集合を返す */
-  records(path: string, v: unknown, nonEmpty: boolean, each: (item: Obj, at: string) => void, key = 'id'): Set<string> {
-    const ids = new Set<string>();
-    this.list(path, v, nonEmpty).forEach((raw, i) => {
-      const at = `${path}[${i}]`;
-      const item = this.obj(at, raw);
-      const id = this.text(`${at}.${key}`, item[key]);
-      if (ids.has(id)) this.fail(`${at}.${key}`, `「${id}」が重複しています`);
-      ids.add(id);
-      each(item, at);
-    });
-    return ids;
-  }
-
-  ref(path: string, id: unknown, known: Set<string>, what: string): void {
-    if (typeof id !== 'string' || !known.has(id)) this.fail(path, `未定義の${what}「${String(id)}」を参照しています`);
-  }
-}
-
 export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): string[] {
   const c = new Checker();
   const m = c.obj('manifest', pack.manifest as unknown);
