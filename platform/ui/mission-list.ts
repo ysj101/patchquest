@@ -65,12 +65,12 @@ function hero(tutorial: MissionEntry | undefined, actions: MissionListActions): 
     h(
       'ol',
       { class: 'hero-flow', 'aria-label': '課題の進め方' },
-      ...FLOW.map((f, i) =>
+      ...FLOW.map((flow, i) =>
         h(
           'li',
           { class: 'hero-step' },
-          h('span', { class: 'seal-stamp', 'aria-hidden': true }, h('span', { class: 'seal-mark' }, String(i + 1)), h('span', { class: 'seal-label' }, f.label)),
-          h('span', { class: 'hero-step-text' }, h('strong', {}, f.title), f.text),
+          h('span', { class: 'seal-stamp', 'aria-hidden': true }, h('span', { class: 'seal-mark' }, String(i + 1)), h('span', { class: 'seal-label' }, flow.label)),
+          h('span', { class: 'hero-step-text' }, h('strong', {}, flow.title), flow.text),
         ),
       ),
     ),

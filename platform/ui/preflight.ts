@@ -45,7 +45,7 @@ export class PreflightView {
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack, preflight, blocked } = snapshot;
     this.mission.textContent = `課題：${pack.manifest.title}`;
-    const passed = preflight.filter((p) => p.status === 'passed').length;
+    const passed = preflight.filter((check) => check.status === 'passed').length;
     this.summary.textContent = `点検の内容（${passed} / ${STEPS.length} 項目が合格）`;
     // 開閉はプレイヤーに任せる。開始できないときだけ開いて理由を見せる
     if (attempt.state === 'Blocked') this.details.open = true;

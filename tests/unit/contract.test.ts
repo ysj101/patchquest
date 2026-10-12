@@ -143,7 +143,7 @@ describe('validatePack', () => {
     ['チュートリアルにガイドがない', (m) => (m.kind = 'tutorial'), /^guide: /],
     [
       'ガイドのやり直しの出来事が未知',
-      (m) => (m.guide = [{ id: 'g', title: 't', body: 'b', anchor: 'verify', until: 'verify-passed', retry: { when: 'oops' as never, text: 'x' } }]),
+      (manifest) => (manifest.guide = [{ id: 'g', title: 't', body: 'b', anchor: 'verify', until: 'verify-passed', retry: { when: 'oops' as never, text: 'x' } }]),
       /^guide\[0\]\.retry\.when: /,
     ],
   ])('%s場合は拒否する', (_, change, message) => {
