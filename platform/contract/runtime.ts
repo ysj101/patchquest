@@ -97,6 +97,19 @@ export interface InvokeResult {
   elapsedMs: number;
 }
 
+/** 観測した 1 回のやり取り。プレビュー内の操作や調査パネルからの呼び出しを記録し、再現の判定に使う */
+export interface Exchange {
+  runId: string;
+  /** 呼び出したときの利用者。未ログインは ANONYMOUS */
+  actor: ActorKey;
+  kind: 'request' | 'render';
+  request?: AppRequest;
+  response?: AppResponse;
+  /** kind: 'render' の画面 */
+  route?: string;
+  events: ObservedEvent[];
+}
+
 export interface PrepareOptions {
   attemptId: string;
   app: { id: string; version: string };
@@ -116,6 +129,7 @@ export type RuntimeErrorCode =
   | 'stopped'
   | 'disposed'
   | 'not-prepared'
+  | 'unknown-app'
   | 'unknown-implementation'
   | 'input-too-large'
   | 'crashed';
