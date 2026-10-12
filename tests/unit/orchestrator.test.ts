@@ -230,6 +230,28 @@ describe('Orchestrator', () => {
     expect(ra?.outcomes.map((o) => [o.testId, o.passed])).toEqual(rb?.outcomes.map((o) => [o.testId, o.passed]));
   });
 
+  it('保存した記録から、同じ seed・対策構成で環境を作り直して続きを始める', async () => {
+    const first = setup();
+    const snapshot = await first.orchestrator.start('test-pack', { seed: 77 });
+    first.orchestrator.onExchange(leak(first.orchestrator.newRunId(), snapshot.refs));
+    first.orchestrator.openHint(1);
+    await first.orchestrator.applyDefense('deny-all');
+    const record = structuredClone(snapshot.attempt);
+
+    const second = setup();
+    const resumed = await second.orchestrator.start('test-pack', { resume: record });
+    expect(resumed.attempt).toMatchObject({
+      attemptId: record.attemptId,
+      seed: 77,
+      state: 'Repairing',
+      appliedDefense: 'deny-all',
+      fixtureHash: record.fixtureHash,
+      hintsOpened: [1],
+    });
+    expect(resumed.attempt.badges.reproduction.achieved).toBe(true);
+    expect(resumed.implementations).toEqual({ 'note.read': 'test-pack/deny-all' });
+  });
+
   it('開始不可からは事前検証をやり直せる', async () => {
     const { orchestrator } = setup([withManifest((m) => (m.appCompatibility.versions = '^2.0.0'))]);
     await orchestrator.start('test-pack');

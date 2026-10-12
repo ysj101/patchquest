@@ -1,8 +1,6 @@
 // 進捗の保存・復元・削除・JSON 入出力（spec §13）。ブラウザ内（IndexedDB）にだけ保存し、外部へは送らない。
 // 保存できない環境ではメモリで続け、その理由と書き出しの必要を呼び出し側へ伝える
-import type { AttemptRecord, MissionPack } from '../contract';
-import { configHash } from '../evaluator/evaluator';
-import { withChanges } from '../orchestrator/subject';
+import type { AttemptRecord } from '../contract';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile } from './schema';
 
 export interface ProgressBackend {
@@ -139,25 +137,4 @@ export class ProgressStore {
       return operation(memory);
     }
   }
-}
-
-/**
- * 記録の防御の合格が、現在の教材の版でも同じ構成にあたるか。パック版・レシピ版・アプリの版や
- * 対策が変わっていれば別の構成になり、現在の合格として表示しない（spec §5.3）。
- * 復元した記録は、構成が一致しても再検証するまで現在の合格として扱わない（画面側で判断する）
- */
-export async function isCurrentPass(attempt: AttemptRecord, pack: MissionPack | undefined, appVersion: string): Promise<boolean> {
-  const { defense } = attempt.badges;
-  const recipe = pack?.manifest.mutationRecipes.find((r) => r.id === attempt.recipeId);
-  if (!pack || !recipe || !defense.achieved || !defense.configHash) return false;
-  const applied = pack.manifest.defenses.find((d) => d.id === attempt.appliedDefense);
-  const current = await configHash({
-    missionId: pack.manifest.id,
-    missionVersion: pack.manifest.version,
-    recipeId: recipe.id,
-    recipeVersion: recipe.version,
-    app: { id: attempt.appId, version: appVersion },
-    implementations: withChanges(withChanges({}, recipe.apply), applied?.apply ?? []),
-  });
-  return current === defense.configHash;
 }
