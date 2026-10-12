@@ -8,7 +8,7 @@ async function prepare(page: Page, seed: number): Promise<FixtureData> {
     (s) =>
       window.runtimeTest.call('exercise', 'prepare', {
         attemptId: `memo-${s}`,
-        app: { id: 'memo', version: '1.0.0' },
+        app: { id: 'memo', version: '1.1.0' },
         fixture: { generator: 'memo.default', seed: s },
         implementations: {},
       }),

@@ -281,3 +281,30 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .choice input { margin-top: 5px; accent-color: var(--primary); }
 .choice-explanation { grid-column: 2; }
 @media (max-width: 960px) { .diff-pair { grid-template-columns: 1fr; } }
+
+/* 操作ガイド（練習用パック）。演習票に添える赤ペンの指示メモとして画面上部に留め、案内先を赤の破線で囲む */
+.guide {
+  position: sticky; top: 0; z-index: 5;
+  margin-bottom: 20px; padding: 12px 16px;
+  display: grid; gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line); border-left: 6px solid var(--seal); border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgb(27 36 48 / 0.08);
+}
+.guide[hidden] { display: none; }
+.guide-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.guide-label { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; color: var(--seal); }
+.guide-count { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); }
+.guide-track { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex: 1; min-width: 160px; }
+.guide-track li { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.guide-track li[data-state='done'] { background: var(--seal); }
+.guide-track li[data-state='current'] { background: repeating-linear-gradient(90deg, var(--seal) 0 4px, transparent 4px 7px); outline: 1px solid var(--seal); }
+.guide-track li[data-state='skipped'] { background: repeating-linear-gradient(90deg, var(--muted) 0 2px, transparent 2px 5px); }
+.guide-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; }
+.guide-body > :not(.actions) { grid-column: 1; max-width: 72ch; }
+.guide-body .actions { grid-column: 2; grid-row: 1 / span 2; }
+[data-guide-target] { outline: 3px dashed var(--seal); outline-offset: 6px; border-radius: 4px; }
+@media (max-width: 720px) {
+  .guide-body { grid-template-columns: 1fr; }
+  .guide-body .actions { grid-column: 1; grid-row: auto; }
+}

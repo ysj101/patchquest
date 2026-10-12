@@ -30,7 +30,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('基準のメモアプリは全テストに合格する（A01）', async ({ page }) => {
-  const report = await runSuite(page, { attemptId: 'memo', app: { id: 'memo', version: '1.0.0' }, fixture: { generator: 'memo.default', seed: 31 }, implementations: {} }, 'memo');
+  const report = await runSuite(page, { attemptId: 'memo', app: { id: 'memo', version: '1.1.0' }, fixture: { generator: 'memo.default', seed: 31 }, implementations: {} }, 'memo');
   expect(failed(report.outcomes)).toEqual([]);
   expect(report.passed).toBe(true);
   // 検証は演習用とは別の、非表示のプレビューで行う
