@@ -1,0 +1,14 @@
+# pnpm の設定。.npmrc から読まれるのは認証とレジストリの設定だけなので、それ以外はここに書く
+saveExact: true
+# 依存パッケージのインストールスクリプトは実行しない（バイナリは optionalDependencies で入る）。
+# スクリプトを持つ依存が新しく増えると install が止まるので、ここで可否を決める
+allowBuilds:
+  esbuild: false
+  fsevents: false
+  unrs-resolver: false
+catalog:
+  # ESLint（typescript-eslint）が使う TypeScript 6 の API。型検査の tsc は @typescript/native（TypeScript 7）
+  typescript: npm:@typescript/typescript6@6.0.2
+# 依存パッケージが使う TypeScript もルートと同じものに揃える
+overrides:
+  typescript: 'catalog:'

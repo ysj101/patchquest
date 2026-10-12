@@ -1,0 +1,794 @@
+{
+  "apps/memo/events.ts": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 9
+    },
+    "id-length": {
+      "count": 1
+    }
+  },
+  "apps/memo/fixtures.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 6
+    },
+    "sonarjs/no-nested-template-literals": {
+      "count": 1
+    }
+  },
+  "apps/memo/hooks.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "apps/memo/model.ts": {
+    "@typescript-eslint/no-misused-spread": {
+      "count": 1
+    }
+  },
+  "apps/memo/server.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 5
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/function-return-type": {
+      "count": 1
+    }
+  },
+  "apps/memo/view.ts": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 3
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 6
+    },
+    "sonarjs/no-nested-assignment": {
+      "count": 1
+    }
+  },
+  "apps/shared/random.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "platform/contract/checker.ts": {
+    "id-length": {
+      "count": 10
+    }
+  },
+  "platform/contract/hash.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 2
+    },
+    "sonarjs/no-nested-template-literals": {
+      "count": 1
+    }
+  },
+  "platform/contract/runtime.ts": {
+    "sonarjs/redundant-type-aliases": {
+      "count": 4
+    }
+  },
+  "platform/contract/scenario.ts": {
+    "sonarjs/redundant-type-aliases": {
+      "count": 1
+    }
+  },
+  "platform/contract/validate.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 19
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/no-inverted-boolean-check": {
+      "count": 1
+    }
+  },
+  "platform/evaluator/evaluator.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 3
+    }
+  },
+  "platform/evaluator/scenario.ts": {
+    "@typescript-eslint/no-misused-spread": {
+      "count": 1
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-type-conversion": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 19
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    },
+    "sonarjs/function-return-type": {
+      "count": 1
+    },
+    "sonarjs/no-nested-conditional": {
+      "count": 2
+    }
+  },
+  "platform/orchestrator/orchestrator.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 32
+    },
+    "max-lines": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-nested-template-literals": {
+      "count": 1
+    }
+  },
+  "platform/orchestrator/pack-verification.ts": {
+    "id-length": {
+      "count": 13
+    },
+    "sonarjs/no-nested-conditional": {
+      "count": 1
+    },
+    "sonarjs/no-nested-template-literals": {
+      "count": 1
+    }
+  },
+  "platform/orchestrator/subject.ts": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "platform/progress/schema.ts": {
+    "id-length": {
+      "count": 19
+    }
+  },
+  "platform/progress/store.ts": {
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-promise-reject-errors": {
+      "count": 3
+    },
+    "@typescript-eslint/require-await": {
+      "count": 3
+    },
+    "id-length": {
+      "count": 12
+    }
+  },
+  "platform/ui/app.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 5
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "platform/ui/components.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 5
+    },
+    "id-length": {
+      "count": 2
+    },
+    "sonarjs/no-nested-conditional": {
+      "count": 1
+    }
+  },
+  "platform/ui/debrief.ts": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 8
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-nested-conditional": {
+      "count": 3
+    }
+  },
+  "platform/ui/dom.ts": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 5
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "platform/ui/exercise.ts": {
+    "@typescript-eslint/unbound-method": {
+      "count": 3
+    }
+  },
+  "platform/ui/guide.ts": {
+    "id-length": {
+      "count": 8
+    },
+    "sonarjs/no-nested-conditional": {
+      "count": 2
+    }
+  },
+  "platform/ui/investigation.ts": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 9
+    }
+  },
+  "platform/ui/mission-list.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 2
+    },
+    "id-length": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "platform/ui/preflight.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 3
+    },
+    "id-length": {
+      "count": 2
+    }
+  },
+  "platform/ui/repair.ts": {
+    "id-length": {
+      "count": 10
+    },
+    "sonarjs/no-nested-conditional": {
+      "count": 2
+    }
+  },
+  "runtimes/browser/adapter.ts": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 2
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 2
+    },
+    "id-length": {
+      "count": 1
+    }
+  },
+  "runtimes/browser/app-module.ts": {
+    "@typescript-eslint/no-unnecessary-type-parameters": {
+      "count": 2
+    }
+  },
+  "runtimes/browser/engine.ts": {
+    "id-length": {
+      "count": 4
+    }
+  },
+  "runtimes/browser/preview-host.ts": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 5
+    },
+    "sonarjs/post-message": {
+      "count": 1
+    }
+  },
+  "runtimes/browser/preview/navigation-guard.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-type-conversion": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 2
+    }
+  },
+  "runtimes/browser/preview/preview.inline.ts": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    },
+    "id-length": {
+      "count": 2
+    },
+    "sonarjs/post-message": {
+      "count": 2
+    }
+  },
+  "runtimes/browser/registry.ts": {
+    "@typescript-eslint/no-unnecessary-type-parameters": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 2
+    },
+    "sonarjs/no-nested-template-literals": {
+      "count": 1
+    }
+  },
+  "runtimes/browser/worker.ts": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 1
+    },
+    "sonarjs/post-message": {
+      "count": 1
+    }
+  },
+  "scripts/build.mjs": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 7
+    }
+  },
+  "scripts/check-boundaries.mjs": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 7
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 12
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 20
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 5
+    },
+    "id-length": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/super-linear-regex": {
+      "count": 1
+    }
+  },
+  "scripts/check-dom-safety.mjs": {
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 1
+    }
+  },
+  "scripts/check-external-refs.mjs": {
+    "id-length": {
+      "count": 4
+    },
+    "sonarjs/super-linear-regex": {
+      "count": 1
+    }
+  },
+  "scripts/release.mjs": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "scripts/scan.mjs": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 3
+    }
+  },
+  "scripts/test-dist.mjs": {
+    "sonarjs/no-os-command-from-path": {
+      "count": 1
+    }
+  },
+  "tests/e2e-dist/distribution.spec.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/e2e/evaluator.spec.ts": {
+    "id-length": {
+      "count": 2
+    },
+    "sonarjs/no-nested-conditional": {
+      "count": 1
+    }
+  },
+  "tests/e2e/fixtures.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "tests/e2e/memo-app.spec.ts": {
+    "id-length": {
+      "count": 7
+    }
+  },
+  "tests/e2e/pack-verification.spec.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/e2e/poc-sqlite.spec.ts": {
+    "id-length": {
+      "count": 7
+    }
+  },
+  "tests/e2e/poc-xss.spec.ts": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "id-length": {
+      "count": 10
+    }
+  },
+  "tests/e2e/progress.spec.ts": {
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 4
+    }
+  },
+  "tests/e2e/runtime.spec.ts": {
+    "id-length": {
+      "count": 9
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "tests/e2e/shell.spec.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/e2e/ui-investigation.spec.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "id-length": {
+      "count": 1
+    }
+  },
+  "tests/e2e/ui-repair.spec.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    }
+  },
+  "tests/e2e/ui-shell.spec.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 1
+    }
+  },
+  "tests/pages/evaluator.ts": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "tests/pages/poc-sqlite.ts": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 2
+    },
+    "id-length": {
+      "count": 7
+    }
+  },
+  "tests/pages/poc-sqlite.worker.ts": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 2
+    },
+    "sonarjs/post-message": {
+      "count": 1
+    }
+  },
+  "tests/pages/poc-xss-frame.inline.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "id-length": {
+      "count": 3
+    },
+    "sonarjs/post-message": {
+      "count": 2
+    }
+  },
+  "tests/pages/poc-xss.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    },
+    "id-length": {
+      "count": 6
+    },
+    "sonarjs/post-message": {
+      "count": 5
+    }
+  },
+  "tests/pages/progress.ts": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "tests/pages/runtime.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/pages/shared/settle.ts": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "tests/support/broken-pack.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/support/engine-runtime.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 2
+    }
+  },
+  "tests/support/request-only.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/support/test-app.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/no-nested-assignment": {
+      "count": 1
+    }
+  },
+  "tests/support/test-pack.ts": {
+    "sonarjs/no-nested-assignment": {
+      "count": 1
+    }
+  },
+  "tests/unit/catalog.test.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 3
+    }
+  },
+  "tests/unit/check-boundaries.test.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/unit/check-external-refs.test.ts": {
+    "id-length": {
+      "count": 1
+    }
+  },
+  "tests/unit/contract.test.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 14
+    },
+    "id-length": {
+      "count": 17
+    }
+  },
+  "tests/unit/evaluator.test.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 7
+    }
+  },
+  "tests/unit/memo-app.test.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "@typescript-eslint/require-await": {
+      "count": 3
+    },
+    "id-length": {
+      "count": 4
+    },
+    "sonarjs/assertions-in-tests": {
+      "count": 1
+    }
+  },
+  "tests/unit/orchestrator.test.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 4
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 18
+    }
+  },
+  "tests/unit/progress.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/unit/scenario.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 3
+    }
+  },
+  "tests/unit/sqlite.test.ts": {
+    "id-length": {
+      "count": 2
+    }
+  },
+  "tests/unit/zip.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "sonarjs/no-os-command-from-path": {
+      "count": 1
+    }
+  }
+}

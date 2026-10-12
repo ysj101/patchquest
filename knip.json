@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "platform/main.ts",
+    "runtimes/browser/worker.ts",
+    "runtimes/browser/preview/preview.inline.ts",
+    "tests/pages/*.ts",
+    "tests/support/catalog.ts"
+  ],
+  "playwright": {
+    "config": ["playwright.config.ts", "playwright.dist.config.ts"]
+  },
+  "ignoreExportsUsedInFile": true
+}
