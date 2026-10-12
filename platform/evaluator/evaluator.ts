@@ -82,8 +82,8 @@ function invokerFor(runtime: RuntimeAdapter, runId: string, timeoutMs: number): 
 
 export class Evaluator {
   private runtime: RuntimeAdapter | undefined;
-  /** いま検証インスタンスが準備されている構成。呼び出し側は 1 回の検証の間、同じオブジェクトを渡す */
-  private preparedFor: EvaluationSubject | undefined;
+  /** いま検証インスタンスが準備されている構成（JSON） */
+  private preparedFor: string | undefined;
   private generation = 0;
   /** 検証インスタンスは 1 つなので、実行は 1 件ずつ順に行う */
   private tail: Promise<unknown> = Promise.resolve();
@@ -199,9 +199,11 @@ export class Evaluator {
       this.runtime = this.createRuntime();
       await this.runtime.start();
     }
-    if (this.preparedFor !== subject) {
+    // 内容で比べる。同じオブジェクトが書き換えられても古い構成のまま検証しない
+    const key = JSON.stringify(subject);
+    if (this.preparedFor !== key) {
       await this.runtime.prepare(subject);
-      this.preparedFor = subject;
+      this.preparedFor = key;
     }
     return this.runtime;
   }
