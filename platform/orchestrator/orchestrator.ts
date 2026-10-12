@@ -116,9 +116,12 @@ export class Orchestrator {
 
   /**
    * 新しい演習を始める。基準状態から作り直し、前の演習の注入・対策・データを引き継がない。
-   * 事前検証に合格するまで演習用インスタンスには触れないため、失敗しても部分適用は残らない
+   * 事前検証に合格するまで演習用インスタンスには触れないため、失敗しても部分適用は残らない。
+   * resume を渡すと、保存した記録の seed と対策構成から環境を作り直して続きを始める（データは初期化される）
    */
-  async start(packId: string, options: { variantId?: string; seed?: number } = {}): Promise<ExerciseSnapshot> {
+  async start(packId: string, options: { variantId?: string; seed?: number; resume?: AttemptRecord } = {}): Promise<ExerciseSnapshot> {
+    const { resume } = options;
+    if (resume) options = { variantId: resume.variantId, seed: resume.seed };
     const pack = this.deps.packs.find((p) => p.manifest.id === packId);
     if (!pack) throw new Error(`課題 ${packId} は登録されていません`);
     const { manifest } = pack;
@@ -161,7 +164,23 @@ export class Orchestrator {
       baseline,
       runIds: new Set(),
     };
+    if (resume) {
+      // 版が同じ記録だけを引き継ぐ。達成印・ヒント・回答は残し、検証結果は現在の構成で再検証するまで古いものとして扱う
+      Object.assign(attempt, {
+        attemptId: resume.attemptId,
+        createdAt: resume.createdAt,
+        badges: structuredClone(resume.badges),
+        lastVerification: resume.lastVerification,
+        hintsOpened: [...resume.hintsOpened],
+        solutionViewed: resume.solutionViewed,
+        answers: { ...resume.answers },
+      });
+    }
     await this.runPreflight();
+    const resumedDefense = resume?.appliedDefense;
+    if (resumedDefense && this.current?.snapshot.attempt.state === 'Prepared' && manifest.defenses.some((d) => d.id === resumedDefense)) {
+      await this.applyDefense(resumedDefense);
+    }
     return this.require().snapshot;
   }
 

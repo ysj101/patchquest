@@ -2,9 +2,10 @@
 import { catalog as bundled } from '../../catalog';
 import type { Catalog } from '../../runtimes/browser/app-module';
 import { testApp } from './test-app';
+import { brokenPack } from './broken-pack';
 import { testPack } from './test-pack';
 
 export const catalog: Catalog = {
   apps: [...bundled.apps, testApp],
-  packs: [...bundled.packs, testPack],
+  packs: [...bundled.packs, testPack, brokenPack],
 };
