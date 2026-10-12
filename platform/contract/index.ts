@@ -1,4 +1,5 @@
 export * from './attempt';
+export * from './checker';
 export type * from './json';
 export * from './manifest';
 export * from './runtime';

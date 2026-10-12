@@ -28,7 +28,8 @@ export function isInExercise(state: ExerciseState): boolean {
   return state === 'Repairing' || canTransition(state, 'Repairing');
 }
 
-export type BadgeKind = 'reproduction' | 'defense' | 'understanding';
+export const BADGE_KINDS = ['reproduction', 'defense', 'understanding'] as const;
+export type BadgeKind = (typeof BADGE_KINDS)[number];
 
 export interface Badge {
   achieved: boolean;
@@ -40,7 +41,8 @@ export interface Badge {
 }
 
 /** attack: 攻撃阻止（target のテスト）、normal: 正常系、regression: 対象外のセキュリティ */
-export type ResultGroup = 'attack' | 'normal' | 'regression';
+export const RESULT_GROUPS = ['attack', 'normal', 'regression'] as const;
+export type ResultGroup = (typeof RESULT_GROUPS)[number];
 
 export interface TestOutcome {
   testId: string;
