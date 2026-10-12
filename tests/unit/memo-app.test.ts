@@ -50,6 +50,11 @@ describe('初期データ', () => {
     expect(c.refs['memos.alice.private.id']).not.toBe(a.refs['memos.alice.private.id']);
   });
 
+  it('どの seed でも ID が重複せずに作れる', async () => {
+    const engine = new AppEngine();
+    for (let seed = 0; seed < 200; seed++) await engine.prepare(options(seed));
+  });
+
   it('認可の判断を観測イベントとして記録する', async () => {
     const engine = new AppEngine();
     const { refs } = await engine.prepare(options(3));
