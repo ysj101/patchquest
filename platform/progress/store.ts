@@ -1,6 +1,8 @@
 // 進捗の保存・復元・削除・JSON 入出力（spec §13）。ブラウザ内（IndexedDB）にだけ保存し、外部へは送らない。
 // 保存できない環境ではメモリで続け、その理由と書き出しの必要を呼び出し側へ伝える
 import type { AttemptRecord, MissionPack } from '../contract';
+import { configHash } from '../evaluator/evaluator';
+import { withChanges } from '../orchestrator/subject';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile } from './schema';
 
 export interface ProgressBackend {
@@ -90,21 +92,16 @@ export class ProgressStore {
     return this.reason;
   }
 
-  async save(attempt: AttemptRecord): Promise<void> {
-    try {
-      await this.backend.put([attempt]);
-    } catch (e) {
-      await this.degrade(e);
-      await this.backend.put([attempt]);
-    }
+  save(attempt: AttemptRecord): Promise<void> {
+    return this.withBackend((b) => b.put([attempt]));
   }
 
   async list(): Promise<AttemptRecord[]> {
-    return (await this.backend.getAll()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return (await this.withBackend((b) => b.getAll())).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
-  async clear(): Promise<void> {
-    await this.backend.clear();
+  clear(): Promise<void> {
+    return this.withBackend((b) => b.clear());
   }
 
   async exportJson(now = new Date()): Promise<string> {
@@ -125,25 +122,42 @@ export class ProgressStore {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
-    await this.backend.put(file.attempts);
+    await this.withBackend((b) => b.put(file.attempts));
     return { ok: true, imported: file.attempts.length };
   }
 
-  /** 保存中に失敗したら、それまでの記録を引き継いでメモリへ切り替える */
-  private async degrade(e: unknown): Promise<void> {
-    const memory = new MemoryBackend();
-    await memory.put(await this.backend.getAll().catch(() => []));
-    this.backend = memory;
-    this.reason = `ブラウザに保存できなくなりました（${e instanceof Error ? e.message : String(e)}）`;
+  /** 保存先が失敗したら、読めた記録を引き継いでメモリへ切り替え、同じ操作をやり直す */
+  private async withBackend<T>(operation: (backend: ProgressBackend) => Promise<T>): Promise<T> {
+    try {
+      return await operation(this.backend);
+    } catch (e) {
+      if (this.backend instanceof MemoryBackend) throw e;
+      const memory = new MemoryBackend();
+      await memory.put(await this.backend.getAll().catch(() => []));
+      this.backend = memory;
+      this.reason = `ブラウザに保存できなくなりました（${e instanceof Error ? e.message : String(e)}）`;
+      return operation(memory);
+    }
   }
 }
 
 /**
- * 記録が現在の教材の版と一致するか。一致しない記録や、復元した直後の記録の合格は、
- * 現在の状態で再検証するまで「現在の合格」として表示しない（spec §5.3, §13）
+ * 記録の防御の合格が、現在の教材の版でも同じ構成にあたるか。パック版・レシピ版・アプリの版や
+ * 対策が変わっていれば別の構成になり、現在の合格として表示しない（spec §5.3）。
+ * 復元した記録は、構成が一致しても再検証するまで現在の合格として扱わない（画面側で判断する）
  */
-export function matchesCurrentVersion(attempt: AttemptRecord, pack: MissionPack | undefined): boolean {
-  if (!pack || pack.manifest.version !== attempt.missionVersion) return false;
-  const recipe = pack.manifest.mutationRecipes.find((r) => r.id === attempt.recipeId);
-  return recipe?.version === attempt.recipeVersion;
+export async function isCurrentPass(attempt: AttemptRecord, pack: MissionPack | undefined, appVersion: string): Promise<boolean> {
+  const { defense } = attempt.badges;
+  const recipe = pack?.manifest.mutationRecipes.find((r) => r.id === attempt.recipeId);
+  if (!pack || !recipe || !defense.achieved || !defense.configHash) return false;
+  const applied = pack.manifest.defenses.find((d) => d.id === attempt.appliedDefense);
+  const current = await configHash({
+    missionId: pack.manifest.id,
+    missionVersion: pack.manifest.version,
+    recipeId: recipe.id,
+    recipeVersion: recipe.version,
+    app: { id: attempt.appId, version: appVersion },
+    implementations: withChanges(withChanges({}, recipe.apply), applied?.apply ?? []),
+  });
+  return current === defense.configHash;
 }

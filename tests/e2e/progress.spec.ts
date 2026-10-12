@@ -1,29 +1,9 @@
 // 進捗の保存・復元（Issue #10、A15・A16）
 import type { Page } from '@playwright/test';
-import type { AttemptRecord } from '../../platform/contract';
+import { makeAttempt } from '../support/attempt';
 import { expect, test } from './fixtures';
 
-const attempt = (id: string): AttemptRecord => ({
-  attemptId: id,
-  missionId: 'test-pack',
-  missionVersion: '1.0.0',
-  variantId: 'default',
-  recipeId: 'any-owner',
-  recipeVersion: '1.0.0',
-  appId: 'test-app',
-  appVersion: '1.0.0',
-  seed: 1,
-  fixtureHash: 'f',
-  createdAt: '2026-10-12T00:00:00Z',
-  state: 'Prepared',
-  configHash: 'c',
-  appliedDefense: null,
-  badges: { reproduction: { achieved: false }, defense: { achieved: false }, understanding: { achieved: false } },
-  lastVerification: null,
-  hintsOpened: [],
-  solutionViewed: false,
-  answers: {},
-});
+const attempt = (id: string) => makeAttempt(id);
 
 async function open(page: Page) {
   await page.goto('/test/progress.html');

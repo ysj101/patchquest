@@ -1,39 +1,46 @@
 import { describe, expect, it } from 'vitest';
 import type { AttemptRecord } from '../../platform/contract';
 import { MAX_PROGRESS_BYTES, PROGRESS_FORMAT } from '../../platform/progress/schema';
-import { ProgressStore, matchesCurrentVersion } from '../../platform/progress/store';
+import { Evaluator } from '../../platform/evaluator/evaluator';
+import { Orchestrator } from '../../platform/orchestrator/orchestrator';
+import { ProgressStore, isCurrentPass } from '../../platform/progress/store';
+import { makeAttempt } from '../support/attempt';
+import { EngineRuntime } from '../support/engine-runtime';
+import { requestOnly } from '../support/request-only';
+import { testApp } from '../support/test-app';
 import { testPack } from '../support/test-pack';
 
-const attempt = (id: string, overrides: Partial<AttemptRecord> = {}): AttemptRecord => ({
-  attemptId: id,
-  missionId: 'test-pack',
-  missionVersion: '1.0.0',
-  variantId: 'default',
-  recipeId: 'any-owner',
-  recipeVersion: '1.0.0',
-  appId: 'test-app',
-  appVersion: '1.0.0',
-  seed: 42,
-  fixtureHash: 'f'.repeat(64),
-  createdAt: `2026-10-12T00:00:0${id.length % 10}Z`,
-  state: 'Repairing',
-  configHash: 'c'.repeat(64),
-  appliedDefense: 'owner-only',
-  badges: { reproduction: { achieved: true, runId: 'r1', at: '2026-10-12T00:00:00Z' }, defense: { achieved: false }, understanding: { achieved: false } },
-  lastVerification: {
-    runId: 'r2',
-    attemptId: id,
-    configHash: 'c'.repeat(64),
-    outcomes: [{ testId: 't', title: 'テスト', group: 'attack', passed: false, expected: 'status 403', actual: 'status 200' }],
-    passed: false,
-    startedAt: '2026-10-12T00:00:00Z',
-    elapsedMs: 12,
+/** Node 用：描画を含むテストと画面のフックを除いたテスト専用パック */
+const nodePack = {
+  ...testPack,
+  manifest: {
+    ...testPack.manifest,
+    runtime: { adapter: 'browser' as const, capabilities: ['sqlite' as const] },
+    hooks: testPack.manifest.hooks.filter((h) => h.id !== 'note.render'),
+    tests: { ...testPack.manifest.tests, cases: requestOnly(testPack.manifest.tests.cases) },
   },
-  hintsOpened: [1],
-  solutionViewed: false,
-  answers: { q1: 'owner' },
-  ...overrides,
-});
+};
+
+/** 検証結果や達成印を持つ、取り込みの検証に使う記録 */
+const attempt = (id: string, overrides: Partial<AttemptRecord> = {}): AttemptRecord =>
+  makeAttempt(id, {
+    createdAt: `2026-10-12T00:00:0${id.length % 10}Z`,
+    state: 'Repairing',
+    appliedDefense: 'owner-only',
+    badges: { reproduction: { achieved: true, runId: 'r1', at: '2026-10-12T00:00:00Z' }, defense: { achieved: false }, understanding: { achieved: false } },
+    lastVerification: {
+      runId: 'r2',
+      attemptId: id,
+      configHash: 'c'.repeat(64),
+      outcomes: [{ testId: 't', title: 'テスト', group: 'attack', passed: false, expected: 'status 403', actual: 'status 200' }],
+      passed: false,
+      startedAt: '2026-10-12T00:00:00Z',
+      elapsedMs: 12,
+    },
+    hintsOpened: [1],
+    answers: { q1: 'owner' },
+    ...overrides,
+  });
 
 describe('ProgressStore', () => {
   it('保存・一覧・削除ができ、書き出した JSON を別の環境へ復元できる（A15）', async () => {
@@ -97,11 +104,24 @@ describe('ProgressStore', () => {
   });
 });
 
-describe('matchesCurrentVersion', () => {
-  it('パック版とレシピ版が現在の教材と一致するときだけ現在の記録とみなす', () => {
-    expect(matchesCurrentVersion(attempt('a'), testPack)).toBe(true);
-    expect(matchesCurrentVersion(attempt('a', { missionVersion: '0.9.0' }), testPack)).toBe(false);
-    expect(matchesCurrentVersion(attempt('a', { recipeVersion: '0.1.0' }), testPack)).toBe(false);
-    expect(matchesCurrentVersion(attempt('a'), undefined)).toBe(false);
+describe('isCurrentPass', () => {
+  it('現在の版・記録の対策の構成ハッシュが合格時と一致するときだけ現在の合格とみなす', async () => {
+    const orchestrator = new Orchestrator({
+      apps: [testApp],
+      packs: [nodePack],
+      evaluator: new Evaluator(() => new EngineRuntime()),
+      exercise: new EngineRuntime(),
+    });
+    const { attempt } = await orchestrator.start('test-pack');
+    await orchestrator.applyDefense('owner-only');
+    await orchestrator.verify();
+    const record = structuredClone(attempt);
+
+    expect(await isCurrentPass(record, nodePack, '1.0.0')).toBe(true);
+    expect(await isCurrentPass(record, nodePack, '1.1.0')).toBe(false);
+    expect(await isCurrentPass({ ...record, appliedDefense: 'deny-all' }, nodePack, '1.0.0')).toBe(false);
+    const bumped = { ...nodePack, manifest: { ...nodePack.manifest, version: '1.0.1' } };
+    expect(await isCurrentPass(record, bumped, '1.0.0')).toBe(false);
+    expect(await isCurrentPass(record, undefined, '1.0.0')).toBe(false);
   });
 });
