@@ -1,5 +1,8 @@
-// カタログに登録されたすべてのパックを、実ブラウザの検証インスタンスで出荷前検証する（spec §15）
-import { catalog } from '@catalog';
+// 同梱するパックと、基準となるテスト専用パックを、実ブラウザの検証インスタンスで出荷前検証する（spec §15）
+const catalog = { apps: [...bundled.apps, testApp], packs: [...bundled.packs, testPack] };
+import { catalog as bundled } from '../../catalog';
+import { testApp } from '../support/test-app';
+import { testPack } from '../support/test-pack';
 import { satisfies } from '../../platform/contract';
 import { Evaluator } from '../../platform/evaluator/evaluator';
 import { verifyPack, type PackVerification } from '../../platform/orchestrator/pack-verification';

@@ -16,6 +16,7 @@ npm run typecheck   # 型検査
 npm test            # ユニットテスト
 npm run test:e2e    # ビルドしてから Chrome・Edge で E2E テスト
 npm run verify:packs  # 同梱パックの出荷前検証（基準・レシピ・対策が期待どおりか）
+node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API を使っていないか（ビルドでも実行）
 ```
 
 課題パックの作り方は [docs/pack-authoring.md](docs/pack-authoring.md) を参照してください。

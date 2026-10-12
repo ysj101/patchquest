@@ -2,9 +2,10 @@
 // 読み込み方法を列挙せず、出荷するファイル中の外部URLをすべて違反とし、
 // 読み込みに使われないと確認したURLだけを ALLOWED_PREFIXES で許可する。
 // 実行時の通信の有無はE2Eテストで実測する。
-import { readdir, readFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { listFiles } from './scan.mjs';
 
 const ALLOWED_PREFIXES = [
   // XML名前空間の識別子。通信は発生しない
@@ -39,8 +40,7 @@ export function findExternalRefs(files) {
 
 /** 違反を表示し、1件でもあればプロセスを失敗終了させる */
 export async function assertNoExternalRefs(dir) {
-  const entries = await readdir(dir, { withFileTypes: true, recursive: true });
-  const paths = entries.filter((e) => e.isFile() && SCANNED.has(extname(e.name))).map((e) => join(e.parentPath, e.name));
+  const paths = await listFiles(dir, [...SCANNED]);
   const files = await Promise.all(paths.map(async (path) => ({ path, content: await readFile(path, 'utf8') })));
   const violations = findExternalRefs(files);
   for (const v of violations) console.error(`外部参照: ${v.path}: ${v.match}`);
