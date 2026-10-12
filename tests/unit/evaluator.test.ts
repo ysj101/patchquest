@@ -3,6 +3,7 @@ import { memoApp } from '../../apps/memo';
 import type { Exchange, TestCase } from '../../platform/contract';
 import { Evaluator, configHash, detectReproduction, groupOf, isCurrent, type EvaluationSubject } from '../../platform/evaluator/evaluator';
 import { EngineRuntime } from '../support/engine-runtime';
+import { requestOnly } from '../support/request-only';
 import { testPack } from '../support/test-pack';
 
 const memoSubject = (seed: number): EvaluationSubject => ({
@@ -20,12 +21,13 @@ const packSubject = (implementations: Record<string, string>): EvaluationSubject
 });
 
 const { manifest } = testPack;
-const packTests: TestCase[] = manifest.tests.cases.filter((t) => t.steps.every((s) => s.kind === 'request'));
+const memoTests = requestOnly(memoApp.tests);
+const packTests: TestCase[] = requestOnly(manifest.tests.cases);
 
 describe('Evaluator', () => {
   it('基準アプリの全テストを検証インスタンスで実行して合格する（A01）', async () => {
     const evaluator = new Evaluator(() => new EngineRuntime());
-    const report = await evaluator.runSuite(memoSubject(11), memoApp.tests, [], 'run-s', 'hash-s');
+    const report = await evaluator.runSuite(memoSubject(11), memoTests, [], 'run-s', 'hash-s');
     expect(report.outcomes.filter((o) => !o.passed)).toEqual([]);
     expect(report).toMatchObject({ runId: 'run-s', attemptId: 'memo-11', configHash: 'hash-s', passed: true });
     expect(new Set(report.outcomes.map((o) => o.group))).toEqual(new Set(['normal', 'regression']));
@@ -70,8 +72,8 @@ describe('Evaluator', () => {
 
   it('新しい検証が始まると古い検証は結果を返さずに stopped で終わる（A20 の基盤）', async () => {
     const evaluator = new Evaluator(() => new EngineRuntime());
-    const first = evaluator.runSuite(memoSubject(13), memoApp.tests, [], 'old', 'h');
-    const second = evaluator.runSuite(memoSubject(13), memoApp.tests, [], 'new', 'h');
+    const first = evaluator.runSuite(memoSubject(13), memoTests, [], 'old', 'h');
+    const second = evaluator.runSuite(memoSubject(13), memoTests, [], 'new', 'h');
     await expect(first).rejects.toMatchObject({ code: 'stopped' });
     expect(await second).toMatchObject({ runId: 'new', passed: true });
   });

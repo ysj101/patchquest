@@ -49,6 +49,28 @@ export const memoFixture: FixtureGenerator = (db, seed) => {
     refs[`memos.${owner}.private.id`] = insertMemo(owner, '非公開のメモ', secret);
     refs[`memos.${owner}.private.body`] = secret;
   }
+  // 検索用：全員が「週報」を持つ（所有者条件の確認）。alice は引用符を含むメモも持つ
+  for (const owner of USERS) {
+    refs[`memos.${owner}.report.id`] = insertMemo(owner, `週報（${1 + Math.floor(next() * 12)}月）`, '今週の進捗をまとめる');
+  }
+  refs['memos.alice.quoted.id'] = insertMemo('alice', "O'Reilly の本を読む", '第1章の要点を書き出す');
+  refs['search.term'] = '週報';
+  refs['search.quoted'] = "O'Reilly";
+  refs['search.none'] = '該当しない語句';
   refs['memos.missing.id'] = memoId + 100;
+
+  // 共有教材ページと、ほかの利用者の既存コメント
+  const pageId = 10 + Math.floor(next() * 80);
+  db.exec({ sql: 'INSERT INTO pages (id, title, body) VALUES (?, ?, ?)', bind: [pageId, '共有ページ：今週の学習メモ', '今週学んだことをコメントで共有しましょう。'] });
+  refs['pages.shared.id'] = pageId;
+  let commentId = 100 + Math.floor(next() * 800);
+  for (const [author, body] of [
+    ['bob', '索引の作り方がわかりやすかったです'],
+    ['carol', '来週は演習問題を解いてみます'],
+  ] as const) {
+    db.exec({ sql: 'INSERT INTO comments (id, page_id, author_id, body) VALUES (?, ?, ?, ?)', bind: [commentId, pageId, refs[`users.${author}.id`]!, body] });
+    refs[`comments.${author}.id`] = commentId++;
+    refs[`comments.${author}.body`] = body;
+  }
   return refs;
 };
