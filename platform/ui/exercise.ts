@@ -1,7 +1,6 @@
 // 演習画面（spec §10）。演習票の見出し（課題・状態・達成印）、注入した架空サービスであることの表示、
 // 動く教材アプリと利用者の切り替え、調査・対策・振り返りの道具を並べる
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
-import type { Scope } from '../evaluator/scenario';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, sealStates, seals, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
@@ -18,11 +17,9 @@ export interface ExerciseActions {
   send(request: AppRequest): Promise<string | null>;
 }
 
-/** 利用者の表示名。fixture に名前があれば添える */
-export function actorLabel(actor: ActorKey, refs: Scope): string {
-  if (actor === ANONYMOUS) return '未ログイン';
-  const name = refs[`users.${actor}.name`];
-  return name ? `${actor}（${String(name)}）` : actor;
+/** 利用者の表示名 */
+export function actorLabel(actor: ActorKey): string {
+  return actor === ANONYMOUS ? '未ログイン' : actor;
 }
 
 export class ExerciseView {
@@ -37,7 +34,6 @@ export class ExerciseView {
   private readonly state = h('p', { class: 'state-stamp' });
   private readonly sealSlot = h('div', { class: 'ticket-seals' });
   private readonly toolTabs: ReturnType<typeof tabs>;
-  private refs: Scope = {};
   private readonly storyFooter: HTMLElement;
 
   constructor(
@@ -87,29 +83,28 @@ export class ExerciseView {
 
   /** 演習を始めたときに、利用者・操作・状況を組み直す */
   setup(snapshot: ExerciseSnapshot, app: AppDescriptor, viewer: ActorKey, describeEvent: EventDescriber): void {
-    this.refs = snapshot.refs;
     fill(
       this.users,
       h('legend', {}, '表示する利用者'),
       ...[...app.users, ANONYMOUS].map((actor) =>
         radioOption(
           { name: 'viewer', value: actor, checked: actor === viewer, className: 'user-option', onChange: () => this.actions.switchUser(actor) },
-          actorLabel(actor, this.refs),
+          actorLabel(actor),
         ),
       ),
     );
     fill(this.storySlot, storyPanel(snapshot.pack.manifest.story), this.storyFooter);
     this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describeEvent);
-    this.investigation.setViewer(actorLabel(viewer, this.refs));
+    this.investigation.setViewer(actorLabel(viewer));
     this.toolTabs.select('story');
   }
 
   setViewer(actor: ActorKey): void {
-    this.investigation.setViewer(actorLabel(actor, this.refs));
+    this.investigation.setViewer(actorLabel(actor));
   }
 
   label(actor: ActorKey): string {
-    return actorLabel(actor, this.refs);
+    return actorLabel(actor);
   }
 
   update(snapshot: ExerciseSnapshot): void {
