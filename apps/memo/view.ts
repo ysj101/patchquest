@@ -42,10 +42,15 @@ async function header(root: HTMLElement, ctx: ViewContext): Promise<boolean> {
   return true;
 }
 
-async function list(root: HTMLElement, ctx: ViewContext): Promise<void> {
+/** 閲覧者自身のメモ（新しい順）。取得できなければ理由の表示を返す */
+async function ownMemos(ctx: ViewContext): Promise<{ id: number; title: string }[] | HTMLElement> {
   const res = await ctx.request({ method: 'GET', path: '/api/memos' });
-  if (res.status !== 200) return void root.append(alert(errorMessage(res)));
-  const memos = (res.body as { memos: { id: number; title: string }[] }).memos;
+  return res.status === 200 ? (res.body as { memos: { id: number; title: string }[] }).memos : alert(errorMessage(res));
+}
+
+async function list(root: HTMLElement, ctx: ViewContext): Promise<void> {
+  const memos = await ownMemos(ctx);
+  if (!Array.isArray(memos)) return void root.append(memos);
   root.append(el('div', { className: 'row' }, linkButton('＋ 新しいメモ', () => ctx.navigate('/memos/new'))));
   if (memos.length === 0) return void root.append(el('p', { className: 'muted' }, 'メモはまだありません。'));
   root.append(el('ul', { className: 'memo-list' }, ...memos.map((m) => el('li', {}, linkButton(m.title, () => ctx.navigate(`/memos/${m.id}`))))));
@@ -53,7 +58,8 @@ async function list(root: HTMLElement, ctx: ViewContext): Promise<void> {
 
 async function detail(root: HTMLElement, ctx: ViewContext, id: string): Promise<void> {
   const back = linkButton('← 一覧へ戻る', () => ctx.navigate('/memos'));
-  const res = await ctx.request({ method: 'GET', path: `/api/memos/${id}` });
+  // 前後のメモの移動先に使う自分のメモの一覧は、メモの取得と並べて取りに行く
+  const [res, own] = await Promise.all([ctx.request({ method: 'GET', path: `/api/memos/${id}` }), ownMemos(ctx)]);
   if (res.status !== 200) return void root.append(back, alert(errorMessage(res)));
   const memo = (res.body as { memo: { id: number; title: string; body: string } }).memo;
   const remove = el('button', { type: 'button' }, '削除');
@@ -72,15 +78,12 @@ async function detail(root: HTMLElement, ctx: ViewContext, id: string): Promise<
     back,
     el('article', { className: 'memo' }, el('h2', {}, memo.title), el('p', { className: 'memo-body' }, memo.body)),
     el('div', { className: 'row' }, linkButton('編集', () => ctx.navigate(`/memos/${memo.id}/edit`)), remove),
-    await neighborLinks(ctx, memo.id),
+    Array.isArray(own) ? neighborLinks(ctx, memo.id, own.map((mine) => mine.id)) : own,
   );
 }
 
 /** 「前のメモ」「次のメモ」。移動先は交換点（memo.detail.neighbors）が決める */
-async function neighborLinks(ctx: ViewContext, id: number): Promise<HTMLElement> {
-  const res = await ctx.request({ method: 'GET', path: '/api/memos' });
-  if (res.status !== 200) return alert(errorMessage(res));
-  const ownIds = (res.body as { memos: { id: number }[] }).memos.map((own) => own.id);
+function neighborLinks(ctx: ViewContext, id: number, ownIds: number[]): HTMLElement {
   const { prev, next } = ctx.hook<PickNeighbors>('memo.detail.neighbors')({ id, ownIds });
   return el(
     'nav',

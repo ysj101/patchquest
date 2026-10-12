@@ -77,20 +77,27 @@ export const HOOKS: HookDescriptor[] = [
   },
 ];
 
-const readOwnerCheck: ReadMemo = (ctx, { id, user }) => {
-  if (!user) {
-    emitDecision(ctx, 'read', null, null, 'deny', 'ログインしていない');
-    return { status: 'unauthenticated' };
-  }
-  const memo = findMemo(ctx.db, id);
-  if (!memo) return { status: 'not-found' };
-  if (memo.ownerId !== user.id) {
-    emitDecision(ctx, 'read', user, memo, 'deny', '所有者ではない');
-    return { status: 'forbidden' };
-  }
-  emitDecision(ctx, 'read', user, memo, 'allow', '所有者である');
-  return { status: 'ok', memo };
-};
+/**
+ * ID 指定の取得処理を組み立てる。未ログインは断り、メモがなければ not-found を返す。
+ * 取得してよいかは decide が決め、その判断（許可・拒否と理由）を観測イベントに記録する。課題パックの実装もこれで作る
+ */
+export function readMemoWith(decide: (memo: Memo, user: User) => { allow: boolean; reason: string }): ReadMemo {
+  return (ctx, { id, user }) => {
+    if (!user) {
+      emitDecision(ctx, 'read', null, null, 'deny', 'ログインしていない');
+      return { status: 'unauthenticated' };
+    }
+    const memo = findMemo(ctx.db, id);
+    if (!memo) return { status: 'not-found' };
+    const { allow, reason } = decide(memo, user);
+    emitDecision(ctx, 'read', user, memo, allow ? 'allow' : 'deny', reason);
+    return allow ? { status: 'ok', memo } : { status: 'forbidden' };
+  };
+}
+
+const readOwnerCheck = readMemoWith((memo, user) =>
+  memo.ownerId === user.id ? { allow: true, reason: '所有者である' } : { allow: false, reason: '所有者ではない' },
+);
 
 /** LIKE の特殊文字（% と _）を文字として扱う */
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
