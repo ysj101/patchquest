@@ -195,9 +195,14 @@ export type GuideMilestone = (typeof GUIDE_MILESTONES)[number];
 export interface GuideStep {
   id: string;
   title: string;
+  /** 次にすることを 1〜2 文で */
   body: string;
   anchor: GuideAnchor;
   until: GuideMilestone;
+  /** ステップを終えたときにかける短い言葉 */
+  praise?: string;
+  /** この出来事が起きたら、うまくいかなかったときの次の手を示す（例：検証で不合格だった） */
+  retry?: { when: GuideMilestone; text: string };
 }
 
 /** カタログに登録する単位。実装は事前にバンドルした関数だけを持つ */

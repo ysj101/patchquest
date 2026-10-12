@@ -7,6 +7,6 @@ test('ビルド成果物をlocalhostから開くと課題一覧が表示され�
 
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { level: 1, name: '事故を調べて、直して、確かめる' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
   expect(errors).toEqual([]);
 });
