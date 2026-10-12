@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { ANONYMOUS, RuntimeError, satisfies, type ActorKey, type AppRequest, type Exchange, type SessionToken } from '../contract';
+import { ANONYMOUS, RuntimeError, isInExercise, satisfies, type ActorKey, type AppRequest, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { ProgressStore } from '../progress/store';
@@ -159,7 +159,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     show('preflight');
     announce(live, '開始前チェックを始めました');
     const snapshot = await run();
-    announce(live, snapshot.attempt.state === 'Prepared' ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
+    announce(live, isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
   }
 
   function updateExercise(snapshot: ExerciseSnapshot): void {

@@ -114,3 +114,17 @@ test('初期状態へ戻すと対策とデータが戻り、新しいデータ�
   await expect(page.locator('.ticket-id')).not.toHaveText(ticket!);
   await expect(seals(page)).toContainText('再現：未達成');
 });
+
+test('対策を適用した演習を続きから始めると、開始前チェックの後に前回の対策を適用し直して演習を始められる', async ({ page }) => {
+  await verifyWith(page, '所有者を照合する');
+  await expect(page.locator('[data-anchor="results"]')).toContainText('防御できました', { timeout: 15_000 });
+  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+
+  await page.locator('[data-mission="test-pack"]').getByRole('button', { name: '続きから始める' }).click();
+  await expect(page.getByText('前回の対策「所有者を照合する」を適用し直しました')).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: '演習を始める' }).click();
+  await page.getByRole('tab', { name: '対策' }).click();
+  await expect(page.getByText('適用中の対策：所有者を照合する')).toBeVisible();
+  // 記録の合格は、再検証するまで現在の合格として扱わない
+  await expect(seals(page)).toContainText('防御：記録あり（再検証で確定）');
+});

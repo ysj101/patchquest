@@ -1,4 +1,5 @@
 // 開始前チェック（spec §10）。互換性・注入・事前検証の結果を示す。事前検証はプレイヤーの達成に数えない
+import { isInExercise } from '../contract';
 import type { ExerciseSnapshot, PreflightStep } from '../orchestrator/orchestrator';
 import { status, type StatusKind } from './components';
 import { fill, h } from './dom';
@@ -52,10 +53,18 @@ export class PreflightView {
       }),
     );
 
-    if (attempt.state === 'Prepared') {
+    // 続きから始めると、前回の対策を適用し直した状態（Prepared より先）で準備が終わる
+    if (isInExercise(attempt.state)) {
+      const resumed = pack.manifest.defenses.find((d) => d.id === attempt.appliedDefense);
       fill(
         this.outcome,
-        h('p', { class: 'banner banner-ok', role: 'status' }, '準備ができました。脆弱性を注入した状態から、まっさらなデータで演習を始めます。'),
+        h(
+          'p',
+          { class: 'banner banner-ok', role: 'status' },
+          resumed
+            ? `準備ができました。データは演習開始時の状態に戻し、前回の対策「${resumed.label}」を適用し直しました。`
+            : '準備ができました。脆弱性を注入した状態から、まっさらなデータで演習を始めます。',
+        ),
         h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary', 'data-autofocus': true, on: { click: this.actions.begin } }, '演習を始める')),
       );
     } else if (attempt.state === 'Blocked' && blocked) {
