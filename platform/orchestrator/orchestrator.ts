@@ -291,7 +291,8 @@ export class Orchestrator {
   async resetToInitial(): Promise<void> {
     const c = this.require();
     const { attempt } = c.snapshot;
-    if (!isInExercise(attempt.state) || attempt.state === 'Prepared') return;
+    // 検証中は戻せない（検証が終わってから戻す）
+    if (!isInExercise(attempt.state) || attempt.state === 'Prepared' || attempt.state === 'Verifying') return;
     await this.switchImplementations({ ...c.vulnerable });
     await this.deps.exercise.reset();
     attempt.appliedDefense = null;

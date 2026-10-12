@@ -7,9 +7,11 @@ import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
 import { confirmDialog } from './components';
 import { announce, fill, h } from './dom';
+import { DebriefPanel, HintsPanel } from './debrief';
 import { ExerciseView } from './exercise';
 import { missionList, type MissionEntry } from './mission-list';
 import { PreflightView } from './preflight';
+import { RepairPanel } from './repair';
 
 type Screen = 'list' | 'preflight' | 'exercise';
 
@@ -29,12 +31,40 @@ export async function startApp(root: HTMLElement): Promise<void> {
   });
   /** プレビューと調査パネルで、いま操作している利用者 */
   let viewer: ActorKey = ANONYMOUS;
-  const exerciseView = new ExerciseView({
-    back: () => void showList(),
-    switchUser: (actor) => void showViewer(actor),
-    reloadView: () => void showViewer(viewer),
-    send: (request) => send(request),
+  const repair = new RepairPanel({
+    apply: (defenseId) => applyDefense(defenseId),
+    verify: () => verify(),
+    reset: () => resetToInitial(),
   });
+  const hints = new HintsPanel({
+    openHint: (level) => orchestrator.openHint(level),
+    viewSolution: () => orchestrator.viewSolution(),
+  });
+  const debrief = new DebriefPanel({
+    answer: (answers) => {
+      const correct = orchestrator.answerTransfer(answers);
+      announce(live, correct ? '理解の検印を押しました' : 'まだ正解でない設問があります');
+    },
+    retry: () => {
+      const packId = orchestrator.snapshot?.pack.manifest.id;
+      if (packId) void begin(() => orchestrator.start(packId));
+    },
+  });
+  const exerciseView = new ExerciseView(
+    {
+      back: () => void showList(),
+      switchUser: (actor) => void showViewer(actor),
+      reloadView: () => void showViewer(viewer),
+      send: (request) => send(request),
+    },
+    {
+      tabs: [
+        { id: 'repair', label: '対策', panel: repair.element },
+        { id: 'debrief', label: '振り返り', panel: debrief.element },
+      ],
+      storyFooter: hints.element,
+    },
+  );
   const exercise = new BrowserRuntimeAdapter({
     container: exerciseView.previewSlot,
     onExchange: (exchange) => observe(exchange),
@@ -65,7 +95,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     screen = next;
     const snapshot = orchestrator.snapshot;
     if (snapshot && next === 'preflight') preflightView.update(snapshot);
-    if (snapshot && next === 'exercise') exerciseView.update(snapshot);
+    if (snapshot && next === 'exercise') updateExercise(snapshot);
     listView.hidden = next !== 'list';
     preflightView.element.hidden = next !== 'preflight';
     exerciseView.element.hidden = next !== 'exercise';
@@ -79,7 +109,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   orchestrator.subscribe((snapshot: ExerciseSnapshot) => {
     const { attempt } = snapshot;
     if (screen === 'preflight') preflightView.update(snapshot);
-    if (screen === 'exercise') exerciseView.update(snapshot);
+    if (screen === 'exercise') updateExercise(snapshot);
     if (!attempt.fixtureHash || saveScheduled) return;
     saveScheduled = true;
     queueMicrotask(() => {
@@ -124,6 +154,42 @@ export async function startApp(root: HTMLElement): Promise<void> {
     announce(live, snapshot.attempt.state === 'Prepared' ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
   }
 
+  function updateExercise(snapshot: ExerciseSnapshot): void {
+    exerciseView.update(snapshot);
+    repair.update(snapshot);
+    hints.update(snapshot);
+    debrief.update(snapshot);
+  }
+
+  async function applyDefense(defenseId: string | null): Promise<void> {
+    await orchestrator.applyDefense(defenseId);
+    announce(live, defenseId ? '対策を適用しました。検証して確かめましょう' : '対策を取り消しました');
+  }
+
+  async function verify(): Promise<void> {
+    announce(live, '検証を始めました');
+    const report = await orchestrator.verify();
+    const snapshot = orchestrator.snapshot;
+    repair.focusResults();
+    if (!report) announce(live, '実行環境のエラーで検証できませんでした（不合格には数えません）');
+    else if (report.passed) announce(live, snapshot?.attempt.state === 'Passed' ? '防御できました。すべての検印がそろいました' : '防御できました。防御の検印を押しました');
+    else announce(live, '検証が終わりました。まだ合格ではありません');
+  }
+
+  async function resetToInitial(): Promise<void> {
+    const ok = await confirmDialog({
+      title: '初期状態へ戻しますか？',
+      body: 'この演習で適用した対策を外し、データも演習開始時の状態へ戻します。達成印と観測ログは残ります。',
+      confirm: '初期状態へ戻す',
+      danger: true,
+    });
+    if (!ok) return;
+    await orchestrator.resetToInitial();
+    sessions.clear();
+    await showViewer(viewer);
+    announce(live, '初期状態へ戻しました');
+  }
+
   const currentApp = () => catalog.apps.find((a) => a.descriptor.id === orchestrator.snapshot?.attempt.appId);
 
   /** 観測したやり取りを進行（再現の判定）と観測ログへ渡す。画面の表示だけのやり取りは事象があるときだけ記録する */
@@ -154,6 +220,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     viewer = app.descriptor.users[0] ?? ANONYMOUS;
     sessions.clear();
     exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null);
+    repair.setup(snapshot);
+    debrief.reset();
     show('exercise');
     await showViewer(viewer);
   }

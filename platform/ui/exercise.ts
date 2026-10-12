@@ -3,7 +3,7 @@
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
 import type { Scope } from '../evaluator/scenario';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { sealStates, seals, tabs } from './components';
+import { sealStates, seals, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
 import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
@@ -38,12 +38,19 @@ export class ExerciseView {
   private readonly sealSlot = h('div', { class: 'ticket-seals' });
   private readonly toolTabs: ReturnType<typeof tabs>;
   private refs: Scope = {};
+  private readonly storyFooter: HTMLElement;
 
-  constructor(private readonly actions: ExerciseActions) {
+  constructor(
+    private readonly actions: ExerciseActions,
+    /** 状況・調査に続けて並べるタブと、状況タブの末尾に置く要素（ヒントなど） */
+    extras: { tabs: TabSpec[]; storyFooter: HTMLElement },
+  ) {
+    this.storyFooter = extras.storyFooter;
     this.investigation = new InvestigationPanel({ send: actions.send });
     this.toolTabs = tabs('演習の道具', [
       { id: 'story', label: '状況', panel: this.storySlot },
       { id: 'investigate', label: '調査', panel: this.investigation.element },
+      ...extras.tabs,
     ]);
     fill(
       this.element,
@@ -93,7 +100,7 @@ export class ExerciseView {
         ),
       ),
     );
-    fill(this.storySlot, storyPanel(snapshot.pack.manifest.story));
+    fill(this.storySlot, storyPanel(snapshot.pack.manifest.story), this.storyFooter);
     this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describeEvent);
     this.investigation.setViewer(actorLabel(viewer, this.refs));
     this.toolTabs.select('story');
