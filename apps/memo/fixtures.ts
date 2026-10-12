@@ -47,7 +47,6 @@ export const memoFixture: FixtureGenerator = (db, seed) => {
     refs[`memos.${owner}.other.id`] = insertMemo(owner, title!, body!);
     const secret = `${pick(SECRETS)}（${refs[`users.${owner}.name`]}）`;
     refs[`memos.${owner}.private.id`] = insertMemo(owner, '非公開のメモ', secret);
-    refs[`memos.${owner}.private.title`] = '非公開のメモ';
     refs[`memos.${owner}.private.body`] = secret;
   }
   refs['memos.missing.id'] = memoId + 100;

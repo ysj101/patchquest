@@ -1,5 +1,5 @@
 // メモアプリの基準実装（状態 S）が共通テストをすべて通すこと（spec A01）。複数の seed で確かめる
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { memoApp } from '../../apps/memo';
 import type { PrepareOptions } from '../../platform/contract';
 import { runSteps, type ScenarioInvoker } from '../../platform/evaluator/scenario';
@@ -28,9 +28,12 @@ function invokerFor(engine: AppEngine): ScenarioInvoker {
 }
 
 describe.each(SEEDS)('メモアプリの基準実装（seed %i）', (seed) => {
+  const engine = new AppEngine();
+  beforeAll(() => engine.prepare(options(seed)));
+
   it.each(memoApp.tests.map((t) => [t.id, t] as const))('%s', async (_, test) => {
-    const engine = new AppEngine();
-    const { refs } = await engine.prepare(options(seed));
+    // 各テストは初期データから実行する
+    const { refs } = await engine.reset();
     expect(await runSteps(test.steps, refs, invokerFor(engine))).toMatchObject({ passed: true });
   });
 });

@@ -1,5 +1,5 @@
 // メモアプリの教材ロジックで共有する型と小さな処理
-import type { AppResponse, JsonValue } from '../../platform/contract';
+import type { JsonValue } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
 import type { Database } from '../../runtimes/browser/sqlite';
 
@@ -18,10 +18,6 @@ export interface Memo {
 
 export const TITLE_MAX_LENGTH = 40;
 export const BODY_MAX_LENGTH = 1000;
-
-export function json(status: number, body: JsonValue): AppResponse {
-  return { status, body };
-}
 
 /** セッションから解決した主体（利用者キー）を、利用者の行へ対応付ける */
 export function currentUser(ctx: ServerContext): User | null {

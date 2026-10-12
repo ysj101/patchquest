@@ -33,6 +33,11 @@ function lookup(scope: Scope, key: string): JsonPrimitive {
   return scope[k]!;
 }
 
+/** 型付きの定義（Condition・AppRequest など）を展開する */
+function expandAs<T>(value: T, scope: Scope): T {
+  return expand(value as unknown as JsonValue, scope) as unknown as T;
+}
+
 /** 文字列中の {{キー}} を置き換える。文字列全体が 1 つの {{キー}} なら値の型を保つ */
 export function expand(value: JsonValue, scope: Scope): JsonValue {
   if (typeof value === 'string') {
@@ -64,6 +69,8 @@ export function select(root: JsonValue | undefined, path: string): { values: (Js
 }
 
 function deepEqual(a: JsonValue | undefined, b: JsonValue | undefined): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
@@ -105,7 +112,7 @@ const preview = (v: unknown) => {
 function checkMatchers(root: JsonValue | undefined, matchers: Matcher[], scope: Scope): string[] {
   const failures: string[] = [];
   for (const m of matchers) {
-    const condition = expand(m.is as unknown as JsonValue, scope) as unknown as Condition;
+    const condition = expandAs(m.is, scope);
     const { values, wildcard } = select(root, m.path);
     const ok = wildcard ? values.every((v) => satisfiesCondition(condition, v)) : satisfiesCondition(condition, values[0]);
     if (!ok) failures.push(`${m.path || '(全体)'} が ${describeCondition(condition)} ではない（実測 ${preview(wildcard ? values : values[0])}）`);
@@ -147,39 +154,40 @@ export interface ScenarioResult {
   actual: string;
 }
 
-function describeStep(step: Step, scope: Scope): string {
-  if (step.kind === 'render') return `${step.as} が画面 ${step.view.route} を表示`;
-  const req = expand(step.request as unknown as JsonValue, scope) as unknown as AppRequest;
+function describeRequest(step: Extract<Step, { kind: 'request' }>, request: AppRequest): string {
   const status = step.expect?.status;
   const want = status === undefined ? '' : ` → status ${Array.isArray(status) ? status.join(' か ') : status}`;
-  return `${step.as} が ${req.method} ${req.path}${want}`;
+  return `${step.as} が ${request.method} ${request.path}${want}`;
 }
 
 /** 手順を順に実行する。最初に期待と違った手順で止め、その差を返す */
 export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvoker): Promise<ScenarioResult> {
   const scope: Scope = { ...refs };
   const sessions = new Map<ActorKey, SessionToken | null>();
+  const sessionFor = async (actor: ActorKey) => {
+    if (!sessions.has(actor)) sessions.set(actor, await invoker.session(actor));
+    return sessions.get(actor)!;
+  };
   let last: ScenarioResult = { passed: true, expected: '手順なし', actual: '—' };
-  for (const step of steps) {
-    let expected: string;
-    try {
-      expected = describeStep(step, scope);
-    } catch (e) {
-      return { passed: false, expected: '手順の展開', actual: e instanceof Error ? e.message : String(e) };
-    }
-    if (!sessions.has(step.as)) sessions.set(step.as, await invoker.session(step.as));
-    const session = sessions.get(step.as)!;
 
+  for (const step of steps) {
     if (step.kind === 'render') {
-      const { events } = await invoker.render(session, step.view);
+      const expected = `${step.as} が画面 ${step.view.route} を表示`;
+      const { events } = await invoker.render(await sessionFor(step.as), step.view);
       const failures = checkEvents(events, step.events ?? [], scope);
       if (failures.length) return { passed: false, expected, actual: failures.join(' / ') };
       last = { passed: true, expected, actual: `観測イベント ${events.length} 件` };
       continue;
     }
 
-    const request = expand(step.request as unknown as JsonValue, scope) as unknown as AppRequest;
-    const { response, events } = await invoker.request(session, request);
+    let request: AppRequest;
+    try {
+      request = expandAs(step.request, scope);
+    } catch (e) {
+      return { passed: false, expected: '手順の展開', actual: e instanceof Error ? e.message : String(e) };
+    }
+    const expected = describeRequest(step, request);
+    const { response, events } = await invoker.request(await sessionFor(step.as), request);
     const failures = [...checkResponse(response, step.expect ?? {}, scope), ...checkEvents(events, step.events ?? [], scope)];
     if (failures.length) return { passed: false, expected, actual: failures.join(' / ') };
     for (const [name, path] of Object.entries(step.capture ?? {})) {
@@ -210,7 +218,7 @@ export function matchesExchange(exchange: Exchange, matcher: ExchangeMatcher, sc
     if (matcher.request) {
       if (!exchange.request) return false;
       if (matcher.request.method && exchange.request.method !== matcher.request.method) return false;
-      if (matcher.request.path && !pathMatches(String(expand(matcher.request.path, scope)), exchange.request.path)) return false;
+      if (matcher.request.path && !pathMatches(String(expandAs(matcher.request.path, scope)), exchange.request.path)) return false;
     }
     if (matcher.response && (!exchange.response || checkResponse(exchange.response, matcher.response, scope).length > 0)) return false;
     return checkEvents(exchange.events, matcher.events ?? [], scope).length === 0;

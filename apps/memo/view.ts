@@ -2,15 +2,8 @@
 // 教材データは textContent でだけ表示する
 import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
+import { el } from '../shared/dom';
 import { BODY_MAX_LENGTH, TITLE_MAX_LENGTH } from './model';
-
-type Child = Node | string;
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: object = {}, ...children: Child[]): HTMLElementTagNameMap[K] {
-  const node = Object.assign(document.createElement(tag), props);
-  node.append(...children);
-  return node;
-}
 
 /** 画面内の移動はフレームを遷移させず、アプリ内で描画し直す */
 function linkButton(label: string, onClick: () => void): HTMLButtonElement {

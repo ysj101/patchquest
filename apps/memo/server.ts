@@ -3,7 +3,8 @@
 import type { AppRequest, AppResponse } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
 import type { ReadMemo } from './hooks';
-import { BODY_MAX_LENGTH, TITLE_MAX_LENGTH, currentUser, emitDecision, findMemo, json, memoJson, type Memo, type User } from './model';
+import { json } from '../shared/http';
+import { BODY_MAX_LENGTH, TITLE_MAX_LENGTH, currentUser, emitDecision, findMemo, memoJson, type Memo, type User } from './model';
 
 const UNAUTHENTICATED = json(401, { error: 'ログインが必要です' });
 
@@ -60,8 +61,8 @@ export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
       const input = validate(ctx, req.body);
       if (isResponse(input)) return input;
       // 所有者は常にセッションの利用者。リクエストの ownerId は使わない
-      ctx.db.exec({ sql: 'INSERT INTO memos (owner_id, title, body) VALUES (?, ?, ?)', bind: [user.id, input.title, input.body] });
-      return json(201, { memo: memoJson(findMemo(ctx.db, ctx.db.selectValue('SELECT last_insert_rowid()') as number)!) });
+      const created = ctx.db.selectObject('INSERT INTO memos (owner_id, title, body) VALUES (?, ?, ?) RETURNING id', [user.id, input.title, input.body]) as { id: number };
+      return json(201, { memo: memoJson({ id: created.id, ownerId: user.id, ...input }) });
     }
     return json(405, { error: '許可されていない操作です' });
   }
@@ -90,7 +91,7 @@ export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
     const input = validate(ctx, req.body);
     if (isResponse(input)) return input;
     ctx.db.exec({ sql: 'UPDATE memos SET title = ?, body = ? WHERE id = ?', bind: [input.title, input.body, memo.id] });
-    return json(200, { memo: memoJson(findMemo(ctx.db, memo.id)!) });
+    return json(200, { memo: memoJson({ ...memo, ...input }) });
   }
   if (req.method === 'DELETE') {
     const memo = authorizeWrite(ctx, 'delete', user, id);
