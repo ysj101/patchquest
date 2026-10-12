@@ -217,7 +217,7 @@ export class Orchestrator {
     const { attempt, pack } = c.snapshot;
     const defense = defenseId === null ? null : pack.manifest.defenses.find((d) => d.id === defenseId);
     if (defense === undefined) throw new Error(`対策 ${defenseId} はありません`);
-    if (!isInExercise(attempt.state)) throw new Error(`${attempt.state} では対策を適用できません`);
+    if (!isInExercise(attempt.state) || attempt.state === 'Verifying') throw new Error(`${attempt.state} では対策を適用できません`);
 
     await this.switchImplementations(withChanges(c.vulnerable, defense?.apply ?? []));
     c.snapshot.defenseCurrent = false;
@@ -291,7 +291,8 @@ export class Orchestrator {
   async resetToInitial(): Promise<void> {
     const c = this.require();
     const { attempt } = c.snapshot;
-    if (!isInExercise(attempt.state) || attempt.state === 'Prepared') return;
+    // 検証中は戻せない（検証が終わってから戻す）
+    if (!isInExercise(attempt.state) || attempt.state === 'Prepared' || attempt.state === 'Verifying') return;
     await this.switchImplementations({ ...c.vulnerable });
     await this.deps.exercise.reset();
     attempt.appliedDefense = null;

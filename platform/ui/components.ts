@@ -51,6 +51,26 @@ export function sealStates(attempt: AttemptRecord | undefined, defenseCurrent: b
   };
 }
 
+/** ラジオボタンの選択肢。ラベル全体を押せる */
+export function radioOption(
+  options: { name: string; value: string; checked: boolean; className: string; onChange?: () => void; required?: boolean },
+  ...content: (Node | string | null)[]
+): HTMLLabelElement {
+  return h(
+    'label',
+    { class: options.className },
+    h('input', {
+      type: 'radio',
+      name: options.name,
+      value: options.value,
+      checked: options.checked,
+      required: options.required,
+      on: options.onChange ? { change: options.onChange } : undefined,
+    }),
+    ...content,
+  );
+}
+
 /** 確認ダイアログ。Escape で閉じ、閉じたらフォーカスを元へ戻す */
 export function confirmDialog(options: { title: string; body: string; confirm: string; cancel?: string; danger?: boolean }): Promise<boolean> {
   return new Promise((resolve) => {

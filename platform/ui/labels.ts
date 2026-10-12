@@ -38,6 +38,8 @@ export const GROUP_LABEL: Record<ResultGroup, string> = {
   regression: 'ほかの守りが壊れていないか',
 };
 
+export const HINT_LABEL = { 1: '着眼点', 2: '調査方法', 3: '修正方針' } as const;
+
 export const BLOCKED_LABEL = {
   incompatible: '開始できません',
   'injection-failed': '開始できません',
