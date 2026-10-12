@@ -5,6 +5,8 @@ import { crc32, deflateRawSync } from 'node:zlib';
 const DOS_TIME = 0;
 const DOS_DATE = (0 << 9) | (1 << 5) | 1;
 const UTF8 = 0x0800;
+/** 展開に必要な ZIP の版（2.0：deflate） */
+const ZIP_VERSION = 20;
 
 /**
  * @param {{ name: string, data: Buffer }[]} entries
@@ -21,7 +23,7 @@ export function createZip(entries) {
 
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(ZIP_VERSION, 4);
     local.writeUInt16LE(UTF8, 6);
     local.writeUInt16LE(8, 8);
     local.writeUInt16LE(DOS_TIME, 10);
@@ -35,8 +37,8 @@ export function createZip(entries) {
 
     const central = Buffer.alloc(46);
     central.writeUInt32LE(0x02014b50, 0);
-    central.writeUInt16LE(20, 4);
-    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(ZIP_VERSION, 4);
+    central.writeUInt16LE(ZIP_VERSION, 6);
     central.writeUInt16LE(UTF8, 8);
     central.writeUInt16LE(8, 10);
     central.writeUInt16LE(DOS_TIME, 12);
