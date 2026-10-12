@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <!-- 自身のスクリプトと、検証済みペイロードのハンドラー pqMarker() だけをハッシュで許可する。通信はすべて禁止 -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src {{SCRIPT_HASH}} 'unsafe-hashes' {{sha256:pqMarker()}}; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types default pq-inert"
+    />
+    <title>教材アプリ</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, -apple-system, 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+        line-height: 1.6;
+        --line: #d7d9de;
+        --muted: #5b6270;
+        --accent: #2457c5;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #fff;
+        color: #1d2129;
+      }
+      h1, h2, h3 { line-height: 1.3; margin: 0 0 12px; }
+      button, input, textarea, select { font: inherit; }
+      button {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #f6f7f9;
+        padding: 6px 12px;
+        cursor: pointer;
+      }
+      button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+      input, textarea {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 8px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .muted { color: var(--muted); }
+      .stack > * + * { margin-top: 12px; }
+      .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    </style>
+  </head>
+  <body>
+    <main id="app" class="stack"></main>
+    <!--inline-script:preview.inline.ts-->
+  </body>
+</html>
