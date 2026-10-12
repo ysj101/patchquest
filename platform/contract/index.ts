@@ -5,3 +5,4 @@ export * from './runtime';
 export * from './scenario';
 export * from './validate';
 export * from './version';
+export * from './hash';
