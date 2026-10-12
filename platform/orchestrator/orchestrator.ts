@@ -3,6 +3,7 @@
 import {
   RuntimeError,
   canTransition,
+  isInExercise,
   satisfies,
   validatePack,
   type AppDescriptor,
@@ -16,8 +17,9 @@ import {
   type TestCase,
   type VerificationReport,
 } from '../contract';
-import { Evaluator, configHash, detectReproduction, type EvaluationSubject } from '../evaluator/evaluator';
+import { Evaluator, configHash, detectReproduction } from '../evaluator/evaluator';
 import type { Scope } from '../evaluator/scenario';
+import { buildSubject, withChanges } from './subject';
 
 /** カタログに登録された教材アプリのうち、進行に必要な部分 */
 export interface CatalogApp {
@@ -71,15 +73,15 @@ class Blocked extends Error {
 
 interface Current {
   snapshot: ExerciseSnapshot;
-  app: CatalogApp;
+  /** 対応する教材アプリ。見つからなければ互換性の確認で開始不可にする */
+  app: CatalogApp | undefined;
   tests: TestCase[];
   /** 注入後の状態 V の実装 */
   vulnerable: ImplementationSelection;
   /** パックが交換するフックの基準実装 */
   baseline: ImplementationSelection;
-  /** 演習用インスタンスに現在設定している実装（パックが交換するフックすべて） */
-  applied: ImplementationSelection;
-  runCount: number;
+  /** この演習で発行した実行 ID。これ以外のやり取り（古い演習の応答など）は無視する */
+  runIds: Set<string>;
 }
 
 export class Orchestrator {
@@ -104,10 +106,12 @@ export class Orchestrator {
     return () => this.listeners.delete(listener);
   }
 
-  /** 実行 ID を発行する。現在の演習の attemptId を接頭辞にし、古い演習のやり取りと区別する */
+  /** 実行 ID を発行する。発行した ID のやり取りだけを現在の演習のものとして扱う */
   newRunId(kind = 'player'): string {
     const c = this.require();
-    return `${c.snapshot.attempt.attemptId}:${kind}:${++c.runCount}`;
+    const runId = `${c.snapshot.attempt.attemptId}:${kind}:${c.runIds.size + 1}`;
+    c.runIds.add(runId);
+    return runId;
   }
 
   /**
@@ -145,18 +149,17 @@ export class Orchestrator {
       solutionViewed: false,
       answers: {},
     };
-    const vulnerable = Object.fromEntries((recipe?.apply ?? []).map((c) => [c.hook, c.implementation]));
+    const vulnerable = withChanges({}, recipe?.apply ?? []);
     const baseline = Object.fromEntries(
       manifest.hooks.map((h) => [h.id, app?.descriptor.hooks.find((d) => d.id === h.id)?.baseline ?? '']),
     );
     this.current = {
       snapshot: { attempt, pack, refs: {}, implementations: {}, preflight: [], blocked: null, platformError: null },
-      app: app ?? { descriptor: { id: manifest.appCompatibility.appId, version: '', features: [], hooks: [], users: [] }, tests: [], implementations: {} },
+      app,
       tests: [...(app?.tests ?? []), ...manifest.tests.cases],
       vulnerable,
       baseline,
-      applied: {},
-      runCount: 0,
+      runIds: new Set(),
     };
     await this.runPreflight();
     return this.require().snapshot;
@@ -174,9 +177,9 @@ export class Orchestrator {
    */
   onExchange(exchange: Exchange): void {
     const c = this.current;
-    if (!c || !exchange.runId.startsWith(`${c.snapshot.attempt.attemptId}:`)) return;
+    if (!c?.runIds.has(exchange.runId)) return;
     const { attempt, pack, refs } = c.snapshot;
-    if (!['Prepared', 'Explored', 'Repairing', 'Passed'].includes(attempt.state)) return;
+    if (!isInExercise(attempt.state)) return;
     if (attempt.state === 'Prepared') this.transition('Explored');
     if (!attempt.badges.reproduction.achieved && detectReproduction(exchange, pack.manifest.probes, refs)) {
       attempt.badges.reproduction = { achieved: true, runId: exchange.runId, at: this.now().toISOString() };
@@ -190,11 +193,9 @@ export class Orchestrator {
     const { attempt, pack } = c.snapshot;
     const defense = defenseId === null ? null : pack.manifest.defenses.find((d) => d.id === defenseId);
     if (defense === undefined) throw new Error(`対策 ${defenseId} はありません`);
-    if (!['Prepared', 'Explored', 'Repairing', 'Passed'].includes(attempt.state)) throw new Error(`${attempt.state} では対策を適用できません`);
+    if (!isInExercise(attempt.state)) throw new Error(`${attempt.state} では対策を適用できません`);
 
-    const next: ImplementationSelection = { ...c.vulnerable };
-    for (const change of defense?.apply ?? []) next[change.hook] = change.implementation;
-    await this.switchImplementations(next);
+    await this.switchImplementations(withChanges(c.vulnerable, defense?.apply ?? []));
     attempt.appliedDefense = defenseId;
     if (attempt.state !== 'Repairing') this.transition('Repairing');
     this.emit();
@@ -264,7 +265,7 @@ export class Orchestrator {
   async resetToInitial(): Promise<void> {
     const c = this.require();
     const { attempt } = c.snapshot;
-    if (!['Explored', 'Repairing', 'Passed'].includes(attempt.state)) return;
+    if (!isInExercise(attempt.state) || attempt.state === 'Prepared') return;
     await this.switchImplementations({ ...c.vulnerable });
     await this.deps.exercise.reset();
     attempt.appliedDefense = null;
@@ -284,16 +285,19 @@ export class Orchestrator {
 
     try {
       await this.step('compatibility', async () => {
+        const { app } = c;
+        const { appId, versions } = pack.manifest.appCompatibility;
+        if (!app) throw new Blocked({ kind: 'incompatible', message: `対応する教材アプリ ${appId} ${versions} がありません` });
         const errors = validatePack(pack, {
-          app: c.app.descriptor,
-          appTestIds: c.app.tests.map((t) => t.id),
-          sharedImplementations: c.app.implementations,
+          app: app.descriptor,
+          appTestIds: app.tests.map((t) => t.id),
+          sharedImplementations: app.implementations,
         });
         const missing = pack.manifest.runtime.capabilities.filter((cap) => !this.deps.exercise.capabilities.includes(cap));
         if (missing.length) errors.push(`実行環境に必要な機能がありません: ${missing.join(', ')}`);
         if (!attempt.recipeId) errors.push('開始条件（バリエーション）に対応するレシピがありません');
         if (errors.length) throw new Blocked({ kind: 'incompatible', message: errors.join('\n') });
-        return `${c.app.descriptor.id}@${c.app.descriptor.version} とパック ${pack.manifest.id}@${pack.manifest.version} は互換`;
+        return `${app.descriptor.id}@${app.descriptor.version} とパック ${pack.manifest.id}@${pack.manifest.version} は互換`;
       });
 
       await this.step('baseline', async () => {
@@ -317,8 +321,10 @@ export class Orchestrator {
         if (notReached.length) {
           throw new Blocked({ kind: 'injection-failed', message: `注入後に攻撃が成立しませんでした: ${notReached.map((o) => `${o.probeId}（${o.actual}）`).join('、')}` });
         }
-        const report = await this.deps.evaluator.runSuite(subject, c.tests, pack.manifest.tests.target, this.newRunId('preflight'), '');
-        const broken = report.outcomes.filter((o) => o.group !== 'attack' && !o.passed);
+        // 攻撃の成立は probe で確かめたので、ここでは攻撃阻止以外のテストだけを実行する
+        const others = c.tests.filter((t) => !pack.manifest.tests.target.includes(t.id));
+        const report = await this.deps.evaluator.runSuite(subject, others, pack.manifest.tests.target, this.newRunId('preflight'), '');
+        const broken = report.outcomes.filter((o) => !o.passed);
         if (broken.length) {
           throw new Blocked({ kind: 'injection-failed', message: `注入後に正常系・対象外のテストが失敗しました: ${broken.map((o) => o.title).join('、')}` });
         }
@@ -327,16 +333,10 @@ export class Orchestrator {
 
       await this.step('prepare', async () => {
         // 事前検証で変わったデータは検証インスタンスに閉じている。演習用は同じ seed の脆弱な初期状態から作る
-        const fixture = await this.deps.exercise.prepare({
-          attemptId: attempt.attemptId,
-          app: { id: c.app.descriptor.id, version: c.app.descriptor.version },
-          fixture: { generator: pack.manifest.fixtures.generator, seed: attempt.seed },
-          implementations: c.vulnerable,
-        });
+        const fixture = await this.deps.exercise.prepare(this.subject(c.vulnerable));
         await this.deps.exercise.start();
         snapshot.refs = fixture.refs;
         snapshot.implementations = { ...c.vulnerable };
-        c.applied = { ...c.baseline, ...c.vulnerable };
         attempt.fixtureHash = fixture.hash;
         attempt.configHash = await this.hashFor(c.vulnerable);
         return '脆弱な初期状態を用意しました';
@@ -375,24 +375,19 @@ export class Orchestrator {
   private async switchImplementations(next: ImplementationSelection): Promise<void> {
     const c = this.require();
     // パックが交換するフックを基準実装から組み直し、変わったものだけを設定する。前の対策の実装は残らない
-    const full = { ...c.baseline, ...next };
-    for (const [hook, implementation] of Object.entries(full)) {
-      if (c.applied[hook] !== implementation) await this.deps.exercise.setImplementation(hook, implementation);
+    const applied = { ...c.baseline, ...c.snapshot.implementations };
+    for (const [hook, implementation] of Object.entries({ ...c.baseline, ...next })) {
+      if (applied[hook] !== implementation) await this.deps.exercise.setImplementation(hook, implementation);
     }
-    c.applied = full;
     c.snapshot.implementations = { ...next };
     c.snapshot.attempt.configHash = await this.hashFor(next);
   }
 
-  private subject(implementations: ImplementationSelection): EvaluationSubject {
+  /** 互換性の確認を通った後にだけ呼ぶ（教材アプリがあることは確認済み） */
+  private subject(implementations: ImplementationSelection) {
     const c = this.require();
     const { attempt, pack } = c.snapshot;
-    return {
-      attemptId: attempt.attemptId,
-      app: { id: c.app.descriptor.id, version: c.app.descriptor.version },
-      fixture: { generator: pack.manifest.fixtures.generator, seed: attempt.seed },
-      implementations,
-    };
+    return buildSubject(c.app!, pack, attempt.attemptId, attempt.seed, implementations);
   }
 
   private hashFor(implementations: ImplementationSelection): Promise<string> {

@@ -14,6 +14,7 @@ const nodePack: MissionPack = {
   manifest: {
     ...testPack.manifest,
     runtime: { adapter: 'browser', capabilities: ['sqlite'] },
+    hooks: testPack.manifest.hooks.filter((h) => h.id !== 'note.render'),
     tests: { ...testPack.manifest.tests, cases: testPack.manifest.tests.cases.filter((t) => t.steps.every((s) => s.kind === 'request')) },
   },
 };
