@@ -17,6 +17,8 @@ npm test            # ユニットテスト
 npm run test:e2e    # ビルドしてから Chrome・Edge で E2E テスト
 ```
 
+課題パックの作り方は [docs/pack-authoring.md](docs/pack-authoring.md) を参照してください。
+
 ## ディレクトリ構成
 
 | ディレクトリ | 内容 |
