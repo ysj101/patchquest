@@ -24,7 +24,7 @@ export default defineConfig({
         'runtimes/browser/preview/**',
       ],
       // 導入時点の値。下がったら失敗する。上がったら数字を引き上げる
-      thresholds: { statements: 86, branches: 77, functions: 86, lines: 91 },
+      thresholds: { statements: 87, branches: 78, functions: 87, lines: 92 },
     },
   },
 });
