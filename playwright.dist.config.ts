@@ -1,4 +1,4 @@
-// 配布物（ZIP を展開したもの）を、localhost 限定の静的サーバで開いて確かめる（npm run test:dist）
+// 配布物（ZIP を展開したもの）を、localhost 限定の静的サーバで開いて確かめる（pnpm run test:dist）
 import { defineConfig } from '@playwright/test';
 import { BROWSERS } from './playwright.config';
 import { releaseName, unpackDir } from './scripts/release.mjs';

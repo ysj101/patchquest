@@ -30,6 +30,7 @@
     "catalog",
     "tests",
     "scripts",
-    "*.config.ts"
+    "*.config.ts",
+    "*.config.mjs"
   ]
 }
