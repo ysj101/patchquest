@@ -192,3 +192,51 @@ main > section > * + * { margin-top: 16px; }
 
 /* 画面の切り替えで見出しへ移したフォーマスは枠を出さない（キーボードでの移動先はボタンなどに枠が出る） */
 h1[tabindex='-1']:focus { outline: none; }
+
+/* 演習の道具（タブ） */
+.tools { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.tablist { display: flex; border-bottom: 1px solid var(--line); background: #f8f9fb; }
+.tab {
+  flex: 1; border: 0; background: transparent; padding: 10px 12px; font-weight: 700; color: var(--muted); cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+.tab[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--primary); background: var(--surface); }
+[role='tabpanel'] { padding: 16px; display: grid; gap: 16px; max-height: 720px; overflow: auto; }
+[role='tabpanel'][hidden] { display: none; }
+.tool-section { display: grid; gap: 8px; }
+.tool-section h3 { font-size: 0.95rem; }
+.incident { border-left: 4px solid var(--warn); padding-left: 12px; }
+
+/* 利用者の切り替え */
+.user-switcher { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.user-switcher legend { font-size: 0.8rem; font-weight: 700; color: var(--muted); float: left; margin-right: 8px; }
+.user-option {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line);
+  border-radius: 999px; background: var(--surface); cursor: pointer; font-size: 0.9rem;
+}
+.user-option:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); font-weight: 700; }
+.user-option input { accent-color: var(--primary); }
+
+/* 操作とリクエスト編集 */
+.mono { font-family: var(--font-mono); font-size: 0.85rem; }
+.action-list { display: grid; gap: 12px; }
+.action { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
+.action h4 { font-size: 0.95rem; }
+.field { display: grid; gap: 4px; font-weight: 600; font-size: 0.9rem; }
+.field input, .field textarea, .field select, .request-line input, .request-line select, .investigation textarea {
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: #fff; width: 100%;
+}
+.request-line { display: grid; grid-template-columns: 110px 1fr; gap: 8px; }
+.form-message { color: var(--fail); font-size: 0.9rem; }
+.form-message:empty { display: none; }
+.viewer { font-weight: 700; color: var(--ink); }
+
+/* 観測ログ */
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.log-entry { border: 1px solid var(--line); border-radius: 8px; background: #fbfcfd; }
+.log-entry summary { display: flex; gap: 8px; align-items: center; padding: 6px 10px; cursor: pointer; flex-wrap: wrap; }
+.log-no { font-family: var(--font-mono); color: var(--muted); font-size: 0.8rem; }
+.log-summary { overflow-wrap: anywhere; }
+.log-block { padding: 0 10px 10px; display: grid; gap: 4px; }
+.log-block h4 { font-size: 0.8rem; color: var(--muted); }
+.log-block pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px; }

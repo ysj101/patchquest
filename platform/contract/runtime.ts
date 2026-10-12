@@ -38,6 +38,8 @@ export interface AppDescriptor {
   hooks: HookDescriptor[];
   /** fixture の利用者キー */
   users: ActorKey[];
+  /** 演習を始めたときに表示する画面 */
+  entryRoute: string;
 }
 
 /** フックごとに選んだ実装。指定のないフックは基準実装を使う */
