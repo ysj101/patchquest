@@ -75,6 +75,10 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     }
   });
 
+  // 実装の登録簿はカタログ全体で 1 つなので、課題 ID で名前空間を分け、他の課題やアプリの実装と重ならないようにする
+  for (const id of Object.keys(c.obj('implementations', pack.implementations))) {
+    if (!id.startsWith(`${String(m.id)}/`)) c.fail(`implementations.${id}`, `実装 ID は「${String(m.id)}/」で始めてください`);
+  }
   const implementations = { ...ctx.sharedImplementations, ...pack.implementations };
   const checkChanges = (path: string, v: unknown) =>
     c.list(path, v, true).forEach((raw, i) => {
@@ -165,6 +169,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     c.text(`${at}.title`, t.title);
     checkSteps(`${at}.steps`, t.steps);
   });
+  for (const id of cases) if (ctx.appTestIds?.includes(id)) c.fail('tests.cases', `テスト ID「${id}」はアプリ共通のテストと重複しています`);
   const knownTests = new Set([...cases, ...(ctx.appTestIds ?? [])]);
   c.texts('tests.target', tests.target, true).forEach((id, i) => {
     if (ctx.appTestIds || cases.has(id)) c.ref(`tests.target[${i}]`, id, knownTests, 'テスト');

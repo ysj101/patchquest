@@ -11,11 +11,19 @@ import {
 } from '../../platform/contract';
 import type { AppModule, HookFunction } from './app-module';
 
-export const implementations: ImplementationRegistry = Object.assign(
-  {},
-  ...catalog.apps.map((app) => app.implementations),
-  ...catalog.packs.map((pack) => pack.implementations),
-);
+/** 実装の登録簿をまとめる。同じ ID があると、ある課題の実装が別の課題の関数で黙って置き換わるため、エラーにする */
+export function mergeImplementations(registries: ImplementationRegistry[]): ImplementationRegistry {
+  const merged: ImplementationRegistry = {};
+  for (const registry of registries) {
+    for (const [id, entry] of Object.entries(registry)) {
+      if (id in merged) throw new Error(`実装 ID「${id}」が重複して登録されています`);
+      merged[id] = entry;
+    }
+  }
+  return merged;
+}
+
+export const implementations = mergeImplementations([...catalog.apps.map((app) => app.implementations), ...catalog.packs.map((pack) => pack.implementations)]);
 
 export function findApp(id: string, version?: string): AppModule {
   const app = catalog.apps.find((a) => a.descriptor.id === id && (version === undefined || a.descriptor.version === version));

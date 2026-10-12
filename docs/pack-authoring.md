@@ -129,8 +129,11 @@
 
 ## 7. パックを追加する手順
 
-1. `missions/<パックID>/` に `manifest` と `implementations` を作る。
-2. `catalog/` にパックを登録する。コアUIに課題 ID の条件分岐を書かない。
+1. `missions/<パックID>/` に `manifest` と `implementations` を作る。ディレクトリ名とパック ID を一致させる。
+   - 実装 ID は `<パックID>/…` で始める。実装の登録簿はカタログ全体で 1 つなので、他のパックやアプリの実装と重なると起動時にエラーになる。
+   - パック固有のテスト ID は、アプリ共通のテストと重ならないようにする（`<パックID>.…` を推奨）。
+   - パックが読み込めるのは `platform/contract` と教材アプリ（`apps/`）、自分のディレクトリの中だけ。他のパックの実装やデータは使わない。
+2. `catalog/` にパックを登録する。コアUIに課題 ID の条件分岐を書かない。プラットフォーム（`platform/`・`runtimes/`）はパックを `@catalog` 経由でだけ扱い、教材アプリはパックに依存しない。これらは `npm run check:boundaries`（ビルドと CI でも実行）で確かめる。
 3. `validatePack(pack, { app, appTestIds, sharedImplementations })` がエラーなしで通ることを確かめる。
 4. パック出荷前検証（`npm run verify:packs`）で、次の 3 点を確かめる。対策は `expected` どおりの結果になることも確かめる。
    - 基準状態 S で全テストが通る。
