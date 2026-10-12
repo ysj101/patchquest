@@ -3,7 +3,7 @@
 import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
-import type { PrepareTitleInput, RenderComment } from './hooks';
+import type { PickNeighbors, PrepareTitleInput, RenderComment } from './hooks';
 import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
 
 /** 画面内の移動はフレームを遷移させず、アプリ内で描画し直す */
@@ -42,10 +42,15 @@ async function header(root: HTMLElement, ctx: ViewContext): Promise<boolean> {
   return true;
 }
 
-async function list(root: HTMLElement, ctx: ViewContext): Promise<void> {
+/** 閲覧者自身のメモ（新しい順）。取得できなければ理由の表示を返す */
+async function ownMemos(ctx: ViewContext): Promise<{ id: number; title: string }[] | HTMLElement> {
   const res = await ctx.request({ method: 'GET', path: '/api/memos' });
-  if (res.status !== 200) return void root.append(alert(errorMessage(res)));
-  const memos = (res.body as { memos: { id: number; title: string }[] }).memos;
+  return res.status === 200 ? (res.body as { memos: { id: number; title: string }[] }).memos : alert(errorMessage(res));
+}
+
+async function list(root: HTMLElement, ctx: ViewContext): Promise<void> {
+  const memos = await ownMemos(ctx);
+  if (!Array.isArray(memos)) return void root.append(memos);
   root.append(el('div', { className: 'row' }, linkButton('＋ 新しいメモ', () => ctx.navigate('/memos/new'))));
   if (memos.length === 0) return void root.append(el('p', { className: 'muted' }, 'メモはまだありません。'));
   root.append(el('ul', { className: 'memo-list' }, ...memos.map((m) => el('li', {}, linkButton(m.title, () => ctx.navigate(`/memos/${m.id}`))))));
@@ -53,7 +58,8 @@ async function list(root: HTMLElement, ctx: ViewContext): Promise<void> {
 
 async function detail(root: HTMLElement, ctx: ViewContext, id: string): Promise<void> {
   const back = linkButton('← 一覧へ戻る', () => ctx.navigate('/memos'));
-  const res = await ctx.request({ method: 'GET', path: `/api/memos/${id}` });
+  // 前後のメモの移動先に使う自分のメモの一覧は、メモの取得と並べて取りに行く
+  const [res, own] = await Promise.all([ctx.request({ method: 'GET', path: `/api/memos/${id}` }), ownMemos(ctx)]);
   if (res.status !== 200) return void root.append(back, alert(errorMessage(res)));
   const memo = (res.body as { memo: { id: number; title: string; body: string } }).memo;
   const remove = el('button', { type: 'button' }, '削除');
@@ -72,6 +78,18 @@ async function detail(root: HTMLElement, ctx: ViewContext, id: string): Promise<
     back,
     el('article', { className: 'memo' }, el('h2', {}, memo.title), el('p', { className: 'memo-body' }, memo.body)),
     el('div', { className: 'row' }, linkButton('編集', () => ctx.navigate(`/memos/${memo.id}/edit`)), remove),
+    Array.isArray(own) ? neighborLinks(ctx, memo.id, own.map((mine) => mine.id)) : own,
+  );
+}
+
+/** 「前のメモ」「次のメモ」。移動先は交換点（memo.detail.neighbors）が決める */
+function neighborLinks(ctx: ViewContext, id: number, ownIds: number[]): HTMLElement {
+  const { prev, next } = ctx.hook<PickNeighbors>('memo.detail.neighbors')({ id, ownIds });
+  return el(
+    'nav',
+    { className: 'row', ariaLabel: '前後のメモ' },
+    ...(prev === null ? [] : [linkButton('← 前のメモ', () => ctx.navigate(`/memos/${prev}`))]),
+    ...(next === null ? [] : [linkButton('次のメモ →', () => ctx.navigate(`/memos/${next}`))]),
   );
 }
 

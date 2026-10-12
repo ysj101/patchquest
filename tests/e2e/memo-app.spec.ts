@@ -74,6 +74,22 @@ test('画面からメモを作成・編集・削除できる', async ({ page }) 
   expect(calls).toEqual(expect.arrayContaining(['POST 201', 'PUT 200', 'DELETE 204']));
 });
 
+test('メモの詳細画面の「前のメモ」「次のメモ」は、自分のメモの間だけを移動する', async ({ page }) => {
+  const { refs } = await prepare(page, 10);
+  const app = page.frameLocator('#preview iframe');
+  await show(page, 'alice', `/memos/${refs['memos.alice.private.id']}`, 'alice-detail');
+  await expect(app.getByRole('heading', { name: '非公開のメモ' })).toBeVisible();
+
+  // 番号が隣の bob のメモではなく、alice の次のメモ（週報）へ移る
+  await app.getByRole('button', { name: '次のメモ →' }).click();
+  await expect(app.getByRole('heading', { name: /^週報/ })).toBeVisible();
+  await app.getByRole('button', { name: '← 前のメモ' }).click();
+  await expect(app.getByRole('heading', { name: '非公開のメモ' })).toBeVisible();
+  await app.getByRole('button', { name: '← 前のメモ' }).click();
+  await expect(app.getByRole('button', { name: '次のメモ →' })).toBeVisible();
+  await expect(app.getByRole('button', { name: '← 前のメモ' })).toHaveCount(0);
+});
+
 test('画面の入力欄は文字数を制限し、検証エラーは画面に表示される', async ({ page }) => {
   await prepare(page, 9);
   const app = page.frameLocator('#preview iframe');
