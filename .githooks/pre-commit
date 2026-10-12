@@ -1,0 +1,10 @@
+#!/bin/sh
+# コミット前の品質ゲート。有効にするには一度だけ `pnpm run hooks:install` を実行する。
+# 速さのため lint はキャッシュを使い、重複はこのコミットで増えたものだけを見る。
+# キャッシュでは他のファイルの型の変更を拾えないことがあるので、全体は CI（pnpm run check）で確かめる。
+set -e
+pnpm run --silent typecheck
+pnpm run --silent lint --cache --cache-strategy content --cache-location node_modules/.cache/eslint/
+pnpm exec jscpd --baseline-from-ref HEAD --fail-on-new-clones --silent
+pnpm run --silent check:unused
+pnpm run --silent test

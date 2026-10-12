@@ -4,7 +4,7 @@
 
 ## ローカル版を使う
 
-配布用の ZIP（`npm run package` で `release/` に作成）を展開し、展開したフォルダで localhost 限定の静的サーバを起動して、PC版の Chrome または Edge で開きます。
+配布用の ZIP（`pnpm run package` で `release/` に作成）を展開し、展開したフォルダで localhost 限定の静的サーバを起動して、PC版の Chrome または Edge で開きます。
 
 ```sh
 python3 -m http.server 8000 --bind 127.0.0.1   # Windows は py -m http.server 8000 --bind 127.0.0.1
@@ -20,24 +20,41 @@ python3 -m http.server 8000 --bind 127.0.0.1   # Windows は py -m http.server 8
 
 ## 開発
 
-必要なもの：Node.js 22、Python 3、PC版 Chrome または Edge。
+必要なもの：Node.js 22、pnpm 11（`corepack enable pnpm` で package.json の `packageManager` の版が使われます）、Python 3、PC版 Chrome または Edge。
 
 ```sh
-npm ci              # 依存のインストール（インストールスクリプトは実行しない設定）
-npm run build       # dist/ に静的成果物を生成する（DOM 安全性・依存の境界・外部参照も検査）
-npm run serve       # http://127.0.0.1:8000/ で dist/ を配信
-npm run typecheck   # 型検査
-npm test            # ユニットテスト
-npm run test:e2e    # ビルドしてから Chrome・Edge で E2E テスト
-npm run verify:packs  # 同梱パックの出荷前検証（基準・レシピ・対策が期待どおりか）
-npm run package     # 配布用の ZIP を release/ に作る
-npm run test:dist   # ZIP を展開して localhost で開き、Chrome・Edge で確かめる
-npm run check:boundaries  # 課題同士・プラットフォームと課題の依存の境界（ビルドでも実行）
+pnpm install            # 依存のインストール（依存のインストールスクリプトは実行しない。pnpm-workspace.yaml の allowBuilds）
+pnpm run hooks:install  # コミット前の品質ゲート（.githooks/pre-commit）を有効にする。最初に一度だけ
+pnpm run build          # dist/ に静的成果物を生成する（DOM 安全性・依存の境界・外部参照も検査）
+pnpm run serve          # http://127.0.0.1:8000/ で dist/ を配信
+pnpm run typecheck      # 型検査
+pnpm test               # ユニットテスト
+pnpm run test:e2e       # ビルドしてから Chrome・Edge で E2E テスト
+pnpm run verify:packs   # 同梱パックの出荷前検証（基準・レシピ・対策が期待どおりか）
+pnpm run package        # 配布用の ZIP を release/ に作る
+pnpm run test:dist      # ZIP を展開して localhost で開き、Chrome・Edge で確かめる
 node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API を使っていないか（ビルドでも実行）
 ```
 
+### 品質ゲート
+
+`pnpm run check` で次をまとめて実行します。作業の約束事は [AGENTS.md](AGENTS.md) を参照してください。
+
+```sh
+pnpm run typecheck          # 型検査（TypeScript 7）
+pnpm run lint               # ESLint：関数の大きさ・複雑さ、型の安全性、層の依存の向き（platform の内側を含む）、循環参照
+pnpm run check:boundaries   # 課題同士・プラットフォームと課題の依存の境界、コアでの課題 ID の分岐（ビルドでも実行）
+pnpm run check:duplication  # jscpd：origin/main になかった重複コードがあれば失敗
+pnpm run check:unused       # knip：使われていないファイル・export・依存
+pnpm run test:coverage      # ユニットテストとカバレッジの下限
+```
+
+- 導入時点で残っていた lint 違反は `eslint-suppressions.json` に件数ごと記録してあり、増えたときだけ失敗します。直したら `pnpm run lint:prune` で記録を減らします。
+- `pnpm run audit:duplication` は重複を git blame 付きで一覧し、`report/` に HTML を出します（定期的に眺める用。毎週 CI でも作ります）。
+- ESLint（typescript-eslint）は TypeScript 7 の API にまだ対応していないため、`typescript` は TypeScript 6 の API 互換パッケージ（`@typescript/typescript6`）を指し（pnpm-workspace.yaml の catalog。依存パッケージの分も overrides で揃える）、型検査の `tsc` は `@typescript/native`（TypeScript 7）を使います。
+
 push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）が次を実行します。
-- 型検査、ユニットテスト、ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）
+- 品質ゲート（`pnpm run check`）とビルド（DOM 安全性・依存の境界・外部参照の検査を含む）
 - Chrome・Edge の E2E（出荷前検証を含む）、配布物の確認
 
 課題パックの作り方は [docs/pack-authoring.md](docs/pack-authoring.md) を参照してください。
@@ -61,3 +78,5 @@ push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）�
 | SQLite（`@sqlite.org/sqlite-wasm` に同梱） | 教材アプリのデータベース（配布物に同梱） | パブリックドメイン |
 | `@sqlite.org/sqlite-wasm` | SQLite の WebAssembly 版ラッパー（配布物に同梱） | Apache License 2.0 |
 | esbuild・Vitest・Playwright・TypeScript | 開発時のビルドとテスト（配布物には含まない） | MIT / Apache License 2.0 |
+| ESLint・typescript-eslint・eslint-plugin-import-x・eslint-import-resolver-typescript・globals・jscpd・knip | 開発時の静的検査（配布物には含まない） | MIT / ISC |
+| eslint-plugin-sonarjs | 開発時の静的検査（配布物には含まない） | LGPL-3.0 |

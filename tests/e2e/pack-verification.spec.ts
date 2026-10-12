@@ -1,4 +1,4 @@
-// パック出荷前検証（npm run verify:packs）。カタログのすべてのパックが基準・レシピ・対策の期待どおりかを確かめる
+// パック出荷前検証（pnpm run verify:packs）。カタログのすべてのパックが基準・レシピ・対策の期待どおりかを確かめる
 import { expect, test } from './fixtures';
 
 test('カタログのすべてのパックが出荷前検証に合格する', async ({ page }) => {
