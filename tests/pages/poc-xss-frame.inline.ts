@@ -6,7 +6,11 @@ type RenderMessage = { type: 'render'; runId: string; mode: 'html' | 'text'; com
 interface TrustedTypePolicy {
   createHTML(input: string): unknown;
 }
-declare const trustedTypes: { createPolicy(name: string, rules: { createHTML: (s: string) => string }): TrustedTypePolicy } | undefined;
+interface TrustedTypePolicyFactory {
+  createPolicy(name: string, rules: { createHTML: (s: string) => string }): TrustedTypePolicy;
+}
+// 未対応のブラウザでは識別子そのものが存在しないため、window のプロパティとして参照する
+const trustedTypes = (window as { trustedTypes?: TrustedTypePolicyFactory }).trustedTypes;
 
 let runId: string | null = null;
 let navigationGuard = false;
@@ -38,32 +42,32 @@ const ALLOWED_ELEMENTS = new Set(['B', 'I', 'EM', 'STRONG', 'U', 'S', 'SMALL', '
 const isAllowedAttribute = (el: Element, name: string) =>
   name.startsWith('on') || name === 'alt' || name === 'title' || (name === 'src' && el.tagName === 'IMG');
 
-if (trustedTypes) {
-  // DOMParser.parseFromString も Trusted Types の対象のため、default ポリシーの中で文字列を渡すと
-  // default ポリシー自身が再び呼ばれる。解析用に何もしない別ポリシーを通す
-  const inert = trustedTypes.createPolicy('pq-inert', { createHTML: (s) => s });
-  trustedTypes.createPolicy('default', {
-    createHTML: (html) => {
-      if (!navigationGuard) return html;
-      const doc = new DOMParser().parseFromString(inert.createHTML(html) as string, 'text/html');
-      for (const el of [...doc.body.querySelectorAll('*')]) {
-        if (!ALLOWED_ELEMENTS.has(el.tagName)) {
-          el.remove();
-          continue;
-        }
-        for (const { name } of [...el.attributes]) if (!isAllowedAttribute(el, name)) el.removeAttribute(name);
-      }
-      return doc.body.innerHTML;
-    },
-  });
+// DOMParser.parseFromString も Trusted Types の対象のため、default ポリシーの中で文字列を渡すと
+// default ポリシー自身が再び呼ばれる。解析用に何もしない別ポリシーを通す
+const inert = trustedTypes?.createPolicy('pq-inert', { createHTML: (s) => s });
+
+function allowlisted(html: string): string {
+  const doc = new DOMParser().parseFromString((inert?.createHTML(html) ?? html) as string, 'text/html');
+  for (const el of [...doc.body.querySelectorAll('*')]) {
+    if (!ALLOWED_ELEMENTS.has(el.tagName)) {
+      el.remove();
+      continue;
+    }
+    for (const { name } of [...el.attributes]) if (!isAllowedAttribute(el, name)) el.removeAttribute(name);
+  }
+  return doc.body.innerHTML;
 }
+
+// Trusted Types があれば innerHTML への代入はすべて default ポリシーを通る。
+// ない環境でもガードが消えないよう、描画時に直接 allowlisted を通す（下の render）
+trustedTypes?.createPolicy('default', { createHTML: (html) => (navigationGuard ? allowlisted(html) : html) });
 
 window.addEventListener('message', (e: MessageEvent<RenderMessage>) => {
   if (e.source !== parent || e.data?.type !== 'render') return;
   ({ runId, navigationGuard } = e.data);
   const items = e.data.comments.map((comment) => {
     const li = document.createElement('li');
-    if (e.data.mode === 'html') li.innerHTML = comment;
+    if (e.data.mode === 'html') li.innerHTML = navigationGuard && !trustedTypes ? allowlisted(comment) : comment;
     else li.textContent = comment;
     return li;
   });
