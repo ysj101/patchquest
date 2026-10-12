@@ -221,7 +221,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
     sessions.clear();
     exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null);
     repair.setup(snapshot);
-    debrief.reset();
     show('exercise');
     await showViewer(viewer);
   }

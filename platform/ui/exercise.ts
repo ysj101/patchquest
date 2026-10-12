@@ -3,7 +3,7 @@
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
 import type { Scope } from '../evaluator/scenario';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { sealStates, seals, tabs, type TabSpec } from './components';
+import { radioOption, sealStates, seals, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
 import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
@@ -92,10 +92,8 @@ export class ExerciseView {
       this.users,
       h('legend', {}, '表示する利用者'),
       ...[...app.users, ANONYMOUS].map((actor) =>
-        h(
-          'label',
-          { class: 'user-option' },
-          h('input', { type: 'radio', name: 'viewer', value: actor, checked: actor === viewer, on: { change: () => this.actions.switchUser(actor) } }),
+        radioOption(
+          { name: 'viewer', value: actor, checked: actor === viewer, className: 'user-option', onChange: () => this.actions.switchUser(actor) },
           actorLabel(actor, this.refs),
         ),
       ),

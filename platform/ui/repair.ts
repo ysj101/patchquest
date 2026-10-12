@@ -1,9 +1,10 @@
 // 対策パネルと検証結果（spec §10）。修正方針を選んで適用・取り消しし、参考コード差分を閲覧し、
 // 攻撃阻止・正常系・回帰を検証する。合否は実際の実行結果だけで決まり、選んだ対策の ID では決まらない
 import { RESULT_GROUPS, type DefenseDef, type TestOutcome, type VerificationReport } from '../contract';
+import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { status } from './components';
-import { fill, h } from './dom';
+import { radioOption, status } from './components';
+import { fill, h, renderGuard } from './dom';
 import { GROUP_LABEL } from './labels';
 
 export interface RepairActions {
@@ -64,6 +65,7 @@ export class RepairPanel {
   private readonly resetButton = h('button', { type: 'button', class: 'button button-danger', on: { click: () => void this.actions.reset() } }, '初期状態へ戻す');
   private readonly results = h('div', { class: 'results' });
   private readonly resultsTitle = h('h3', { tabIndex: -1 }, '検証結果');
+  private readonly resultsGuard = renderGuard();
   private defenses: DefenseDef[] = [];
   private selected: string | null = null;
 
@@ -106,10 +108,8 @@ export class RepairPanel {
     fill(
       this.choices,
       ...this.defenses.map((d) =>
-        h(
-          'label',
-          { class: 'defense-option' },
-          h('input', { type: 'radio', name: 'defense', value: d.id, checked: d.id === this.selected, on: { change: () => this.select(d.id) } }),
+        radioOption(
+          { name: 'defense', value: d.id, checked: d.id === this.selected, className: 'defense-option', onChange: () => this.select(d.id) },
           h('span', { class: 'defense-text' }, h('strong', {}, d.label), h('span', { class: 'note' }, d.description)),
         ),
       ),
@@ -129,10 +129,12 @@ export class RepairPanel {
     this.verifyNote.textContent = verifying ? '' : canVerify ? '' : '対策を適用すると検証できます（取り消した状態も検証できます）。';
     if (verifying) fill(this.verifyNote, status('running', '検証しています…'));
 
+    const report = attempt.lastVerification;
+    if (!this.resultsGuard.changed(`${attempt.attemptId}|${report?.runId}|${attempt.configHash}|${snapshot.platformError}`)) return;
     if (snapshot.platformError) {
       fill(this.results, h('div', { class: 'banner banner-warn', role: 'alert' }, status('error', '実行環境のエラー'), ` ${snapshot.platformError}（不合格には数えません）`));
-    } else if (attempt.lastVerification) {
-      fill(this.results, ...results(attempt.lastVerification, attempt.lastVerification.configHash !== attempt.configHash));
+    } else if (report) {
+      fill(this.results, ...results(report, !isCurrent(report, attempt.configHash)));
     } else {
       fill(this.results, h('p', { class: 'muted' }, 'まだ検証していません。'));
     }

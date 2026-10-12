@@ -31,6 +31,18 @@ export function fill(el: Element, ...children: Child[]): void {
   el.append(...children.filter((c): c is Node | string | number => c !== null && c !== undefined && c !== false).map((c) => (typeof c === 'number' ? String(c) : c)));
 }
 
+/** 表示に関わる値が変わったときだけ描き直すための判定（操作中のフォーカスや入力を失わないため） */
+export function renderGuard(): { changed(key: string): boolean } {
+  let last: string | undefined;
+  return {
+    changed(key) {
+      if (key === last) return false;
+      last = key;
+      return true;
+    },
+  };
+}
+
 /** 画面読み上げにも伝わる通知（aria-live）。表示は控えめに行う */
 export function announce(region: HTMLElement, message: string): void {
   region.textContent = '';

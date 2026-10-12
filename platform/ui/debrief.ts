@@ -1,10 +1,9 @@
 // ヒント・振り返り・理解確認（spec §9, §10）。ヒントは減点しないが利用を記録する。
 // 理解確認は登録済みの選択肢で判定し、自由記述は採点しない
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { confirmDialog, status } from './components';
-import { fill, h } from './dom';
-
-const HINT_LABEL = { 1: '着眼点', 2: '調査方法', 3: '修正方針' } as const;
+import { confirmDialog, radioOption, status } from './components';
+import { fill, h, renderGuard } from './dom';
+import { HINT_LABEL } from './labels';
 
 export interface HintActions {
   openHint(level: 1 | 2 | 3): void;
@@ -13,17 +12,14 @@ export interface HintActions {
 
 export class HintsPanel {
   readonly element = h('section', { class: 'tool-section hints', 'data-anchor': 'hints', 'aria-labelledby': 'hints-title' });
-  private rendered = '';
+  private readonly guard = renderGuard();
 
   constructor(private readonly actions: HintActions) {}
 
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack } = snapshot;
-    // 開いたヒントが変わったときだけ描き直す（操作中のフォーカスを失わないため）
-    const key = `${attempt.attemptId}|${attempt.hintsOpened.join()}|${attempt.solutionViewed}`;
-    if (key === this.rendered) return;
+    if (!this.guard.changed(`${attempt.attemptId}|${attempt.hintsOpened.join()}|${attempt.solutionViewed}`)) return;
     const hadFocus = this.element.contains(document.activeElement);
-    this.rendered = key;
     const hints = [...pack.manifest.hints].sort((a, b) => a.level - b.level);
     const opened = hints.filter((hint) => attempt.hintsOpened.includes(hint.level));
     const next = hints.find((hint) => !attempt.hintsOpened.includes(hint.level));
@@ -59,23 +55,15 @@ export interface DebriefActions {
 
 export class DebriefPanel {
   readonly element = h('div', { class: 'debrief', 'data-anchor': 'debrief' });
-  private feedback: Record<string, boolean> | null = null;
-  private rendered = '';
+  private readonly guard = renderGuard();
 
   constructor(private readonly actions: DebriefActions) {}
 
-  /** 新しい演習を始めたときに、前の回答の表示を消す */
-  reset(): void {
-    this.feedback = null;
-    this.rendered = '';
-  }
-
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack } = snapshot;
-    // 選択中の回答を消さないよう、表示が変わるときだけ描き直す
-    const key = JSON.stringify([attempt.attemptId, attempt.badges.defense.achieved, attempt.badges.understanding.achieved, attempt.answers, this.feedback]);
-    if (key === this.rendered) return;
-    this.rendered = key;
+    const { answers } = attempt;
+    const key = `${attempt.attemptId}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}`;
+    if (!this.guard.changed(key)) return;
     const { debrief, transferCheck, fixtures } = pack.manifest;
     if (!attempt.badges.defense.achieved) {
       fill(
@@ -89,19 +77,18 @@ export class DebriefPanel {
       'form',
       { class: 'transfer', on: { submit: (e) => (e.preventDefault(), this.submit(form, snapshot)) } },
       ...transferCheck.map((q) => {
-        const result = this.feedback?.[q.id];
+        // 回答済みの設問だけ正誤を示す
+        const result = q.id in answers ? q.choices.find((c) => c.id === answers[q.id])?.correct === true : undefined;
         return h(
           'fieldset',
           { class: 'question' },
           h('legend', {}, q.prompt),
           h('p', { class: 'situation' }, `状況：${q.situation}`),
           ...q.choices.map((c) =>
-            h(
-              'label',
-              { class: 'choice' },
-              h('input', { type: 'radio', name: q.id, value: c.id, checked: attempt.answers[q.id] === c.id, required: true }),
+            radioOption(
+              { name: q.id, value: c.id, checked: answers[q.id] === c.id, className: 'choice', required: true },
               h('span', {}, c.label),
-              result !== undefined && attempt.answers[q.id] === c.id ? h('span', { class: 'note choice-explanation' }, c.explanation) : null,
+              result !== undefined && answers[q.id] === c.id ? h('span', { class: 'note choice-explanation' }, c.explanation) : null,
             ),
           ),
           result === undefined ? null : status(result ? 'passed' : 'failed', result ? '正解' : '不正解。別の選択肢も考えてみましょう'),
@@ -128,11 +115,7 @@ export class DebriefPanel {
 
   private submit(form: HTMLFormElement, snapshot: ExerciseSnapshot): void {
     const data = new FormData(form);
-    const answers = Object.fromEntries(snapshot.pack.manifest.transferCheck.map((q) => [q.id, String(data.get(q.id) ?? '')]));
-    this.feedback = Object.fromEntries(
-      snapshot.pack.manifest.transferCheck.map((q) => [q.id, q.choices.find((c) => c.id === answers[q.id])?.correct === true]),
-    );
-    this.actions.answer(answers);
+    this.actions.answer(Object.fromEntries(snapshot.pack.manifest.transferCheck.map((q) => [q.id, String(data.get(q.id) ?? '')])));
   }
 
   private retrySection(variantCount: number): HTMLElement {
