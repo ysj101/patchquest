@@ -23,19 +23,27 @@ function parseId(segment: string | undefined): number | null {
   return segment && /^[1-9]\d{0,8}$/.test(segment) ? Number(segment) : null;
 }
 
+/** 入力検証の失敗を記録し、その応答を返す */
+function invalid(ctx: ServerContext, field: string, message: string): AppResponse {
+  ctx.emit('validation.failed', { field, message });
+  return json(400, { error: message, field });
+}
+
+/** 文字列の入力を検証する。違反があればその応答を返す */
+function text(ctx: ServerContext, field: string, value: unknown, label: string, max: number, required = true): string | AppResponse {
+  if (typeof value !== 'string' || (required && value.trim() === '')) return invalid(ctx, field, `${label}を入力してください`);
+  if ([...value].length > max) return invalid(ctx, field, `${label}は ${max} 文字以内にしてください`);
+  return value;
+}
+
 /** タイトルと本文の検証。違反があればその応答を返す */
 function validate(ctx: ServerContext, body: AppRequest['body']): { title: string; body: string } | AppResponse {
   const input = (typeof body === 'object' && body !== null && !Array.isArray(body) ? body : {}) as Record<string, unknown>;
-  const { title, body: text } = input;
-  const fail = (field: string, message: string) => {
-    ctx.emit('validation.failed', { field, message });
-    return json(400, { error: message, field });
-  };
-  if (typeof title !== 'string' || title.trim() === '') return fail('title', 'タイトルを入力してください');
-  if ([...title].length > TITLE_MAX_LENGTH) return fail('title', `タイトルは ${TITLE_MAX_LENGTH} 文字以内にしてください`);
-  if (typeof text !== 'string') return fail('body', '本文を入力してください');
-  if ([...text].length > BODY_MAX_LENGTH) return fail('body', `本文は ${BODY_MAX_LENGTH} 文字以内にしてください`);
-  return { title, body: text };
+  const title = text(ctx, 'title', input.title, 'タイトル', TITLE_MAX_LENGTH);
+  if (typeof title !== 'string') return title;
+  const memoBody = text(ctx, 'body', input.body, '本文', BODY_MAX_LENGTH, false);
+  if (typeof memoBody !== 'string') return memoBody;
+  return { title, body: memoBody };
 }
 
 /** 更新・削除の認可。フックにはせず、回帰テストで守られていることを確かめる */
@@ -52,39 +60,42 @@ function authorizeWrite(ctx: ServerContext, action: 'update' | 'delete', user: U
 
 const isResponse = (v: object): v is AppResponse => 'status' in v;
 
-/** 共有教材ページ。ログインした利用者なら誰でも読め、コメントの投稿者は常にセッションの利用者 */
-function pages(ctx: ServerContext, req: AppRequest, user: User, idSegment: string | undefined, sub: string | undefined): AppResponse {
-  if (idSegment === undefined) {
-    if (req.method !== 'GET') return json(405, { error: '許可されていない操作です' });
-    return json(200, { pages: ctx.db.selectObjects('SELECT id, title FROM pages ORDER BY id') as never });
-  }
+function findPage(ctx: ServerContext, idSegment: string): { id: number; title: string; body: string } | undefined {
   const id = parseId(idSegment);
-  const page = id === null ? undefined : ctx.db.selectObject('SELECT id, title, body FROM pages WHERE id = ?', [id]);
-  if (!page) return json(404, { error: 'ページが見つかりません' });
+  return id === null ? undefined : (ctx.db.selectObject('SELECT id, title, body FROM pages WHERE id = ?', [id]) as never);
+}
 
-  if (sub === undefined && req.method === 'GET') {
-    const comments = ctx.db.selectObjects(
-      'SELECT c.id, c.author_id AS authorId, u.name AS authorName, c.body FROM comments c JOIN users u ON u.id = c.author_id WHERE c.page_id = ? ORDER BY c.id',
-      [page.id as number],
-    );
-    return json(200, { page: page as never, comments: comments as never });
-  }
-  if (sub === 'comments' && req.method === 'POST') {
-    const body = (req.body as { body?: unknown } | undefined)?.body;
-    if (typeof body !== 'string' || body.trim() === '') return json(400, { error: 'コメントを入力してください', field: 'body' });
-    if ([...body].length > COMMENT_MAX_LENGTH) return json(400, { error: `コメントは ${COMMENT_MAX_LENGTH} 文字以内にしてください`, field: 'body' });
-    const created = ctx.db.selectObject('INSERT INTO comments (page_id, author_id, body) VALUES (?, ?, ?) RETURNING id', [page.id as number, user.id, body]) as { id: number };
-    return json(201, { comment: { id: created.id, authorId: user.id, authorName: user.name, body } });
-  }
-  return json(405, { error: '許可されていない操作です' });
+const PAGE_NOT_FOUND = json(404, { error: 'ページが見つかりません' });
+
+function listPages(ctx: ServerContext): AppResponse {
+  return json(200, { pages: ctx.db.selectObjects('SELECT id, title FROM pages ORDER BY id') as never });
+}
+
+/** 共有教材ページとコメント。ログインした利用者なら誰でも読める */
+function getPage(ctx: ServerContext, idSegment: string): AppResponse {
+  const page = findPage(ctx, idSegment);
+  if (!page) return PAGE_NOT_FOUND;
+  const comments = ctx.db.selectObjects(
+    'SELECT c.id, c.author_id AS authorId, u.name AS authorName, c.body FROM comments c JOIN users u ON u.id = c.author_id WHERE c.page_id = ? ORDER BY c.id',
+    [page.id],
+  );
+  return json(200, { page, comments: comments as never });
+}
+
+/** コメントの投稿。投稿者は常にセッションの利用者で、リクエストの authorId は使わない */
+function postComment(ctx: ServerContext, req: AppRequest, user: User, idSegment: string): AppResponse {
+  const page = findPage(ctx, idSegment);
+  if (!page) return PAGE_NOT_FOUND;
+  const body = text(ctx, 'body', (req.body as { body?: unknown } | undefined)?.body, 'コメント', COMMENT_MAX_LENGTH);
+  if (typeof body !== 'string') return body;
+  const created = ctx.db.selectObject('INSERT INTO comments (page_id, author_id, body) VALUES (?, ?, ?) RETURNING id', [page.id, user.id, body]) as { id: number };
+  return json(201, { comment: { id: created.id, authorId: user.id, authorName: user.name, body } });
 }
 
 /** 自分のメモの検索。クエリはフックが組み立て、ここで実行してクエリ形・バインド値・返却行の所有者を記録する */
-function search(ctx: ServerContext, req: AppRequest, user: User): AppResponse {
-  if (req.method !== 'GET') return json(405, { error: '許可されていない操作です' });
-  const q = (new URLSearchParams(req.path.split('?')[1] ?? '').get('q') ?? '').trim();
-  if (q === '') return json(400, { error: '検索語を入力してください', field: 'q' });
-  if ([...q].length > QUERY_MAX_LENGTH) return json(400, { error: `検索語は ${QUERY_MAX_LENGTH} 文字以内にしてください`, field: 'q' });
+function search(ctx: ServerContext, query: string, user: User): AppResponse {
+  const q = text(ctx, 'q', (new URLSearchParams(query).get('q') ?? '').trim(), '検索語', QUERY_MAX_LENGTH);
+  if (typeof q !== 'string') return q;
 
   const { sql, bind } = ctx.hook<BuildSearchQuery>('memo.search.query')({ userId: user.id, q });
   let rows: { id: number; ownerId: number; title: string }[];
@@ -94,20 +105,29 @@ function search(ctx: ServerContext, req: AppRequest, user: User): AppResponse {
     ctx.emit('sql.error', { sql, bind, message: e instanceof Error ? e.message : String(e) });
     return json(400, { error: '検索に失敗しました' });
   }
-  ctx.emit('sql.query', { sql, bind, rows: rows.length, owners: [...new Set(rows.map((r) => r.ownerId ?? null))] });
+  // 返却行の所有者は、クエリが返した列名に頼らず、実際のメモの所有者から記録する
+  const owners = rows.map((r) => (ctx.db.selectValue('SELECT owner_id FROM memos WHERE id = ?', [r.id]) as number | undefined) ?? null);
+  ctx.emit('sql.query', { sql, bind, rows: rows.length, owners: [...new Set(owners)] });
   return json(200, { results: rows.map((r) => ({ id: r.id, ownerId: r.ownerId, title: r.title })) });
 }
 
 export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
-  const [, api, resource, idSegment, sub, ...rest] = req.path.split('?')[0]!.split('/');
+  const [path, query = ''] = req.path.split('?');
+  const [, api, resource, idSegment, sub, ...rest] = path!.split('/');
   if (api !== 'api' || rest.length > 0) return json(404, { error: '見つかりません' });
   const user = currentUser(ctx);
 
   if (resource === 'me' && idSegment === undefined && req.method === 'GET') {
     return user ? json(200, { user: { id: user.id, key: user.key, name: user.name } }) : UNAUTHENTICATED;
   }
-  if (resource === 'pages') return user ? pages(ctx, req, user, idSegment, sub) : UNAUTHENTICATED;
-  if (resource === 'search' && idSegment === undefined) return user ? search(ctx, req, user) : UNAUTHENTICATED;
+  if (resource === 'pages' || resource === 'search') {
+    if (!user) return UNAUTHENTICATED;
+    if (resource === 'search' && idSegment === undefined && req.method === 'GET') return search(ctx, query, user);
+    if (resource === 'pages' && idSegment === undefined && req.method === 'GET') return listPages(ctx);
+    if (resource === 'pages' && idSegment !== undefined && sub === undefined && req.method === 'GET') return getPage(ctx, idSegment);
+    if (resource === 'pages' && idSegment !== undefined && sub === 'comments' && req.method === 'POST') return postComment(ctx, req, user, idSegment);
+    return json(404, { error: '見つかりません' });
+  }
   if (resource !== 'memos' || sub !== undefined) return json(404, { error: '見つかりません' });
 
   if (idSegment === undefined) {

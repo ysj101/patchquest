@@ -3,6 +3,7 @@ import { memoApp } from '../../apps/memo';
 import type { Exchange, TestCase } from '../../platform/contract';
 import { Evaluator, configHash, detectReproduction, groupOf, isCurrent, type EvaluationSubject } from '../../platform/evaluator/evaluator';
 import { EngineRuntime } from '../support/engine-runtime';
+import { requestOnly } from '../support/request-only';
 import { testPack } from '../support/test-pack';
 
 const memoSubject = (seed: number): EvaluationSubject => ({
@@ -20,9 +21,8 @@ const packSubject = (implementations: Record<string, string>): EvaluationSubject
 });
 
 const { manifest } = testPack;
-/** Node では画面を描画しないため、描画を含むテストは除く（実ブラウザの E2E で確かめる） */
-const memoTests = memoApp.tests.filter((t) => t.steps.every((s) => s.kind === 'request'));
-const packTests: TestCase[] = manifest.tests.cases.filter((t) => t.steps.every((s) => s.kind === 'request'));
+const memoTests = requestOnly(memoApp.tests);
+const packTests: TestCase[] = requestOnly(manifest.tests.cases);
 
 describe('Evaluator', () => {
   it('基準アプリの全テストを検証インスタンスで実行して合格する（A01）', async () => {

@@ -8,7 +8,10 @@ export type ReadResult = { status: 'ok'; memo: Memo } | { status: 'unauthenticat
 /** ID 指定でメモを取得する処理（認可を含む）。契約 1 */
 export type ReadMemo = (ctx: ServerContext, request: { id: number; user: User | null }) => ReadResult;
 
-/** 自分のメモを探す検索クエリを組み立てる処理。教材ロジックが実行し、クエリ形・バインド値・返却行を記録する。契約 1 */
+/**
+ * 自分のメモを探す検索クエリを組み立てる処理。教材ロジックが実行し、クエリ形・バインド値・返却行の所有者を記録する。
+ * クエリは列 id・ownerId・title を返す。契約 1
+ */
 export type BuildSearchQuery = (input: { userId: number; q: string }) => { sql: string; bind: (string | number)[] };
 
 /** 共有ページのコメント 1 件を描画する処理（画面側）。契約 1 */

@@ -123,23 +123,29 @@ async function page(root: HTMLElement, ctx: ViewContext, id: string): Promise<vo
     comments: { id: number; authorName: string; body: string }[];
   };
   const renderComment = ctx.hook<RenderComment>('comment.render');
-  const items = comments.map((c) => {
+  const commentItem = (c: { authorName: string; body: string }) => {
     const body = el('span', { className: 'comment-body' });
     renderComment(body, { body: c.body });
     return el('li', { className: 'comment' }, el('strong', {}, c.authorName), body);
-  });
+  };
+  const count = el('h3', {}, `コメント（${comments.length} 件）`);
+  const list = el('ul', { className: 'comments' }, ...comments.map(commentItem));
   const input = el('textarea', { name: 'comment', maxLength: COMMENT_MAX_LENGTH, rows: 3 });
   const message = el('p', { className: 'error', role: 'alert' });
   const post = el('button', { type: 'button' }, 'コメントする');
   post.addEventListener('click', async () => {
     const created = await ctx.request({ method: 'POST', path: `/api/pages/${id}/comments`, body: { body: input.value } });
-    if (created.status === 201) ctx.navigate(`/pages/${id}`);
-    else message.textContent = errorMessage(created);
+    if (created.status !== 201) return void (message.textContent = errorMessage(created));
+    // 投稿したコメントは応答に含まれるので、ページを取り直さずに追加する
+    list.append(commentItem((created.body as { comment: { authorName: string; body: string } }).comment));
+    count.textContent = `コメント（${list.children.length} 件）`;
+    input.value = '';
+    message.textContent = '';
   });
   root.append(
     el('article', { className: 'memo' }, el('h2', {}, p.title), el('p', { className: 'memo-body' }, p.body)),
-    el('h3', {}, `コメント（${comments.length} 件）`),
-    el('ul', { className: 'comments' }, ...items),
+    count,
+    list,
     el('label', {}, 'コメントを書く', input),
     el('div', { className: 'row' }, post),
     message,
