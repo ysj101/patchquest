@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:e2e": "node scripts/build.mjs --test && playwright test",
     "serve": "python3 -m http.server 8000 --bind 127.0.0.1 --directory dist",
-    "verify:packs": "node scripts/build.mjs --test && playwright test tests/e2e/pack-verification.spec.ts --project chrome"
+    "verify:packs": "node scripts/build.mjs --test && playwright test tests/e2e/pack-verification.spec.ts --project chrome",
+    "package": "node scripts/package.mjs",
+    "test:dist": "node scripts/test-dist.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
