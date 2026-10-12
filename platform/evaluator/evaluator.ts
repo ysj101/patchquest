@@ -24,7 +24,7 @@ export interface EvaluationSubject {
 }
 
 export interface EvaluatorLimits {
-  /** テスト 1 件の上限（初期案 5 秒、spec §14） */
+  /** テスト 1 件（全手順の合計）の上限（初期案 5 秒、spec §14） */
   testTimeoutMs: number;
   /** スイート全体の上限（初期案 60 秒） */
   suiteTimeoutMs: number;
@@ -82,8 +82,8 @@ function invokerFor(runtime: RuntimeAdapter, runId: string, timeoutMs: number): 
 
 export class Evaluator {
   private runtime: RuntimeAdapter | undefined;
-  /** いま検証インスタンスが準備されている構成 */
-  private preparedFor: string | undefined;
+  /** いま検証インスタンスが準備されている構成。呼び出し側は 1 回の検証の間、同じオブジェクトを渡す */
+  private preparedFor: EvaluationSubject | undefined;
   private generation = 0;
   /** 検証インスタンスは 1 つなので、実行は 1 件ずつ順に行う */
   private tail: Promise<unknown> = Promise.resolve();
@@ -168,6 +168,7 @@ export class Evaluator {
     try {
       const runtime = await this.ensureRuntime(subject);
       const { refs } = await runtime.reset();
+      // 呼び出しごとの上限もテスト全体の上限と同じにし、テスト全体はさらに withTimeout で抑える
       return await this.withTimeout(runSteps(steps, refs, invokerFor(runtime, runId, this.limits.testTimeoutMs)), runtime);
     } catch (e) {
       if (!(e instanceof RuntimeError)) throw e;
@@ -181,8 +182,9 @@ export class Evaluator {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
-        void runtime.stop();
+        // 先に結果を確定させてから、実行中の処理を止める（停止による stopped を結果にしない）
         reject(new RuntimeError('timeout', `テストが ${this.limits.testTimeoutMs / 1000} 秒以内に終わりませんでした`));
+        void runtime.stop();
       }, this.limits.testTimeoutMs);
     });
     try {
@@ -197,10 +199,9 @@ export class Evaluator {
       this.runtime = this.createRuntime();
       await this.runtime.start();
     }
-    const key = JSON.stringify(subject);
-    if (this.preparedFor !== key) {
+    if (this.preparedFor !== subject) {
       await this.runtime.prepare(subject);
-      this.preparedFor = key;
+      this.preparedFor = subject;
     }
     return this.runtime;
   }

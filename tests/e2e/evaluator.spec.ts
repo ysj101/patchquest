@@ -19,7 +19,7 @@ async function runSuite(page: Page, subject: EvaluationSubject, tests: TestCase[
     return window.evaluatorTest.runSuite(a.subject, list, a.target, 'run-e2e');
   }, JSON.stringify({ subject, tests, target }));
   if (!result.ok) throw new Error(result.message);
-  return result.report;
+  return result.value;
 }
 
 const failed = (outcomes: TestOutcome[]) => outcomes.filter((o) => !o.passed);
