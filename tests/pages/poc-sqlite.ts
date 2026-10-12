@@ -1,4 +1,4 @@
-// PoC: Worker上のSQLite WASM（Issue #2）。E2E から window.poc を呼び出して計測する。
+// PoC: Worker上のSQLite WASM（Issue #2）。E2E から window.pocSqlite を呼び出して計測する。
 import type { PocRequest } from './poc-sqlite.worker';
 
 class TimeoutError extends Error {}
@@ -68,8 +68,8 @@ const poc = {
 
 declare global {
   interface Window {
-    poc: typeof poc;
+    pocSqlite: typeof poc;
   }
 }
-window.poc = poc;
+window.pocSqlite = poc;
 document.body.dataset.ready = 'true';
