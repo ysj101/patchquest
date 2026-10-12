@@ -1,7 +1,8 @@
 // プラットフォームと実行環境（RuntimeAdapter）の契約（spec §11.2）
 import type { JsonPrimitive, JsonValue } from './json';
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE'] as const;
+export type HttpMethod = (typeof HTTP_METHODS)[number];
 /** 交換点の ID。例: 'memo.read.authorize' */
 export type HookId = string;
 /** 実装の ID。パック内で一意になるよう、パック ID を接頭辞に付ける。例: 'idor/no-owner-check' */
@@ -13,8 +14,8 @@ export type SessionToken = string;
 export const ANONYMOUS: ActorKey = 'anonymous';
 
 /** 実行環境が提供する機能。パックは必要な機能を宣言する */
-export type Capability = 'sqlite' | 'dom-preview';
-export const CAPABILITIES: readonly Capability[] = ['sqlite', 'dom-preview'];
+export const CAPABILITIES = ['sqlite', 'dom-preview'] as const;
+export type Capability = (typeof CAPABILITIES)[number];
 
 /** server は Worker 内の教材ロジック、view は隔離 iframe 内の表示で実行される */
 export type HookRealm = 'server' | 'view';

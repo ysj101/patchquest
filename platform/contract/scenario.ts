@@ -57,8 +57,11 @@ export type Step =
     }
   | { kind: 'render'; as: ActorKey; view: ViewTarget; events?: EventExpectation[] };
 
+export const STEP_KINDS: readonly Step['kind'][] = ['request', 'render'];
+
 /** security のうち、パックの target に含まれないものは回帰テストとして扱う */
-export type TestCategory = 'normal' | 'security';
+export const TEST_CATEGORIES = ['normal', 'security'] as const;
+export type TestCategory = (typeof TEST_CATEGORIES)[number];
 
 export interface TestCase {
   id: string;

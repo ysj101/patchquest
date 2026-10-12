@@ -1,6 +1,16 @@
 // 課題パックの検証。カタログ読み込み時とテストで実行し、作者の記述ミスを開始前に止める
-import { MANIFEST_SCHEMA_VERSION, type MissionPack } from './manifest';
-import { ANONYMOUS, CAPABILITIES, type AppDescriptor, type ImplementationRegistry } from './runtime';
+import {
+  DEFENSE_EXPECTATIONS,
+  DIFF_LANGUAGES,
+  FIELD_INPUTS,
+  GUIDE_ANCHORS,
+  GUIDE_MILESTONES,
+  MANIFEST_SCHEMA_VERSION,
+  PACK_KINDS,
+  type MissionPack,
+} from './manifest';
+import { ANONYMOUS, CAPABILITIES, HTTP_METHODS, type AppDescriptor, type ImplementationRegistry } from './runtime';
+import { STEP_KINDS, TEST_CATEGORIES } from './scenario';
 import { isVersion, isVersionRange, satisfies } from './version';
 
 export interface ValidationContext {
@@ -13,16 +23,6 @@ export interface ValidationContext {
 }
 
 const PACK_ID = /^[a-z][a-z0-9-]*$/;
-const METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
-const ANCHORS = [
-  'mission-list', 'preflight', 'story', 'user-switcher', 'app-preview', 'request-editor', 'investigation-log',
-  'hints', 'defense-panel', 'verify', 'results', 'debrief', 'reset', 'progress-export',
-];
-const MILESTONES = [
-  'started', 'user-switched', 'request-sent', 'reproduced', 'hint-opened', 'defense-applied',
-  'verify-failed', 'verify-passed', 'understood', 'reset', 'exported',
-];
-
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -89,7 +89,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   if (m.schemaVersion !== MANIFEST_SCHEMA_VERSION) c.fail('schemaVersion', `${MANIFEST_SCHEMA_VERSION} が必要です`);
   if (!PACK_ID.test(c.text('id', m.id))) c.fail('id', '小文字・数字・ハイフンで、英字から始めてください');
   if (!isVersion(c.text('version', m.version))) c.fail('version', 'x.y.z 形式が必要です');
-  c.oneOf('kind', m.kind, ['mission', 'tutorial']);
+  c.oneOf('kind', m.kind, PACK_KINDS);
   c.text('title', m.title);
   c.text('summary', m.summary);
   c.text('solution', m.solution);
@@ -142,12 +142,12 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   const checkSteps = (path: string, v: unknown) =>
     c.list(path, v, true).forEach((raw, i) => {
       const step = c.obj(`${path}[${i}]`, raw);
-      c.oneOf(`${path}[${i}].kind`, step.kind, ['request', 'render']);
+      c.oneOf(`${path}[${i}].kind`, step.kind, STEP_KINDS);
       const actor = c.text(`${path}[${i}].as`, step.as);
       if (actors && !actors.has(actor)) c.fail(`${path}[${i}].as`, `未定義の利用者「${actor}」です`);
       if (step.kind === 'request') {
         const req = c.obj(`${path}[${i}].request`, step.request);
-        c.oneOf(`${path}[${i}].request.method`, req.method, METHODS);
+        c.oneOf(`${path}[${i}].request.method`, req.method, HTTP_METHODS);
         c.text(`${path}[${i}].request.path`, req.path);
       } else {
         c.text(`${path}[${i}].view.route`, c.obj(`${path}[${i}].view`, step.view).route);
@@ -187,12 +187,12 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     c.text(`${at}.label`, a.label);
     c.text(`${at}.description`, a.description);
     const req = c.obj(`${at}.request`, a.request);
-    c.oneOf(`${at}.request.method`, req.method, METHODS);
+    c.oneOf(`${at}.request.method`, req.method, HTTP_METHODS);
     c.text(`${at}.request.path`, req.path);
     if (typeof a.editable !== 'boolean') c.fail(`${at}.editable`, '真偽値が必要です');
     c.records(`${at}.fields`, a.fields, false, (f, fat) => {
       c.text(`${fat}.label`, f.label);
-      c.oneOf(`${fat}.input`, f.input, ['text', 'textarea', 'number', 'select']);
+      c.oneOf(`${fat}.input`, f.input, FIELD_INPUTS);
       if (f.input === 'select') c.list(`${fat}.options`, f.options, true);
     }, 'name');
   });
@@ -204,17 +204,17 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     checkChanges(`${at}.apply`, d.apply);
     const diff = c.obj(`${at}.referenceDiff`, d.referenceDiff);
     c.text(`${at}.referenceDiff.file`, diff.file);
-    c.oneOf(`${at}.referenceDiff.language`, diff.language, ['ts', 'sql', 'html']);
+    c.oneOf(`${at}.referenceDiff.language`, diff.language, DIFF_LANGUAGES);
     c.text(`${at}.referenceDiff.before`, diff.before);
     c.text(`${at}.referenceDiff.after`, diff.after);
-    c.oneOf(`${at}.expected`, d.expected, ['secure', 'insufficient', 'breaks-normal']);
+    c.oneOf(`${at}.expected`, d.expected, DEFENSE_EXPECTATIONS);
     expectations.push(d.expected);
   });
   if (!expectations.includes('secure')) c.fail('defenses', "expected が 'secure' の対策が1つ以上必要です");
 
   const tests = c.obj('tests', m.tests);
   const cases = c.records('tests.cases', tests.cases, false, (t, at) => {
-    c.oneOf(`${at}.category`, t.category, ['normal', 'security']);
+    c.oneOf(`${at}.category`, t.category, TEST_CATEGORIES);
     c.text(`${at}.title`, t.title);
     checkSteps(`${at}.steps`, t.steps);
   });
@@ -252,8 +252,8 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     c.records('guide', m.guide, m.kind === 'tutorial', (g, at) => {
       c.text(`${at}.title`, g.title);
       c.text(`${at}.body`, g.body);
-      c.oneOf(`${at}.anchor`, g.anchor, ANCHORS);
-      c.oneOf(`${at}.until`, g.until, MILESTONES);
+      c.oneOf(`${at}.anchor`, g.anchor, GUIDE_ANCHORS);
+      c.oneOf(`${at}.until`, g.until, GUIDE_MILESTONES);
     });
   }
 

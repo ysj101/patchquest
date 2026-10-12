@@ -5,7 +5,8 @@ import type { ProbeDef, RequestTemplate, TestCase } from './scenario';
 export const MANIFEST_SCHEMA_VERSION = 1;
 
 /** 通常の課題か、プラットフォームの使い方を練習するオンボーディングか */
-export type PackKind = 'mission' | 'tutorial';
+export const PACK_KINDS = ['mission', 'tutorial'] as const;
+export type PackKind = (typeof PACK_KINDS)[number];
 
 export interface MissionManifest {
   schemaVersion: typeof MANIFEST_SCHEMA_VERSION;
@@ -87,10 +88,12 @@ export interface MutationRecipeDef {
   revert: 'baseline';
 }
 
+export const FIELD_INPUTS = ['text', 'textarea', 'number', 'select'] as const;
+
 export interface FieldDef {
   name: string;
   label: string;
-  input: 'text' | 'textarea' | 'number' | 'select';
+  input: (typeof FIELD_INPUTS)[number];
   options?: { value: string; label: string }[];
   default?: string;
   help?: string;
@@ -111,12 +114,17 @@ export interface ActionDef {
 }
 
 /** 閲覧専用の参考コード差分 */
+export const DIFF_LANGUAGES = ['ts', 'sql', 'html'] as const;
+
 export interface ReferenceDiff {
   file: string;
-  language: 'ts' | 'sql' | 'html';
+  language: (typeof DIFF_LANGUAGES)[number];
   before: string;
   after: string;
 }
+
+/** secure: 攻撃を防ぎ正常系も通る / insufficient: 攻撃が成立したまま / breaks-normal: 正常系が壊れる */
+export const DEFENSE_EXPECTATIONS = ['secure', 'insufficient', 'breaks-normal'] as const;
 
 export interface DefenseDef {
   id: string;
@@ -125,7 +133,7 @@ export interface DefenseDef {
   apply: ImplementationChange[];
   referenceDiff: ReferenceDiff;
   /** パック出荷前検証で確かめる期待結果。演習の採点には使わない（spec §11.2） */
-  expected: 'secure' | 'insufficient' | 'breaks-normal';
+  expected: (typeof DEFENSE_EXPECTATIONS)[number];
 }
 
 /** 1: 着眼点、2: 調査方法、3: 修正方針（spec §9） */
@@ -149,35 +157,39 @@ export interface DebriefDef {
 }
 
 /** 操作ガイドを表示する画面上の位置。コアUIはこのデータだけで表示を切り替える */
-export type GuideAnchor =
-  | 'mission-list'
-  | 'preflight'
-  | 'story'
-  | 'user-switcher'
-  | 'app-preview'
-  | 'request-editor'
-  | 'investigation-log'
-  | 'hints'
-  | 'defense-panel'
-  | 'verify'
-  | 'results'
-  | 'debrief'
-  | 'reset'
-  | 'progress-export';
+export const GUIDE_ANCHORS = [
+  'mission-list',
+  'preflight',
+  'story',
+  'user-switcher',
+  'app-preview',
+  'request-editor',
+  'investigation-log',
+  'hints',
+  'defense-panel',
+  'verify',
+  'results',
+  'debrief',
+  'reset',
+  'progress-export',
+] as const;
+export type GuideAnchor = (typeof GUIDE_ANCHORS)[number];
 
 /** ガイドの各ステップを完了とみなす出来事 */
-export type GuideMilestone =
-  | 'started'
-  | 'user-switched'
-  | 'request-sent'
-  | 'reproduced'
-  | 'hint-opened'
-  | 'defense-applied'
-  | 'verify-failed'
-  | 'verify-passed'
-  | 'understood'
-  | 'reset'
-  | 'exported';
+export const GUIDE_MILESTONES = [
+  'started',
+  'user-switched',
+  'request-sent',
+  'reproduced',
+  'hint-opened',
+  'defense-applied',
+  'verify-failed',
+  'verify-passed',
+  'understood',
+  'reset',
+  'exported',
+] as const;
+export type GuideMilestone = (typeof GUIDE_MILESTONES)[number];
 
 export interface GuideStep {
   id: string;
