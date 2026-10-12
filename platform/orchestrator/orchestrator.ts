@@ -230,7 +230,7 @@ export class Orchestrator {
     if (report.passed) {
       attempt.badges.defense = { achieved: true, runId: report.runId, configHash: report.configHash, at: this.now().toISOString() };
     }
-    this.transition(this.allBadges() ? 'Passed' : 'Repairing');
+    this.transition(report.passed && this.allBadges() ? 'Passed' : 'Repairing');
     this.emit();
     return report;
   }
@@ -402,9 +402,13 @@ export class Orchestrator {
     });
   }
 
+  /**
+   * 再現・防御・理解がそろい、防御は現在の構成で合格していること。
+   * 合格後に対策を変えたら、過去の合格を現在の合格として扱わない（spec §5.3）
+   */
   private allBadges(): boolean {
-    const { badges } = this.require().snapshot.attempt;
-    return badges.reproduction.achieved && badges.defense.achieved && badges.understanding.achieved;
+    const { badges, configHash } = this.require().snapshot.attempt;
+    return badges.reproduction.achieved && badges.defense.achieved && badges.defense.configHash === configHash && badges.understanding.achieved;
   }
 
   private transition(to: ExerciseState): void {

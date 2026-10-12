@@ -150,6 +150,27 @@ describe('Orchestrator', () => {
     expect(snapshot.attempt.state).toBe('Passed');
   });
 
+  it('合格後に対策を変えたら、再検証で合格するまで Passed に戻らない', async () => {
+    const { orchestrator } = setup();
+    const snapshot = await orchestrator.start('test-pack');
+    orchestrator.onExchange(leak(orchestrator.newRunId(), snapshot.refs));
+    await orchestrator.applyDefense('owner-only');
+    await orchestrator.verify();
+    orchestrator.answerTransfer({ q1: 'owner' });
+    expect(snapshot.attempt.state).toBe('Passed');
+
+    await orchestrator.applyDefense(null);
+    expect(snapshot.attempt.state).toBe('Repairing');
+    orchestrator.answerTransfer({ q1: 'owner' });
+    expect(snapshot.attempt.state).toBe('Repairing');
+    expect((await orchestrator.verify())?.passed).toBe(false);
+    expect(snapshot.attempt.state).toBe('Repairing');
+
+    await orchestrator.applyDefense('owner-only');
+    expect((await orchestrator.verify())?.passed).toBe(true);
+    expect(snapshot.attempt.state).toBe('Passed');
+  });
+
   it('すべて拒否する対策は正常系の失敗で合格しない（A05）', async () => {
     const { orchestrator } = setup();
     const snapshot = await orchestrator.start('test-pack');
