@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <!-- sandbox だけで何が守られるかを確かめるため、任意のインラインスクリプトを許可する（テスト専用）。
+         通信は default-src 'none' で禁止したまま -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'" />
+    <title>PoC: preview (loose)</title>
+  </head>
+  <body>
+    <ul id="comments"></ul>
+    <!--inline-script:poc-xss-frame.inline.ts-->
+  </body>
+</html>
