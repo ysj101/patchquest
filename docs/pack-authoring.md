@@ -90,6 +90,40 @@
 - `transferCheck`：演習と異なる利用者・データ・入力の状況で、原因と有効な対策を選ばせる。自由記述は採点しない。
 - `debrief`：原因・対策の理由・持ち帰ってほしい要点。
 - `guide`：`kind: 'tutorial'` のパックで必須の操作ガイド。`anchor`（画面上の位置）と `until`（完了とみなす出来事）のデータだけで表示が切り替わる。
+  - 表示するのは、`until` の出来事がまだ起きておらず、飛ばしてもいない最初のステップ。プレイヤーはステップを飛ばせる。
+  - `anchor` の場所は画面上で赤の破線で囲む。「場所を表示」を押すと、その場所が隠れたタブにあればタブを開いて移動する。
+  - ガイドは課題一覧へ戻っても残るため、最後のステップに一覧の操作（`progress-export`）を置ける。
+
+| `anchor` | 画面上の位置 |
+| - | - |
+| `mission-list` | 課題一覧 |
+| `preflight` | 開始前チェック |
+| `story` | 状況（問い合わせ・目標） |
+| `user-switcher` | 表示する利用者の切り替え |
+| `app-preview` | 教材アプリの画面 |
+| `actions` | 調査：定型の操作 |
+| `request-editor` | 調査：リクエストの編集 |
+| `investigation-log` | 調査：観測ログ |
+| `hints` | ヒント |
+| `defense-panel` | 対策の選択と適用 |
+| `verify` | 検証の実行 |
+| `results` | 検証結果 |
+| `debrief` | 振り返り・理解確認 |
+| `reset` | 初期状態へ戻す |
+| `progress-export` | 課題一覧：進捗の書き出し・読み込み |
+
+| `until` | 完了とみなす出来事 |
+| - | - |
+| `started` | 開始前チェックを終えて演習を始めた |
+| `user-switched` | 表示する利用者を切り替えた |
+| `request-sent` | 調査パネルからリクエストを送った |
+| `reproduced` | 再現の達成印を得た |
+| `hint-opened` | ヒントを開いた |
+| `defense-applied` | 対策を適用した |
+| `verify-failed` / `verify-passed` | 検証して不合格／合格だった |
+| `understood` | 理解の達成印を得た |
+| `reset` | 初期状態へ戻した |
+| `exported` | 進捗を書き出した |
 
 ## 7. パックを追加する手順
 

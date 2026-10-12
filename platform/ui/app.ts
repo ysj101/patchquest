@@ -9,6 +9,7 @@ import { confirmDialog } from './components';
 import { announce, fill, h } from './dom';
 import { DebriefPanel, HintsPanel } from './debrief';
 import { ExerciseView } from './exercise';
+import { GuidePanel } from './guide';
 import { missionList, type MissionEntry } from './mission-list';
 import { PreflightView } from './preflight';
 import { RepairPanel } from './repair';
@@ -24,6 +25,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const main = h('main', { id: 'main' });
 
   let orchestrator: Orchestrator;
+  /** 練習用パックの操作ガイド。演習が始まるたびにそのパックのガイドで始め直し、課題一覧へ戻っても表示し続ける */
+  const guide = new GuidePanel((message) => announce(live, message));
   const preflightView = new PreflightView({
     begin: () => void beginExercise(),
     retry: () => void orchestrator.retryPreflight(),
@@ -53,7 +56,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const exerciseView = new ExerciseView(
     {
       back: () => void showList(),
-      switchUser: (actor) => void showViewer(actor),
+      switchUser: (actor) => {
+        guide.reach('user-switched');
+        void showViewer(actor);
+      },
       reloadView: () => void showViewer(viewer),
       send: (request) => send(request),
     },
@@ -88,7 +94,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     main,
     live,
   );
-  fill(main, listView, preflightView.element, exerciseView.element);
+  fill(main, guide.element, listView, preflightView.element, exerciseView.element);
 
   let screen: Screen = 'list';
   function show(next: Screen): void {
@@ -99,6 +105,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     listView.hidden = next !== 'list';
     preflightView.element.hidden = next !== 'preflight';
     exerciseView.element.hidden = next !== 'exercise';
+    guide.refresh();
     if (next === 'preflight') preflightView.focus();
     if (next === 'exercise') exerciseView.focus();
   }
@@ -110,6 +117,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     const { attempt } = snapshot;
     if (screen === 'preflight') preflightView.update(snapshot);
     if (screen === 'exercise') updateExercise(snapshot);
+    guide.sync(snapshot);
     if (!attempt.fixtureHash || saveScheduled) return;
     saveScheduled = true;
     queueMicrotask(() => {
@@ -185,6 +193,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     });
     if (!ok) return;
     await orchestrator.resetToInitial();
+    guide.reach('reset');
     sessions.clear();
     await showViewer(viewer);
     announce(live, '初期状態へ戻しました');
@@ -222,6 +231,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null);
     repair.setup(snapshot);
     show('exercise');
+    guide.reach('started');
     await showViewer(viewer);
   }
 
@@ -239,6 +249,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       const session = await sessionFor(viewer, runId);
       const { response, events } = await exercise.invoke({ kind: 'request', session, request }, { runId });
       observe({ runId, actor: viewer, kind: 'request', request, response, events });
+      guide.reach('request-sent');
       return null;
     } catch (e) {
       if (e instanceof RuntimeError && e.code === 'input-too-large') return '入力が大きすぎます（1 件 4KB まで）。内容を短くしてください。';
@@ -256,6 +267,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     link.remove();
     URL.revokeObjectURL(url);
     announce(live, '進捗を書き出しました');
+    guide.reach('exported');
   }
 
   async function importProgress(file: File): Promise<void> {

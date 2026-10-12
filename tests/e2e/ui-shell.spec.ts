@@ -31,7 +31,7 @@ test('キーボードだけで課題一覧から開始前チェックを経て�
   await expect(page.locator('.check .status-passed')).toHaveCount(4);
   await page.keyboard.press('Enter');
 
-  await expect(page.getByRole('heading', { level: 1, name: '検証用パック' })).toBeFocused();
+  await expect(page.locator('#exercise-title')).toBeFocused();
   await expect(page.getByText('学習用に脆弱性を注入した架空のサービスです。', { exact: true })).toBeVisible();
   await expect(page.getByRole('list', { name: '達成印' })).toContainText('再現：未達成');
 });

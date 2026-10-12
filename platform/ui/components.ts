@@ -97,6 +97,12 @@ export function confirmDialog(options: { title: string; body: string; confirm: s
   });
 }
 
+/**
+ * 隠れた中身を表示するよう求める出来事。中の要素から送ると泡立ち、REVEALABLE_ATTR を付けた入れ物（タブのパネルなど）が自分を表示する
+ */
+export const REVEAL_EVENT = 'pq:reveal';
+export const REVEALABLE_ATTR = 'data-revealable';
+
 export interface TabSpec {
   id: string;
   label: string;
@@ -130,6 +136,8 @@ export function tabs(name: string, specs: TabSpec[]): { element: HTMLElement; se
     spec.panel.setAttribute('aria-labelledby', `tab-${spec.id}`);
     spec.panel.tabIndex = 0;
     spec.panel.hidden = i !== 0;
+    spec.panel.setAttribute(REVEALABLE_ATTR, '');
+    spec.panel.addEventListener(REVEAL_EVENT, () => select(spec.id));
     return spec.panel;
   });
   function select(id: string, focus = false): void {

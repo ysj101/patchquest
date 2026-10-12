@@ -3,8 +3,8 @@
 import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
-import type { RenderComment } from './hooks';
-import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH, TITLE_MAX_LENGTH } from './model';
+import type { PrepareTitleInput, RenderComment } from './hooks';
+import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
 
 /** 画面内の移動はフレームを遷移させず、アプリ内で描画し直す */
 function linkButton(label: string, onClick: () => void): HTMLButtonElement {
@@ -83,7 +83,8 @@ async function form(root: HTMLElement, ctx: ViewContext, id?: string): Promise<v
     initial = (res.body as { memo: typeof initial }).memo;
   }
   // 入力欄の文字数制限は画面だけの制限。教材ロジック側でも検証する
-  const title = el('input', { name: 'title', value: initial.title, maxLength: TITLE_MAX_LENGTH, required: true });
+  const title = el('input', { name: 'title', value: initial.title, required: true });
+  ctx.hook<PrepareTitleInput>('memo.title.input')(title);
   const body = el('textarea', { name: 'body', value: initial.body, maxLength: BODY_MAX_LENGTH, rows: 5 });
   const message = el('p', { className: 'error', role: 'alert' });
   // sandbox ではフォーム送信が禁止されているため、submit ではなくボタンのクリックで保存する

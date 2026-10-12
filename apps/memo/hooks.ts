@@ -1,7 +1,7 @@
 // メモアプリが公開する交換点（フック）と、その安全な基準実装
 import type { HookDescriptor, ImplementationRegistry } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
-import { emitDecision, findMemo, type Memo, type User } from './model';
+import { TITLE_MAX_LENGTH, emitDecision, findMemo, lengthError, type Memo, type User } from './model';
 
 export type ReadResult = { status: 'ok'; memo: Memo } | { status: 'unauthenticated' | 'not-found' | 'forbidden' };
 
@@ -16,6 +16,15 @@ export type BuildSearchQuery = (input: { userId: number; q: string }) => { sql: 
 
 /** 共有ページのコメント 1 件を描画する処理（画面側）。契約 1 */
 export type RenderComment = (el: HTMLElement, comment: { body: string }) => void;
+
+/**
+ * 保存するメモのタイトル（空でない文字列）を検証する処理。問題があれば利用者に示す説明を返す。
+ * 型と未入力の検査は教材ロジックが先に行う。契約 1
+ */
+export type ValidateTitle = (title: string) => { ok: true } | { ok: false; message: string };
+
+/** メモの作成・編集画面のタイトル入力欄を整える処理（画面側）。契約 1 */
+export type PrepareTitleInput = (input: HTMLInputElement) => void;
 
 export const HOOKS: HookDescriptor[] = [
   {
@@ -38,6 +47,20 @@ export const HOOKS: HookDescriptor[] = [
     contract: 1,
     baseline: 'memo/comment-text',
     description: '共有ページのコメントを画面に描画する処理',
+  },
+  {
+    id: 'memo.title.validate',
+    realm: 'server',
+    contract: 1,
+    baseline: 'memo/title-max-length',
+    description: '保存するメモのタイトルを検証する処理（文字数の上限）',
+  },
+  {
+    id: 'memo.title.input',
+    realm: 'view',
+    contract: 1,
+    baseline: 'memo/title-input-max-length',
+    description: 'メモの作成・編集画面のタイトル入力欄を整える処理（文字数の上限）',
   },
 ];
 
@@ -73,8 +96,21 @@ const commentText: RenderComment = (el, comment) => {
   el.textContent = comment.body;
 };
 
+/** タイトルは上限の文字数まで */
+const titleMaxLength: ValidateTitle = (title) => {
+  const message = lengthError('タイトル', title, TITLE_MAX_LENGTH);
+  return message ? { ok: false, message } : { ok: true };
+};
+
+/** 入力欄でも上限を示す。画面だけの制限なので、保存時の検証の代わりにはならない */
+const titleInputMaxLength: PrepareTitleInput = (input) => {
+  input.maxLength = TITLE_MAX_LENGTH;
+};
+
 export const BASELINE: ImplementationRegistry = {
   'memo/read-owner-check': { hook: 'memo.read.authorize', run: readOwnerCheck },
   'memo/search-parameterized': { hook: 'memo.search.query', run: searchParameterized },
   'memo/comment-text': { hook: 'comment.render', run: commentText },
+  'memo/title-max-length': { hook: 'memo.title.validate', run: titleMaxLength },
+  'memo/title-input-max-length': { hook: 'memo.title.input', run: titleInputMaxLength },
 };

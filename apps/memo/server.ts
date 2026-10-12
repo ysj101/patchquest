@@ -2,16 +2,16 @@
 // 主体はセッションから解決し、リクエストの userId・ownerId などは認証済みの情報として扱わない
 import type { AppRequest, AppResponse } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
-import type { BuildSearchQuery, ReadMemo } from './hooks';
+import type { BuildSearchQuery, ReadMemo, ValidateTitle } from './hooks';
 import { json } from '../shared/http';
 import {
   BODY_MAX_LENGTH,
   COMMENT_MAX_LENGTH,
   QUERY_MAX_LENGTH,
-  TITLE_MAX_LENGTH,
   currentUser,
   emitDecision,
   findMemo,
+  lengthError,
   memoJson,
   type Memo,
   type User,
@@ -29,18 +29,21 @@ function invalid(ctx: ServerContext, field: string, message: string): AppRespons
   return json(400, { error: message, field });
 }
 
-/** 文字列の入力を検証する。違反があればその応答を返す */
-function text(ctx: ServerContext, field: string, value: unknown, label: string, max: number, required = true): string | AppResponse {
+/** 文字列の入力を検証する。max を省くと文字数は見ない。違反があればその応答を返す */
+function text(ctx: ServerContext, field: string, value: unknown, label: string, max?: number, required = true): string | AppResponse {
   if (typeof value !== 'string' || (required && value.trim() === '')) return invalid(ctx, field, `${label}を入力してください`);
-  if ([...value].length > max) return invalid(ctx, field, `${label}は ${max} 文字以内にしてください`);
-  return value;
+  const tooLong = max === undefined ? null : lengthError(label, value, max);
+  return tooLong ? invalid(ctx, field, tooLong) : value;
 }
 
 /** タイトルと本文の検証。違反があればその応答を返す */
 function validate(ctx: ServerContext, body: AppRequest['body']): { title: string; body: string } | AppResponse {
   const input = (typeof body === 'object' && body !== null && !Array.isArray(body) ? body : {}) as Record<string, unknown>;
-  const title = text(ctx, 'title', input.title, 'タイトル', TITLE_MAX_LENGTH);
+  // タイトルの文字数の検証は交換点（memo.title.validate）が受け持つ
+  const title = text(ctx, 'title', input.title, 'タイトル');
   if (typeof title !== 'string') return title;
+  const checked = ctx.hook<ValidateTitle>('memo.title.validate')(title);
+  if (!checked.ok) return invalid(ctx, 'title', checked.message);
   const memoBody = text(ctx, 'body', input.body, '本文', BODY_MAX_LENGTH, false);
   if (typeof memoBody !== 'string') return memoBody;
   return { title, body: memoBody };

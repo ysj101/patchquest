@@ -21,6 +21,11 @@ export const BODY_MAX_LENGTH = 1000;
 export const COMMENT_MAX_LENGTH = 500;
 export const QUERY_MAX_LENGTH = 100;
 
+/** 文字数の上限を超えていれば、利用者に示す説明を返す。文字数はコードポイントで数える */
+export function lengthError(label: string, value: string, max: number): string | null {
+  return [...value].length > max ? `${label}は ${max} 文字以内にしてください` : null;
+}
+
 /** セッションから解決した主体（利用者キー）を、利用者の行へ対応付ける */
 export function currentUser(ctx: ServerContext): User | null {
   if (!ctx.principal) return null;
