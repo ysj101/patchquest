@@ -26,6 +26,12 @@ export type ValidateTitle = (title: string) => { ok: true } | { ok: false; messa
 /** メモの作成・編集画面のタイトル入力欄を整える処理（画面側）。契約 1 */
 export type PrepareTitleInput = (input: HTMLInputElement) => void;
 
+/**
+ * メモの詳細画面に出す「前のメモ」「次のメモ」の移動先を決める処理（画面側）。移動先がなければ null。
+ * ownIds は閲覧者自身のメモの ID。画面のリンクを決めるだけで、取得してよいかの判断（認可）はしない。契約 1
+ */
+export type PickNeighbors = (input: { id: number; ownIds: number[] }) => { prev: number | null; next: number | null };
+
 export const HOOKS: HookDescriptor[] = [
   {
     id: 'memo.read.authorize',
@@ -61,6 +67,13 @@ export const HOOKS: HookDescriptor[] = [
     contract: 1,
     baseline: 'memo/title-input-max-length',
     description: 'メモの作成・編集画面のタイトル入力欄を整える処理（文字数の上限）',
+  },
+  {
+    id: 'memo.detail.neighbors',
+    realm: 'view',
+    contract: 1,
+    baseline: 'memo/neighbors-own',
+    description: 'メモの詳細画面の「前のメモ」「次のメモ」の移動先を決める処理',
   },
 ];
 
@@ -107,10 +120,18 @@ const titleInputMaxLength: PrepareTitleInput = (input) => {
   input.maxLength = TITLE_MAX_LENGTH;
 };
 
+/** 前後の移動先は、閲覧者自身のメモの中から選ぶ */
+const neighborsOwn: PickNeighbors = ({ id, ownIds }) => {
+  const before = ownIds.filter((own) => own < id);
+  const after = ownIds.filter((own) => own > id);
+  return { prev: before.length > 0 ? Math.max(...before) : null, next: after.length > 0 ? Math.min(...after) : null };
+};
+
 export const BASELINE: ImplementationRegistry = {
   'memo/read-owner-check': { hook: 'memo.read.authorize', run: readOwnerCheck },
   'memo/search-parameterized': { hook: 'memo.search.query', run: searchParameterized },
   'memo/comment-text': { hook: 'comment.render', run: commentText },
   'memo/title-max-length': { hook: 'memo.title.validate', run: titleMaxLength },
   'memo/title-input-max-length': { hook: 'memo.title.input', run: titleInputMaxLength },
+  'memo/neighbors-own': { hook: 'memo.detail.neighbors', run: neighborsOwn },
 };

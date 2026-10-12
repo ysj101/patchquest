@@ -3,7 +3,7 @@
 import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
-import type { PrepareTitleInput, RenderComment } from './hooks';
+import type { PickNeighbors, PrepareTitleInput, RenderComment } from './hooks';
 import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
 
 /** 画面内の移動はフレームを遷移させず、アプリ内で描画し直す */
@@ -72,6 +72,21 @@ async function detail(root: HTMLElement, ctx: ViewContext, id: string): Promise<
     back,
     el('article', { className: 'memo' }, el('h2', {}, memo.title), el('p', { className: 'memo-body' }, memo.body)),
     el('div', { className: 'row' }, linkButton('編集', () => ctx.navigate(`/memos/${memo.id}/edit`)), remove),
+    await neighborLinks(ctx, memo.id),
+  );
+}
+
+/** 「前のメモ」「次のメモ」。移動先は交換点（memo.detail.neighbors）が決める */
+async function neighborLinks(ctx: ViewContext, id: number): Promise<HTMLElement> {
+  const res = await ctx.request({ method: 'GET', path: '/api/memos' });
+  if (res.status !== 200) return alert(errorMessage(res));
+  const ownIds = (res.body as { memos: { id: number }[] }).memos.map((own) => own.id);
+  const { prev, next } = ctx.hook<PickNeighbors>('memo.detail.neighbors')({ id, ownIds });
+  return el(
+    'nav',
+    { className: 'row', ariaLabel: '前後のメモ' },
+    ...(prev === null ? [] : [linkButton('← 前のメモ', () => ctx.navigate(`/memos/${prev}`))]),
+    ...(next === null ? [] : [linkButton('次のメモ →', () => ctx.navigate(`/memos/${next}`))]),
   );
 }
 

@@ -1,6 +1,7 @@
 // メモアプリの基準実装（状態 S）が共通テストをすべて通すこと（spec A01）。複数の seed で確かめる
 import { beforeAll, describe, expect, it } from 'vitest';
 import { memoApp } from '../../apps/memo';
+import { BASELINE, type PickNeighbors } from '../../apps/memo/hooks';
 import type { PrepareOptions } from '../../platform/contract';
 import { runSteps, type ScenarioInvoker } from '../../platform/evaluator/scenario';
 import { AppEngine } from '../../runtimes/browser/engine';
@@ -66,5 +67,17 @@ describe('初期データ', () => {
       type: 'authz.decision',
       data: { action: 'read', subject: refs['users.bob.id']!, resource: refs['memos.alice.private.id']!, owner: refs['users.alice.id']!, decision: 'deny', reason: '所有者ではない' },
     });
+  });
+});
+
+describe('前後のメモの移動先（基準実装）', () => {
+  const pick = BASELINE['memo/neighbors-own']?.run as PickNeighbors;
+
+  it('自分のメモの中から、前後に最も近い ID を選ぶ', () => {
+    expect(pick({ id: 20, ownIds: [30, 10, 25, 5] })).toEqual({ prev: 10, next: 25 });
+  });
+
+  it('前後に自分のメモがなければ null にする', () => {
+    expect(pick({ id: 5, ownIds: [5] })).toEqual({ prev: null, next: null });
   });
 });
