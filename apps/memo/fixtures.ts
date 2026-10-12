@@ -26,9 +26,9 @@ export const memoFixture: FixtureGenerator = (db, seed) => {
   const refs: Record<string, JsonPrimitive> = {};
 
   // 利用者 ID は 3 桁、メモ ID は 4 桁の連番。いずれも seed ごとに変わる
-  const firstUserId = 100 + Math.floor(next() * 800);
-  USERS.forEach((key, i) => {
-    const id = firstUserId + i * (1 + Math.floor(next() * 30));
+  let userId = 100 + Math.floor(next() * 800);
+  USERS.forEach((key) => {
+    const id = (userId += 1 + Math.floor(next() * 30));
     const name = pick(NAMES[key]!);
     db.exec({ sql: 'INSERT INTO users (id, key, name) VALUES (?, ?, ?)', bind: [id, key, name] });
     refs[`users.${key}.id`] = id;

@@ -95,6 +95,15 @@ export const testPack: MissionPack = {
           steps: [{ kind: 'request', as: 'bob', request: { method: 'GET', path: '/notes/{{notes.alice.id}}' }, expect: { status: [403, 404] } }],
         },
         {
+          id: 'test.render-no-script',
+          category: 'security',
+          title: 'ノートの本文はスクリプトとして実行されない',
+          steps: [
+            { kind: 'request', as: 'alice', request: { method: 'POST', path: '/notes', body: { body: '<img src="x" onerror="pqMarker()">' } }, expect: { status: 201 } },
+            { kind: 'render', as: 'alice', view: { route: '/notes' }, events: [{ type: 'dom.marker', presence: 'absent' }] },
+          ],
+        },
+        {
           id: 'test.anonymous-denied',
           category: 'security',
           title: '未ログインでは一覧を読めない',
