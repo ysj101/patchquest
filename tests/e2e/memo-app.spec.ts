@@ -33,14 +33,14 @@ test('利用者を切り替えると、その利用者のメモだけが表示�
   const app = page.frameLocator('#preview iframe');
 
   await show(page, 'alice', '/memos', 'alice-1');
-  await expect(app.getByText(`${refs['users.alice.name']} さんとしてログイン中`)).toBeVisible();
+  await expect(app.getByText('alice さんとしてログイン中')).toBeVisible();
   // 一般のメモ・非公開のメモ・週報・引用符を含むメモ
   await expect(app.getByRole('listitem')).toHaveCount(4);
   await app.getByRole('button', { name: '非公開のメモ' }).click();
   await expect(app.getByText(String(refs['memos.alice.private.body']))).toBeVisible();
 
   await show(page, 'bob', '/memos', 'bob-1');
-  await expect(app.getByText(`${refs['users.bob.name']} さんとしてログイン中`)).toBeVisible();
+  await expect(app.getByText('bob さんとしてログイン中')).toBeVisible();
   await expect(app.getByText(String(refs['memos.alice.private.body']))).toHaveCount(0);
 
   await show(page, 'anonymous', '/memos', 'anon-1');

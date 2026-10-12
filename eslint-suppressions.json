@@ -9,10 +9,7 @@
   },
   "apps/memo/fixtures.ts": {
     "@typescript-eslint/no-non-null-assertion": {
-      "count": 6
-    },
-    "sonarjs/no-nested-template-literals": {
-      "count": 1
+      "count": 5
     }
   },
   "apps/memo/hooks.ts": {
