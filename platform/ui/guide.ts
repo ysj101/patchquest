@@ -1,93 +1,102 @@
 // 操作ガイド（練習用パック）。マニフェストの guide を順に示し、各ステップの until の出来事が起きたら次へ進む。
 // 画面上の位置は data-anchor で探す。コアUIに課題ごとの分岐は入れず、ガイドの中身はすべてパックのデータで決まる
-import type { GuideMilestone, GuideStep } from '../contract';
+import type { AttemptRecord, GuideMilestone, GuideStep } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
+import { REVEALABLE_ATTR, REVEAL_EVENT } from './components';
 import { fill, h } from './dom';
 
 /** 案内している場所に付ける印（CSS で枠を描く） */
 const TARGET_ATTR = 'data-guide-target';
 
+/** 演習の記録から分かる出来事。続きから始めたときにも引き継がれる */
+const FROM_RECORD = {
+  reproduced: (a) => a.badges.reproduction.achieved,
+  'hint-opened': (a) => a.hintsOpened.length > 0,
+  'defense-applied': (a) => a.appliedDefense !== null,
+  'verify-failed': (a) => a.lastVerification?.passed === false,
+  'verify-passed': (a) => a.lastVerification?.passed === true,
+  understood: (a) => a.badges.understanding.achieved,
+} satisfies Partial<Record<GuideMilestone, (attempt: AttemptRecord) => boolean>>;
+
+/** 記録に残らず、画面の操作でだけ分かる出来事。学習UIが reach で知らせる */
+export type ReportedMilestone = Exclude<GuideMilestone, keyof typeof FROM_RECORD>;
+
 type StepState = 'done' | 'current' | 'skipped' | 'todo';
 const STEP_STATE_TEXT: Record<StepState, string> = { done: '済み', current: 'いまのステップ', skipped: '飛ばした', todo: 'これから' };
 
-/** 記録から分かる出来事。続きから始めたときや、操作の結果として記録が変わったときに反映する */
-function milestonesOf({ attempt }: ExerciseSnapshot): GuideMilestone[] {
-  const reached: GuideMilestone[] = [];
-  if (attempt.badges.reproduction.achieved) reached.push('reproduced');
-  if (attempt.hintsOpened.length > 0) reached.push('hint-opened');
-  if (attempt.appliedDefense !== null) reached.push('defense-applied');
-  if (attempt.lastVerification) reached.push(attempt.lastVerification.passed ? 'verify-passed' : 'verify-failed');
-  if (attempt.badges.understanding.achieved) reached.push('understood');
-  return reached;
-}
-
-/** 今の画面で見えている（タブに隠れているだけのものを含む）案内先 */
+/** 今の画面にある案内先。表示を求めれば見える入れ物（タブのパネルなど）に隠れているものも含む */
 function findTarget(anchor: string): HTMLElement | undefined {
-  return [...document.querySelectorAll<HTMLElement>(`[data-anchor="${anchor}"]`)].find((el) => {
-    for (let node: HTMLElement | null = el; node; node = node.parentElement) {
-      if (node.hidden && node.getAttribute('role') !== 'tabpanel') return false;
-    }
-    return true;
-  });
+  return [...document.querySelectorAll<HTMLElement>(`[data-anchor="${anchor}"]`)].find((el) => !el.closest(`[hidden]:not([${REVEALABLE_ATTR}])`));
 }
 
 export class GuidePanel {
   readonly element = h('aside', { class: 'guide', 'aria-labelledby': 'guide-title', hidden: true });
-  private packId: string | null = null;
+  /** ガイドしている演習。別の演習が始まったら、そのパックのガイドで始め直す */
+  private attemptId: string | null = null;
   private steps: GuideStep[] = [];
   private readonly reached = new Set<GuideMilestone>();
   private readonly skipped = new Set<string>();
-  private shownStep: string | null | undefined;
+  private marked: Element | null = null;
 
   constructor(private readonly announce: (message: string) => void) {}
 
-  /** パックのガイドを最初から始める。ガイドのないパックなら閉じる */
-  start(packId: string, steps: GuideStep[] | undefined): void {
-    this.packId = steps?.length ? packId : null;
-    this.steps = steps ?? [];
-    this.reached.clear();
-    this.skipped.clear();
-    this.shownStep = undefined;
-    this.element.hidden = this.packId === null;
-    this.render();
+  /** 演習の記録を反映する。別の演習が始まったら始め直し、ガイドのないパックなら閉じる */
+  sync({ attempt, pack }: ExerciseSnapshot): void {
+    if (attempt.attemptId !== this.attemptId) {
+      this.attemptId = attempt.attemptId;
+      this.steps = pack.manifest.guide ?? [];
+      this.reached.clear();
+      this.skipped.clear();
+      this.element.hidden = this.steps.length === 0;
+      this.render();
+    }
+    if (this.element.hidden) return;
+    this.advance(() => {
+      for (const [milestone, happened] of Object.entries(FROM_RECORD)) if (happened(attempt)) this.reached.add(milestone as GuideMilestone);
+    });
   }
 
-  /** 出来事を記録する。現在のステップが終われば次へ進む */
-  reach(milestone: GuideMilestone): void {
-    if (this.packId === null || this.reached.has(milestone)) return;
-    this.reached.add(milestone);
-    this.render();
+  /** 画面の操作で起きた出来事を知らせる */
+  reach(milestone: ReportedMilestone): void {
+    if (!this.element.hidden) this.advance(() => this.reached.add(milestone));
   }
 
-  /** 演習の記録から分かる出来事を反映する（ガイド中のパックの演習だけ） */
-  sync(snapshot: ExerciseSnapshot): void {
-    if (snapshot.pack.manifest.id !== this.packId) return;
-    milestonesOf(snapshot).forEach((m) => this.reach(m));
-  }
-
-  /** 画面が切り替わったときに、案内先の印を付け直す */
+  /** 案内先に印を付け直す。画面が切り替わったときにも呼ぶ */
   refresh(): void {
-    document.querySelectorAll(`[${TARGET_ATTR}]`).forEach((el) => el.removeAttribute(TARGET_ATTR));
-    const step = this.current();
-    if (step && !this.element.hidden) findTarget(step.anchor)?.setAttribute(TARGET_ATTR, '');
-  }
-
-  private close(): void {
-    this.packId = null;
-    this.element.hidden = true;
-    this.refresh();
+    this.marked?.removeAttribute(TARGET_ATTR);
+    const step = this.element.hidden ? undefined : this.current();
+    this.marked = (step && findTarget(step.anchor)) ?? null;
+    this.marked?.setAttribute(TARGET_ATTR, '');
   }
 
   private current(): GuideStep | undefined {
     return this.steps.find((s) => !this.reached.has(s.until) && !this.skipped.has(s.id));
   }
 
-  /** 案内先を表示する。タブに隠れていればそのタブを開き、見える位置へ移してフォーカスする */
+  /** 出来事や飛ばしたステップを反映する。進んだステップは読み上げで知らせる */
+  private advance(change: () => void): void {
+    const before = this.current();
+    const size = this.reached.size + this.skipped.size;
+    change();
+    if (this.reached.size + this.skipped.size === size) return;
+    const after = this.current();
+    if (after !== before) this.announce(after ? `操作ガイド：次は「${after.title}」です` : '操作ガイド：練習の手順はすべて終わりました');
+    this.render();
+  }
+
+  private close(): void {
+    this.element.hidden = true;
+    this.refresh();
+  }
+
+  /** 案内先を表示する。隠れていれば入れ物に表示を求め、見える位置へ移してフォーカスする */
   private reveal(step: GuideStep): void {
     const target = findTarget(step.anchor);
-    if (!target) return this.announce('案内している場所は、今の画面にはありません');
-    const panel = target.closest<HTMLElement>('[role="tabpanel"]');
-    if (panel?.hidden) document.querySelector<HTMLElement>(`[role="tab"][aria-controls="${panel.id}"]`)?.click();
+    if (!target) {
+      this.announce('案内している場所は、今の画面にはありません');
+      return;
+    }
+    target.dispatchEvent(new Event(REVEAL_EVENT, { bubbles: true }));
     if (!target.hasAttribute('tabindex')) target.tabIndex = -1;
     target.scrollIntoView({ block: 'center' });
     target.focus({ preventScroll: true });
@@ -95,15 +104,8 @@ export class GuidePanel {
 
   private render(): void {
     const step = this.current();
-    const id = step?.id ?? null;
-    if (id !== this.shownStep && this.shownStep !== undefined && this.packId !== null) {
-      this.announce(step ? `操作ガイド：次は「${step.title}」です` : '操作ガイド：練習の手順はすべて終わりました');
-    }
-    this.shownStep = id;
-    const index = step ? this.steps.indexOf(step) : this.steps.length;
-    const stateOf = (s: GuideStep, i: number): StepState => (s === step ? 'current' : this.reached.has(s.until) ? 'done' : i < index ? 'skipped' : 'todo');
-    const trackItem = (s: GuideStep, i: number) => {
-      const state = stateOf(s, i);
+    const trackItem = (s: GuideStep) => {
+      const state: StepState = s === step ? 'current' : this.reached.has(s.until) ? 'done' : this.skipped.has(s.id) ? 'skipped' : 'todo';
       return h(
         'li',
         { 'data-state': state, 'aria-current': state === 'current' ? 'step' : null, title: s.title },
@@ -115,8 +117,8 @@ export class GuidePanel {
       h(
         'div',
         { class: 'guide-head' },
-        h('h2', { id: 'guide-title', class: 'guide-label' }, '操作ガイド'),
-        h('p', { class: 'guide-count' }, step ? `${index + 1} / ${this.steps.length}` : '完了'),
+        h('h2', { id: 'guide-title', class: 'eyebrow guide-label' }, '操作ガイド'),
+        h('p', { class: 'guide-count' }, step ? `${this.steps.indexOf(step) + 1} / ${this.steps.length}` : '完了'),
         h('ol', { class: 'guide-track', 'aria-label': '練習の手順' }, ...this.steps.map(trackItem)),
         h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.close() } }, 'ガイドを閉じる'),
       ),
@@ -130,7 +132,7 @@ export class GuidePanel {
               'div',
               { class: 'actions' },
               h('button', { type: 'button', class: 'button button-primary', on: { click: () => this.reveal(step) } }, '場所を表示'),
-              h('button', { type: 'button', class: 'button button-quiet', on: { click: () => (this.skipped.add(step.id), this.render()) } }, 'このステップを飛ばす'),
+              h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.advance(() => this.skipped.add(step.id)) } }, 'このステップを飛ばす'),
             ),
           )
         : h(

@@ -25,6 +25,8 @@
 }
 
 * { box-sizing: border-box; }
+/* display を指定した部品でも、hidden 属性で必ず隠れるようにする */
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -202,7 +204,6 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 }
 .tab[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--primary); background: var(--surface); }
 [role='tabpanel'] { padding: 16px; display: grid; gap: 16px; max-height: 720px; overflow: auto; }
-[role='tabpanel'][hidden] { display: none; }
 .tool-section { display: grid; gap: 8px; }
 .tool-section h3 { font-size: 0.95rem; }
 .incident { border-left: 4px solid var(--warn); padding-left: 12px; }
@@ -291,9 +292,8 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
   border: 1px solid var(--line); border-left: 6px solid var(--seal); border-radius: var(--radius);
   box-shadow: 0 6px 18px rgb(27 36 48 / 0.08);
 }
-.guide[hidden] { display: none; }
 .guide-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.guide-label { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; color: var(--seal); }
+.guide-label { font-weight: 800; color: var(--seal); }
 .guide-count { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); }
 .guide-track { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex: 1; min-width: 160px; }
 .guide-track li { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }

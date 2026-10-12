@@ -11,6 +11,7 @@ import {
   currentUser,
   emitDecision,
   findMemo,
+  lengthError,
   memoJson,
   type Memo,
   type User,
@@ -29,10 +30,10 @@ function invalid(ctx: ServerContext, field: string, message: string): AppRespons
 }
 
 /** 文字列の入力を検証する。max を省くと文字数は見ない。違反があればその応答を返す */
-function text(ctx: ServerContext, field: string, value: unknown, label: string, max = Infinity, required = true): string | AppResponse {
+function text(ctx: ServerContext, field: string, value: unknown, label: string, max?: number, required = true): string | AppResponse {
   if (typeof value !== 'string' || (required && value.trim() === '')) return invalid(ctx, field, `${label}を入力してください`);
-  if ([...value].length > max) return invalid(ctx, field, `${label}は ${max} 文字以内にしてください`);
-  return value;
+  const tooLong = max === undefined ? null : lengthError(label, value, max);
+  return tooLong ? invalid(ctx, field, tooLong) : value;
 }
 
 /** タイトルと本文の検証。違反があればその応答を返す */

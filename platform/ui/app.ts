@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { ANONYMOUS, RuntimeError, satisfies, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
+import { ANONYMOUS, RuntimeError, satisfies, type ActorKey, type AppRequest, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { ProgressStore } from '../progress/store';
@@ -25,7 +25,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const main = h('main', { id: 'main' });
 
   let orchestrator: Orchestrator;
-  /** 練習用パックの操作ガイド。課題一覧へ戻っても、最後の手順（進捗の書き出し）まで表示し続ける */
+  /** 練習用パックの操作ガイド。演習が始まるたびにそのパックのガイドで始め直し、課題一覧へ戻っても表示し続ける */
   const guide = new GuidePanel((message) => announce(live, message));
   const preflightView = new PreflightView({
     begin: () => void beginExercise(),
@@ -50,7 +50,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     },
     retry: () => {
       const packId = orchestrator.snapshot?.pack.manifest.id;
-      if (packId) void startPack(packId);
+      if (packId) void begin(() => orchestrator.start(packId));
     },
   });
   const exerciseView = new ExerciseView(
@@ -143,8 +143,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     fill(
       listView,
       missionList(await entries(), store.unavailableReason, {
-        start: (packId) => void startPack(packId),
-        resume: (record) => void startPack(record.missionId, record),
+        start: (packId) => void begin(() => orchestrator.start(packId)),
+        resume: (record) => void begin(() => orchestrator.start(record.missionId, { resume: record })),
         exportProgress: () => void exportProgress(),
         importProgress: (file) => void importProgress(file),
         clearProgress: () => void clearProgress(),
@@ -155,12 +155,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
     listView.querySelector<HTMLElement>('h1')?.focus();
   }
 
-  /** 課題を始める（resume を渡すと記録の続きから）。練習用パックなら操作ガイドも最初から始める */
-  async function startPack(packId: string, resume?: AttemptRecord): Promise<void> {
-    guide.start(packId, catalog.packs.find((p) => p.manifest.id === packId)?.manifest.guide);
+  async function begin(run: () => Promise<ExerciseSnapshot>): Promise<void> {
     show('preflight');
     announce(live, '開始前チェックを始めました');
-    const snapshot = await orchestrator.start(packId, { resume });
+    const snapshot = await run();
     announce(live, snapshot.attempt.state === 'Prepared' ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
   }
 

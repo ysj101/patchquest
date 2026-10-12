@@ -1,18 +1,19 @@
 // メモアプリの画面（プレビュー内）での利用者切替と CRUD（Issue #6）
 import type { Page } from '@playwright/test';
+import { memoApp } from '../../apps/memo';
 import type { FixtureData } from '../../platform/contract';
 import { expect, test } from './fixtures';
 
 async function prepare(page: Page, seed: number): Promise<FixtureData> {
   const result = await page.evaluate(
-    (s) =>
+    ([s, version]) =>
       window.runtimeTest.call('exercise', 'prepare', {
         attemptId: `memo-${s}`,
-        app: { id: 'memo', version: '1.1.0' },
+        app: { id: 'memo', version },
         fixture: { generator: 'memo.default', seed: s },
         implementations: {},
       }),
-    seed,
+    [seed, memoApp.descriptor.version] as const,
   );
   if (!result.ok) throw new Error(result.message);
   await page.evaluate(() => window.runtimeTest.call('exercise', 'start'));

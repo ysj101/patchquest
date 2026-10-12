@@ -1,11 +1,9 @@
 // オンボーディング（練習用パック、Issue #15）。カタログに登録しただけで一覧に出て、
 // 操作ガイドに沿って一覧 → 開始前チェック → … → 進捗の書き出しまで最後まで進められる
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
 
 const guide = (page: Page) => page.getByRole('complementary', { name: '操作ガイド' });
-const seals = (page: Page) => page.locator('.ticket').getByRole('list', { name: '達成印' });
-const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
 
 /** ガイドが指定のステップを示し、その案内先に印が付いている（案内先が今の画面になければ印はない） */
 async function expectStep(page: Page, count: string, title: string, anchor: string | null): Promise<void> {
@@ -15,12 +13,8 @@ async function expectStep(page: Page, count: string, title: string, anchor: stri
   else await expect(page.locator('[data-guide-target]')).toHaveCount(0);
 }
 
-async function verifyWith(page: Page, defense: string, verdict: string): Promise<void> {
-  await page.getByRole('tab', { name: '対策' }).click();
-  await page.getByRole('radio', { name: new RegExp(defense) }).check();
-  await page.getByRole('button', { name: 'この対策を適用する' }).click();
-  await expect(page.getByText(`適用中の対策：${defense}`)).toBeVisible();
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+async function expectVerdict(page: Page, defense: string, verdict: string): Promise<void> {
+  await verifyWith(page, defense);
   await expect(page.locator('[data-anchor="results"]')).toContainText(verdict, { timeout: 15_000 });
 }
 
@@ -57,11 +51,11 @@ test('操作ガイドに沿って、練習用パックを最後まで進めら�
   await page.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
 
   await expectStep(page, '6 / 11', '対策を選んで適用する', 'defense-panel');
-  await verifyWith(page, '入力欄だけで文字数を制限する', 'まだ合格ではありません');
+  await expectVerdict(page, '入力欄だけで文字数を制限する', 'まだ合格ではありません');
   await expect(page.locator('[data-anchor="results"]')).toContainText('攻撃をまだ防げていません');
 
   await expectStep(page, '8 / 11', '結果を読み、別の対策で合格する', 'results');
-  await verifyWith(page, '保存処理でタイトルの長さを検証する', '防御できました');
+  await expectVerdict(page, '保存処理でタイトルの長さを検証する', '防御できました');
   await expect(seals(page)).toContainText('防御：達成');
 
   await expectStep(page, '9 / 11', '振り返りで理解を確かめる', 'debrief');
@@ -93,9 +87,7 @@ test('操作ガイドに沿って、練習用パックを最後まで進めら�
 });
 
 test('「入力欄だけで制限」を適用すると、画面のタイトル入力欄に上限が付く', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('[data-mission="onboarding"]').getByRole('button', { name: 'この課題を始める' }).click();
-  await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await startMission(page, 'onboarding');
   const frame = preview(page);
   await frame.getByRole('button', { name: '＋ 新しいメモ' }).click();
   await expect(frame.getByLabel('タイトル')).not.toHaveAttribute('maxlength');
@@ -109,9 +101,7 @@ test('「入力欄だけで制限」を適用すると、画面のタイトル�
 });
 
 test('ガイドのステップは飛ばせる。練習用でない課題を始めるとガイドは閉じる', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('[data-mission="onboarding"]').getByRole('button', { name: 'この課題を始める' }).click();
-  await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await startMission(page, 'onboarding');
   await expectStep(page, '2 / 11', '利用者を切り替える', 'user-switcher');
   await guide(page).getByRole('button', { name: 'このステップを飛ばす' }).click();
   await expectStep(page, '3 / 11', 'リクエストを送ってみる', 'actions');

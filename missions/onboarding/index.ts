@@ -3,10 +3,16 @@
 import type { MissionPack } from '../../platform/contract';
 import type { PrepareTitleInput, ValidateTitle } from '../../apps/memo/hooks';
 
+const HOOKS = [
+  { id: 'memo.title.validate', contract: 1 },
+  { id: 'memo.title.input', contract: 1 },
+];
 const LONG_TITLE = 'あ'.repeat(41);
+const TITLE_AT_LIMIT = 'い'.repeat(40);
 /** 応答の memo.title が上限（40 文字）を超えている */
 const SAVED_LONG_TITLE = [{ path: 'memo.title', is: { minLength: 41 } }];
-const TITLE_REJECTED = { status: 400, body: [{ path: 'field', is: { equals: 'title' } }] };
+/** 注入した状態の、保存時のタイトル検証（参考差分の変更前） */
+const NO_TITLE_CHECK = 'const validateTitle = (title) => ({ ok: true });';
 
 export const onboardingPack: MissionPack = {
   manifest: {
@@ -33,24 +39,14 @@ export const onboardingPack: MissionPack = {
     appCompatibility: { appId: 'memo', versions: '^1.1.0' },
     runtime: { adapter: 'browser', capabilities: ['sqlite', 'dom-preview'] },
     prerequisites: { features: ['memo'] },
-    hooks: [
-      { id: 'memo.title.validate', contract: 1 },
-      { id: 'memo.title.input', contract: 1 },
-    ],
+    hooks: HOOKS,
     conflicts: [],
     fixtures: { generator: 'memo.default', variants: [{ id: 'default', label: '標準', recipe: 'no-title-limit' }] },
     mutationRecipes: [
       {
         id: 'no-title-limit',
         version: '1.0.0',
-        appliesTo: {
-          appId: 'memo',
-          versions: '^1.1.0',
-          hooks: [
-            { id: 'memo.title.validate', contract: 1 },
-            { id: 'memo.title.input', contract: 1 },
-          ],
-        },
+        appliesTo: { appId: 'memo', versions: '^1.1.0', hooks: HOOKS },
         apply: [
           { hook: 'memo.title.validate', implementation: 'onboarding/accept-any-title' },
           { hook: 'memo.title.input', implementation: 'onboarding/title-input-unlimited' },
@@ -94,7 +90,7 @@ export const onboardingPack: MissionPack = {
         referenceDiff: {
           file: 'apps/memo/hooks.ts',
           language: 'ts',
-          before: 'const validateTitle = (title) => ({ ok: true });',
+          before: NO_TITLE_CHECK,
           after: "const validateTitle = (title) => ({ ok: false, message: 'メモは保存できません' });",
         },
         expected: 'breaks-normal',
@@ -107,7 +103,7 @@ export const onboardingPack: MissionPack = {
         referenceDiff: {
           file: 'apps/memo/hooks.ts',
           language: 'ts',
-          before: 'const validateTitle = (title) => ({ ok: true });',
+          before: NO_TITLE_CHECK,
           after:
             "const validateTitle = (title) =>\n  [...title].length > 40\n    ? { ok: false, message: 'タイトルは 40 文字以内にしてください' }\n    : { ok: true };",
         },
@@ -141,8 +137,8 @@ export const onboardingPack: MissionPack = {
             {
               kind: 'request',
               as: 'alice',
-              request: { method: 'POST', path: '/api/memos', body: { title: 'い'.repeat(40), body: '上限ちょうど' } },
-              expect: { status: 201, body: [{ path: 'memo.title', is: { equals: 'い'.repeat(40) } }] },
+              request: { method: 'POST', path: '/api/memos', body: { title: TITLE_AT_LIMIT, body: '上限ちょうど' } },
+              expect: { status: 201, body: [{ path: 'memo.title', is: { equals: TITLE_AT_LIMIT } }] },
             },
           ],
         },
@@ -155,7 +151,7 @@ export const onboardingPack: MissionPack = {
               kind: 'request',
               as: 'alice',
               request: { method: 'PUT', path: '/api/memos/{{memos.alice.private.id}}', body: { title: LONG_TITLE, body: '編集' } },
-              expect: TITLE_REJECTED,
+              expect: { status: 400, body: [{ path: 'field', is: { equals: 'title' } }] },
             },
           ],
         },

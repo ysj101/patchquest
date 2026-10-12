@@ -1,7 +1,7 @@
 // メモアプリが公開する交換点（フック）と、その安全な基準実装
 import type { HookDescriptor, ImplementationRegistry } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
-import { TITLE_MAX_LENGTH, emitDecision, findMemo, type Memo, type User } from './model';
+import { TITLE_MAX_LENGTH, emitDecision, findMemo, lengthError, type Memo, type User } from './model';
 
 export type ReadResult = { status: 'ok'; memo: Memo } | { status: 'unauthenticated' | 'not-found' | 'forbidden' };
 
@@ -96,9 +96,11 @@ const commentText: RenderComment = (el, comment) => {
   el.textContent = comment.body;
 };
 
-/** タイトルは上限の文字数まで。文字数はコードポイントで数える */
-const titleMaxLength: ValidateTitle = (title) =>
-  [...title].length > TITLE_MAX_LENGTH ? { ok: false, message: `タイトルは ${TITLE_MAX_LENGTH} 文字以内にしてください` } : { ok: true };
+/** タイトルは上限の文字数まで */
+const titleMaxLength: ValidateTitle = (title) => {
+  const message = lengthError('タイトル', title, TITLE_MAX_LENGTH);
+  return message ? { ok: false, message } : { ok: true };
+};
 
 /** 入力欄でも上限を示す。画面だけの制限なので、保存時の検証の代わりにはならない */
 const titleInputMaxLength: PrepareTitleInput = (input) => {
