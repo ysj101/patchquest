@@ -1,26 +1,13 @@
 // RuntimeAdapter と基盤の検証専用の小さな教材アプリ。配布物には含めない
-import type { AppRequest, AppResponse, JsonValue } from '../../platform/contract';
+import type { AppRequest, AppResponse } from '../../platform/contract';
+import { el } from '../../apps/shared/dom';
+import { json } from '../../apps/shared/http';
+import { random } from '../../apps/shared/random';
 import type { AppModule, ServerContext, ViewContext } from '../../runtimes/browser/app-module';
 
 type Note = { id: number; owner: string; body: string };
 export type ReadNote = (ctx: ServerContext, note: Note | null) => Note | 'forbidden' | null;
 export type RenderNote = (el: HTMLElement, body: string) => void;
-
-/** 決定的な疑似乱数（mulberry32） */
-function random(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function json(status: number, body: JsonValue): AppResponse {
-  return { status, body };
-}
 
 function handle(ctx: ServerContext, req: AppRequest): AppResponse {
   const [, resource, id] = req.path.split('/');
@@ -65,18 +52,15 @@ function handle(ctx: ServerContext, req: AppRequest): AppResponse {
 }
 
 async function render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void> {
-  const heading = document.createElement('h1');
-  heading.textContent = `ノート（${ctx.viewer ?? '未ログイン'}）`;
-  root.append(heading);
+  root.append(el('h1', {}, `ノート（${ctx.viewer ?? '未ログイン'}）`));
   if (route !== '/notes') return;
   const res = await ctx.request({ method: 'GET', path: '/notes' });
-  const list = document.createElement('ul');
-  for (const note of (res.body as { notes?: Note[] }).notes ?? []) {
-    const li = document.createElement('li');
+  const items = ((res.body as { notes?: Note[] }).notes ?? []).map((note) => {
+    const li = el('li');
     ctx.hook<RenderNote>('note.render')(li, note.body);
-    list.append(li);
-  }
-  root.append(list);
+    return li;
+  });
+  root.append(el('ul', {}, ...items));
 }
 
 export const testApp: AppModule = {
@@ -104,6 +88,7 @@ export const testApp: AppModule = {
     'test-app/owner-only': { hook: 'note.read', run: ((ctx, note) => (note && note.owner !== ctx.principal ? 'forbidden' : note)) satisfies ReadNote },
     'test-app/text': { hook: 'note.render', run: ((el, body) => void (el.textContent = body)) satisfies RenderNote },
   },
+  tests: [],
   handle,
   render,
 };
