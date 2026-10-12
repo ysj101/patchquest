@@ -11,7 +11,7 @@ export const memoApp: AppModule = {
   descriptor: {
     id: 'memo',
     version: '1.0.0',
-    features: ['memo'],
+    features: ['memo', 'comments', 'search'],
     users: [...USERS],
     hooks: HOOKS,
   },

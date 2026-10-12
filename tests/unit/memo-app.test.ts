@@ -4,6 +4,7 @@ import { memoApp } from '../../apps/memo';
 import type { PrepareOptions } from '../../platform/contract';
 import { runSteps, type ScenarioInvoker } from '../../platform/evaluator/scenario';
 import { AppEngine } from '../../runtimes/browser/engine';
+import { requestOnly } from '../support/request-only';
 
 const SEEDS = [1, 42, 20261012];
 
@@ -31,7 +32,7 @@ describe.each(SEEDS)('メモアプリの基準実装（seed %i）', (seed) => {
   const engine = new AppEngine();
   beforeAll(() => engine.prepare(options(seed)));
 
-  it.each(memoApp.tests.map((t) => [t.id, t] as const))('%s', async (_, test) => {
+  it.each(requestOnly(memoApp.tests).map((t) => [t.id, t] as const))('%s', async (_, test) => {
     // 各テストは初期データから実行する
     const { refs } = await engine.reset();
     expect(await runSteps(test.steps, refs, invokerFor(engine))).toMatchObject({ passed: true });

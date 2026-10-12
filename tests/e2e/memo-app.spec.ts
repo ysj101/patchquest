@@ -33,7 +33,8 @@ test('利用者を切り替えると、その利用者のメモだけが表示�
 
   await show(page, 'alice', '/memos', 'alice-1');
   await expect(app.getByText(`${refs['users.alice.name']} さんとしてログイン中`)).toBeVisible();
-  await expect(app.getByRole('listitem')).toHaveCount(2);
+  // 一般のメモ・非公開のメモ・週報・引用符を含むメモ
+  await expect(app.getByRole('listitem')).toHaveCount(4);
   await app.getByRole('button', { name: '非公開のメモ' }).click();
   await expect(app.getByText(String(refs['memos.alice.private.body']))).toBeVisible();
 
@@ -79,4 +80,38 @@ test('画面の入力欄は文字数を制限し、検証エラーは画面に�
   await expect(app.getByLabel('タイトル')).toHaveAttribute('maxlength', '40');
   await app.getByRole('button', { name: '保存' }).click();
   await expect(app.getByRole('alert')).toHaveText('タイトルを入力してください');
+});
+
+test('共有ページのコメントは文字として表示され、投稿するとほかの利用者にも見える', async ({ page }) => {
+  const { refs } = await prepare(page, 10);
+  const app = page.frameLocator('#preview iframe');
+  await show(page, 'alice', '/memos', 'alice-pages');
+  await app.getByRole('button', { name: '共有ページ' }).click();
+  await app.getByRole('button', { name: '共有ページ：今週の学習メモ' }).click();
+  await expect(app.getByText(String(refs['comments.bob.body']))).toBeVisible();
+
+  await app.getByLabel('コメントを書く').fill('<b>太字にならない</b> & "引用"');
+  await app.getByRole('button', { name: 'コメントする' }).click();
+  await expect(app.getByText('<b>太字にならない</b> & "引用"')).toBeVisible();
+  await expect(app.locator('.comment-body b')).toHaveCount(0);
+
+  await show(page, 'carol', `/pages/${refs['pages.shared.id']}`, 'carol-page');
+  await expect(app.getByText('<b>太字にならない</b> & "引用"')).toBeVisible();
+});
+
+test('自分のメモだけを検索でき、該当がなければその旨を表示する', async ({ page }) => {
+  await prepare(page, 11);
+  const app = page.frameLocator('#preview iframe');
+  await show(page, 'bob', '/search', 'bob-search');
+  await app.getByLabel('検索語').fill('週報');
+  await app.getByRole('button', { name: '検索する' }).click();
+  await expect(app.getByRole('button', { name: /^週報/ })).toHaveCount(1);
+
+  await app.getByLabel('検索語').fill("O'Reilly");
+  await app.getByLabel('検索語').press('Enter');
+  await expect(app.getByText('該当するメモはありません。')).toBeVisible();
+
+  // 画面の検索は実際の SQL の観測イベントを伴う
+  const exchanges = await page.evaluate(() => window.runtimeTest.exchanges());
+  expect(exchanges.some((x) => x.request?.path.startsWith('/api/search') && x.events.some((e) => e.type === 'sql.query'))).toBe(true);
 });
