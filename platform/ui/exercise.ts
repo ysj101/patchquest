@@ -3,9 +3,9 @@
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
 import type { Scope } from '../evaluator/scenario';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { sealStates, seals, tabs, type TabSpec } from './components';
+import { sealStates, seals, tabs } from './components';
 import { fill, h } from './dom';
-import { InvestigationPanel, storyPanel } from './investigation';
+import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
 
 export interface ExerciseActions {
@@ -39,15 +39,11 @@ export class ExerciseView {
   private readonly toolTabs: ReturnType<typeof tabs>;
   private refs: Scope = {};
 
-  constructor(
-    private readonly actions: ExerciseActions,
-    extraTabs: TabSpec[] = [],
-  ) {
+  constructor(private readonly actions: ExerciseActions) {
     this.investigation = new InvestigationPanel({ send: actions.send });
     this.toolTabs = tabs('演習の道具', [
       { id: 'story', label: '状況', panel: this.storySlot },
       { id: 'investigate', label: '調査', panel: this.investigation.element },
-      ...extraTabs,
     ]);
     fill(
       this.element,
@@ -83,7 +79,7 @@ export class ExerciseView {
   }
 
   /** 演習を始めたときに、利用者・操作・状況を組み直す */
-  setup(snapshot: ExerciseSnapshot, app: AppDescriptor, viewer: ActorKey): void {
+  setup(snapshot: ExerciseSnapshot, app: AppDescriptor, viewer: ActorKey, describeEvent: EventDescriber): void {
     this.refs = snapshot.refs;
     fill(
       this.users,
@@ -98,7 +94,7 @@ export class ExerciseView {
       ),
     );
     fill(this.storySlot, storyPanel(snapshot.pack.manifest.story));
-    this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs);
+    this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describeEvent);
     this.investigation.setViewer(actorLabel(viewer, this.refs));
     this.toolTabs.select('story');
   }

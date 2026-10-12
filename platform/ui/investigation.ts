@@ -1,7 +1,7 @@
 // 調査パネル（spec §10）。定型の操作とリクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, type ActionDef, type AppRequest, type Exchange, type HttpMethod, type JsonValue, type ObservedEvent } from '../contract';
-import { expand, type Scope } from '../evaluator/scenario';
+import { HTTP_METHODS, type ActionDef, type AppRequest, type Exchange, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent } from '../contract';
+import { expandRequest, type Scope } from '../evaluator/scenario';
 import { status } from './components';
 import { fill, h } from './dom';
 
@@ -14,32 +14,35 @@ export interface InvestigationActions {
 }
 
 const pretty = (value: unknown) => (value === undefined ? '（なし）' : JSON.stringify(value, null, 2));
+const block = (title: string, text: string) => h('div', { class: 'log-block' }, h('h4', {}, title), h('pre', { class: 'mono' }, text));
 
-/** 観測イベントの要約。計測した事象だけを根拠にし、推測で原因を断定しない（spec §10） */
-function describeEvent(event: ObservedEvent): string {
-  const d = event.data;
-  switch (event.type) {
-    case 'authz.decision':
-      return `認可：${d.decision === 'allow' ? '許可' : '拒否'}（${String(d.reason)}）・主体 ${String(d.subject)}・対象 ${String(d.resource)}・所有者 ${String(d.owner)}`;
-    case 'sql.query':
-      return `SQL：${String(d.sql)}\nバインド値：${JSON.stringify(d.bind)}\n返却行：${String(d.rows)} 件・所有者 ${JSON.stringify(d.owners)}`;
-    case 'sql.error':
-      return `SQL の失敗：${String(d.message)}\n${String(d.sql)}`;
-    case 'dom.marker':
-      return '画面でスクリプトが実行されました（実行マーカー）';
-    case 'validation.failed':
-      return `入力検証：${String(d.message)}`;
-    case 'app.error':
-      return `アプリ内の例外：${String(d.message)}`;
-    default:
-      return `${event.type} ${JSON.stringify(d)}`;
-  }
+/** 観測イベントの説明。アプリが説明できない種類は、基盤が記録する事象か、種類と値をそのまま示す */
+export type EventDescriber = (event: ObservedEvent) => string | null;
+
+function describeEvent(event: ObservedEvent, describeApp: EventDescriber): string {
+  const described = describeApp(event);
+  if (described !== null) return described;
+  if (event.type === 'dom.marker') return '画面でスクリプトが実行されました（実行マーカー）';
+  if (event.type === 'app.error') return `アプリ内の例外：${String(event.data.message)}`;
+  return `${event.type} ${JSON.stringify(event.data)}`;
 }
 
-function statusOf(exchange: Exchange) {
-  if (exchange.kind === 'render') return status(exchange.events.some((e) => e.type === 'dom.marker') ? 'error' : 'idle', '画面');
+/** ログの 1 行目：状態と、誰が何をしたか */
+function headline(exchange: Exchange, actorLabel: string): { mark: HTMLElement; summary: string } {
+  if (exchange.kind === 'render') {
+    return {
+      mark: status(exchange.events.some((e) => e.type === 'dom.marker') ? 'error' : 'idle', '画面'),
+      summary: `${actorLabel} が画面 ${exchange.route ?? ''} を表示`,
+    };
+  }
   const code = exchange.response?.status ?? 0;
-  return status(code < 400 ? 'passed' : 'failed', String(code));
+  return { mark: status(code < 400 ? 'passed' : 'failed', String(code)), summary: `${actorLabel} → ${exchange.request?.method} ${exchange.request?.path}` };
+}
+
+function fieldControl(field: FieldDef, id: string): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
+  if (field.input === 'select') return h('select', { id }, ...(field.options ?? []).map((o) => h('option', { value: o.value }, o.label)));
+  if (field.input === 'textarea') return h('textarea', { id, rows: 3, value: field.default ?? '' });
+  return h('input', { id, type: field.input === 'number' ? 'number' : 'text', value: field.default ?? '', class: field.input === 'number' ? 'mono' : '' });
 }
 
 export class InvestigationPanel {
@@ -53,6 +56,7 @@ export class InvestigationPanel {
   private readonly actionList = h('div', { class: 'action-list' });
   private count = 0;
   private refs: Scope = {};
+  private describeApp: EventDescriber = () => null;
 
   constructor(private readonly actions: InvestigationActions) {
     this.element = h(
@@ -79,9 +83,10 @@ export class InvestigationPanel {
     );
   }
 
-  /** 演習を始めたときに、操作の定義と fixture の値を受け取る */
-  setup(actions: ActionDef[], refs: Scope): void {
+  /** 演習を始めたときに、操作の定義・fixture の値・アプリの観測イベントの説明を受け取る */
+  setup(actions: ActionDef[], refs: Scope, describeApp: EventDescriber): void {
     this.refs = refs;
+    this.describeApp = describeApp;
     fill(this.actionList, ...actions.map((a) => this.actionForm(a)));
     if (actions.length === 0) fill(this.actionList, h('p', { class: 'muted' }, 'この課題に定型の操作はありません。下の編集欄からリクエストを送れます。'));
     this.log.replaceChildren();
@@ -95,46 +100,34 @@ export class InvestigationPanel {
   /** やり取りを記録する。新しいものを上に置き、上限を超えたら古いものから消す */
   record(exchange: Exchange, actorLabel: string): void {
     this.count++;
-    const summary =
-      exchange.kind === 'request'
-        ? `${actorLabel} → ${exchange.request?.method} ${exchange.request?.path}`
-        : `${actorLabel} が画面 ${exchange.route ?? ''} を表示`;
-    const details = h(
-      'details',
-      { class: 'log-entry' },
-      h('summary', {}, h('span', { class: 'log-no' }, `#${this.count}`), statusOf(exchange), h('span', { class: 'log-summary mono' }, summary)),
-      exchange.request ? h('div', { class: 'log-block' }, h('h4', {}, 'リクエスト'), h('pre', { class: 'mono' }, `${exchange.request.method} ${exchange.request.path}\n${pretty(exchange.request.body)}`)) : null,
-      exchange.response ? h('div', { class: 'log-block' }, h('h4', {}, `応答（status ${exchange.response.status}）`), h('pre', { class: 'mono' }, pretty(exchange.response.body))) : null,
-      h('div', { class: 'log-block' }, h('h4', {}, '計測した事象'), h('pre', { class: 'mono' }, exchange.events.length ? exchange.events.map(describeEvent).join('\n\n') : '計測イベントなし（この処理の内部の判断は記録されていません）')),
+    const { mark, summary } = headline(exchange, actorLabel);
+    const details = h('details', { class: 'log-entry' }, h('summary', {}, h('span', { class: 'log-no' }, `#${this.count}`), mark, h('span', { class: 'log-summary mono' }, summary)));
+    // 中身は開いたときに 1 回だけ組み立てる（ほとんどの記録は開かれない）
+    const describeApp = this.describeApp;
+    details.addEventListener(
+      'toggle',
+      () => {
+        const events = exchange.events.length
+          ? exchange.events.map((e) => describeEvent(e, describeApp)).join('\n\n')
+          : '計測イベントなし（この処理の内部の判断は記録されていません）';
+        details.append(
+          ...(exchange.request ? [block('リクエスト', `${exchange.request.method} ${exchange.request.path}\n${pretty(exchange.request.body)}`)] : []),
+          ...(exchange.response ? [block(`応答（status ${exchange.response.status}）`, pretty(exchange.response.body))] : []),
+          block('計測した事象', events),
+        );
+      },
+      { once: true },
     );
     this.log.prepend(h('li', {}, details));
     while (this.log.children.length > MAX_LOG_ENTRIES) this.log.lastElementChild?.remove();
   }
 
   private actionForm(action: ActionDef): HTMLElement {
-    const inputs = action.fields.map((field) => {
-      const id = `field-${action.id}-${field.name}`;
-      const control =
-        field.input === 'select'
-          ? h('select', { id }, ...(field.options ?? []).map((o) => h('option', { value: o.value }, o.label)))
-          : field.input === 'textarea'
-            ? h('textarea', { id, rows: 3, value: field.default ?? '' })
-            : h('input', { id, type: field.input === 'number' ? 'number' : 'text', value: field.default ?? '', class: field.input === 'number' ? 'mono' : '' });
-      return { field, control, element: h('label', { for: id, class: 'field' }, field.label, control, field.help ? h('span', { class: 'note' }, field.help) : null) };
-    });
+    const controls = action.fields.map((field) => [field, fieldControl(field, `field-${action.id}-${field.name}`)] as const);
     const message = h('p', { class: 'form-message', role: 'alert' });
-    const build = (): AppRequest => {
-      const scope: Scope = { ...this.refs, ...Object.fromEntries(inputs.map((i) => [`field.${i.field.name}`, i.control.value])) };
-      return expand(action.request as unknown as JsonValue, scope) as unknown as AppRequest;
-    };
-    const run = async () => {
-      message.textContent = '';
-      try {
-        message.textContent = (await this.actions.send(build())) ?? '';
-      } catch (e) {
-        message.textContent = e instanceof Error ? e.message : String(e);
-      }
-    };
+    const build = (): AppRequest =>
+      expandRequest(action.request, { ...this.refs, ...Object.fromEntries(controls.map(([field, control]) => [`field.${field.name}`, control.value])) });
+    const run = () => this.report(message, build);
     const toEditor = () => {
       const request = build();
       this.method.value = request.method;
@@ -147,7 +140,7 @@ export class InvestigationPanel {
       { class: 'action', on: { submit: (e) => (e.preventDefault(), void run()) } },
       h('h4', {}, action.label),
       h('p', { class: 'note' }, action.description),
-      ...inputs.map((i) => i.element),
+      ...controls.map(([field, control]) => h('label', { for: control.id, class: 'field' }, field.label, control, field.help ? h('span', { class: 'note' }, field.help) : null)),
       h(
         'div',
         { class: 'actions' },
@@ -158,24 +151,30 @@ export class InvestigationPanel {
     );
   }
 
-  private async sendEditor(): Promise<void> {
-    this.editorMessage.textContent = '';
-    let body: JsonValue | undefined;
-    if (this.body.value.trim() !== '') {
-      try {
-        body = JSON.parse(this.body.value) as JsonValue;
-      } catch {
-        this.editorMessage.textContent = '本文は JSON で書いてください（例：{ "title": "メモ" }）';
-        return;
+  private sendEditor(): Promise<void> {
+    return this.report(this.editorMessage, () => {
+      let body: JsonValue | undefined;
+      if (this.body.value.trim() !== '') {
+        try {
+          body = JSON.parse(this.body.value) as JsonValue;
+        } catch {
+          throw new Error('本文は JSON で書いてください（例：{ "title": "メモ" }）');
+        }
       }
+      const path = this.path.value.trim();
+      if (!path.startsWith('/')) throw new Error('パスは / から始めてください');
+      return { method: this.method.value as HttpMethod, path, ...(body !== undefined && { body }) };
+    });
+  }
+
+  /** リクエストを組み立てて送り、組み立ての誤りや送れなかった理由を message に示す */
+  private async report(message: HTMLElement, build: () => AppRequest): Promise<void> {
+    message.textContent = '';
+    try {
+      message.textContent = (await this.actions.send(build())) ?? '';
+    } catch (e) {
+      message.textContent = e instanceof Error ? e.message : String(e);
     }
-    const path = this.path.value.trim();
-    if (!path.startsWith('/')) {
-      this.editorMessage.textContent = 'パスは / から始めてください';
-      return;
-    }
-    const request: AppRequest = { method: this.method.value as HttpMethod, path, ...(body !== undefined && { body }) };
-    this.editorMessage.textContent = (await this.actions.send(request)) ?? '';
   }
 }
 

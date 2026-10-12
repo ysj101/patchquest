@@ -196,19 +196,19 @@ export class Orchestrator {
   }
 
   /**
-   * プレイヤーの操作で観測したやり取りを受け取る。攻撃の成立にあたれば再現の達成印を付ける。
+   * プレイヤーの操作で観測したやり取りを受け取る。攻撃の成立にあたれば再現の達成印を付け、true を返す。
    * 現在の演習の実行 ID でないやり取り（古い演習の応答など）は無視する
    */
-  onExchange(exchange: Exchange): void {
+  onExchange(exchange: Exchange): boolean {
     const c = this.current;
-    if (!c?.runIds.has(exchange.runId)) return;
+    if (!c?.runIds.has(exchange.runId)) return false;
     const { attempt, pack, refs } = c.snapshot;
-    if (!isInExercise(attempt.state)) return;
+    if (!isInExercise(attempt.state)) return false;
     if (attempt.state === 'Prepared') this.transition('Explored');
-    if (!attempt.badges.reproduction.achieved && detectReproduction(exchange, pack.manifest.probes, refs)) {
-      attempt.badges.reproduction = { achieved: true, runId: exchange.runId, at: this.now().toISOString() };
-    }
+    const reproduced = !attempt.badges.reproduction.achieved && detectReproduction(exchange, pack.manifest.probes, refs) !== null;
+    if (reproduced) attempt.badges.reproduction = { achieved: true, runId: exchange.runId, at: this.now().toISOString() };
     this.emit();
+    return reproduced;
   }
 
   /** 対策を適用する（null で取り消して脆弱な状態 V に戻す）。動作を切り替えるだけで合否は返さない */

@@ -11,6 +11,7 @@ import type {
   JsonValue,
   Matcher,
   ObservedEvent,
+  RequestTemplate,
   ResponseExpectation,
   SessionToken,
   Step,
@@ -36,6 +37,11 @@ function lookup(scope: Scope, key: string): JsonPrimitive {
 /** 型付きの定義（Condition・AppRequest など）を展開する */
 function expandAs<T>(value: T, scope: Scope): T {
   return expand(value as unknown as JsonValue, scope) as unknown as T;
+}
+
+/** リクエストのテンプレート（パス・本文の {{キー}}）を展開する */
+export function expandRequest(template: RequestTemplate, scope: Scope): AppRequest {
+  return expandAs(template, scope) as AppRequest;
 }
 
 /** 文字列中の {{キー}} を置き換える。文字列全体が 1 つの {{キー}} なら値の型を保つ */
@@ -182,7 +188,7 @@ export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvo
 
     let request: AppRequest;
     try {
-      request = expandAs(step.request, scope);
+      request = expandRequest(step.request, scope);
     } catch (e) {
       return { passed: false, expected: '手順の展開', actual: e instanceof Error ? e.message : String(e) };
     }

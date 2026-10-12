@@ -10,6 +10,7 @@ import type {
   JsonPrimitive,
   JsonValue,
   MissionPack,
+  ObservedEvent,
   TestCase,
 } from '../../platform/contract';
 import type { Database } from './sqlite';
@@ -49,6 +50,8 @@ export interface AppModule {
   tests: TestCase[];
   handle(ctx: ServerContext, request: AppRequest): AppResponse;
   render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
+  /** アプリが記録する観測イベントの説明（調査パネルで表示する）。知らない種類は null */
+  describeEvent?(event: ObservedEvent): string | null;
 }
 
 /** 同梱する教材アプリと課題パック。テスト用ビルドではテスト専用のものに差し替わる */

@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { ANONYMOUS, RuntimeError, satisfies, type ActorKey, type AppRequest, type Exchange } from '../contract';
+import { ANONYMOUS, RuntimeError, satisfies, type ActorKey, type AppRequest, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { ProgressStore } from '../progress/store';
@@ -128,10 +128,9 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   /** 観測したやり取りを進行（再現の判定）と観測ログへ渡す。画面の表示だけのやり取りは事象があるときだけ記録する */
   function observe(exchange: Exchange): void {
-    const hadReproduction = orchestrator.snapshot?.attempt.badges.reproduction.achieved;
-    orchestrator.onExchange(exchange);
+    const reproduced = orchestrator.onExchange(exchange);
     if (exchange.kind === 'request' || exchange.events.length > 0) exerciseView.investigation.record(exchange, exerciseView.label(exchange.actor));
-    if (!hadReproduction && orchestrator.snapshot?.attempt.badges.reproduction.achieved) announce(live, '再現の検印を押しました。事故を自分の操作で再現できました');
+    if (reproduced) announce(live, '再現の検印を押しました。事故を自分の操作で再現できました');
   }
 
   /** 信頼された演習ハーネスとして、表示する利用者を切り替えて最初の画面を開く */
@@ -153,17 +152,25 @@ export async function startApp(root: HTMLElement): Promise<void> {
     const app = currentApp();
     if (!snapshot || !app) return;
     viewer = app.descriptor.users[0] ?? ANONYMOUS;
-    exerciseView.setup(snapshot, app.descriptor, viewer);
+    sessions.clear();
+    exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null);
     show('exercise');
     await showViewer(viewer);
+  }
+
+  /** 利用者ごとのセッション。演習を始めるたびに発行し直す */
+  const sessions = new Map<ActorKey, SessionToken | null>();
+  async function sessionFor(actor: ActorKey, runId: string): Promise<SessionToken | null> {
+    if (!sessions.has(actor)) sessions.set(actor, (await exercise.invoke({ kind: 'session', actor }, { runId })).session ?? null);
+    return sessions.get(actor)!;
   }
 
   /** 現在の利用者として、ブラウザ内の呼び出しを送る。基盤エラーは理由を返し、不合格には数えない */
   async function send(request: AppRequest): Promise<string | null> {
     const runId = orchestrator.newRunId();
     try {
-      const { session } = await exercise.invoke({ kind: 'session', actor: viewer }, { runId });
-      const { response, events } = await exercise.invoke({ kind: 'request', session: session ?? null, request }, { runId });
+      const session = await sessionFor(viewer, runId);
+      const { response, events } = await exercise.invoke({ kind: 'request', session, request }, { runId });
       observe({ runId, actor: viewer, kind: 'request', request, response, events });
       return null;
     } catch (e) {
