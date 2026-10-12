@@ -1,5 +1,6 @@
 // 基盤の検証専用の課題パック。test-app のフックへ脆弱な実装を注入する。配布物には含めない
 import type { MissionPack } from '../../platform/contract';
+import { HARDCODED_FIXES } from './hardcoded-fixes';
 import type { ReadNote, RenderNote } from './test-app';
 
 export const testPack: MissionPack = {
@@ -134,5 +135,7 @@ export const testPack: MissionPack = {
     'test-pack/any-owner': { hook: 'note.read', run: ((_ctx, note) => note) satisfies ReadNote },
     'test-pack/deny-all': { hook: 'note.read', run: (() => 'forbidden') satisfies ReadNote },
     'test-pack/html': { hook: 'note.render', run: ((el, body) => void (el.innerHTML = body)) satisfies RenderNote },
+    // 実装の登録簿はカタログ全体で 1 つなので、テスト専用の実装はこのパックに載せて登録する
+    ...HARDCODED_FIXES,
   },
 };
