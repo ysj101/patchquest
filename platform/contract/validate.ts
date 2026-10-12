@@ -120,12 +120,16 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
 
   // 交換するフック
   const hookContracts = new Map<string, unknown>();
+  const capabilities = Array.isArray(runtime.capabilities) ? runtime.capabilities : [];
   const hooks = c.records('hooks', m.hooks, true, (h, at) => {
     if (!Number.isInteger(h.contract) || (h.contract as number) < 1) c.fail(`${at}.contract`, '1 以上の整数が必要です');
     hookContracts.set(h.id as string, h.contract);
     const declared = app?.hooks.find((d) => d.id === h.id);
     if (app && !declared) c.fail(`${at}.id`, `アプリにフック「${String(h.id)}」がありません`);
     if (declared && declared.contract !== h.contract) c.fail(`${at}.contract`, `アプリのフック契約は ${declared.contract} です`);
+    if (declared?.realm === 'view' && !capabilities.includes('dom-preview')) {
+      c.fail(`${at}.id`, '画面（view）のフックを交換するには runtime.capabilities に dom-preview が必要です');
+    }
   });
 
   const implementations = { ...ctx.sharedImplementations, ...pack.implementations };
