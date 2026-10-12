@@ -14,11 +14,10 @@ describe('同梱カタログ', () => {
     expect(validateForApp(pack, app!)).toEqual([]);
   });
 
-  it('課題 ID・アプリ ID は重複せず、課題 ID は missions/ のディレクトリ名と一致する', () => {
+  it('課題 ID・アプリ ID は互いに重ならず（実装 ID の名前空間になる）、課題 ID は missions/ のディレクトリ名と一致する', () => {
     const packIds = catalog.packs.map((p) => p.manifest.id);
-    const appIds = catalog.apps.map((a) => a.descriptor.id);
-    expect(new Set(packIds).size).toBe(packIds.length);
-    expect(new Set(appIds).size).toBe(appIds.length);
+    const ids = [...packIds, ...catalog.apps.map((a) => a.descriptor.id)];
+    expect(new Set(ids).size).toBe(ids.length);
     expect(packIds.filter((id) => !existsSync(`missions/${id}/index.ts`))).toEqual([]);
   });
 

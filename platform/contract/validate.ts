@@ -76,9 +76,8 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   });
 
   // 実装の登録簿はカタログ全体で 1 つなので、課題 ID で名前空間を分け、他の課題やアプリの実装と重ならないようにする
-  for (const id of Object.keys(isObj(pack.implementations) ? pack.implementations : {})) {
+  for (const id of Object.keys(c.obj('implementations', pack.implementations))) {
     if (!id.startsWith(`${String(m.id)}/`)) c.fail(`implementations.${id}`, `実装 ID は「${String(m.id)}/」で始めてください`);
-    else if (ctx.sharedImplementations && id in ctx.sharedImplementations) c.fail(`implementations.${id}`, 'アプリの実装と ID が重複しています');
   }
   const implementations = { ...ctx.sharedImplementations, ...pack.implementations };
   const checkChanges = (path: string, v: unknown) =>

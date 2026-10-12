@@ -1,5 +1,5 @@
-# CI。push（main）と PR ごとに、型チェック・Unit テスト・ビルド（DOM 安全性と依存境界の検査を含む）・外部参照の検査と、
-# パックの出荷前検証・E2E（Chrome・Edge）・配布物の確認を行う
+# CI。push（main）と PR ごとに、型チェック・Unit テスト・ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）と、
+# E2E（Chrome・Edge。パックの出荷前検証を含む）・配布物の確認を行う
 name: CI
 
 on:
@@ -31,10 +31,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: npm run check:external
 
   browsers:
-    name: パックの出荷前検証・E2E・配布物（Chrome・Edge）
+    name: E2E・出荷前検証・配布物（Chrome・Edge）
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -46,9 +45,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Chrome はランナーに入っている。Edge だけ入れる
-      - run: npx playwright install msedge
-      - run: npm run verify:packs
+      # Chrome・Edge はランナーに入っているものを使う
       - run: npm run test:e2e
       - run: npm run test:dist
       - if: failure()

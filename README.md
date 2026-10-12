@@ -37,8 +37,8 @@ node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API 
 ```
 
 push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）が次を実行します。
-- 型検査、ユニットテスト、ビルド、外部参照の検査
-- 出荷前検証、Chrome・Edge の E2E、配布物の確認
+- 型検査、ユニットテスト、ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）
+- Chrome・Edge の E2E（出荷前検証を含む）、配布物の確認
 
 課題パックの作り方は [docs/pack-authoring.md](docs/pack-authoring.md) を参照してください。
 

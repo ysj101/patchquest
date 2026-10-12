@@ -173,15 +173,10 @@ describe('validatePack', () => {
     expect(validatePack(pack, { app: withView })).toEqual([]);
   });
 
-  it('実装 ID が課題 ID で始まらない・アプリの実装と重なる場合は拒否する', () => {
+  it('実装 ID が課題 ID で始まらない場合は拒否する', () => {
     const pack = samplePack();
     pack.implementations['other/owner-check'] = { hook: 'memo.read.authorize', run: noop };
     expect(validatePack(pack, { app })).toEqual([expect.stringMatching(/^implementations\.other\/owner-check: 実装 ID は「sample\/」で始めてください/)]);
-
-    const shared = { 'sample/owner-check': { hook: 'memo.read.authorize', run: noop } };
-    expect(validatePack(samplePack(), { app, sharedImplementations: shared })).toEqual([
-      expect.stringMatching(/^implementations\.sample\/owner-check: アプリの実装と ID が重複しています/),
-    ]);
   });
 
   it('パック固有のテスト ID がアプリ共通のテストと重なる場合は拒否する', () => {
