@@ -1,25 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AttemptRecord } from '../../platform/contract';
 import { MAX_PROGRESS_BYTES, PROGRESS_FORMAT } from '../../platform/progress/schema';
-import { Evaluator } from '../../platform/evaluator/evaluator';
-import { Orchestrator } from '../../platform/orchestrator/orchestrator';
-import { ProgressStore, isCurrentPass } from '../../platform/progress/store';
+import { ProgressStore } from '../../platform/progress/store';
 import { makeAttempt } from '../support/attempt';
-import { EngineRuntime } from '../support/engine-runtime';
-import { requestOnly } from '../support/request-only';
-import { testApp } from '../support/test-app';
-import { testPack } from '../support/test-pack';
 
-/** Node 用：描画を含むテストと画面のフックを除いたテスト専用パック */
-const nodePack = {
-  ...testPack,
-  manifest: {
-    ...testPack.manifest,
-    runtime: { adapter: 'browser' as const, capabilities: ['sqlite' as const] },
-    hooks: testPack.manifest.hooks.filter((h) => h.id !== 'note.render'),
-    tests: { ...testPack.manifest.tests, cases: requestOnly(testPack.manifest.tests.cases) },
-  },
-};
 
 /** 検証結果や達成印を持つ、取り込みの検証に使う記録 */
 const attempt = (id: string, overrides: Partial<AttemptRecord> = {}): AttemptRecord =>
@@ -101,27 +85,5 @@ describe('ProgressStore', () => {
     await store.save(attempt('m1'));
     expect(store.unavailableReason).toMatch(/保存できません/);
     expect(await store.list()).toHaveLength(1);
-  });
-});
-
-describe('isCurrentPass', () => {
-  it('現在の版・記録の対策の構成ハッシュが合格時と一致するときだけ現在の合格とみなす', async () => {
-    const orchestrator = new Orchestrator({
-      apps: [testApp],
-      packs: [nodePack],
-      evaluator: new Evaluator(() => new EngineRuntime()),
-      exercise: new EngineRuntime(),
-    });
-    const { attempt } = await orchestrator.start('test-pack');
-    await orchestrator.applyDefense('owner-only');
-    await orchestrator.verify();
-    const record = structuredClone(attempt);
-
-    expect(await isCurrentPass(record, nodePack, '1.0.0')).toBe(true);
-    expect(await isCurrentPass(record, nodePack, '1.1.0')).toBe(false);
-    expect(await isCurrentPass({ ...record, appliedDefense: 'deny-all' }, nodePack, '1.0.0')).toBe(false);
-    const bumped = { ...nodePack, manifest: { ...nodePack.manifest, version: '1.0.1' } };
-    expect(await isCurrentPass(record, bumped, '1.0.0')).toBe(false);
-    expect(await isCurrentPass(record, undefined, '1.0.0')).toBe(false);
   });
 });

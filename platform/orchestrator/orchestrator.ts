@@ -52,6 +52,11 @@ export interface ExerciseSnapshot {
   blocked: BlockedReason | null;
   /** 直近の検証で起きた基盤エラー */
   platformError: string | null;
+  /**
+   * 防御の達成印が、この演習で現在の構成を検証して得たものか。
+   * 記録から続きを始めた場合は、再検証するまで現在の合格として扱わない（spec §13）
+   */
+  defenseCurrent: boolean;
 }
 
 export interface OrchestratorDeps {
@@ -121,16 +126,27 @@ export class Orchestrator {
    */
   async start(packId: string, options: { variantId?: string; seed?: number; resume?: AttemptRecord } = {}): Promise<ExerciseSnapshot> {
     const { resume } = options;
-    if (resume) options = { variantId: resume.variantId, seed: resume.seed };
+    const variantId = resume?.variantId ?? options.variantId;
+    const seed = resume?.seed ?? options.seed;
     const pack = this.deps.packs.find((p) => p.manifest.id === packId);
     if (!pack) throw new Error(`課題 ${packId} は登録されていません`);
     const { manifest } = pack;
-    const variant = manifest.fixtures.variants.find((v) => v.id === (options.variantId ?? manifest.fixtures.variants[0]?.id));
+    const variant = manifest.fixtures.variants.find((v) => v.id === (variantId ?? manifest.fixtures.variants[0]?.id));
     const recipe = manifest.mutationRecipes.find((r) => r.id === variant?.recipe);
     const app =
       this.deps.apps.find((a) => a.descriptor.id === manifest.appCompatibility.appId && satisfies(a.descriptor.version, manifest.appCompatibility.versions)) ??
       this.deps.apps.find((a) => a.descriptor.id === manifest.appCompatibility.appId);
 
+    // 続きから始めるときは、達成印・ヒント・回答を記録から引き継ぐ。検証結果は再検証するまで古いものとして扱う
+    const carried = resume && {
+      attemptId: resume.attemptId,
+      createdAt: resume.createdAt,
+      badges: structuredClone(resume.badges),
+      lastVerification: resume.lastVerification,
+      hintsOpened: [...resume.hintsOpened],
+      solutionViewed: resume.solutionViewed,
+      answers: { ...resume.answers },
+    };
     const attempt: AttemptRecord = {
       attemptId: this.newId(),
       missionId: manifest.id,
@@ -140,7 +156,7 @@ export class Orchestrator {
       recipeVersion: recipe?.version ?? '',
       appId: manifest.appCompatibility.appId,
       appVersion: app?.descriptor.version ?? '',
-      seed: options.seed ?? this.randomSeed(),
+      seed: seed ?? this.randomSeed(),
       fixtureHash: '',
       createdAt: this.now().toISOString(),
       state: 'Selected',
@@ -151,31 +167,20 @@ export class Orchestrator {
       hintsOpened: [],
       solutionViewed: false,
       answers: {},
+      ...carried,
     };
     const vulnerable = withChanges({}, recipe?.apply ?? []);
     const baseline = Object.fromEntries(
       manifest.hooks.map((h) => [h.id, app?.descriptor.hooks.find((d) => d.id === h.id)?.baseline ?? '']),
     );
     this.current = {
-      snapshot: { attempt, pack, refs: {}, implementations: {}, preflight: [], blocked: null, platformError: null },
+      snapshot: { attempt, pack, refs: {}, implementations: {}, preflight: [], blocked: null, platformError: null, defenseCurrent: false },
       app,
       tests: [...(app?.tests ?? []), ...manifest.tests.cases],
       vulnerable,
       baseline,
       runIds: new Set(),
     };
-    if (resume) {
-      // 版が同じ記録だけを引き継ぐ。達成印・ヒント・回答は残し、検証結果は現在の構成で再検証するまで古いものとして扱う
-      Object.assign(attempt, {
-        attemptId: resume.attemptId,
-        createdAt: resume.createdAt,
-        badges: structuredClone(resume.badges),
-        lastVerification: resume.lastVerification,
-        hintsOpened: [...resume.hintsOpened],
-        solutionViewed: resume.solutionViewed,
-        answers: { ...resume.answers },
-      });
-    }
     await this.runPreflight();
     const resumedDefense = resume?.appliedDefense;
     if (resumedDefense && this.current?.snapshot.attempt.state === 'Prepared' && manifest.defenses.some((d) => d.id === resumedDefense)) {
@@ -215,6 +220,7 @@ export class Orchestrator {
     if (!isInExercise(attempt.state)) throw new Error(`${attempt.state} では対策を適用できません`);
 
     await this.switchImplementations(withChanges(c.vulnerable, defense?.apply ?? []));
+    c.snapshot.defenseCurrent = false;
     attempt.appliedDefense = defenseId;
     if (attempt.state !== 'Repairing') this.transition('Repairing');
     this.emit();
@@ -249,6 +255,7 @@ export class Orchestrator {
     if (report.passed) {
       attempt.badges.defense = { achieved: true, runId: report.runId, configHash: report.configHash, at: this.now().toISOString() };
     }
+    c.snapshot.defenseCurrent = report.passed;
     this.transition(report.passed && this.allBadges() ? 'Passed' : 'Repairing');
     this.emit();
     return report;
@@ -288,6 +295,7 @@ export class Orchestrator {
     await this.switchImplementations({ ...c.vulnerable });
     await this.deps.exercise.reset();
     attempt.appliedDefense = null;
+    c.snapshot.defenseCurrent = false;
     this.transition('Prepared');
     this.emit();
   }
@@ -426,8 +434,8 @@ export class Orchestrator {
    * 合格後に対策を変えたら、過去の合格を現在の合格として扱わない（spec §5.3）
    */
   private allBadges(): boolean {
-    const { badges, configHash } = this.require().snapshot.attempt;
-    return badges.reproduction.achieved && badges.defense.achieved && badges.defense.configHash === configHash && badges.understanding.achieved;
+    const { attempt, defenseCurrent } = this.require().snapshot;
+    return attempt.badges.reproduction.achieved && defenseCurrent && attempt.badges.understanding.achieved;
   }
 
   private transition(to: ExerciseState): void {

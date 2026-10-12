@@ -1,9 +1,9 @@
 // 学習UIの組み立て。課題一覧・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { satisfies, type AttemptRecord } from '../contract';
+import { satisfies } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { ProgressStore, isCurrentPass } from '../progress/store';
+import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
 import { confirmDialog } from './components';
 import { announce, fill, h } from './dom';
@@ -20,8 +20,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const listView = h('section', { class: 'list-view' });
   const main = h('main', { id: 'main' });
-  /** この画面を開いてから防御を検証して合格した演習。復元した記録は再検証するまで現在の合格として扱わない */
-  const verifiedThisSession = new Set<string>();
 
   let orchestrator: Orchestrator;
   const preflightView = new PreflightView({
@@ -55,7 +53,12 @@ export async function startApp(root: HTMLElement): Promise<void> {
   );
   fill(main, listView, preflightView.element, exerciseView.element);
 
+  let screen: Screen = 'list';
   function show(next: Screen): void {
+    screen = next;
+    const snapshot = orchestrator.snapshot;
+    if (snapshot && next === 'preflight') preflightView.update(snapshot);
+    if (snapshot && next === 'exercise') exerciseView.update(snapshot);
     listView.hidden = next !== 'list';
     preflightView.element.hidden = next !== 'preflight';
     exerciseView.element.hidden = next !== 'exercise';
@@ -63,48 +66,31 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (next === 'exercise') exerciseView.focus();
   }
 
-  const defenseCurrent = (attempt: AttemptRecord) =>
-    verifiedThisSession.has(attempt.attemptId) && attempt.badges.defense.achieved && attempt.badges.defense.configHash === attempt.configHash;
 
   // 状態が変わるたびに画面を更新し、まとまった変更ごとに保存する
-  let pendingSave: AttemptRecord | null = null;
-  let lastVerificationRun: string | undefined;
+  let saveScheduled = false;
   orchestrator.subscribe((snapshot: ExerciseSnapshot) => {
     const { attempt } = snapshot;
-    const run = attempt.lastVerification?.runId;
-    if (run && run !== lastVerificationRun) {
-      lastVerificationRun = run;
-      if (attempt.lastVerification?.passed) verifiedThisSession.add(attempt.attemptId);
-    }
-    preflightView.update(snapshot);
-    exerciseView.update(snapshot, defenseCurrent(attempt));
-    if (!attempt.fixtureHash) return;
-    const scheduled = pendingSave;
-    pendingSave = structuredClone(attempt);
-    if (!scheduled) {
-      queueMicrotask(() => {
-        const record = pendingSave!;
-        pendingSave = null;
-        void store.save(record);
-      });
-    }
+    if (screen === 'preflight') preflightView.update(snapshot);
+    if (screen === 'exercise') exerciseView.update(snapshot);
+    if (!attempt.fixtureHash || saveScheduled) return;
+    saveScheduled = true;
+    queueMicrotask(() => {
+      saveScheduled = false;
+      void store.save(structuredClone(attempt));
+    });
   });
 
   async function entries(): Promise<MissionEntry[]> {
     const records = await store.list();
-    return Promise.all(
-      catalog.packs.map(async (pack) => {
-        const latest = records.filter((r) => r.missionId === pack.manifest.id).at(-1);
-        const appVersion = latest ? appVersionOf(latest.appId) : '';
-        const currentVersion = !!latest && latest.missionVersion === pack.manifest.version && satisfies(appVersion, pack.manifest.appCompatibility.versions);
-        return {
-          pack,
-          latest,
-          resumable: currentVersion,
-          defenseCurrent: !!latest && verifiedThisSession.has(latest.attemptId) && (await isCurrentPass(latest, pack, appVersion)),
-        };
-      }),
-    );
+    const live = orchestrator.snapshot;
+    return catalog.packs.map((pack) => {
+      const latest = records.filter((r) => r.missionId === pack.manifest.id).at(-1);
+      const resumable = !!latest && latest.missionVersion === pack.manifest.version && satisfies(appVersionOf(latest.appId), pack.manifest.appCompatibility.versions);
+      // 防御が現在の合格なのは、この画面で検証した演習だけ。保存した記録は再検証するまで確定しない
+      const defenseCurrent = !!latest && live?.attempt.attemptId === latest.attemptId && live.defenseCurrent;
+      return { pack, latest, resumable, defenseCurrent };
+    });
   }
 
   async function showList(message?: string): Promise<void> {

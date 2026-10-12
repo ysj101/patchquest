@@ -46,8 +46,8 @@ export class ExerciseView {
     this.title.focus();
   }
 
-  update(snapshot: ExerciseSnapshot, defenseCurrent: boolean): void {
-    const { attempt, pack } = snapshot;
+  update(snapshot: ExerciseSnapshot): void {
+    const { attempt, pack, defenseCurrent } = snapshot;
     this.title.textContent = pack.manifest.title;
     this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}`;
     this.state.textContent = STATE_LABEL[attempt.state];
