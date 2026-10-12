@@ -141,6 +141,11 @@ describe('validatePack', () => {
     ['ID の重複', (m) => m.probes.push({ ...m.probes[0]! }), /「read-other」が重複しています/],
     ['テストの手順で未定義の利用者', (m) => (m.tests.cases[0]!.steps[0]!.as = 'carol'), /未定義の利用者「carol」/],
     ['チュートリアルにガイドがない', (m) => (m.kind = 'tutorial'), /^guide: /],
+    [
+      'ガイドのやり直しの出来事が未知',
+      (m) => (m.guide = [{ id: 'g', title: 't', body: 'b', anchor: 'verify', until: 'verify-passed', retry: { when: 'oops' as never, text: 'x' } }]),
+      /^guide\[0\]\.retry\.when: /,
+    ],
   ])('%s場合は拒否する', (_, change, message) => {
     const errors = validatePack(withManifest(change), { app });
     expect(errors.some((e) => message.test(e)), errors.join('\n')).toBe(true);

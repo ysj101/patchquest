@@ -98,10 +98,13 @@ export function confirmDialog(options: { title: string; body: string; confirm: s
 }
 
 /**
- * 隠れた中身を表示するよう求める出来事。中の要素から送ると泡立ち、REVEALABLE_ATTR を付けた入れ物（タブのパネルなど）が自分を表示する
+ * 隠れた中身を表示するよう求める出来事。中の要素から送ると泡立ち、REVEALABLE_ATTR を付けた入れ物（タブのパネルなど）が自分を表示する。
+ * REVEALABLE_ATTR の値は、その入れ物を開く操作（タブのボタンなど）の id
  */
 export const REVEAL_EVENT = 'pq:reveal';
 export const REVEALABLE_ATTR = 'data-revealable';
+/** 入れ物が中身を表示したときに、入れ物から泡立つ出来事 */
+export const SHOWN_EVENT = 'pq:shown';
 
 export interface TabSpec {
   id: string;
@@ -136,7 +139,7 @@ export function tabs(name: string, specs: TabSpec[]): { element: HTMLElement; se
     spec.panel.setAttribute('aria-labelledby', `tab-${spec.id}`);
     spec.panel.tabIndex = 0;
     spec.panel.hidden = i !== 0;
-    spec.panel.setAttribute(REVEALABLE_ATTR, '');
+    spec.panel.setAttribute(REVEALABLE_ATTR, `tab-${spec.id}`);
     spec.panel.addEventListener(REVEAL_EVENT, () => select(spec.id));
     return spec.panel;
   });
@@ -148,6 +151,7 @@ export function tabs(name: string, specs: TabSpec[]): { element: HTMLElement; se
       panels[i]!.hidden = !selected;
       if (selected && focus) buttons[i]!.focus();
     });
+    panels[specs.findIndex((spec) => spec.id === id)]?.dispatchEvent(new Event(SHOWN_EVENT, { bubbles: true }));
   }
   const list = h('div', { role: 'tablist', 'aria-label': name, class: 'tablist' }, ...buttons);
   list.addEventListener('keydown', (e) => {

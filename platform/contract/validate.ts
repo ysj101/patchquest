@@ -201,6 +201,12 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
       c.text(`${at}.body`, g.body);
       c.oneOf(`${at}.anchor`, g.anchor, GUIDE_ANCHORS);
       c.oneOf(`${at}.until`, g.until, GUIDE_MILESTONES);
+      if (g.praise !== undefined) c.text(`${at}.praise`, g.praise);
+      if (g.retry !== undefined) {
+        const retry = c.obj(`${at}.retry`, g.retry);
+        c.oneOf(`${at}.retry.when`, retry.when, GUIDE_MILESTONES);
+        c.text(`${at}.retry.text`, retry.text);
+      }
     });
   }
 

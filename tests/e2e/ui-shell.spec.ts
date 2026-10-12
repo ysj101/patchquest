@@ -16,14 +16,15 @@ const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: '事故を調べて、直して、確かめる' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
 });
 
 test('キーボードだけで課題一覧から開始前チェックを経て演習を始められる', async ({ page }) => {
   await tabTo(page, 'この課題を始める');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeVisible();
-  await expect(page.getByText('この確認はあなたの達成には数えません')).toBeVisible();
+  // 点検の内容はふだん畳んである
+  await expect(page.locator('.preflight-details summary')).toContainText('点検の内容');
 
   // 合格すると「演習を始める」にフォーカスが移る
   const begin = page.getByRole('button', { name: '演習を始める' });
@@ -45,7 +46,7 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
   await page.getByRole('button', { name: 'もう一度チェックする' }).click();
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: '事故を調べて、直して、確かめる' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
 });
 
 test('進捗を保存し、続きから始め、書き出し・読み込み・削除ができる', async ({ page }) => {

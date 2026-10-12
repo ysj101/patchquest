@@ -95,6 +95,10 @@ main > section > * + * { margin-top: 16px; }
 .button-primary:hover { background: #22317f; }
 .button-danger { color: var(--fail); border-color: #e3b5af; }
 .button-quiet { border-color: transparent; background: transparent; color: var(--primary); }
+/* 押し込める大きなボタン。練習の入口とガイドの主な操作に使う */
+.button-chunky { border-radius: 12px; font-weight: 800; box-shadow: 0 4px 0 #1a2a73; transition: transform 0.05s, box-shadow 0.05s; }
+.button-chunky:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2a73; }
+.button-big { font-size: 1.1rem; padding: 12px 28px; min-height: 52px; }
 
 /* お知らせ */
 .banner { border-radius: var(--radius); padding: 12px 16px; border: 1px solid; }
@@ -139,7 +143,28 @@ main > section > * + * { margin-top: 16px; }
 @keyframes stamp { from { transform: rotate(-6deg) scale(1.25); opacity: 0.4; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
 
 /* 課題一覧 */
-.intro { max-width: 760px; display: grid; gap: 8px; }
+/* 日本語は文節で区切って折り返し、見出しは行の長さをそろえる */
+.hero {
+  display: grid; gap: 14px; padding: clamp(20px, 4vw, 36px);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  word-break: auto-phrase;
+}
+.hero h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); text-wrap: balance; }
+.hero-lead { color: var(--muted); max-width: 46em; }
+.hero-flow { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.hero-step { position: relative; display: flex; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--paper); }
+.hero-step:not(:last-child)::after {
+  content: '→'; position: absolute; right: -16px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-weight: 800;
+}
+.hero-step .seal-stamp { --size: 54px; flex: none; border-color: var(--seal); color: var(--seal); background: #fdf1ee; }
+.hero-step-text { display: grid; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+.hero-step-text strong { color: var(--ink); font-size: 1.05rem; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-top: 6px; }
+@media (max-width: 760px) {
+  .hero-flow { grid-template-columns: 1fr; gap: 8px; }
+  .hero-step:not(:last-child)::after { display: none; }
+}
 .mission-section { display: grid; gap: 8px; margin-top: 32px; }
 .mission-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); margin-top: 8px; }
 .mission-card {
@@ -158,6 +183,9 @@ main > section > * + * { margin-top: 16px; }
   padding: 12px 16px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
 }
 .check-detail { grid-column: 1 / -1; color: var(--muted); font-size: 0.9rem; white-space: pre-line; }
+.preflight-details { border-top: 1px solid var(--line); padding-top: 12px; }
+.preflight-details summary { cursor: pointer; color: var(--muted); font-weight: 600; }
+.preflight-details[open] > * + * { margin-top: 12px; }
 .preflight-outcome { display: grid; gap: 12px; }
 
 /* 演習票と作業台 */
@@ -283,28 +311,53 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .choice-explanation { grid-column: 2; }
 @media (max-width: 960px) { .diff-pair { grid-template-columns: 1fr; } }
 
-/* 操作ガイド（練習用パック）。演習票に添える赤ペンの指示メモとして画面上部に留め、案内先を赤の破線で囲む */
+/* 操作ガイド（練習用パック）。画面上部に留め、先輩が 1 ステップずつ話しかける。進み具合は緑の太い帯で、案内先は赤の破線で囲む */
 .guide {
   position: sticky; top: 0; z-index: 5;
-  margin-bottom: 20px; padding: 12px 16px;
-  display: grid; gap: 8px;
-  background: var(--surface);
-  border: 1px solid var(--line); border-left: 6px solid var(--seal); border-radius: var(--radius);
+  margin-bottom: 20px; padding: 10px 16px 14px;
+  display: grid; gap: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
   box-shadow: 0 6px 18px rgb(27 36 48 / 0.08);
 }
-.guide-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.guide-label { font-weight: 800; color: var(--seal); }
-.guide-count { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); }
-.guide-track { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex: 1; min-width: 160px; }
-.guide-track li { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
-.guide-track li[data-state='done'] { background: var(--seal); }
-.guide-track li[data-state='current'] { background: repeating-linear-gradient(90deg, var(--seal) 0 4px, transparent 4px 7px); outline: 1px solid var(--seal); }
-.guide-track li[data-state='skipped'] { background: repeating-linear-gradient(90deg, var(--muted) 0 2px, transparent 2px 5px); }
-.guide-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; }
-.guide-body > :not(.actions) { grid-column: 1; max-width: 72ch; }
-.guide-body .actions { grid-column: 2; grid-row: 1 / span 2; }
-[data-guide-target] { outline: 3px dashed var(--seal); outline-offset: 6px; border-radius: 4px; }
+.guide-bar { display: flex; align-items: center; gap: 12px; }
+.guide-close {
+  width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent;
+  color: var(--muted); font-size: 1rem; cursor: pointer;
+}
+.guide-close:hover { background: var(--paper); }
+.guide-track { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex: 1; }
+.guide-track li { flex: 1; height: 12px; background: var(--line); }
+.guide-track li:first-child { border-radius: 6px 0 0 6px; }
+.guide-track li:last-child { border-radius: 0 6px 6px 0; }
+.guide-track li[data-state='done'] { background: var(--ok); }
+.guide-track li[data-state='current'] { background: repeating-linear-gradient(90deg, var(--ok) 0 4px, var(--ok-bg) 4px 8px); }
+.guide-track li[data-state='skipped'] { background: repeating-linear-gradient(90deg, var(--muted) 0 2px, var(--line) 2px 6px); }
+.guide-count { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); min-width: 3.5em; text-align: right; }
+.guide-coach { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.guide-avatar {
+  width: 44px; height: 44px; border-radius: 50%; display: grid; place-content: center;
+  background: var(--seal); color: #fff; font-size: 1.2rem; align-self: start;
+}
+.guide-bubble {
+  position: relative; display: grid; gap: 4px; max-width: 72ch;
+  padding: 10px 14px; border: 2px solid var(--line); border-radius: 14px; background: var(--surface);
+}
+.guide-bubble::before {
+  content: ''; position: absolute; left: -9px; top: 14px; width: 14px; height: 14px;
+  background: inherit; border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); transform: rotate(45deg);
+}
+.guide-bubble h3 { font-size: 1.05rem; }
+.guide-praise { color: var(--ok); font-weight: 800; }
+.guide-retry { color: #513600; background: var(--warn-bg); border-radius: 8px; padding: 4px 10px; font-weight: 600; }
+.guide-coach[data-done] .guide-bubble { background: var(--ok-bg); border-color: #b5dcc4; }
+.guide-coach[data-done] .guide-bubble::before { border-color: #b5dcc4; }
+.guide-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+[data-guide-target] { outline: 3px dashed var(--seal); outline-offset: 4px; border-radius: 4px; animation: guide-pulse 1.6s ease-in-out infinite; }
+@keyframes guide-pulse { 50% { outline-offset: 8px; } }
+@media (prefers-reduced-motion: reduce) {
+  [data-guide-target], .seal[data-state='done'] .seal-stamp { animation: none; }
+}
 @media (max-width: 720px) {
-  .guide-body { grid-template-columns: 1fr; }
-  .guide-body .actions { grid-column: 1; grid-row: auto; }
+  .guide-coach { grid-template-columns: auto minmax(0, 1fr); }
+  .guide-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }

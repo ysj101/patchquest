@@ -26,7 +26,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   let orchestrator: Orchestrator;
   /** 練習用パックの操作ガイド。演習が始まるたびにそのパックのガイドで始め直し、課題一覧へ戻っても表示し続ける */
-  const guide = new GuidePanel((message) => announce(live, message));
+  const guide = new GuidePanel({ announce: (message) => announce(live, message), finish: () => void showList() });
   const preflightView = new PreflightView({
     begin: () => void beginExercise(),
     retry: () => void orchestrator.retryPreflight(),
@@ -89,7 +89,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       'header',
       { class: 'site-header' },
       h('p', { class: 'brand' }, h('span', { class: 'brand-mark', 'aria-hidden': true }, '◆'), 'PatchQuest'),
-      h('p', { class: 'brand-tagline' }, 'アプリの事故対応を、壊れても困らない場所で練習する'),
+      h('p', { class: 'brand-tagline' }, 'セキュリティの直し方を、壊れても困らない場所で練習する'),
     ),
     main,
     live,

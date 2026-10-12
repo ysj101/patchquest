@@ -6,7 +6,7 @@ test('展開した配布物を localhost で開くと課題一覧が表示され
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: '事故を調べて、直して、確かめる' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
