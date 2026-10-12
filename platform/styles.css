@@ -354,6 +354,9 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .guide-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 [data-guide-target] { outline: 3px dashed var(--seal); outline-offset: 4px; border-radius: 4px; animation: guide-pulse 1.6s ease-in-out infinite; }
 @keyframes guide-pulse { 50% { outline-offset: 8px; } }
+/* はみ出しを切り取る入れ物（.tools・.app-pane）の中にあるものは、点線を内側に描く */
+:is([role='tab'], [role='tabpanel'], .preview-slot)[data-guide-target] { outline-offset: -6px; animation-name: guide-pulse-inset; }
+@keyframes guide-pulse-inset { 50% { outline-offset: -9px; } }
 @media (prefers-reduced-motion: reduce) {
   [data-guide-target], .seal[data-state='done'] .seal-stamp { animation: none; }
 }
