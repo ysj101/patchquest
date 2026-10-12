@@ -171,6 +171,19 @@ describe('Orchestrator', () => {
     expect(snapshot.attempt.state).toBe('Passed');
   });
 
+  it('検証中は対策の変更も初期状態へ戻す操作も受け付けない', async () => {
+    const { orchestrator } = setup();
+    const snapshot = await orchestrator.start('test-pack');
+    await orchestrator.applyDefense('owner-only');
+    const verifying = orchestrator.verify();
+    expect(snapshot.attempt.state).toBe('Verifying');
+    await expect(orchestrator.applyDefense('deny-all')).rejects.toThrow(/Verifying では対策を適用できません/);
+    await orchestrator.resetToInitial();
+    expect(snapshot.attempt.appliedDefense).toBe('owner-only');
+    await verifying;
+    expect(snapshot.attempt.state).toBe('Repairing');
+  });
+
   it('すべて拒否する対策は正常系の失敗で合格しない（A05）', async () => {
     const { orchestrator } = setup();
     const snapshot = await orchestrator.start('test-pack');
