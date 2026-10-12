@@ -12,13 +12,15 @@ const HOOKS = [
 /** 前後のメモの移動先（memo.detail.neighbors）を持つ版から対応する */
 const TARGET_APP = { appId: 'memo', versions: '^1.3.0' };
 const RECIPE = 'no-owner-check';
-/** 注入した状態の、ID 指定でメモを取り出す処理（参考差分の変更前） */
-const READ_WITHOUT_OWNER_CHECK = `const readMemo = (ctx, { id, user }) => {
+/** 参考差分に載せる、ID 指定でメモを取り出す処理。メモが見つかった後の判断（ending）だけが対策ごとに違う */
+const readMemoSource = (ending: string) => `const readMemo = (ctx, { id, user }) => {
   if (!user) return { status: 'unauthenticated' };
   const memo = findMemo(ctx.db, id);
   if (!memo) return { status: 'not-found' };
-  return { status: 'ok', memo };
+${ending}
 };`;
+/** 注入した状態（参考差分の変更前） */
+const READ_WITHOUT_OWNER_CHECK = readMemoSource("  return { status: 'ok', memo };");
 
 export const idorPack: MissionPack = {
   manifest: {
@@ -103,10 +105,7 @@ export const idorPack: MissionPack = {
           file: 'apps/memo/hooks.ts',
           language: 'ts',
           before: READ_WITHOUT_OWNER_CHECK,
-          after: READ_WITHOUT_OWNER_CHECK.replace(
-            "  return { status: 'ok', memo };",
-            "  if (memo.ownerId !== user.id) return { status: 'forbidden' };\n  return { status: 'ok', memo };",
-          ),
+          after: readMemoSource("  if (memo.ownerId !== user.id) return { status: 'forbidden' };\n  return { status: 'ok', memo };"),
         },
         expected: 'secure',
       },
@@ -119,7 +118,7 @@ export const idorPack: MissionPack = {
           file: 'apps/memo/hooks.ts',
           language: 'ts',
           before: READ_WITHOUT_OWNER_CHECK,
-          after: READ_WITHOUT_OWNER_CHECK.replace("  return { status: 'ok', memo };", "  return { status: 'forbidden' };"),
+          after: readMemoSource("  return { status: 'forbidden' };"),
         },
         expected: 'breaks-normal',
       },

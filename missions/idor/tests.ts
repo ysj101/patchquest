@@ -1,8 +1,9 @@
 // IDOR パックの攻撃の成立条件とテスト。利用者・メモはすべて fixture の値で参照し、
 // 特定の利用者名やメモ ID だけを守るハードコードした修正を、別の利用者の組み合わせと別の seed で見逃さない
 import type { ActorKey, ProbeDef, ResponseExpectation, Step, TestCase } from '../../platform/contract';
+import { USERS } from '../../apps/memo/fixtures';
 
-type Owner = 'alice' | 'bob' | 'carol';
+type Owner = (typeof USERS)[number];
 
 const memoPath = (owner: Owner, memo: 'private' | 'other') => `/api/memos/{{memos.${owner}.${memo}.id}}`;
 
@@ -19,26 +20,21 @@ const readOther = (reader: ActorKey, owner: Owner): Step => ({
   expect: denied(owner),
 });
 
-const readOwn = (owner: Owner): Step => ({
+/** reader が owner の非公開メモを読み、本文を受け取る */
+const readAs = (reader: Owner, owner: Owner): Step => ({
   kind: 'request',
-  as: owner,
+  as: reader,
   request: { method: 'GET', path: memoPath(owner, 'private') },
   expect: { status: 200, body: [{ path: 'memo.body', is: { equals: `{{memos.${owner}.private.body}}` } }] },
 });
+const readOwn = (owner: Owner) => readAs(owner, owner);
 
-/** reader が owner の非公開メモを読めてしまう。detect は、owner 以外の利用者が owner のメモを受け取ったやり取り */
-function readOthersMemo(owner: Owner, reader: Owner): ProbeDef {
+/** 所有者以外の誰もが owner の非公開メモを読めてしまう。detect は、owner 以外の利用者が owner のメモを受け取ったやり取り */
+function readOthersMemo(owner: Owner): ProbeDef {
   return {
     id: `read-${owner}-memo`,
-    title: `${reader} が ${owner} の非公開メモを ID 指定で読める`,
-    steps: [
-      {
-        kind: 'request',
-        as: reader,
-        request: { method: 'GET', path: memoPath(owner, 'private') },
-        expect: { status: 200, body: [{ path: 'memo.body', is: { equals: `{{memos.${owner}.private.body}}` } }] },
-      },
-    ],
+    title: `別の利用者が ${owner} の非公開メモを ID 指定で読める`,
+    steps: USERS.filter((reader) => reader !== owner).map((reader) => readAs(reader, owner)),
     detect: {
       actor: { not: owner },
       request: { method: 'GET', path: '/api/memos/*' },
@@ -47,7 +43,8 @@ function readOthersMemo(owner: Owner, reader: Owner): ProbeDef {
   };
 }
 
-export const PROBES: ProbeDef[] = [readOthersMemo('alice', 'bob'), readOthersMemo('bob', 'carol'), readOthersMemo('carol', 'alice')];
+/** どの利用者のメモが読まれても再現とみなせるよう、所有者ごとに probe を置く */
+export const PROBES: ProbeDef[] = USERS.map(readOthersMemo);
 
 /** 攻撃阻止のテスト。アプリ共通の memo.read.other-denied・memo.create.owner-spoof とあわせて、注入した状態で失敗する */
 export const TARGET_CASES: TestCase[] = [
