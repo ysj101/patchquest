@@ -10,6 +10,7 @@ import type {
   JsonPrimitive,
   JsonValue,
   MissionPack,
+  TestCase,
 } from '../../platform/contract';
 import type { Database } from './sqlite';
 
@@ -44,6 +45,8 @@ export interface AppModule {
   fixtures: Record<string, FixtureGenerator>;
   /** 基準実装（server・view の両方） */
   implementations: ImplementationRegistry;
+  /** アプリ共通のテスト。基準状態 S ではすべて通る。パックの tests.target から ID で参照できる */
+  tests: TestCase[];
   handle(ctx: ServerContext, request: AppRequest): AppResponse;
   render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
 }
