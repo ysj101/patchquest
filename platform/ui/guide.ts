@@ -1,8 +1,9 @@
-// 操作ガイド（練習用パック）。マニフェストの guide を順に示し、各ステップの until の出来事が起きたら次へ進む。
+// 操作ガイド（練習用パック）。マニフェストの guide を 1 ステップずつ示し、各ステップの until の出来事が起きたら、
+// 短い言葉（praise）をかけて次へ進む。うまくいかなかったとき（retry.when）は次の手を示す。
 // 画面上の位置は data-anchor で探す。コアUIに課題ごとの分岐は入れず、ガイドの中身はすべてパックのデータで決まる
 import type { AttemptRecord, GuideMilestone, GuideStep } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { REVEALABLE_ATTR, REVEAL_EVENT } from './components';
+import { REVEALABLE_ATTR, REVEAL_EVENT, SHOWN_EVENT } from './components';
 import { fill, h } from './dom';
 
 /** 案内している場所に付ける印（CSS で枠を描く） */
@@ -29,6 +30,12 @@ function findTarget(anchor: string): HTMLElement | undefined {
   return [...document.querySelectorAll<HTMLElement>(`[data-anchor="${anchor}"]`)].find((el) => !el.closest(`[hidden]:not([${REVEALABLE_ATTR}])`));
 }
 
+export interface GuideActions {
+  announce(message: string): void;
+  /** 練習を終えて課題一覧へ戻る */
+  finish(): void;
+}
+
 export class GuidePanel {
   readonly element = h('aside', { class: 'guide', 'aria-labelledby': 'guide-title', hidden: true });
   /** ガイドしている演習。別の演習が始まったら、そのパックのガイドで始め直す */
@@ -36,9 +43,14 @@ export class GuidePanel {
   private steps: GuideStep[] = [];
   private readonly reached = new Set<GuideMilestone>();
   private readonly skipped = new Set<string>();
+  /** 直前に終えたステップにかける言葉 */
+  private praise: string | null = null;
   private marked: Element | null = null;
 
-  constructor(private readonly announce: (message: string) => void) {}
+  constructor(private readonly actions: GuideActions) {
+    // タブを開くと案内先が見えるようになるので、印を付け直す
+    document.addEventListener(SHOWN_EVENT, () => this.refresh());
+  }
 
   /** 演習の記録を反映する。別の演習が始まったら始め直し、ガイドのないパックなら閉じる */
   sync({ attempt, pack }: ExerciseSnapshot): void {
@@ -47,6 +59,7 @@ export class GuidePanel {
       this.steps = pack.manifest.guide ?? [];
       this.reached.clear();
       this.skipped.clear();
+      this.praise = null;
       this.element.hidden = this.steps.length === 0;
       this.render();
     }
@@ -61,11 +74,13 @@ export class GuidePanel {
     if (!this.element.hidden) this.advance(() => this.reached.add(milestone));
   }
 
-  /** 案内先に印を付け直す。画面が切り替わったときにも呼ぶ */
+  /** 案内先に印を付け直す。案内先が閉じたタブの中なら、そのタブを開く操作に印を付ける。画面が切り替わったときにも呼ぶ */
   refresh(): void {
     this.marked?.removeAttribute(TARGET_ATTR);
     const step = this.element.hidden ? undefined : this.current();
-    this.marked = (step && findTarget(step.anchor)) ?? null;
+    const target = step && findTarget(step.anchor);
+    const closed = target?.closest(`[hidden][${REVEALABLE_ATTR}]`);
+    this.marked = (closed ? document.getElementById(closed.getAttribute(REVEALABLE_ATTR) ?? '') : target) ?? null;
     this.marked?.setAttribute(TARGET_ATTR, '');
   }
 
@@ -73,14 +88,26 @@ export class GuidePanel {
     return this.steps.find((s) => !this.reached.has(s.until) && !this.skipped.has(s.id));
   }
 
-  /** 出来事や飛ばしたステップを反映する。進んだステップは読み上げで知らせる */
+  /** うまくいかなかったときの言葉。その出来事がもう起きていれば返す */
+  private retryText(step: GuideStep | undefined): string | null {
+    return step?.retry && this.reached.has(step.retry.when) ? step.retry.text : null;
+  }
+
+  /** 出来事や飛ばしたステップを反映する。ステップが進めば言葉をかけ、うまくいかなければ次の手を読み上げる */
   private advance(change: () => void): void {
     const before = this.current();
+    const retryBefore = this.retryText(before);
     const size = this.reached.size + this.skipped.size;
     change();
     if (this.reached.size + this.skipped.size === size) return;
     const after = this.current();
-    if (after !== before) this.announce(after ? `操作ガイド：次は「${after.title}」です` : '操作ガイド：練習の手順はすべて終わりました');
+    if (after !== before) {
+      this.praise = before && this.reached.has(before.until) ? (before.praise ?? null) : null;
+      this.actions.announce([this.praise, after ? `次は「${after.title}」` : '練習の手順はすべて終わりました'].filter(Boolean).join('。'));
+    } else {
+      const retry = this.retryText(after);
+      if (retry && retry !== retryBefore) this.actions.announce(retry);
+    }
     this.render();
   }
 
@@ -89,11 +116,16 @@ export class GuidePanel {
     this.refresh();
   }
 
+  private finish(): void {
+    this.close();
+    this.actions.finish();
+  }
+
   /** 案内先を表示する。隠れていれば入れ物に表示を求め、見える位置へ移してフォーカスする */
   private reveal(step: GuideStep): void {
     const target = findTarget(step.anchor);
     if (!target) {
-      this.announce('案内している場所は、今の画面にはありません');
+      this.actions.announce('案内している場所は、今の画面にはありません');
       return;
     }
     target.dispatchEvent(new Event(REVEAL_EVENT, { bubbles: true }));
@@ -112,35 +144,41 @@ export class GuidePanel {
         h('span', { class: 'visually-hidden' }, `${s.title}：${STEP_STATE_TEXT[state]}`),
       );
     };
+    const retry = this.retryText(step);
     fill(
       this.element,
       h(
         'div',
-        { class: 'guide-head' },
-        h('h2', { id: 'guide-title', class: 'eyebrow guide-label' }, '操作ガイド'),
-        h('p', { class: 'guide-count' }, step ? `${this.steps.indexOf(step) + 1} / ${this.steps.length}` : '完了'),
+        { class: 'guide-bar' },
+        h('h2', { id: 'guide-title', class: 'visually-hidden' }, '操作ガイド'),
+        h('button', { type: 'button', class: 'guide-close', 'aria-label': 'ガイドを閉じる', title: 'ガイドを閉じる', on: { click: () => this.close() } }, '✕'),
         h('ol', { class: 'guide-track', 'aria-label': '練習の手順' }, ...this.steps.map(trackItem)),
-        h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.close() } }, 'ガイドを閉じる'),
+        h('p', { class: 'guide-count' }, step ? `${this.steps.indexOf(step) + 1} / ${this.steps.length}` : '完了'),
       ),
-      step
-        ? h(
-            'div',
-            { class: 'guide-body' },
-            h('h3', {}, step.title),
-            h('p', {}, step.body),
-            h(
-              'div',
-              { class: 'actions' },
-              h('button', { type: 'button', class: 'button button-primary', on: { click: () => this.reveal(step) } }, '場所を表示'),
-              h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.advance(() => this.skipped.add(step.id)) } }, 'このステップを飛ばす'),
-            ),
-          )
-        : h(
-            'div',
-            { class: 'guide-body' },
-            h('h3', {}, '練習はおしまいです'),
-            h('p', {}, '課題一覧から、本番の課題に進めます。この練習は何度でもやり直せます。'),
-          ),
+      h(
+        'div',
+        { class: 'guide-coach', 'data-done': step ? null : 'true' },
+        h('span', { class: 'guide-avatar', 'aria-hidden': true }, '◆'),
+        h(
+          'div',
+          { class: 'guide-bubble' },
+          // うまくいかなかったときは、前のステップへの言葉より次の手を見せる
+          step && this.praise && !retry ? h('p', { class: 'guide-praise' }, h('span', { 'aria-hidden': true }, '✓ '), this.praise) : null,
+          h('h3', {}, step ? step.title : (this.praise ?? '練習はおしまいです')),
+          h('p', {}, step ? step.body : 'これで基本の流れはひと通りです。本番の課題では、利用者の切り替えやリクエストの編集、ヒントも使えます。'),
+          retry ? h('p', { class: 'guide-retry' }, retry) : null,
+        ),
+        h(
+          'div',
+          { class: 'guide-actions' },
+          ...(step
+            ? [
+                h('button', { type: 'button', class: 'button button-primary button-chunky', on: { click: () => this.reveal(step) } }, '場所を表示'),
+                h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.advance(() => this.skipped.add(step.id)) } }, 'このステップを飛ばす'),
+              ]
+            : [h('button', { type: 'button', class: 'button button-primary button-chunky', on: { click: () => this.finish() } }, '課題一覧へ')]),
+        ),
+      ),
     );
     this.refresh();
   }

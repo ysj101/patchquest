@@ -1,4 +1,4 @@
-// ミッション一覧（spec §10）。学習目標・目安時間・達成印・開始と、進捗の書き出し・読み込み・削除
+// ミッション一覧（spec §10）。何をする場所かの説明と練習への入口、学習目標・目安時間・達成印・開始と、進捗の書き出し・読み込み・削除
 import type { AttemptRecord, MissionPack } from '../contract';
 import { sealStates, seals } from './components';
 import { h } from './dom';
@@ -44,6 +44,51 @@ function card(entry: MissionEntry, actions: MissionListActions): HTMLElement {
   );
 }
 
+/** 何をする場所かを一目で示す。3 つの検印（再現・防御・理解）が、そのまま課題の進め方になっている */
+const FLOW: { label: string; title: string; text: string }[] = [
+  { label: '再現', title: 'こわす', text: '不具合を自分の操作で起こしてみる' },
+  { label: '防御', title: 'なおす', text: '直し方を選び、自動テストで合否を確かめる' },
+  { label: '理解', title: 'ふりかえる', text: 'なぜ起きたか、どう防ぐかを確かめる' },
+];
+
+function hero(tutorial: MissionEntry | undefined, actions: MissionListActions): HTMLElement {
+  const finished = tutorial?.latest?.badges.understanding.achieved;
+  return h(
+    'section',
+    { class: 'hero', 'aria-labelledby': 'hero-title' },
+    h('h1', { id: 'hero-title', tabIndex: -1 }, 'わざと壊したアプリで、こわして、なおして、たしかめる。'),
+    h(
+      'p',
+      { class: 'hero-lead' },
+      'PatchQuest は、アプリのセキュリティの不具合を自分の手で再現し、直し方を選んで、自動テストで確かめる練習場です。すべてこのブラウザの中で動き、本物のサービスには触れません。',
+    ),
+    h(
+      'ol',
+      { class: 'hero-flow', 'aria-label': '課題の進め方' },
+      ...FLOW.map((f, i) =>
+        h(
+          'li',
+          { class: 'hero-step' },
+          h('span', { class: 'seal-stamp', 'aria-hidden': true }, h('span', { class: 'seal-mark' }, String(i + 1)), h('span', { class: 'seal-label' }, f.label)),
+          h('span', { class: 'hero-step-text' }, h('strong', {}, f.title), f.text),
+        ),
+      ),
+    ),
+    tutorial && !finished
+      ? h(
+          'div',
+          { class: 'hero-cta' },
+          h(
+            'button',
+            { type: 'button', class: 'button button-primary button-chunky button-big', on: { click: () => actions.start(tutorial.pack.manifest.id) } },
+            `まずは練習（${tutorial.pack.manifest.estimatedMinutes} 分）`,
+          ),
+          h('p', { class: 'note' }, '操作ガイドつきで、流れをひと通り体験できます。'),
+        )
+      : null,
+  );
+}
+
 function section(title: string, lead: string, entries: MissionEntry[], actions: MissionListActions): HTMLElement | null {
   if (entries.length === 0) return null;
   return h('section', { class: 'mission-section' }, h('h2', {}, title), h('p', { class: 'lead' }, lead), h('div', { class: 'mission-grid' }, ...entries.map((e) => card(e, actions))));
@@ -69,20 +114,11 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
   return h(
     'div',
     { class: 'mission-list', 'data-anchor': 'mission-list' },
-    h(
-      'div',
-      { class: 'intro' },
-      h('h1', { tabIndex: -1 }, '事故を調べて、直して、確かめる'),
-      h(
-        'p',
-        {},
-        'それぞれの課題は、学習用に脆弱性を注入した架空のサービスです。問い合わせの内容から事故を再現し、対策を選んで、攻撃を防げたことと普段の使い方が壊れていないことを確かめます。',
-      ),
-    ),
+    hero(tutorials[0], actions),
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,
-    section('練習', 'はじめての方は、ここで操作の流れをひと通り試せます。', tutorials, actions),
+    section('練習', '操作ガイドつきの短い課題です。何度でもやり直せます。', tutorials, actions),
     section('課題', 'どの課題からでも始められます。', missions, actions),
     entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
     h(

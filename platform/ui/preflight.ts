@@ -20,21 +20,22 @@ export class PreflightView {
   private readonly mission = h('p', { class: 'lead' });
   private readonly list = h('ol', { class: 'checklist' });
   private readonly outcome = h('div', { class: 'preflight-outcome' });
+  private readonly summary = h('summary', {});
+  /** 点検の内容。ふだんは畳んでおき、開始できないときは開く */
+  private readonly details = h(
+    'details',
+    { class: 'preflight-details' },
+    this.summary,
+    h(
+      'p',
+      { class: 'note' },
+      '安全な状態で全テストが通ること、脆弱性を注入すると攻撃が成立することを、演習とは別の環境で自動的に確かめます。この確認はあなたの達成には数えません。',
+    ),
+    this.list,
+  );
 
   constructor(private readonly actions: PreflightActions) {
-    fill(
-      this.element,
-      h('p', { class: 'eyebrow' }, '演習を始める前に、環境を点検しています'),
-      this.title,
-      this.mission,
-      h(
-        'p',
-        { class: 'note' },
-        '安全な状態で全テストが通ること、脆弱性を注入すると攻撃が成立することを、演習とは別の環境で自動的に確かめます。この確認はあなたの達成には数えません。',
-      ),
-      this.list,
-      this.outcome,
-    );
+    fill(this.element, h('p', { class: 'eyebrow' }, '演習を始める前に、環境を点検しています'), this.title, this.mission, this.outcome, this.details);
   }
 
   focus(): void {
@@ -44,6 +45,10 @@ export class PreflightView {
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack, preflight, blocked } = snapshot;
     this.mission.textContent = `課題：${pack.manifest.title}`;
+    const passed = preflight.filter((p) => p.status === 'passed').length;
+    this.summary.textContent = `点検の内容（${passed} / ${STEPS.length} 項目が合格）`;
+    // 開閉はプレイヤーに任せる。開始できないときだけ開いて理由を見せる
+    if (attempt.state === 'Blocked') this.details.open = true;
     fill(
       this.list,
       ...STEPS.map((step) => {
@@ -65,7 +70,7 @@ export class PreflightView {
             ? `準備ができました。データは演習開始時の状態に戻し、前回の対策「${resumed.label}」を適用し直しました。`
             : '準備ができました。脆弱性を注入した状態から、まっさらなデータで演習を始めます。',
         ),
-        h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary', 'data-autofocus': true, on: { click: this.actions.begin } }, '演習を始める')),
+        h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary button-chunky', 'data-autofocus': true, on: { click: this.actions.begin } }, '演習を始める')),
       );
     } else if (attempt.state === 'Blocked' && blocked) {
       fill(
@@ -84,7 +89,7 @@ export class PreflightView {
         ),
       );
     } else {
-      fill(this.outcome, h('p', { class: 'muted' }, status('running', '点検しています…')));
+      fill(this.outcome, h('p', { class: 'muted' }, status('running', `点検しています…（${passed} / ${STEPS.length}）`)));
     }
     (this.outcome.querySelector('[data-autofocus]') as HTMLElement | null)?.focus();
   }
