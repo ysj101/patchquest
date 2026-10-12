@@ -10,4 +10,15 @@ export const SCHEMA = `
     title TEXT NOT NULL,
     body TEXT NOT NULL
   );
+  CREATE TABLE pages (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL
+  );
+  CREATE TABLE comments (
+    id INTEGER PRIMARY KEY,
+    page_id INTEGER NOT NULL REFERENCES pages (id),
+    author_id INTEGER NOT NULL REFERENCES users (id),
+    body TEXT NOT NULL
+  );
 `;

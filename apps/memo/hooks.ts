@@ -8,6 +8,12 @@ export type ReadResult = { status: 'ok'; memo: Memo } | { status: 'unauthenticat
 /** ID 指定でメモを取得する処理（認可を含む）。契約 1 */
 export type ReadMemo = (ctx: ServerContext, request: { id: number; user: User | null }) => ReadResult;
 
+/** 自分のメモを探す検索クエリを組み立てる処理。教材ロジックが実行し、クエリ形・バインド値・返却行を記録する。契約 1 */
+export type BuildSearchQuery = (input: { userId: number; q: string }) => { sql: string; bind: (string | number)[] };
+
+/** 共有ページのコメント 1 件を描画する処理（画面側）。契約 1 */
+export type RenderComment = (el: HTMLElement, comment: { body: string }) => void;
+
 export const HOOKS: HookDescriptor[] = [
   {
     id: 'memo.read.authorize',
@@ -15,6 +21,20 @@ export const HOOKS: HookDescriptor[] = [
     contract: 1,
     baseline: 'memo/read-owner-check',
     description: 'ID 指定でメモを取得する処理。取得してよいかの判断（認可）を含む',
+  },
+  {
+    id: 'memo.search.query',
+    realm: 'server',
+    contract: 1,
+    baseline: 'memo/search-parameterized',
+    description: '自分のメモを探す検索クエリを組み立てる処理',
+  },
+  {
+    id: 'comment.render',
+    realm: 'view',
+    contract: 1,
+    baseline: 'memo/comment-text',
+    description: '共有ページのコメントを画面に描画する処理',
   },
 ];
 
@@ -33,6 +53,25 @@ const readOwnerCheck: ReadMemo = (ctx, { id, user }) => {
   return { status: 'ok', memo };
 };
 
+/** LIKE の特殊文字（% と _）を文字として扱う */
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+/** 検索語は値としてバインドし、所有者条件を必ず付ける */
+const searchParameterized: BuildSearchQuery = ({ userId, q }) => {
+  const pattern = `%${escapeLike(q)}%`;
+  return {
+    sql: "SELECT id, owner_id AS ownerId, title FROM memos WHERE owner_id = ? AND (title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\') ORDER BY id",
+    bind: [userId, pattern, pattern],
+  };
+};
+
+/** コメントは文字として表示する（本文はプレーンテキスト仕様） */
+const commentText: RenderComment = (el, comment) => {
+  el.textContent = comment.body;
+};
+
 export const BASELINE: ImplementationRegistry = {
   'memo/read-owner-check': { hook: 'memo.read.authorize', run: readOwnerCheck },
+  'memo/search-parameterized': { hook: 'memo.search.query', run: searchParameterized },
+  'memo/comment-text': { hook: 'comment.render', run: commentText },
 };

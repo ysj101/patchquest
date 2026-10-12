@@ -2,9 +2,20 @@
 // 主体はセッションから解決し、リクエストの userId・ownerId などは認証済みの情報として扱わない
 import type { AppRequest, AppResponse } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
-import type { ReadMemo } from './hooks';
+import type { BuildSearchQuery, ReadMemo } from './hooks';
 import { json } from '../shared/http';
-import { BODY_MAX_LENGTH, TITLE_MAX_LENGTH, currentUser, emitDecision, findMemo, memoJson, type Memo, type User } from './model';
+import {
+  BODY_MAX_LENGTH,
+  COMMENT_MAX_LENGTH,
+  QUERY_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  currentUser,
+  emitDecision,
+  findMemo,
+  memoJson,
+  type Memo,
+  type User,
+} from './model';
 
 const UNAUTHENTICATED = json(401, { error: 'ログインが必要です' });
 
@@ -41,15 +52,63 @@ function authorizeWrite(ctx: ServerContext, action: 'update' | 'delete', user: U
 
 const isResponse = (v: object): v is AppResponse => 'status' in v;
 
+/** 共有教材ページ。ログインした利用者なら誰でも読め、コメントの投稿者は常にセッションの利用者 */
+function pages(ctx: ServerContext, req: AppRequest, user: User, idSegment: string | undefined, sub: string | undefined): AppResponse {
+  if (idSegment === undefined) {
+    if (req.method !== 'GET') return json(405, { error: '許可されていない操作です' });
+    return json(200, { pages: ctx.db.selectObjects('SELECT id, title FROM pages ORDER BY id') as never });
+  }
+  const id = parseId(idSegment);
+  const page = id === null ? undefined : ctx.db.selectObject('SELECT id, title, body FROM pages WHERE id = ?', [id]);
+  if (!page) return json(404, { error: 'ページが見つかりません' });
+
+  if (sub === undefined && req.method === 'GET') {
+    const comments = ctx.db.selectObjects(
+      'SELECT c.id, c.author_id AS authorId, u.name AS authorName, c.body FROM comments c JOIN users u ON u.id = c.author_id WHERE c.page_id = ? ORDER BY c.id',
+      [page.id as number],
+    );
+    return json(200, { page: page as never, comments: comments as never });
+  }
+  if (sub === 'comments' && req.method === 'POST') {
+    const body = (req.body as { body?: unknown } | undefined)?.body;
+    if (typeof body !== 'string' || body.trim() === '') return json(400, { error: 'コメントを入力してください', field: 'body' });
+    if ([...body].length > COMMENT_MAX_LENGTH) return json(400, { error: `コメントは ${COMMENT_MAX_LENGTH} 文字以内にしてください`, field: 'body' });
+    const created = ctx.db.selectObject('INSERT INTO comments (page_id, author_id, body) VALUES (?, ?, ?) RETURNING id', [page.id as number, user.id, body]) as { id: number };
+    return json(201, { comment: { id: created.id, authorId: user.id, authorName: user.name, body } });
+  }
+  return json(405, { error: '許可されていない操作です' });
+}
+
+/** 自分のメモの検索。クエリはフックが組み立て、ここで実行してクエリ形・バインド値・返却行の所有者を記録する */
+function search(ctx: ServerContext, req: AppRequest, user: User): AppResponse {
+  if (req.method !== 'GET') return json(405, { error: '許可されていない操作です' });
+  const q = (new URLSearchParams(req.path.split('?')[1] ?? '').get('q') ?? '').trim();
+  if (q === '') return json(400, { error: '検索語を入力してください', field: 'q' });
+  if ([...q].length > QUERY_MAX_LENGTH) return json(400, { error: `検索語は ${QUERY_MAX_LENGTH} 文字以内にしてください`, field: 'q' });
+
+  const { sql, bind } = ctx.hook<BuildSearchQuery>('memo.search.query')({ userId: user.id, q });
+  let rows: { id: number; ownerId: number; title: string }[];
+  try {
+    rows = ctx.db.selectObjects(sql, bind) as typeof rows;
+  } catch (e) {
+    ctx.emit('sql.error', { sql, bind, message: e instanceof Error ? e.message : String(e) });
+    return json(400, { error: '検索に失敗しました' });
+  }
+  ctx.emit('sql.query', { sql, bind, rows: rows.length, owners: [...new Set(rows.map((r) => r.ownerId ?? null))] });
+  return json(200, { results: rows.map((r) => ({ id: r.id, ownerId: r.ownerId, title: r.title })) });
+}
+
 export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
-  const [, api, resource, idSegment, ...rest] = req.path.split('?')[0]!.split('/');
+  const [, api, resource, idSegment, sub, ...rest] = req.path.split('?')[0]!.split('/');
   if (api !== 'api' || rest.length > 0) return json(404, { error: '見つかりません' });
   const user = currentUser(ctx);
 
   if (resource === 'me' && idSegment === undefined && req.method === 'GET') {
     return user ? json(200, { user: { id: user.id, key: user.key, name: user.name } }) : UNAUTHENTICATED;
   }
-  if (resource !== 'memos') return json(404, { error: '見つかりません' });
+  if (resource === 'pages') return user ? pages(ctx, req, user, idSegment, sub) : UNAUTHENTICATED;
+  if (resource === 'search' && idSegment === undefined) return user ? search(ctx, req, user) : UNAUTHENTICATED;
+  if (resource !== 'memos' || sub !== undefined) return json(404, { error: '見つかりません' });
 
   if (idSegment === undefined) {
     if (!user) return UNAUTHENTICATED;

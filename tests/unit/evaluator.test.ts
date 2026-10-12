@@ -20,12 +20,14 @@ const packSubject = (implementations: Record<string, string>): EvaluationSubject
 });
 
 const { manifest } = testPack;
+/** Node では画面を描画しないため、描画を含むテストは除く（実ブラウザの E2E で確かめる） */
+const memoTests = memoApp.tests.filter((t) => t.steps.every((s) => s.kind === 'request'));
 const packTests: TestCase[] = manifest.tests.cases.filter((t) => t.steps.every((s) => s.kind === 'request'));
 
 describe('Evaluator', () => {
   it('基準アプリの全テストを検証インスタンスで実行して合格する（A01）', async () => {
     const evaluator = new Evaluator(() => new EngineRuntime());
-    const report = await evaluator.runSuite(memoSubject(11), memoApp.tests, [], 'run-s', 'hash-s');
+    const report = await evaluator.runSuite(memoSubject(11), memoTests, [], 'run-s', 'hash-s');
     expect(report.outcomes.filter((o) => !o.passed)).toEqual([]);
     expect(report).toMatchObject({ runId: 'run-s', attemptId: 'memo-11', configHash: 'hash-s', passed: true });
     expect(new Set(report.outcomes.map((o) => o.group))).toEqual(new Set(['normal', 'regression']));
@@ -70,8 +72,8 @@ describe('Evaluator', () => {
 
   it('新しい検証が始まると古い検証は結果を返さずに stopped で終わる（A20 の基盤）', async () => {
     const evaluator = new Evaluator(() => new EngineRuntime());
-    const first = evaluator.runSuite(memoSubject(13), memoApp.tests, [], 'old', 'h');
-    const second = evaluator.runSuite(memoSubject(13), memoApp.tests, [], 'new', 'h');
+    const first = evaluator.runSuite(memoSubject(13), memoTests, [], 'old', 'h');
+    const second = evaluator.runSuite(memoSubject(13), memoTests, [], 'new', 'h');
     await expect(first).rejects.toMatchObject({ code: 'stopped' });
     expect(await second).toMatchObject({ runId: 'new', passed: true });
   });

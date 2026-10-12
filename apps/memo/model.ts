@@ -18,6 +18,8 @@ export interface Memo {
 
 export const TITLE_MAX_LENGTH = 40;
 export const BODY_MAX_LENGTH = 1000;
+export const COMMENT_MAX_LENGTH = 500;
+export const QUERY_MAX_LENGTH = 100;
 
 /** セッションから解決した主体（利用者キー）を、利用者の行へ対応付ける */
 export function currentUser(ctx: ServerContext): User | null {

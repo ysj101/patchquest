@@ -3,6 +3,9 @@
 import type { TestCase } from '../../platform/contract';
 
 const ALICE_PRIVATE = '/api/memos/{{memos.alice.private.id}}';
+const PAGE = '/api/pages/{{pages.shared.id}}';
+const PAGE_VIEW = { route: '/pages/{{pages.shared.id}}' };
+const OWN_RESULTS_ONLY = [{ path: 'results.*.ownerId', is: { equals: '{{users.alice.id}}' } }];
 const DENIED = { status: [403, 404], body: [{ path: '', is: { notContains: '{{memos.alice.private.body}}' } }] };
 
 export const MEMO_TESTS: TestCase[] = [
@@ -88,7 +91,128 @@ export const MEMO_TESTS: TestCase[] = [
     ],
   },
 
+  {
+    id: 'comment.post-and-read',
+    category: 'normal',
+    title: 'コメントを投稿すると、ほかの利用者も文字どおりに読める（日本語・記号・角括弧）',
+    steps: [
+      {
+        kind: 'request',
+        as: 'bob',
+        request: { method: 'POST', path: `${PAGE}/comments`, body: { body: "感想：<b>図</b> & '例' がわかりやすい" } },
+        expect: { status: 201 },
+      },
+      {
+        kind: 'request',
+        as: 'alice',
+        request: { method: 'GET', path: PAGE },
+        expect: { status: 200, body: [{ path: '', is: { contains: "感想：<b>図</b> & '例' がわかりやすい" } }, { path: '', is: { contains: '{{comments.carol.body}}' } }] },
+      },
+    ],
+  },
+  {
+    id: 'comment.render-as-text',
+    category: 'normal',
+    title: '角括弧を含むコメントを表示しても実行マーカーが発生しない',
+    steps: [
+      { kind: 'request', as: 'bob', request: { method: 'POST', path: `${PAGE}/comments`, body: { body: '<b>強調</b> と <i>斜体</i>' } }, expect: { status: 201 } },
+      { kind: 'render', as: 'alice', view: PAGE_VIEW, events: [{ type: 'dom.marker', presence: 'absent' }] },
+    ],
+  },
+  {
+    id: 'search.own',
+    category: 'normal',
+    title: '自分のメモを検索できる（日本語）',
+    steps: [
+      {
+        kind: 'request',
+        as: 'alice',
+        request: { method: 'GET', path: '/api/search?q={{search.term}}' },
+        expect: { status: 200, body: [{ path: 'results', is: { minLength: 1 } }, ...OWN_RESULTS_ONLY] },
+        events: [{ type: 'sql.query' }],
+      },
+    ],
+  },
+  {
+    id: 'search.quoted',
+    category: 'normal',
+    title: '引用符を含む語で検索できる',
+    steps: [
+      {
+        kind: 'request',
+        as: 'alice',
+        request: { method: 'GET', path: '/api/search?q={{search.quoted}}' },
+        expect: { status: 200, body: [{ path: 'results.0.id', is: { equals: '{{memos.alice.quoted.id}}' } }, ...OWN_RESULTS_ONLY] },
+      },
+    ],
+  },
+  {
+    id: 'search.no-hit',
+    category: 'normal',
+    title: '該当がなければ空の結果になる',
+    steps: [
+      {
+        kind: 'request',
+        as: 'alice',
+        request: { method: 'GET', path: '/api/search?q={{search.none}}' },
+        expect: { status: 200, body: [{ path: 'results', is: { equals: [] } }] },
+      },
+    ],
+  },
+
   // セキュリティ
+  {
+    id: 'comment.no-script',
+    category: 'security',
+    title: 'コメントに書かれたスクリプトは、ほかの利用者の画面で実行されない',
+    steps: [
+      { kind: 'request', as: 'bob', request: { method: 'POST', path: `${PAGE}/comments`, body: { body: '<img src="x" onerror="pqMarker()">' } }, expect: { status: 201 } },
+      { kind: 'render', as: 'alice', view: PAGE_VIEW, events: [{ type: 'dom.marker', presence: 'absent' }] },
+    ],
+  },
+  {
+    id: 'comment.author-spoof',
+    category: 'security',
+    title: 'リクエストの authorId を偽っても投稿者は変わらない',
+    steps: [
+      {
+        kind: 'request',
+        as: 'bob',
+        request: { method: 'POST', path: `${PAGE}/comments`, body: { body: '偽装', authorId: '{{users.alice.id}}' } },
+        expect: { status: 201, body: [{ path: 'comment.authorId', is: { equals: '{{users.bob.id}}' } }] },
+      },
+    ],
+  },
+  {
+    id: 'comment.anonymous-denied',
+    category: 'security',
+    title: '未ログインでは共有ページを読めず、コメントもできない',
+    steps: [
+      { kind: 'request', as: 'anonymous', request: { method: 'GET', path: PAGE }, expect: { status: 401 } },
+      { kind: 'request', as: 'anonymous', request: { method: 'POST', path: `${PAGE}/comments`, body: { body: 'x' } }, expect: { status: 401 } },
+    ],
+  },
+  {
+    id: 'search.injection',
+    category: 'security',
+    title: '検索語に SQL の構文を混ぜても、他人のメモは返らない',
+    steps: [
+      { kind: 'request', as: 'alice', request: { method: 'GET', path: "/api/search?q=x' OR '1'='1" }, expect: { status: [200, 400], body: [...OWN_RESULTS_ONLY] } },
+      { kind: 'request', as: 'alice', request: { method: 'GET', path: "/api/search?q=%' OR 1=1 --" }, expect: { status: [200, 400], body: [...OWN_RESULTS_ONLY] } },
+      {
+        kind: 'request',
+        as: 'alice',
+        request: { method: 'GET', path: "/api/search?q=') UNION SELECT id, owner_id, body FROM memos --" },
+        expect: { status: [200, 400], body: [...OWN_RESULTS_ONLY] },
+      },
+    ],
+  },
+  {
+    id: 'search.anonymous-denied',
+    category: 'security',
+    title: '未ログインでは検索できない',
+    steps: [{ kind: 'request', as: 'anonymous', request: { method: 'GET', path: '/api/search?q={{search.term}}' }, expect: { status: 401 } }],
+  },
   {
     id: 'memo.read.other-denied',
     category: 'security',

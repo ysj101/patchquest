@@ -31,7 +31,9 @@ describe.each(SEEDS)('メモアプリの基準実装（seed %i）', (seed) => {
   const engine = new AppEngine();
   beforeAll(() => engine.prepare(options(seed)));
 
-  it.each(memoApp.tests.map((t) => [t.id, t] as const))('%s', async (_, test) => {
+  // 描画を含むテストは実ブラウザの E2E（tests/e2e/evaluator.spec.ts）で確かめる
+  const requestOnly = memoApp.tests.filter((t) => t.steps.every((s) => s.kind === 'request'));
+  it.each(requestOnly.map((t) => [t.id, t] as const))('%s', async (_, test) => {
     // 各テストは初期データから実行する
     const { refs } = await engine.reset();
     expect(await runSteps(test.steps, refs, invokerFor(engine))).toMatchObject({ passed: true });
