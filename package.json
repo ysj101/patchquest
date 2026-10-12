@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check:external": "node scripts/check-external-refs.mjs dist",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "node scripts/build.mjs --test && playwright test",

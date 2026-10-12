@@ -63,7 +63,7 @@ function samplePack(): MissionPack {
         id: 'owner-check',
         label: '所有者を照合',
         description: '取得時に所有者を照合する',
-        apply: [{ hook: 'memo.read.authorize', implementation: 'memo/owner-check' }],
+        apply: [{ hook: 'memo.read.authorize', implementation: 'sample/owner-check' }],
         referenceDiff: { file: 'memos.ts', language: 'ts', before: 'a', after: 'b' },
         expected: 'secure',
       },
@@ -110,7 +110,7 @@ function samplePack(): MissionPack {
     manifest,
     implementations: {
       'sample/no-owner-check': { hook: 'memo.read.authorize', run: noop },
-      'memo/owner-check': { hook: 'memo.read.authorize', run: noop },
+      'sample/owner-check': { hook: 'memo.read.authorize', run: noop },
     },
   };
 }
@@ -171,6 +171,18 @@ describe('validatePack', () => {
     expect(validatePack(pack, { app: withView })).toEqual([expect.stringMatching(/dom-preview が必要です/)]);
     pack.manifest.runtime.capabilities.push('dom-preview');
     expect(validatePack(pack, { app: withView })).toEqual([]);
+  });
+
+  it('実装 ID が課題 ID で始まらない場合は拒否する', () => {
+    const pack = samplePack();
+    pack.implementations['other/owner-check'] = { hook: 'memo.read.authorize', run: noop };
+    expect(validatePack(pack, { app })).toEqual([expect.stringMatching(/^implementations\.other\/owner-check: 実装 ID は「sample\/」で始めてください/)]);
+  });
+
+  it('パック固有のテスト ID がアプリ共通のテストと重なる場合は拒否する', () => {
+    const pack = samplePack();
+    const id = pack.manifest.tests.cases[0]!.id;
+    expect(validatePack(pack, { app, appTestIds: [id] })).toEqual([expect.stringMatching(new RegExp(`テスト ID「${id}」はアプリ共通のテストと重複しています`))]);
   });
 
   it('アプリ共通のテスト ID を target に指定できる', () => {
