@@ -35,6 +35,11 @@ export interface ViewContext {
   navigate(route: string): void;
   /** 表示用の閲覧者名。未ログインは null */
   viewer: ActorKey | null;
+  /**
+   * 画面で実際に起きたことを観測イベントとして記録する。
+   * 教材データは文字列のまま渡し、Host の DOM へ HTML としては入れない
+   */
+  emit(type: string, data: Record<string, JsonValue>): void;
 }
 
 /** seed から初期データを作り、テストが {{キー}} で参照する値を返す。同じ seed なら同じデータになる */

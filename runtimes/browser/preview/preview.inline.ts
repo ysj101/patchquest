@@ -45,6 +45,7 @@ async function show(route: string): Promise<void> {
     hook: (id) => resolveHook(ctx.app, ctx.implementations, id),
     navigate: (next) => void show(next),
     viewer: ctx.viewer === ANONYMOUS ? null : ctx.viewer,
+    emit: (type, data) => send({ type: 'event', runId: ctx.runId, event: { type, data } }),
   };
   try {
     await ctx.app.render(root, route, view);
