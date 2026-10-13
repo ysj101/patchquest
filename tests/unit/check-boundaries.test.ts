@@ -48,6 +48,35 @@ describe('findBoundaryViolations', () => {
     expect(violations).toEqual([]);
   });
 
+  it('課題の開発用の領域（__tests__）は、テスト用の部品・実行環境・同じ課題を読み込めるが、他の課題は読み込めない', () => {
+    const violations = findBoundaryViolations(
+      [
+        file(
+          'missions/idor/__tests__/idor.test.ts',
+          "import { idorPack } from '..';\nimport { EngineRuntime } from '../../../tests/support/engine-runtime';\nimport { Evaluator } from '../../../platform/evaluator/evaluator';\nimport { catalog } from '@catalog';",
+        ),
+        file('missions/idor/__tests__/idor.spec.ts', "import { expect } from '../../../tests/e2e/fixtures';\nimport { xssPack } from '../../xss';"),
+      ],
+      ALIASES,
+    );
+    expect(violations.map((violation) => violation.split(' は読み込めません')[0])).toEqual(['missions/idor/__tests__/idor.spec.ts:2: ../../xss']);
+    expect(violations[0]).toMatch(/missions\/<課題>\/__tests__ から読み込めるのは/);
+  });
+
+  it('製品コードから開発用の領域（__tests__）は読み込めない（同じ課題の中でも）', () => {
+    const violations = findBoundaryViolations(
+      [
+        file('missions/idor/index.ts', "import { WRONG_FIXES } from './__tests__/verification';"),
+        file('platform/ui/app.ts', "import { x } from '../../missions/idor/__tests__';"),
+      ],
+      ALIASES,
+    );
+    expect(violations.map((violation) => violation.split(' は読み込めません')[1])).toEqual([
+      '（製品コードから開発用の __tests__ は読み込めない）',
+      '（製品コードから開発用の __tests__ は読み込めない）',
+    ]);
+  });
+
   it('プラットフォーム・実行環境にある課題 ID での分岐を検出する', () => {
     const violations = findBoundaryViolations(
       [

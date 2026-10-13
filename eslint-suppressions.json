@@ -422,19 +422,19 @@
   },
   "scripts/check-boundaries.mjs": {
     "@typescript-eslint/no-unsafe-argument": {
-      "count": 3
+      "count": 2
     },
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 7
+      "count": 2
     },
     "@typescript-eslint/no-unsafe-call": {
-      "count": 12
+      "count": 3
     },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 20
+      "count": 4
     },
     "@typescript-eslint/no-unsafe-return": {
-      "count": 5
+      "count": 1
     },
     "id-length": {
       "count": 1
