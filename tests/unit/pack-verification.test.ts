@@ -15,7 +15,7 @@ describe.each(catalog.packs.map((pack) => [pack.manifest.id, pack] as const))('%
     if (!app) throw new Error(`${bundled.manifest.id} に対応する教材アプリがない`);
     const node = forNode(app, bundled);
     const evaluator = new Evaluator(() => new EngineRuntime());
-    const result = await verifyPack(node.pack, node.app, evaluator, seed, verificationCandidates(bundled.manifest.id));
+    const result = await verifyPack(node.pack, node.app, evaluator, seed, verificationCandidates(bundled.manifest.id), { partial: true });
     await evaluator.dispose();
     expect(result.checks.filter((check) => !check.ok)).toEqual([]);
   });

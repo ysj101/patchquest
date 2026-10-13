@@ -32,6 +32,22 @@ export interface PackVerification {
 export const VERIFICATION_SEEDS: readonly number[] = [1, 42, 20261012];
 
 const failedIds = (report: VerificationReport) => report.outcomes.filter((o) => !o.passed).map((o) => o.testId);
+
+/**
+ * 対策を適用した結果が expected どおりかを判定する。partial（テストの一部だけで確かめる）のとき、
+ * 不十分・正常系を壊す対策で失敗が 1 つもなければ判定できない（除いたテストで失敗するかもしれない）
+ */
+function judgeDefense(expected: DefenseDef['expected'], report: VerificationReport, partial: boolean): Pick<PackCheck, 'ok' | 'detail'> {
+  const failed = report.outcomes.filter((o) => !o.passed);
+  if (partial && expected !== 'secure' && failed.length === 0) return { ok: true, detail: 'この範囲のテストでは判定できない（全テストの検証で確かめる）' };
+  const ok =
+    expected === 'secure'
+      ? failed.length === 0
+      : expected === 'insufficient'
+        ? failed.some((o) => o.group === 'attack') && failed.every((o) => o.group === 'attack')
+        : failed.some((o) => o.group === 'normal');
+  return { ok, detail: failed.map((o) => `${o.testId}(${o.group})`).join(', ') || '全件合格' };
+}
 const sameSet = (a: string[], b: readonly string[]) => a.length === b.length && b.every((id) => a.includes(id));
 
 export async function verifyPack(
@@ -41,6 +57,8 @@ export async function verifyPack(
   seed = 1,
   /** パックの対策候補に加えて確かめる、検証専用の候補 */
   extraCandidates: readonly VerificationCandidate[] = [],
+  /** partial：テストの一部だけで確かめる（Node は描画を含むテストを除く）。残りは全テストの検証で確かめる */
+  { partial = false }: { partial?: boolean } = {},
 ): Promise<PackVerification> {
   const { manifest } = pack;
   const tests = [...app.tests, ...manifest.tests.cases];
@@ -71,18 +89,7 @@ export async function verifyPack(
     for (const defense of [...manifest.defenses, ...extraCandidates]) {
       const applied = withChanges(vulnerable, defense.apply);
       const report = await run(applied, `${recipe.id}+${defense.id}`);
-      const failed = report.outcomes.filter((o) => !o.passed);
-      const ok =
-        defense.expected === 'secure'
-          ? failed.length === 0
-          : defense.expected === 'insufficient'
-            ? failed.some((o) => o.group === 'attack') && failed.every((o) => o.group === 'attack')
-            : failed.some((o) => o.group === 'normal');
-      checks.push({
-        name: `レシピ ${recipe.id} ＋ 対策 ${defense.id}：${defense.expected}`,
-        ok,
-        detail: failed.map((o) => `${o.testId}(${o.group})`).join(', ') || '全件合格',
-      });
+      checks.push({ name: `レシピ ${recipe.id} ＋ 対策 ${defense.id}：${defense.expected}`, ...judgeDefense(defense.expected, report, partial) });
     }
   }
   return { packId: manifest.id, seed, ok: checks.every((c) => c.ok), checks };
