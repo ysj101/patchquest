@@ -12,6 +12,10 @@ export function describeEvent(event: ObservedEvent): string | null {
       return `SQL の失敗：${String(d.message)}\n${String(d.sql)}`;
     case 'validation.failed':
       return `入力検証：${String(d.message)}`;
+    case 'comment.rendered': {
+      const text = d.text;
+      return typeof text === 'string' ? `画面に出たコメント：${text}` : null;
+    }
     default:
       return null;
   }
