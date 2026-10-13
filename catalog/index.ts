@@ -3,10 +3,11 @@
 import { memoApp } from '../apps/memo';
 import { idorPack } from '../missions/idor';
 import { onboardingPack } from '../missions/onboarding';
+import { storedXssPack } from '../missions/stored-xss';
 import { sqliPack } from '../missions/sqli';
 import type { Catalog } from '../runtimes/browser/app-module';
 
 export const catalog: Catalog = {
   apps: [memoApp],
-  packs: [onboardingPack, idorPack, sqliPack],
+  packs: [onboardingPack, idorPack, storedXssPack, sqliPack],
 };

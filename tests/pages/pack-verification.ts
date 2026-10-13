@@ -1,11 +1,14 @@
-// 同梱するパックと、基準となるテスト専用パックを、実ブラウザの検証インスタンスで出荷前検証する（spec §15）
+// 同梱するパックと、基準となるテスト専用パックを、実ブラウザの検証インスタンスで出荷前検証する（spec §15）。
+// 初期データの違いで結果が変わらないことも確かめるため、複数の seed で検証する。パックの開発用の検証データにある
+// 検証専用の対策候補（誤った修正など）も確かめる
 const catalog = { apps: [...bundled.apps, testApp], packs: [...bundled.packs, testPack] };
 import { catalog as bundled } from '../../catalog';
+import { verificationCandidates } from '../support/catalog';
 import { testApp } from '../support/test-app';
 import { testPack } from '../support/test-pack';
 import { Evaluator } from '../../platform/evaluator/evaluator';
 import { compatibleApp } from '../../platform/orchestrator/orchestrator';
-import { verifyPack, type PackVerification } from '../../platform/orchestrator/pack-verification';
+import { VERIFICATION_SEEDS, verifyPack, type PackVerification } from '../../platform/orchestrator/pack-verification';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
 
 async function verifyAll(): Promise<PackVerification[]> {
@@ -14,7 +17,13 @@ async function verifyAll(): Promise<PackVerification[]> {
   for (const pack of catalog.packs) {
     const app = compatibleApp(catalog.apps, pack);
     const { appId, versions } = pack.manifest.appCompatibility;
-    results.push(app ? await verifyPack(pack, app, evaluator) : { packId: pack.manifest.id, ok: false, checks: [{ name: '対応する教材アプリ', ok: false, detail: `${appId} ${versions} がありません` }] });
+    for (const seed of VERIFICATION_SEEDS) {
+      results.push(
+        app
+          ? await verifyPack(pack, app, evaluator, seed, verificationCandidates(pack.manifest.id))
+          : { packId: pack.manifest.id, seed, ok: false, checks: [{ name: '対応する教材アプリ', ok: false, detail: `${appId} ${versions} がありません` }] },
+      );
+    }
   }
   await evaluator.dispose();
   return results;

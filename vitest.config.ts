@@ -6,13 +6,16 @@ export default defineConfig({
     alias: { '@catalog': resolve('tests/support/catalog.ts') },
   },
   test: {
-    include: ['tests/unit/**/*.test.ts'],
+    // 共通のテストと、課題パックの固有テスト（missions/<課題>/__tests__）
+    include: ['tests/unit/**/*.test.ts', 'missions/*/__tests__/**/*.test.ts'],
     environment: 'node',
     coverage: {
       reporter: ['text-summary', 'text'],
       include: ['platform/**/*.ts', 'runtimes/**/*.ts', 'apps/**/*.ts', 'missions/**/*.ts', 'catalog/**/*.ts'],
       // 画面・Worker・iframe・DOM に触れるコードは E2E（tests/e2e）で確かめる
       exclude: [
+        // 課題パックの開発用の領域はテストそのもので、製品コードではない
+        'missions/*/__tests__/**',
         'platform/main.ts',
         'platform/ui/**',
         'apps/memo/view.ts',

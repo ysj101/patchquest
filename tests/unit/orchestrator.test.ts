@@ -297,4 +297,29 @@ describe('パック出荷前検証', () => {
     expect(result.ok).toBe(false);
     expect(result.checks.filter((c) => !c.ok).map((c) => c.name)).toEqual(['レシピ any-owner ＋ 対策 deny-all：secure']);
   });
+
+  it('検証専用の対策候補も、パックの対策候補と同じく期待どおりかを確かめる', async () => {
+    const extra = { id: 'extra-deny', apply: [{ hook: 'note.read', implementation: 'test-pack/deny-all' }] };
+    const asExpected = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [{ ...extra, expected: 'breaks-normal' }]);
+    expect(asExpected.checks.map((check) => check.name)).toContain('レシピ any-owner ＋ 対策 extra-deny：breaks-normal');
+    expect(asExpected.ok).toBe(true);
+
+    const mistaken = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [{ ...extra, expected: 'secure' }]);
+    expect(mistaken.checks.filter((check) => !check.ok).map((check) => check.name)).toEqual(['レシピ any-owner ＋ 対策 extra-deny：secure']);
+  });
+
+  it('テストの一部だけで確かめるとき、失敗が出ない不十分・正常系を壊す対策は判定できないとして扱い、違う種類の失敗は検出する', async () => {
+    // 全件合格する対策を insufficient と申告：一部のテストでは、除いたテストで攻撃が通るかもしれないので判定できない
+    const owner = { id: 'extra-owner', apply: [{ hook: 'note.read', implementation: 'test-app/owner-only' }], expected: 'insufficient' as const };
+    const strict = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [owner]);
+    expect(strict.ok).toBe(false);
+    const partial = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [owner], { partial: true });
+    expect(partial.ok).toBe(true);
+    expect(partial.checks.find((check) => check.name.includes('extra-owner'))?.detail).toMatch(/判定できない/);
+
+    // 正常系を壊す対策を insufficient と申告：失敗が出ているので、一部のテストでも違いを検出する
+    const deny = { id: 'extra-deny', apply: [{ hook: 'note.read', implementation: 'test-pack/deny-all' }], expected: 'insufficient' as const };
+    const wrong = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [deny], { partial: true });
+    expect(wrong.checks.filter((check) => !check.ok).map((check) => check.name)).toEqual(['レシピ any-owner ＋ 対策 extra-deny：insufficient']);
+  });
 });

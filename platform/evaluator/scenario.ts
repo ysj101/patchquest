@@ -166,6 +166,15 @@ function describeRequest(step: Extract<Step, { kind: 'request' }>, request: AppR
   return `${step.as} が ${request.method} ${request.path}${want}`;
 }
 
+/** テンプレートを展開する。未定義の参照は不合格の実測文にする */
+function tryExpand<T>(value: T, scope: Scope): { value: T } | { error: string } {
+  try {
+    return { value: expandAs(value, scope) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** 手順を順に実行する。最初に期待と違った手順で止め、その差を返す */
 export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvoker): Promise<ScenarioResult> {
   const scope: Scope = { ...refs };
@@ -178,20 +187,19 @@ export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvo
 
   for (const step of steps) {
     if (step.kind === 'render') {
-      const expected = `${step.as} が画面 ${step.view.route} を表示`;
-      const { events } = await invoker.render(await sessionFor(step.as), step.view);
+      const view = tryExpand(step.view, scope);
+      if ('error' in view) return { passed: false, expected: '手順の展開', actual: view.error };
+      const expected = `${step.as} が画面 ${view.value.route} を表示`;
+      const { events } = await invoker.render(await sessionFor(step.as), view.value);
       const failures = checkEvents(events, step.events ?? [], scope);
       if (failures.length) return { passed: false, expected, actual: failures.join(' / ') };
       last = { passed: true, expected, actual: `観測イベント ${events.length} 件` };
       continue;
     }
 
-    let request: AppRequest;
-    try {
-      request = expandRequest(step.request, scope);
-    } catch (e) {
-      return { passed: false, expected: '手順の展開', actual: e instanceof Error ? e.message : String(e) };
-    }
+    const expanded = tryExpand(step.request, scope);
+    if ('error' in expanded) return { passed: false, expected: '手順の展開', actual: expanded.error };
+    const request = expanded.value;
     const expected = describeRequest(step, request);
     const { response, events } = await invoker.request(await sessionFor(step.as), request);
     const failures = [...checkResponse(response, step.expect ?? {}, scope), ...checkEvents(events, step.events ?? [], scope)];

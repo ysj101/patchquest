@@ -9,6 +9,7 @@ import { listFiles } from './scan.mjs';
  * 層ごとに読み込んでよい先。ここにない先は読み込めない。self は同じ単位（同じアプリ・同じ課題）。
  * 外部パッケージはどこからでも読み込める
  */
+/** @type {Record<string, string[]>} */
 const ALLOWED = {
   platform: ['platform', 'runtimes', '@catalog'],
   runtimes: ['runtimes', 'platform/contract', '@catalog'],
@@ -16,6 +17,13 @@ const ALLOWED = {
   missions: ['self', 'platform/contract', 'apps'],
 };
 const ROOTS = Object.keys(ALLOWED);
+
+/**
+ * 課題パックの開発用の領域（固有のテストと検証用データ）。配布物には入らないので、テスト用の部品・実行環境も読み込める。
+ * 他の課題には依存しない。製品コードからは読み込めない
+ */
+const DEV = /^missions\/[^/]+\/__tests__\//;
+const DEV_ALLOWED = ['self', 'platform', 'runtimes', 'apps', 'tests', '@catalog'];
 
 /** import … from・export … from・import '…'・import('…') の読み込み先 */
 const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(?\s*)(['"])([^'"\n]+)\1/g;
@@ -27,32 +35,44 @@ const PACK_BRANCH = new RegExp(
   'g',
 );
 
-/** 依存を区別する単位。教材アプリと課題はディレクトリごとに分ける */
+/**
+ * 依存を区別する単位。教材アプリと課題はディレクトリごとに分ける
+ * @param {string} path
+ */
 function unitOf(path) {
   const [top, name] = path.split('/');
   return top === 'apps' || top === 'missions' ? `${top}/${name}` : top;
 }
 
+/** @type {(entry: string, from: string, target: string) => boolean} */
 const allows = (entry, from, target) => (entry === 'self' ? unitOf(target) === unitOf(from) : target === entry || target.startsWith(`${entry}/`));
+/** @type {(content: string, index: number) => number} */
 const lineOf = (content, index) => content.slice(0, index).split('\n').length;
 
 /**
  * 依存の向きの違反と、プラットフォーム・実行環境にある課題 ID での分岐を返す。
  * files のパスはリポジトリからの相対パス（/ 区切り）、aliases は別名（tsconfig の paths）
+ * @param {{ path: string, content: string }[]} files
+ * @param {string[]} aliases
+ * @returns {string[]}
  */
 export function findBoundaryViolations(files, aliases) {
+  /** @type {string[]} */
   const violations = [];
   for (const { path, content } of files) {
     const layer = path.split('/')[0];
-    const allowed = ALLOWED[layer] ?? [];
+    const dev = DEV.test(path);
+    const allowed = dev ? DEV_ALLOWED : (ALLOWED[layer] ?? []);
     for (const match of content.matchAll(SPECIFIER)) {
       const specifier = match[2];
       const relative = specifier.startsWith('.');
       if (!relative && !aliases.includes(specifier)) continue; // 外部パッケージ
       const target = relative ? posix.normalize(posix.join(posix.dirname(path), specifier)) : specifier;
-      if (!allowed.some((entry) => allows(entry, path, target))) {
+      if (!dev && DEV.test(`${target}/`)) {
+        violations.push(`${path}:${lineOf(content, match.index)}: ${specifier} は読み込めません（製品コードから開発用の __tests__ は読み込めない）`);
+      } else if (!allowed.some((entry) => allows(entry, path, target))) {
         const list = allowed.map((entry) => (entry === 'self' ? '自分のディレクトリ' : entry)).join('・');
-        violations.push(`${path}:${lineOf(content, match.index)}: ${specifier} は読み込めません（${layer} から読み込めるのは ${list}）`);
+        violations.push(`${path}:${lineOf(content, match.index)}: ${specifier} は読み込めません（${dev ? 'missions/<課題>/__tests__' : layer} から読み込めるのは ${list}）`);
       }
     }
     if (layer === 'platform' || layer === 'runtimes') {

@@ -60,7 +60,10 @@ describe('runSteps', () => {
         calls.push(`${session} ${req.method} ${req.path} ${JSON.stringify(req.body ?? null)}`);
         return { response: (responses[`${req.method} ${req.path}`] ?? { status: 404, body: null }) as never, events: [] };
       },
-      render: async () => ({ events: [] }),
+      render: async (_session, view) => {
+        calls.push(`RENDER ${view.route}`);
+        return { events: [] };
+      },
     };
   }
 
@@ -91,6 +94,24 @@ describe('runSteps', () => {
   it('未定義の値を参照する手順は不合格にする', async () => {
     const result = await runSteps([{ kind: 'request', as: 'alice', request: { method: 'GET', path: '/api/memos/{{nope}}' } }], scope, invoker({}));
     expect(result).toMatchObject({ passed: false, actual: expect.stringMatching(/未定義の値/) });
+  });
+
+  it('画面の route に含まれる {{キー}} を展開してから描画する', async () => {
+    const inv = invoker({});
+    const result = await runSteps(
+      [{ kind: 'render', as: 'alice', view: { route: '/pages/{{users.alice.id}}' }, events: [{ type: 'dom.marker', presence: 'absent' }] }],
+      scope,
+      inv,
+    );
+    expect(result).toEqual({ passed: true, expected: 'alice が画面 /pages/101 を表示', actual: '観測イベント 0 件' });
+    expect(inv.calls).toEqual(['RENDER /pages/101']);
+  });
+
+  it('画面の route が未定義の値を参照したら不合格にする', async () => {
+    const result = await runSteps([{ kind: 'render', as: 'alice', view: { route: '/pages/{{nope}}' } }], scope, invoker({}));
+    expect(result.passed).toBe(false);
+    expect(result.expected).toBe('手順の展開');
+    expect(result.actual).toMatch(/未定義の値/);
   });
 });
 
