@@ -297,4 +297,14 @@ describe('パック出荷前検証', () => {
     expect(result.ok).toBe(false);
     expect(result.checks.filter((c) => !c.ok).map((c) => c.name)).toEqual(['レシピ any-owner ＋ 対策 deny-all：secure']);
   });
+
+  it('検証専用の対策候補も、パックの対策候補と同じく期待どおりかを確かめる', async () => {
+    const extra = { id: 'extra-deny', apply: [{ hook: 'note.read', implementation: 'test-pack/deny-all' }] };
+    const asExpected = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [{ ...extra, expected: 'breaks-normal' }]);
+    expect(asExpected.checks.map((check) => check.name)).toContain('レシピ any-owner ＋ 対策 extra-deny：breaks-normal');
+    expect(asExpected.ok).toBe(true);
+
+    const mistaken = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [{ ...extra, expected: 'secure' }]);
+    expect(mistaken.checks.filter((check) => !check.ok).map((check) => check.name)).toEqual(['レシピ any-owner ＋ 対策 extra-deny：secure']);
+  });
 });
