@@ -10,8 +10,8 @@ import type { CatalogApp } from '../../../platform/orchestrator/orchestrator';
 import { verifyPack } from '../../../platform/orchestrator/pack-verification';
 import { buildSubject, withChanges } from '../../../platform/orchestrator/subject';
 import { EngineRuntime } from '../../../tests/support/engine-runtime';
-import { ALICE_PRIVATE_ID_SEED_1 } from '../../../tests/support/hardcoded-fixes';
 import { requestOnly } from '../../../tests/support/request-only';
+import { ALICE_PRIVATE_ID_SEED_1 } from './verification';
 
 const SEEDS = [1, 42, 20261012];
 const app: CatalogApp = { ...memoApp, tests: requestOnly(memoApp.tests) };
@@ -59,7 +59,7 @@ describe.each(SEEDS)('IDOR パック（seed %i）', (seed) => {
     expect(failed.map((outcome) => outcome.testId)).toEqual(expect.arrayContaining(['memo.read-own', 'idor.read-own.all-users']));
   });
 
-  it.each(['test-pack/memo-protect-alice-only', 'test-pack/memo-protect-fixed-id'])('ハードコードした修正（%s）は攻撃阻止のテストで失敗する', async (fix) => {
+  it.each(['idor/wrong-fix-alice-only', 'idor/wrong-fix-fixed-id'])('ハードコードした修正（%s）は攻撃阻止のテストで失敗する', async (fix) => {
     const failed = await runSuite({ ...vulnerable, 'memo.read.authorize': fix }, seed);
     expect(failed.length).toBeGreaterThan(0);
     expect(failed.every((outcome) => outcome.group === 'attack')).toBe(true);
@@ -71,7 +71,7 @@ describe('ハードコードした修正の検出', () => {
     const refs = (await new EngineRuntime().prepare(buildSubject(app, idorPack, 'refs', 1, {}))).refs;
     expect(refs['memos.alice.private.id']).toBe(ALICE_PRIVATE_ID_SEED_1);
 
-    const fixedId = { ...vulnerable, 'memo.read.authorize': 'test-pack/memo-protect-fixed-id' };
+    const fixedId = { ...vulnerable, 'memo.read.authorize': 'idor/wrong-fix-fixed-id' };
     const onSeed1 = (await runSuite(fixedId, 1)).map((outcome) => outcome.testId);
     expect(onSeed1).not.toContain('memo.read.other-denied');
     expect(onSeed1).toContain('idor.read.cross-users');
