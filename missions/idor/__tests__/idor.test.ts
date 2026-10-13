@@ -1,17 +1,17 @@
 // ミッション1「非公開メモを守る」（IDOR、Issue #17）。複数の seed で出荷前検証に合格し（A06・A07）、
 // 特定の利用者名やメモ ID をハードコードした修正を見逃さない（spec §8.1）。Node では画面を描画しないため、描画を含まないテストで確かめる
 import { describe, expect, it } from 'vitest';
-import { memoApp } from '../../apps/memo';
-import type { PickNeighbors } from '../../apps/memo/hooks';
-import { idorPack } from '../../missions/idor';
-import type { Exchange, ImplementationSelection } from '../../platform/contract';
-import { Evaluator, detectReproduction } from '../../platform/evaluator/evaluator';
-import type { CatalogApp } from '../../platform/orchestrator/orchestrator';
-import { verifyPack } from '../../platform/orchestrator/pack-verification';
-import { buildSubject, withChanges } from '../../platform/orchestrator/subject';
-import { EngineRuntime } from '../support/engine-runtime';
-import { ALICE_PRIVATE_ID_SEED_1 } from '../support/hardcoded-fixes';
-import { requestOnly } from '../support/request-only';
+import { memoApp } from '../../../apps/memo';
+import type { PickNeighbors } from '../../../apps/memo/hooks';
+import { idorPack } from '..';
+import type { Exchange, ImplementationSelection } from '../../../platform/contract';
+import { Evaluator, detectReproduction } from '../../../platform/evaluator/evaluator';
+import type { CatalogApp } from '../../../platform/orchestrator/orchestrator';
+import { verifyPack } from '../../../platform/orchestrator/pack-verification';
+import { buildSubject, withChanges } from '../../../platform/orchestrator/subject';
+import { EngineRuntime } from '../../../tests/support/engine-runtime';
+import { ALICE_PRIVATE_ID_SEED_1 } from '../../../tests/support/hardcoded-fixes';
+import { requestOnly } from '../../../tests/support/request-only';
 
 const SEEDS = [1, 42, 20261012];
 const app: CatalogApp = { ...memoApp, tests: requestOnly(memoApp.tests) };

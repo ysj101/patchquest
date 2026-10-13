@@ -13,6 +13,10 @@ import tseslint from 'typescript-eslint';
 
 /** 製品コード（配布物に入るコード）。テストとビルド用スクリプトは含めない */
 const PRODUCT = ['platform/**', 'runtimes/**', 'apps/**', 'missions/**', 'catalog/**'];
+/** 課題パックの開発用の領域（固有のテストと検証用データ）。依存の向きは scripts/check-boundaries.mjs が確かめる */
+const MISSION_DEV = ['missions/*/__tests__/**'];
+/** テストのコード */
+const TESTS = ['tests/**', ...MISSION_DEV];
 
 /**
  * 層の依存方向（README のディレクトリ構成を参照）。各層は allow に挙げた場所だけを import できる。
@@ -115,13 +119,14 @@ export default defineConfig(
   },
   {
     files: PRODUCT,
+    ignores: MISSION_DEV,
     rules: {
       'import-x/no-restricted-paths': ['error', { zones: layerZones }],
     },
   },
   {
     // テストは前提・操作・確認を1つの関数に並べるほうが読みやすいので、関数の長さは問わない
-    files: ['tests/**'],
+    files: TESTS,
     rules: {
       'max-lines-per-function': 'off',
     },
