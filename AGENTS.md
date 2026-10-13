@@ -35,7 +35,8 @@
 | 教材アプリの JSON 応答 | `apps/shared/http.ts`（`json`） |
 | seed から決まる乱数 | `apps/shared/random.ts`（`random`） |
 | 契約の型と検証 | `platform/contract`（`index.ts` から import する） |
-| テスト用の記録・パック・アプリ・実行環境 | `tests/support/`（`makeAttempt`・`testPack`・`testApp`・`EngineRuntime`・`requestOnly`） |
+| テスト用の記録・パック・アプリ・実行環境 | `tests/support/`（`makeAttempt`・`testPack`・`testApp`・`EngineRuntime`・`requestOnly`・`forNode`） |
+| 課題パックの開発用の検証データ | `tests/support/verification-data.ts`（`PackVerificationData`）。各パックの `__tests__/verification.ts` に書き、`tests/support/catalog.ts` で登録する |
 
 ## コードの書き方
 
@@ -50,6 +51,7 @@
 - テスト名と期待値は日本語で、何を確かめるかが読んで分かるように書く（`tests/unit` の既存のテストに合わせる）。
 - リファクタでは、テストの変更と実装の変更を同じ変更に混ぜない。片方を固定して、もう片方を変える。
 - 画面・Worker・iframe・DOM に触れるコードは E2E（`tests/e2e`）で確かめる。それ以外はユニットテストで確かめ、カバレッジの下限（`vitest.config.ts`）を下げない。
+- 課題パック固有のテストと検証データは、パックの `missions/<課題>/__tests__/` に置く（[docs/pack-authoring.md](docs/pack-authoring.md) §7）。全パック共通の出荷前検証（全 seed・対策の `expected`）で確かめられることは、パックごとに書かない。
 
 ## 報告
 

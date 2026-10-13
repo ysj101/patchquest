@@ -9,7 +9,9 @@ export const BROWSERS = [
 ];
 
 export default defineConfig({
-  testDir: 'tests/e2e',
+  // 共通の E2E と、課題パックの固有の E2E（missions/<課題>/__tests__）
+  testDir: '.',
+  testMatch: ['tests/e2e/**/*.spec.ts', 'missions/*/__tests__/**/*.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? 'github' : 'list',
