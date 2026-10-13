@@ -13,9 +13,17 @@ export interface PackCheck {
 
 export interface PackVerification {
   packId: string;
+  /** 検証に使った初期データの seed */
+  seed: number;
   ok: boolean;
   checks: PackCheck[];
 }
+
+/**
+ * 出荷前検証に使う seed。利用者名やメモ ID をハードコードしたテスト・実装を見逃さないよう、
+ * 初期データ（ID・内容）が異なる複数の seed で確かめる（spec §5.4, §8.1）
+ */
+export const VERIFICATION_SEEDS: readonly number[] = [1, 42, 20261012];
 
 const failedIds = (report: VerificationReport) => report.outcomes.filter((o) => !o.passed).map((o) => o.testId);
 const sameSet = (a: string[], b: readonly string[]) => a.length === b.length && b.every((id) => a.includes(id));
@@ -64,5 +72,5 @@ export async function verifyPack(pack: MissionPack, app: CatalogApp, evaluator: 
       });
     }
   }
-  return { packId: manifest.id, ok: checks.every((c) => c.ok), checks };
+  return { packId: manifest.id, seed, ok: checks.every((c) => c.ok), checks };
 }
