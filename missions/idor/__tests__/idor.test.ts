@@ -1,5 +1,6 @@
-// ミッション1「非公開メモを守る」（IDOR、Issue #17）。複数の seed で出荷前検証に合格し（A06・A07）、
-// 特定の利用者名やメモ ID をハードコードした修正を見逃さない（spec §8.1）。Node では画面を描画しないため、描画を含まないテストで確かめる
+// ミッション1「非公開メモを守る」（IDOR、Issue #17）の固有のテスト。出荷前検証（全 seed・対策の期待・誤った修正）は
+// 共通の検証（tests/unit/pack-verification.test.ts・verify:packs）が確かめるので、ここではそれより細かい期待だけを確かめる。
+// Node では画面を描画しないため、描画を含まないテストで確かめる
 import { describe, expect, it } from 'vitest';
 import { memoApp } from '../../../apps/memo';
 import type { PickNeighbors } from '../../../apps/memo/hooks';
@@ -7,13 +8,12 @@ import { idorPack } from '..';
 import type { Exchange, ImplementationSelection } from '../../../platform/contract';
 import { Evaluator, detectReproduction } from '../../../platform/evaluator/evaluator';
 import type { CatalogApp } from '../../../platform/orchestrator/orchestrator';
-import { verifyPack } from '../../../platform/orchestrator/pack-verification';
+import { VERIFICATION_SEEDS } from '../../../platform/orchestrator/pack-verification';
 import { buildSubject, withChanges } from '../../../platform/orchestrator/subject';
 import { EngineRuntime } from '../../../tests/support/engine-runtime';
 import { requestOnly } from '../../../tests/support/request-only';
 import { ALICE_PRIVATE_ID_SEED_1 } from './verification';
 
-const SEEDS = [1, 42, 20261012];
 const app: CatalogApp = { ...memoApp, tests: requestOnly(memoApp.tests) };
 const { manifest } = idorPack;
 const [recipe] = manifest.mutationRecipes;
@@ -34,14 +34,7 @@ async function runSuite(implementations: ImplementationSelection, seed: number) 
   return report.outcomes.filter((outcome) => !outcome.passed);
 }
 
-describe.each(SEEDS)('IDOR パック（seed %i）', (seed) => {
-  it('出荷前検証に合格する：注入で攻撃が成立し、3 つの対策がそれぞれ期待どおりの結果になる', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
-    const result = await verifyPack(idorPack, app, evaluator, seed);
-    await evaluator.dispose();
-    expect(result.checks.filter((check) => !check.ok)).toEqual([]);
-  });
-
+describe.each(VERIFICATION_SEEDS)('IDOR パック（seed %i）', (seed) => {
   it('画面のリンクだけを隠しても、別の利用者が ID 指定でメモを直接取得できて不合格になる（A06）', async () => {
     const failed = await runSuite(defense('hide-links'), seed);
     const direct = failed.find((outcome) => outcome.testId === 'memo.read.other-denied');
@@ -50,19 +43,9 @@ describe.each(SEEDS)('IDOR パック（seed %i）', (seed) => {
     expect(failed.every((outcome) => outcome.group === 'attack')).toBe(true);
   });
 
-  it('所有者を照合すると、他人・未ログインを拒否し、所有者の作成・閲覧・更新・削除は通る（A07）', async () => {
-    expect(await runSuite(defense('owner-check'), seed)).toEqual([]);
-  });
-
   it('すべての取得を断ると、所有者の閲覧が失敗して合格しない（A05）', async () => {
     const failed = await runSuite(defense('deny-all'), seed);
     expect(failed.map((outcome) => outcome.testId)).toEqual(expect.arrayContaining(['memo.read-own', 'idor.read-own.all-users']));
-  });
-
-  it.each(['idor/wrong-fix-alice-only', 'idor/wrong-fix-fixed-id'])('ハードコードした修正（%s）は攻撃阻止のテストで失敗する', async (fix) => {
-    const failed = await runSuite({ ...vulnerable, 'memo.read.authorize': fix }, seed);
-    expect(failed.length).toBeGreaterThan(0);
-    expect(failed.every((outcome) => outcome.group === 'attack')).toBe(true);
   });
 });
 
