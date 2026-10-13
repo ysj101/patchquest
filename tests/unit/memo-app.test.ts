@@ -1,6 +1,7 @@
 // メモアプリの基準実装（状態 S）が共通テストをすべて通すこと（spec A01）。複数の seed で確かめる
 import { beforeAll, describe, expect, it } from 'vitest';
 import { memoApp } from '../../apps/memo';
+import { describeEvent } from '../../apps/memo/events';
 import { BASELINE, type PickNeighbors } from '../../apps/memo/hooks';
 import type { PrepareOptions } from '../../platform/contract';
 import { runSteps, type ScenarioInvoker } from '../../platform/evaluator/scenario';
@@ -67,6 +68,16 @@ describe('初期データ', () => {
       type: 'authz.decision',
       data: { action: 'read', subject: refs['users.bob.id']!, resource: refs['memos.alice.private.id']!, owner: refs['users.alice.id']!, decision: 'deny', reason: '所有者ではない' },
     });
+  });
+});
+
+describe('観測イベントの説明', () => {
+  it('画面に出たコメントの文字列を、計測した値のまま説明する', () => {
+    expect(describeEvent({ type: 'comment.rendered', data: { text: '価格は <100> 円' } })).toBe('画面に出たコメント：価格は <100> 円');
+  });
+
+  it('知らない種類は説明しない', () => {
+    expect(describeEvent({ type: 'unknown', data: {} })).toBeNull();
   });
 });
 

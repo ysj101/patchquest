@@ -1,5 +1,5 @@
 // メモアプリの画面。隔離 iframe の中で動き、データはすべて ctx.request（Host 経由）で取得する。
-// 教材データは textContent でだけ表示する
+// 教材データは textContent で表示する。コメント本文だけは交換点 comment.render が描き、描画後の文字列を記録する
 import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
@@ -145,6 +145,8 @@ async function page(root: HTMLElement, ctx: ViewContext, id: string): Promise<vo
   const commentItem = (c: { authorName: string; body: string }) => {
     const body = el('span', { className: 'comment-body' });
     renderComment(body, { body: c.body });
+    // 交換点が何を描いたかは、描画後の文字列で確かめる（非表示や HTML 解釈を API の保存内容と区別する）
+    ctx.emit('comment.rendered', { text: body.textContent });
     return el('li', { className: 'comment' }, el('strong', {}, c.authorName), body);
   };
   const count = el('h3', {}, `コメント（${comments.length} 件）`);
