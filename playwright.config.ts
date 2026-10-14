@@ -2,11 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 const port = 4173;
 
-/** 対応ブラウザはPC版のChrome・Edge（spec §2）。インストール済みのブラウザを使う */
-export const BROWSERS = [
-  { name: 'chrome', use: { channel: 'chrome' } },
-  { name: 'msedge', use: { channel: 'msedge' } },
-];
+/** 対応ブラウザはPC版のChromeのみ（spec §2）。インストール済みのブラウザを使う */
+export const BROWSERS = [{ name: 'chrome', use: { channel: 'chrome' } }];
 
 export default defineConfig({
   // 共通の E2E と、課題パックの固有の E2E（missions/<課題>/__tests__）
