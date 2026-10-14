@@ -71,7 +71,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand-mark { color: var(--seal); }
 .brand-tagline { color: #c6cdd8; font-size: 0.9rem; }
 
+/* 一覧は読み幅を抑える。演習画面は広い画面の幅を道具パネルに使う */
 main { padding: clamp(16px, 3vw, 32px) clamp(16px, 4vw, 40px) 64px; max-width: 1440px; margin: 0 auto; }
+main:has(.exercise:not([hidden])) { max-width: none; padding-top: 16px; }
 main > section > * + * { margin-top: 16px; }
 
 .eyebrow { font-size: 0.8rem; font-weight: 700; color: var(--muted); letter-spacing: 0.06em; }
@@ -188,11 +190,12 @@ main > section > * + * { margin-top: 16px; }
 .preflight-details[open] > * + * { margin-top: 12px; }
 .preflight-outcome { display: grid; gap: 12px; }
 
-/* 演習票と作業台 */
+/* 演習票と作業台。道具パネルを主役（3）、教材アプリは再現と確認に足りる幅（2） */
 .ticket {
   display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px;
 }
+.ticket h1 { font-size: 1.35rem; }
 .ticket-main { display: grid; gap: 4px; }
 .ticket-id { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
 .state-stamp {
@@ -200,7 +203,7 @@ main > section > * + * { margin-top: 16px; }
   border: 2px solid var(--primary); color: var(--primary); border-radius: 6px; padding: 0 8px;
 }
 .state-stamp[data-state='Passed'] { border-color: var(--seal); color: var(--seal); }
-.workbench { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr); gap: 20px; align-items: start; }
+.workbench { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 20px; align-items: start; }
 .app-pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .preview-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); background: #f8f9fb; }
 .preview-slot iframe { display: block; width: 100%; height: 560px; border: 0; background: #fff; }
@@ -210,6 +213,11 @@ main > section > * + * { margin-top: 16px; }
 .dialog { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 24px; max-width: 480px; }
 .dialog::backdrop { background: rgb(27 36 48 / 0.45); }
 .dialog > * + * { margin-top: 12px; }
+
+/* ガイドが画面上部を占めていないとき、教材アプリはスクロールしても見える位置に留める */
+@media (min-width: 961px) and (min-height: 720px) {
+  main:not(:has(.guide:not([hidden]))) .app-pane { position: sticky; top: 12px; }
+}
 
 @media (max-width: 960px) {
   .workbench { grid-template-columns: 1fr; }
@@ -224,14 +232,18 @@ main > section > * + * { margin-top: 16px; }
 h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 
 /* 演習の道具（タブ） */
-.tools { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.tools {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  container-type: inline-size; container-name: tools;
+}
 .tablist { display: flex; border-bottom: 1px solid var(--line); background: #f8f9fb; }
 .tab {
   flex: 1; border: 0; background: transparent; padding: 10px 12px; font-weight: 700; color: var(--muted); cursor: pointer;
   border-bottom: 3px solid transparent;
 }
 .tab[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--primary); background: var(--surface); }
-[role='tabpanel'] { padding: 16px; display: grid; gap: 16px; max-height: 720px; overflow: auto; }
+/* 中身はページとともに伸びる。パネルの中にもう一段のスクロールは作らない */
+[role='tabpanel'] { padding: 16px; display: grid; gap: 16px; align-content: start; }
 .tool-section { display: grid; gap: 8px; }
 .tool-section h3 { font-size: 0.95rem; }
 .incident { border-left: 4px solid var(--warn); padding-left: 12px; }
@@ -280,6 +292,7 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .defense-option input { margin-top: 5px; accent-color: var(--primary); }
 .defense-text { display: grid; gap: 2px; }
 .diff { display: grid; gap: 8px; }
+.diff:empty { display: none; }
 .diff h4 { font-size: 0.85rem; color: var(--muted); }
 .diff-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .diff-pair figure { margin: 0; display: grid; gap: 4px; }
@@ -303,6 +316,13 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .hint { border-left: 4px solid var(--primary); padding: 4px 0 4px 12px; display: grid; gap: 2px; }
 .hint-solution { border-left-color: var(--seal); }
 .transfer { display: grid; gap: 12px; }
+/* 道具パネルが広いときは、原因と理由、理解確認の設問を横に並べて「回答する」までを短くする */
+@container tools (min-width: 40rem) {
+  .transfer { grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); align-items: start; }
+  .transfer > .actions { grid-column: 1 / -1; }
+  .debrief:has(.transfer) { grid-template-columns: 1fr 1fr; align-items: start; }
+  .debrief:has(.transfer) > :nth-child(n + 3) { grid-column: 1 / -1; }
+}
 .question { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
 .question legend { font-weight: 700; padding: 0 4px; }
 .situation { color: var(--muted); font-size: 0.9rem; }
