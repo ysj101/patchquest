@@ -57,7 +57,12 @@ export class RepairPanel {
   private readonly choices = h('div', { class: 'defense-choices', role: 'radiogroup', 'aria-labelledby': 'defense-title' });
   private readonly applied = h('p', { class: 'applied' });
   private readonly diff = h('div', { class: 'diff' });
-  private readonly verifyButton = h('button', { type: 'button', class: 'button button-primary', on: { click: () => void this.actions.verify() } }, '攻撃と普段の使い方を検証する');
+  /** 対策の適用と同じ列に置く。参考コードの下に置くと、パネル内をスクロールしないと押せない */
+  private readonly verifyButton = h(
+    'button',
+    { type: 'button', class: 'button button-primary', 'data-anchor': 'verify', on: { click: () => void this.actions.verify() } },
+    '攻撃と普段の使い方を検証する',
+  );
   private readonly verifyNote = h('p', { class: 'note' });
   /** 検証中は押せない操作 */
   private readonly applyButton = h('button', { type: 'button', class: 'button', on: { click: () => this.selected && void this.actions.apply(this.selected) } }, 'この対策を適用する');
@@ -79,18 +84,12 @@ export class RepairPanel {
         h('h3', { id: 'defense-title' }, '対策を選ぶ'),
         h('p', { class: 'note' }, '対策を選んで適用すると、教材アプリの該当する処理が、あらかじめ用意した実装に切り替わります。'),
         this.choices,
-        h('div', { class: 'actions' }, this.applyButton, this.revertButton),
+        h('div', { class: 'actions' }, this.applyButton, this.revertButton, this.verifyButton),
         this.applied,
-        this.diff,
-      ),
-      h(
-        'section',
-        { class: 'tool-section', 'data-anchor': 'verify' },
-        h('h3', {}, '検証'),
-        h('p', { class: 'note' }, '同じ初期データで、攻撃を防げたか・普段の使い方ができるか・ほかの守りが壊れていないかを確かめます。'),
-        h('div', { class: 'actions' }, this.verifyButton),
         this.verifyNote,
+        h('p', { class: 'note' }, '検証は、同じ初期データで、攻撃を防げたか・普段の使い方ができるか・ほかの守りが壊れていないかを確かめます。'),
       ),
+      this.diff,
       h('section', { class: 'tool-section', 'data-anchor': 'results' }, this.resultsTitle, this.results),
       h(
         'section',
