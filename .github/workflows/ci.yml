@@ -1,5 +1,5 @@
 # CI。push（main）と PR ごとに、品質ゲート（pnpm run check：型・lint・重複・未使用コード・ユニットテストとカバレッジ）と
-# ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）、E2E（Chrome・Edge。パックの出荷前検証を含む）・配布物の確認を行う。
+# ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）、E2E（Chrome。パックの出荷前検証を含む）・配布物の確認を行う。
 # 既存の lint 違反は eslint-suppressions.json に記録済みなので、ここで止まるのは新しく増えた問題だけ
 name: CI
 
@@ -44,7 +44,7 @@ jobs:
       - run: pnpm run build
 
   browsers:
-    name: E2E・出荷前検証・配布物（Chrome・Edge）
+    name: E2E・出荷前検証・配布物（Chrome）
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -57,7 +57,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Chrome・Edge はランナーに入っているものを使う
+      # Chrome はランナーに入っているものを使う
       - run: pnpm run test:e2e
       - run: pnpm run test:dist
       - if: failure()
