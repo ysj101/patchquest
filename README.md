@@ -4,7 +4,7 @@
 
 ## 公開版を使う
 
-インストールなしで試すには、PC版の Chrome または Edge で <https://ysj101.github.io/patchquest/> を開きます。
+インストールなしで試すには、PC版の Chrome で <https://ysj101.github.io/patchquest/> を開きます。
 
 - ローカル版と同じビルド成果物を GitHub Pages で静的に配信しているだけで、サーバー側の処理や外部 API はありません。
 - 進捗はローカル版と同じくブラウザの中（IndexedDB）にだけ保存され、利用履歴を外部に送信しません。消すときは課題一覧の「進捗をすべて削除」か、ブラウザで `ysj101.github.io` のサイトデータを削除します。
@@ -13,14 +13,14 @@
 
 ## ローカル版を使う
 
-配布用の ZIP（`pnpm run package` で `release/` に作成）を展開し、展開したフォルダで localhost 限定の静的サーバを起動して、PC版の Chrome または Edge で開きます。
+配布用の ZIP（`pnpm run package` で `release/` に作成）を展開し、展開したフォルダで localhost 限定の静的サーバを起動して、PC版の Chrome で開きます。
 
 ```sh
 python3 -m http.server 8000 --bind 127.0.0.1   # Windows は py -m http.server 8000 --bind 127.0.0.1
 # ブラウザで http://127.0.0.1:8000/ を開く
 ```
 
-- 動作を確認したブラウザ：Google Chrome 154、Microsoft Edge 155（macOS）
+- 動作を確認したブラウザ：Google Chrome 154（macOS）。Edge など他のブラウザは対象外です。
 - `index.html` をダブルクリックして開く方法（`file://`）では動きません。
 - 起動後はインターネット接続は不要です。外部への通信は行いません。
 - 進捗はブラウザの中（IndexedDB）にだけ保存されます。消すときは課題一覧の「進捗をすべて削除」か、ブラウザで `127.0.0.1` のサイトデータを削除します。
@@ -29,7 +29,7 @@ python3 -m http.server 8000 --bind 127.0.0.1   # Windows は py -m http.server 8
 
 ## 開発
 
-必要なもの：Node.js 22、pnpm 11（`corepack enable pnpm` で package.json の `packageManager` の版が使われます）、Python 3、PC版 Chrome または Edge。
+必要なもの：Node.js 22、pnpm 11（`corepack enable pnpm` で package.json の `packageManager` の版が使われます）、Python 3、PC版 Chrome。
 
 ```sh
 pnpm install            # 依存のインストール（依存のインストールスクリプトは実行しない。pnpm-workspace.yaml の allowBuilds）
@@ -38,10 +38,10 @@ pnpm run build          # dist/ に静的成果物を生成する（DOM 安全�
 pnpm run serve          # http://127.0.0.1:8000/ で dist/ を配信
 pnpm run typecheck      # 型検査
 pnpm test               # ユニットテスト
-pnpm run test:e2e       # ビルドしてから Chrome・Edge で E2E テスト
+pnpm run test:e2e       # ビルドしてから Chrome で E2E テスト
 pnpm run verify:packs   # 同梱パックの出荷前検証（基準・レシピ・対策が期待どおりか）
 pnpm run package        # 配布用の ZIP を release/ に作る
-pnpm run test:dist      # ZIP を展開して localhost で開き、Chrome・Edge で確かめる
+pnpm run test:dist      # ZIP を展開して localhost で開き、Chrome で確かめる
 node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API を使っていないか（ビルドでも実行）
 ```
 
@@ -64,7 +64,7 @@ pnpm run test:coverage      # ユニットテストとカバレッジの下限
 
 push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）が次を実行します。
 - 品質ゲート（`pnpm run check`）とビルド（DOM 安全性・依存の境界・外部参照の検査を含む）
-- Chrome・Edge の E2E（出荷前検証を含む）、配布物の確認
+- Chrome の E2E（出荷前検証を含む）、配布物の確認
 
 課題パックの作り方は [docs/pack-authoring.md](docs/pack-authoring.md) を参照してください。
 
