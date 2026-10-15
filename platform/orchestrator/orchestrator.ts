@@ -2,6 +2,7 @@
 // 演習用インスタンスの準備、対策の切り替え、再検証、リセットを状態遷移表に沿って行う
 import {
   RuntimeError,
+  initialAttemptProgress,
   canTransition,
   isInExercise,
   satisfies,
@@ -151,6 +152,7 @@ export class Orchestrator {
       attemptId: resume.attemptId,
       createdAt: resume.createdAt,
       badges: structuredClone(resume.badges),
+      milestones: { ...resume.milestones },
       lastVerification: resume.lastVerification,
       hintsOpened: [...resume.hintsOpened],
       solutionViewed: resume.solutionViewed,
@@ -170,12 +172,7 @@ export class Orchestrator {
       createdAt: this.now().toISOString(),
       state: 'Selected',
       configHash: '',
-      appliedDefense: null,
-      badges: { reproduction: { achieved: false }, defense: { achieved: false }, understanding: { achieved: false } },
-      lastVerification: null,
-      hintsOpened: [],
-      solutionViewed: false,
-      answers: {},
+      ...initialAttemptProgress(),
       ...carried,
     };
     const vulnerable = withChanges({}, recipe?.apply ?? []);
@@ -193,9 +190,17 @@ export class Orchestrator {
     await this.runPreflight();
     const resumedDefense = resume?.appliedDefense;
     if (resumedDefense && this.current?.snapshot.attempt.state === 'Prepared' && manifest.defenses.some((d) => d.id === resumedDefense)) {
-      await this.applyDefense(resumedDefense);
+      await this.setDefense(resumedDefense);
     }
     return this.require().snapshot;
+  }
+
+  /** 導入を閉じた、または既定で飛ばした最初の時刻を記録する。 */
+  markBriefed(): void {
+    const { milestones } = this.require().snapshot.attempt;
+    if (milestones.briefedAt !== null) return;
+    milestones.briefedAt = this.now().toISOString();
+    this.emit();
   }
 
   /** 開始不可・基盤エラーの後に、同じ演習の事前検証をやり直す */
@@ -206,13 +211,15 @@ export class Orchestrator {
 
   /**
    * プレイヤーの操作で観測したやり取りを受け取る。攻撃の成立にあたれば再現の達成印を付け、true を返す。
+   * initialView は初期表示の読み込み中の要求。調査の初回記録からだけ除外する。
    * 現在の演習の実行 ID でないやり取り（古い演習の応答など）は無視する
    */
-  onExchange(exchange: Exchange): boolean {
+  onExchange(exchange: Exchange, options: { initialView?: boolean } = {}): boolean {
     const c = this.current;
     if (!c?.runIds.has(exchange.runId)) return false;
     const { attempt, pack, refs } = c.snapshot;
     if (!isInExercise(attempt.state)) return false;
+    if (!options.initialView && exchange.kind === 'request' && attempt.milestones.firstRequestAt === null) attempt.milestones.firstRequestAt = this.now().toISOString();
     if (attempt.state === 'Prepared') this.transition('Explored');
     const reproduced = !attempt.badges.reproduction.achieved && detectReproduction(exchange, pack.manifest.probes, refs) !== null;
     if (reproduced) attempt.badges.reproduction = { achieved: true, runId: exchange.runId, at: this.now().toISOString() };
@@ -222,6 +229,15 @@ export class Orchestrator {
 
   /** 対策を適用する（null で取り消して脆弱な状態 V に戻す）。動作を切り替えるだけで合否は返さない */
   async applyDefense(defenseId: string | null): Promise<void> {
+    await this.setDefense(defenseId);
+    const { milestones } = this.require().snapshot.attempt;
+    if (defenseId !== null && milestones.firstDefenseAt === null) {
+      milestones.firstDefenseAt = this.now().toISOString();
+      this.emit();
+    }
+  }
+
+  private async setDefense(defenseId: string | null): Promise<void> {
     const c = this.require();
     const { attempt, pack } = c.snapshot;
     const defense = defenseId === null ? null : pack.manifest.defenses.find((d) => d.id === defenseId);

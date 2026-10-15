@@ -65,7 +65,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
     {
       back: () => void showList(),
       openSettings,
-      briefed: () => guide.reach('briefed'),
+      briefed: () => {
+        orchestrator.markBriefed();
+        guide.reach('briefed');
+      },
       switchUser: (actor) => {
         guide.reach('user-switched');
         void showViewer(actor);
@@ -81,6 +84,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       storyFooter: hints.element,
       callout: resultEffects.element,
     },
+    (message) => announce(live, message),
   );
   const exercise = new BrowserRuntimeAdapter({
     container: exerciseView.previewSlot,
@@ -222,11 +226,14 @@ export async function startApp(root: HTMLElement): Promise<void> {
     announce(live, '初期状態へ戻しました');
   }
 
+  // 利用者の切り替えは await せず、複数の表示が同時に進むことがあるため、真偽値ではなく実行 ID ごとに管理する。
+  // 初期表示の自動要求と、その後の利用者操作は同じ実行 ID を使うので、読み込み中かどうかで区別する。
+  const openingViews = new Set<string>();
   const currentApp = () => catalog.apps.find((a) => a.descriptor.id === orchestrator.snapshot?.attempt.appId);
 
   /** 観測したやり取りを進行（再現の判定）と観測ログへ渡す。画面の表示だけのやり取りは事象があるときだけ記録する */
   function observe(exchange: Exchange): void {
-    const reproduced = orchestrator.onExchange(exchange);
+    const reproduced = orchestrator.onExchange(exchange, { initialView: openingViews.has(exchange.runId) });
     if (exchange.kind === 'request' || exchange.events.length > 0) exerciseView.investigation.record(exchange, exerciseView.label(exchange.actor));
     if (reproduced) resultEffects.show({ kind: 'reproduced', detail: '再現の検印を押しました。事故を自分の操作で再現できました。' });
   }
@@ -237,11 +244,15 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (!app) return;
     viewer = actor;
     exerciseView.setViewer(actor);
+    const runId = orchestrator.newRunId();
+    openingViews.add(runId);
     try {
-      await exercise.showView(actor, app.descriptor.entryRoute, orchestrator.newRunId());
+      await exercise.showView(actor, app.descriptor.entryRoute, runId);
       announce(live, `${exerciseView.label(actor)} として表示しています`);
     } catch (e) {
       announce(live, `画面を表示できませんでした：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      openingViews.delete(runId);
     }
   }
 
@@ -256,6 +267,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     const showBriefing = snapshot.attempt.attemptId === briefingAttemptId;
     exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null, showBriefing);
     repair.setup(snapshot);
+    if (!showBriefing) orchestrator.markBriefed();
     show('exercise');
     // 既定で飛ばすときは 2 つの出来事をまとめて知らせ、読み上げを 1 回にする
     if (!showBriefing) guide.reach('started', 'briefed');

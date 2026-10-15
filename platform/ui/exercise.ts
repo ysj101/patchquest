@@ -6,6 +6,7 @@ import { radioOption, sealStates, seals, settingsButton, tabs, type TabSpec } fr
 import { fill, h } from './dom';
 import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
+import { StageProgress } from './stage-progress';
 
 export interface ExerciseActions {
   openSettings(): void;
@@ -35,6 +36,7 @@ export class ExerciseView {
   private readonly title = h('h1', { id: 'exercise-title', tabIndex: -1 });
   private readonly ticket = h('p', { class: 'ticket-id' });
   private readonly state = h('p', { class: 'state-stamp' });
+  private readonly stages: StageProgress;
   private readonly sealSlot = h('div', { class: 'ticket-seals' });
   private readonly toolTabs: ReturnType<typeof tabs>;
   private readonly storyFooter: HTMLElement;
@@ -46,7 +48,9 @@ export class ExerciseView {
     private readonly actions: ExerciseActions,
     /** 状況・調査に続けて並べるタブと、状況タブの末尾に置く要素（ヒントなど） */
     extras: { tabs: TabSpec[]; storyFooter: HTMLElement; callout: HTMLElement },
+    announce: (message: string) => void,
   ) {
+    this.stages = new StageProgress(announce);
     this.storyFooter = extras.storyFooter;
     this.investigation = new InvestigationPanel({ send: actions.send });
     this.toolTabs = tabs('演習の道具', [
@@ -69,6 +73,7 @@ export class ExerciseView {
         h('div', { class: 'ticket-main' }, this.ticket, this.title, this.state),
         this.sealSlot,
         h('div', { class: 'ticket-actions' }, h('button', { type: 'button', class: 'button button-quiet', on: { click: actions.back } }, '課題一覧へ戻る'), settingsButton(() => actions.openSettings())),
+        this.stages.element,
       ),
       h(
         'p',
@@ -99,6 +104,7 @@ export class ExerciseView {
         ),
       ),
     );
+    this.stages.reset();
     const story = snapshot.pack.manifest.story;
     fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
     fill(
@@ -153,6 +159,7 @@ export class ExerciseView {
 
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack, defenseCurrent } = snapshot;
+    this.stages.update(attempt, defenseCurrent);
     this.title.textContent = pack.manifest.title;
     this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}`;
     this.state.textContent = STATE_LABEL[attempt.state];

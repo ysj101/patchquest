@@ -202,7 +202,7 @@
       "count": 3
     },
     "id-length": {
-      "count": 11
+      "count": 9
     }
   },
   "platform/ui/app.ts": {
@@ -750,7 +750,7 @@
       "count": 1
     },
     "id-length": {
-      "count": 18
+      "count": 15
     }
   },
   "tests/unit/progress.test.ts": {
