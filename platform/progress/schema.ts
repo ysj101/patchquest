@@ -14,8 +14,11 @@ import {
   type VerificationReport,
 } from '../contract';
 
+import { MAX_TEXT, readHistory } from './history';
+
 export const PROGRESS_FORMAT = 'patchquest-progress';
-export const PROGRESS_SCHEMA_VERSION = 3;
+
+export const PROGRESS_SCHEMA_VERSION = 4;
 // 読み込める最も古い版。spec §13 に従い、版を上げても旧版の読み込みを維持する。
 const OLDEST_READABLE_SCHEMA_VERSION = 1;
 // 演習をまたぐ記録の入れ物 profile が加わった版。
@@ -23,7 +26,6 @@ const PROFILE_SINCE_SCHEMA_VERSION = 2;
 /** 進捗 JSON の上限（初期案 1MB、spec §14） */
 export const MAX_PROGRESS_BYTES = 1024 * 1024;
 const MAX_ATTEMPTS = 1000;
-const MAX_TEXT = 4096;
 const STATES = Object.keys(TRANSITIONS) as ExerciseState[];
 
 /** 演習をまたぐ記録。既知の項目はまだなく、#71・#73 でここに追加する。
@@ -118,6 +120,7 @@ function attempt(c: Checker, path: string, v: unknown): AttemptRecord {
     milestones: milestones(c, `${path}.milestones`, a.milestones),
     appliedDefense: a.appliedDefense === null ? null : text('appliedDefense'),
     badges: Object.fromEntries(BADGE_KINDS.map((k) => [k, badge(c, `${path}.badges.${k}`, badges[k])])) as Record<BadgeKind, Badge>,
+    history: readHistory(c, `${path}.history`, a.history),
     lastVerification: report(c, `${path}.lastVerification`, a.lastVerification),
     hintsOpened: c.list(`${path}.hintsOpened`, a.hintsOpened).slice(0, 3).map((h, i) => c.oneOf(`${path}.hintsOpened[${i}]`, h, [1, 2, 3] as const)),
     solutionViewed: c.bool(`${path}.solutionViewed`, a.solutionViewed),

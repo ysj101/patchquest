@@ -66,6 +66,19 @@ export interface VerificationReport {
   elapsedMs: number;
 }
 
+/** 改善履歴の保存上限。長い演習でも記録容量を増やし続けない。 */
+export const MAX_HISTORY = 100;
+
+/** 検証の実測件数。判定不能の outcome は groups の分母・分子に含めない。 */
+export interface VerificationEntry {
+  runId: string;
+  at: string;
+  defenseId: string | null;
+  passed: boolean;
+  undetermined: number;
+  groups: Record<ResultGroup, { passed: number; total: number }>;
+}
+
 /** 演習 1 回分の記録。開始時に版・seed を固定する（spec §5.3） */
 export interface AttemptRecord {
   attemptId: string;
@@ -88,6 +101,9 @@ export interface AttemptRecord {
   badges: Record<BadgeKind, Badge>;
   /** 直近の検証結果 */
   lastVerification: VerificationReport | null;
+  /** 検証のたびに追加。対策の取り消しやリセットでも消さない。
+   * 検証順（時刻順）に末尾へ追加し、この順序を保持する。 */
+  history: VerificationEntry[];
   hintsOpened: (1 | 2 | 3)[];
   solutionViewed: boolean;
   /** 理解確認の回答（設問 ID → 選択肢 ID） */
@@ -106,8 +122,9 @@ export function initialAttemptProgress() {
     milestones: emptyMilestones(),
     badges: { reproduction: { achieved: false }, defense: { achieved: false }, understanding: { achieved: false } },
     lastVerification: null,
+    history: [] as VerificationEntry[],
     hintsOpened: [],
     solutionViewed: false,
     answers: {},
-  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'milestones' | 'badges' | 'lastVerification' | 'hintsOpened' | 'solutionViewed' | 'answers'>;
+  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'milestones' | 'badges' | 'lastVerification' | 'history' | 'hintsOpened' | 'solutionViewed' | 'answers'>;
 }

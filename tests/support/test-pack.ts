@@ -59,6 +59,14 @@ export const testPack: MissionPack = {
         referenceDiff: { file: 'notes.ts', language: 'ts', before: 'return note;', after: "return 'forbidden';" },
         expected: 'breaks-normal',
       },
+      {
+        id: 'display-only',
+        label: '表示だけ変える',
+        description: '表示を変えるだけでは直接の要求を防げない',
+        apply: [{ hook: 'note.read', implementation: 'test-pack/any-owner' }],
+        referenceDiff: { file: 'notes.ts', language: 'ts', before: 'return note;', after: 'return note; // 表示だけ変更' },
+        expected: 'insufficient',
+      },
     ],
     probes: [
       {

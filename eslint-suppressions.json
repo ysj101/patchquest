@@ -146,7 +146,7 @@
   },
   "platform/orchestrator/orchestrator.ts": {
     "@typescript-eslint/no-non-null-assertion": {
-      "count": 3
+      "count": 2
     },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
@@ -154,23 +154,8 @@
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 1
     },
-    "@typescript-eslint/require-await": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
     "id-length": {
-      "count": 32
-    },
-    "max-lines": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 2
-    },
-    "sonarjs/no-nested-template-literals": {
-      "count": 1
+      "count": 15
     }
   },
   "platform/orchestrator/pack-verification.ts": {
@@ -242,9 +227,6 @@
     },
     "id-length": {
       "count": 8
-    },
-    "max-lines-per-function": {
-      "count": 1
     },
     "sonarjs/no-nested-conditional": {
       "count": 3
