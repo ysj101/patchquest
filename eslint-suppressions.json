@@ -201,11 +201,8 @@
     "@typescript-eslint/prefer-promise-reject-errors": {
       "count": 3
     },
-    "@typescript-eslint/require-await": {
-      "count": 3
-    },
     "id-length": {
-      "count": 12
+      "count": 11
     }
   },
   "platform/ui/app.ts": {
