@@ -1,5 +1,5 @@
 // E2E の通信制限と、演習の共通操作を提供する
-import { test as base, expect, type Page } from '@playwright/test';
+import { test as base, expect, type Locator, type Page } from '@playwright/test';
 
 // すべてのE2Eテストで、localhost以外への通信を遮断し、発生したら失敗にする（spec §12, A19）
 export const test = base.extend<{ externalRequests: string[] }>({
@@ -81,4 +81,43 @@ export async function verifyWith(page: Page, defense: string): Promise<void> {
   await page.getByRole('button', { name: 'この対策を適用する' }).click();
   await expect(page.getByText(`適用中の対策：${defense}`)).toBeVisible();
   await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+}
+
+/** Tab キーだけで、指定した名前または Locator の要素までフォーカスを移す */
+export async function tabTo(page: Page, name: string | RegExp | Locator, max = 40): Promise<void> {
+  for (let index = 0; index < max; index++) {
+    await page.keyboard.press('Tab');
+    if (typeof name === 'object' && !(name instanceof RegExp)) {
+      if (await name.evaluate((element) => element === document.activeElement)) return;
+      continue;
+    }
+    const text = await page.evaluate(() => document.activeElement?.textContent.trim() ?? '');
+    if (typeof name === 'string' ? text === name : name.test(text)) return;
+  }
+  throw new Error(`${String(name)} までフォーカスを移せませんでした`);
+}
+
+/** 直近の検証総評と、コールアウトの種類・文言・防御の達成印が一致することを確かめる */
+export async function expectCalloutMatchesVerdict(page: Page): Promise<void> {
+  await expect(page.getByRole('button', { name: '攻撃と普段の使い方を検証する' })).toBeEnabled({ timeout: 20_000 });
+  const verdict = verifyResults(page).locator('.banner .status');
+  await expect(verdict).toHaveText(/防御できました|まだ合格ではありません/, { timeout: 20_000 });
+  const secured = (await verdict.innerText()).includes('防御できました');
+  const callout = page.locator('.result-callout');
+  await expect(callout).toBeVisible();
+  await expect(callout).toHaveAttribute('data-result', secured ? 'secured' : 'insufficient');
+  await expect(callout).toContainText(secured ? '防御できました' : 'まだ合格ではありません');
+  await expect(ticketSeals(page)).toContainText(secured ? '防御：達成' : '防御：未達成');
+}
+
+/** 設定ボタンにあるフォーカスから、キーボードだけで動きをオフにして閉じる */
+export async function turnMotionOffWithKeyboard(page: Page): Promise<void> {
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('radio', { name: 'OS の設定に従う' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('radio', { name: 'オフ', exact: true })).toBeChecked();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(settingsButton(page)).toBeFocused();
 }

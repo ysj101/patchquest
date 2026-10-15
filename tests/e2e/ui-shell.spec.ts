@@ -1,16 +1,6 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { enterWorkbench, expect, test } from './fixtures';
-
-/** Tab キーだけで、指定した名前のボタンまでフォーカスを移す */
-async function tabTo(page: Page, name: string | RegExp, max = 40): Promise<void> {
-  for (let i = 0; i < max; i++) {
-    await page.keyboard.press('Tab');
-    const text = await page.evaluate(() => document.activeElement?.textContent?.trim() ?? '');
-    if (typeof name === 'string' ? text === name : name.test(text)) return;
-  }
-  throw new Error(`${name} までフォーカスを移せませんでした`);
-}
+import { enterWorkbench, expect, tabTo, test } from './fixtures';
 
 const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
