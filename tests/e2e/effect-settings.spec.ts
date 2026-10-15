@@ -1,8 +1,7 @@
 // 演出設定の保存、動きの抑制、キーボード操作と保存失敗の通知を確認する。
 import type { Page } from '@playwright/test';
-import { test, expect, startMission } from './fixtures';
+import { test, expect, startMission, settingsButton } from './fixtures';
 
-const settingsButton = (page: Page) => page.getByRole('button', { name: '設定', exact: true });
 const motionOff = (page: Page) => page.getByRole('radio', { name: 'オフ', exact: true });
 
 test('演出設定を再読み込み後と演習画面でも利用できる', async ({ page }) => {
