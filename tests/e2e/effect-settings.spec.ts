@@ -42,7 +42,7 @@ test('動きの初期値は端末の「動きを減らす」に従い、効果�
   await expect(choice(page, '動き', 'オフ')).toBeChecked();
   await expect(choice(page, '効果音', 'オフ')).toBeChecked();
   await expect(dialog(page).getByRole('slider', { name: '音量' })).toHaveValue('1');
-  await expect(dialog(page).getByText('100%')).toBeVisible();
+  await expect(dialog(page).getByText('100%', { exact: true })).toBeVisible();
 });
 
 test('動きを減らす設定がなければ、動きの初期値はオン', async ({ page }) => {
@@ -68,6 +68,8 @@ test('動きを選ぶまでは端末の設定に従い、選んだあとはそ�
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'on');
 
   await openSettings(page);
+  // いったんオフにしてからオンに戻す。はじめから選ばれているラジオを押しても変更は起きない
+  await choice(page, '動き', 'オフ').check();
   await choice(page, '動き', 'オン').check();
   await dialog(page).getByRole('button', { name: '閉じる' }).click();
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -83,7 +85,7 @@ test('一覧と演習のヘッダーから設定でき、再読み込み後も�
   await choice(page, '動き', 'オフ').check();
   await choice(page, '効果音', 'オン').check();
   await dialog(page).getByRole('slider', { name: '音量' }).fill('0.4');
-  await expect(dialog(page).getByText('40%')).toBeVisible();
+  await expect(dialog(page).getByText('40%', { exact: true })).toBeVisible();
   await dialog(page).getByRole('button', { name: '閉じる' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'off');
 
@@ -111,8 +113,9 @@ test('一覧と演習のヘッダーから設定でき、再読み込み後も�
 test('キーボードだけで動き・効果音・音量を変えられる', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
+  // 一覧を開くと見出しへフォーカスが移る。ヘッダーの設定はその一つ手前
+  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await expect(settingsButton(page, '.site-header')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(dialog(page)).toBeVisible();
@@ -128,7 +131,7 @@ test('キーボードだけで動き・効果音・音量を変えられる', as
   await expect(slider).toBeFocused();
   await page.keyboard.press('Home');
   await expect(slider).toHaveValue('0');
-  await expect(dialog(page).getByText('0%')).toBeVisible();
+  await expect(dialog(page).getByText('0%', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog(page)).toBeHidden();
   await expect(settingsButton(page, '.site-header')).toBeFocused();
@@ -139,27 +142,31 @@ test('キーボードだけで動き・効果音・音量を変えられる', as
   await expect(dialog(page).getByRole('slider', { name: '音量' })).toHaveValue('0');
 });
 
+const practiceButton = (page: Page) => page.getByRole('button', { name: 'まずは練習（3 分）' });
+
 test('動きをオフにすると @keyframes が走らず、オンに戻すと再び走る', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
-  await expect(page.locator('.button-chunky').evaluate((el) => getComputedStyle(el).transitionDuration)).resolves.toBe('0.05s, 0.05s');
-  await page.getByRole('button', { name: 'まずは練習（3 分）' }).click();
+  await expect(practiceButton(page).evaluate((el) => getComputedStyle(el).transitionDuration)).resolves.toBe('0.05s, 0.05s');
+  await practiceButton(page).click();
   await expect(page.locator('[data-guide-target]')).toBeVisible();
   await expect.poll(() => keyframeNames(page)).toContain('guide-pulse');
 
   await openSettings(page);
   await choice(page, '動き', 'オフ').check();
-  await expect.poll(() => keyframeNames(page)).toEqual([]);
-  await expect(page.locator('.button-chunky').evaluate((el) => getComputedStyle(el).transitionDuration)).resolves.toBe('0s');
   await page.keyboard.press('Escape');
+  // ダイアログを閉じたあとに確かめる。開いたままでは背面が inert になり、アニメーションが止まることがある
+  await expect.poll(() => keyframeNames(page)).toEqual([]);
+  await expect(page.locator('.button-chunky').first().evaluate((el) => getComputedStyle(el).transitionDuration)).resolves.toBe('0s');
 
   await page.reload();
-  await page.getByRole('button', { name: 'まずは練習（3 分）' }).click();
+  await practiceButton(page).click();
   await expect(page.locator('[data-guide-target]')).toBeVisible();
   await expect.poll(() => keyframeNames(page)).toEqual([]);
 
   await openSettings(page);
   await choice(page, '動き', 'オン').check();
+  await page.keyboard.press('Escape');
   await expect.poll(() => keyframeNames(page)).toContain('guide-pulse');
 });
 
