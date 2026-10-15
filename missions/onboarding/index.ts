@@ -20,7 +20,7 @@ export const onboardingPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'onboarding',
-    version: '1.1.0',
+    version: '1.2.0',
     kind: 'tutorial',
     title: '練習：はじめての修正',
     summary: 'わざと壊したメモアプリで「こわす → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
@@ -184,6 +184,14 @@ export const onboardingPack: MissionPack = {
         anchor: 'preflight',
         until: 'started',
         praise: '準備 OK！',
+      },
+      {
+        id: 'briefing',
+        title: '何が起きたか読んでみよう',
+        body: '事件と依頼を読んで、「ミッション開始」を押してください。Esc キーでも始められます。',
+        anchor: 'briefing',
+        until: 'briefed',
+        praise: '今回の依頼を確認できました！',
       },
       {
         id: 'break',

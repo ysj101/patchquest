@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { ANONYMOUS, RuntimeError, isInExercise, satisfies, type ActorKey, type AppRequest, type Exchange, type SessionToken } from '../contract';
+import { ANONYMOUS, RuntimeError, isInExercise, satisfies, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { ProgressStore } from '../progress/store';
@@ -55,13 +55,14 @@ export async function startApp(root: HTMLElement): Promise<void> {
     },
     retry: () => {
       const packId = orchestrator.snapshot?.pack.manifest.id;
-      if (packId) void begin(() => orchestrator.start(packId));
+      if (packId) void begin(packId);
     },
   });
   const exerciseView = new ExerciseView(
     {
       back: () => void showList(),
       openSettings,
+      briefed: () => guide.reach('briefed'),
       switchUser: (actor) => {
         guide.reach('user-switched');
         void showViewer(actor);
@@ -151,8 +152,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
       listView,
       missionList(await entries(), store.unavailableReason, {
         openSettings,
-        start: (packId) => void begin(() => orchestrator.start(packId)),
-        resume: (record) => void begin(() => orchestrator.start(record.missionId, { resume: record })),
+        start: (packId) => void begin(packId),
+        resume: (record) => void begin(record.missionId, record),
         exportProgress: () => void exportProgress(),
         importProgress: (file) => void importProgress(file),
         clearProgress: () => void clearProgress(),
@@ -163,10 +164,16 @@ export async function startApp(root: HTMLElement): Promise<void> {
     listView.querySelector<HTMLElement>('h1')?.focus();
   }
 
-  async function begin(run: () => Promise<ExerciseSnapshot>): Promise<void> {
+  /** 導入を見せる演習の ID。同じ課題の記録（今回の演習を除く）が保存済みなら見せない */
+  let briefingAttemptId: string | null = null;
+  async function begin(packId: string, resume?: AttemptRecord): Promise<void> {
+    // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の「演習を始める」を残さない）
+    const started = orchestrator.start(packId, { resume });
     show('preflight');
     announce(live, '開始前チェックを始めました');
-    const snapshot = await run();
+    const [records, snapshot] = await Promise.all([resume ? [] : store.list(), started]);
+    const seen = records.some((record) => record.missionId === packId && record.attemptId !== snapshot.attempt.attemptId);
+    briefingAttemptId = !resume && (!!store.unavailableReason || !seen) ? snapshot.attempt.attemptId : null;
     announce(live, isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
   }
 
@@ -236,10 +243,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (!snapshot || !app) return;
     viewer = app.descriptor.users[0] ?? ANONYMOUS;
     sessions.clear();
-    exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null);
+    const showBriefing = snapshot.attempt.attemptId === briefingAttemptId;
+    exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null, showBriefing);
     repair.setup(snapshot);
     show('exercise');
-    guide.reach('started');
+    // 既定で飛ばすときは 2 つの出来事をまとめて知らせ、読み上げを 1 回にする
+    if (!showBriefing) guide.reach('started', 'briefed');
+    else guide.reach('started');
     await showViewer(viewer);
   }
 

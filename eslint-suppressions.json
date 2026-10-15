@@ -269,7 +269,7 @@
   },
   "platform/ui/exercise.ts": {
     "@typescript-eslint/unbound-method": {
-      "count": 3
+      "count": 2
     }
   },
   "platform/ui/guide.ts": {

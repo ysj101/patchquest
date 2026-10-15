@@ -392,3 +392,21 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 /* 演出設定の選択肢はラベル全体を操作できる。 */
 .effect-settings fieldset { padding: 10px; }
 .effect-option { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+
+/* 導入は待ち時間を設けず、事件と依頼を一度に読める。 */
+.mission-briefing {
+  display: grid;
+  gap: 1rem;
+  max-width: 48rem;
+  margin: 1.5rem auto;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+  animation: briefing-enter 180ms ease-out;
+}
+.mission-briefing h2 { margin-top: 0; }
+.mission-briefing .eyebrow { display: block; margin-bottom: 0.5rem; }
+.mission-briefing .incident, .mission-briefing .briefing-goal { font-size: 1.15rem; line-height: 1.8; }
+.mission-briefing .button { margin-top: 1rem; justify-self: start; }
+@keyframes briefing-enter { from { transform: translateY(8px); } to { transform: translateY(0); } }
