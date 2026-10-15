@@ -3,6 +3,8 @@
 import { initialAttemptProgress, type AttemptRecord } from '../contract';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile, type ProgressProfile } from './schema';
 
+import { xpFromAttempts, type XpSummary } from './xp';
+
 export interface ProgressBackend {
   getAll(): Promise<AttemptRecord[]>;
   getProfile(): Promise<ProgressProfile>;
@@ -109,7 +111,7 @@ export class IndexedDbBackend implements ProgressBackend {
   }
 }
 
-export type ImportResult = { ok: true; imported: number } | { ok: false; error: string };
+export type ImportResult = { ok: true; imported: number; xpRecomputed: boolean } | { ok: false; error: string };
 
 export class ProgressStore {
   private constructor(
@@ -152,6 +154,17 @@ export class ProgressStore {
     return this.withBackend((b) => b.clear());
   }
 
+  /** 保存済みの XP を記録から再計算し、違いがあれば黙って更新する。取得済みの一覧も利用できる。 */
+  async xp(records?: AttemptRecord[]): Promise<XpSummary> {
+    const summary = xpFromAttempts(records ?? await this.list());
+    const profile = await this.withBackend((backend) => backend.getProfile());
+    const saved = profile.xp?.total;
+    if (saved !== summary.total) {
+      await this.withBackend((backend) => backend.putProfile({ ...profile, xp: { total: summary.total } }));
+    }
+    return summary;
+  }
+
   async exportJson(now = new Date()): Promise<string> {
     const file: ProgressFile = {
       format: PROGRESS_FORMAT,
@@ -171,10 +184,16 @@ export class ProgressStore {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
+    const expected = xpFromAttempts(file.attempts).total;
+    const xpRecomputed = file.profile.xp !== undefined && file.profile.xp.total !== expected;
+    const merged = new Map((await this.list()).map((record) => [record.attemptId, record]));
+    for (const record of file.attempts) merged.set(record.attemptId, record);
+    const total = xpFromAttempts([...merged.values()]).total;
     await this.withBackend(async (backend) => {
-      await Promise.all([backend.put(file.attempts), backend.putProfile(file.profile)]);
+      await backend.put(file.attempts);
+      await backend.putProfile({ ...file.profile, xp: { total } });
     });
-    return { ok: true, imported: file.attempts.length };
+    return { ok: true, imported: file.attempts.length, xpRecomputed };
   }
 
   /** 保存先が失敗したら、読めた記録を引き継いでメモリへ切り替え、同じ操作をやり直す */

@@ -1,6 +1,10 @@
 // ミッション一覧（spec §10）。何をする場所かの説明と練習への入口、学習目標・目安時間・達成印・開始と、進捗の書き出し・読み込み・削除
 import type { AttemptRecord, MissionPack } from '../contract';
-import { sealStates, seals, settingsButton } from './components';
+import { seals, settingsButton } from './components';
+import { sealStates } from '../progress/stages';
+import type { XpSummary } from '../progress/xp';
+import { XP_NOTE } from './labels';
+import { xpLabel } from './xp-badge';
 import { h } from './dom';
 
 export interface MissionEntry {
@@ -95,7 +99,7 @@ function section(title: string, lead: string, entries: MissionEntry[], actions: 
   return h('section', { class: 'mission-section' }, h('h2', {}, title), h('p', { class: 'lead' }, lead), h('div', { class: 'mission-grid' }, ...entries.map((e) => card(e, actions))));
 }
 
-export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions): HTMLElement {
+export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, xp: XpSummary): HTMLElement {
   const fileInput = h('input', {
     type: 'file',
     accept: 'application/json,.json',
@@ -116,6 +120,8 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
     'div',
     { class: 'mission-list', 'data-anchor': 'mission-list' },
     hero(tutorials[0], actions),
+    h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
+    h('p', { class: 'note' }, XP_NOTE),
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,

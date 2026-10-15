@@ -62,3 +62,6 @@ export const VERDICT_SUCCESS = '攻撃を防ぎ、普段の使い方も通りま
 
 /** 構成変更後の検証結果を現在の合格と誤認させないための警告。 */
 export const STALE_VERIFICATION = '対策を変えたため、この結果はいまの構成のものではありません。もう一度検証してください。';
+
+export const XP_NOTE = 'XP は取り組みへの報酬です。理解度や達成印の判定は変わりません';
+export const XP_RECOMPUTED = '取り込んだファイルの XP は、そのファイルの記録と合わなかったため、記録から計算し直しました';

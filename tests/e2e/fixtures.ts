@@ -121,3 +121,19 @@ export async function turnMotionOffWithKeyboard(page: Page): Promise<void> {
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(settingsButton(page)).toBeFocused();
 }
+
+/** alice の一覧応答からノート ID を取得し、bob で読んで再現の検印を得る。 */
+export async function reproduceNoteLeak(page: Page): Promise<void> {
+  const entry = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();
+  await entry.locator('summary').click();
+  const text = await entry.locator('.log-block').nth(1).locator('pre').textContent();
+  if (!text) throw new Error('調査ログがありません');
+  const response = JSON.parse(text) as { notes: { id: number }[] };
+  const note = response.notes[0];
+  if (!note) throw new Error('ノートがありません');
+  const id = note.id;
+  await page.getByRole('radio', { name: 'bob' }).check();
+  await page.getByLabel('ノート ID').fill(String(id));
+  await page.getByRole('button', { name: '送る', exact: true }).click();
+  await expect(ticketSeals(page)).toContainText('再現：達成');
+}
