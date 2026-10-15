@@ -121,7 +121,7 @@ main > section > * + * { margin-top: 16px; }
 .status-running { color: var(--primary); border-color: #c5ccef; background: var(--primary-soft); }
 .status-running .status-mark { display: inline-block; animation: spin 1.2s linear infinite; }
 .status-passed { color: var(--ok); border-color: #b5dcc4; background: var(--ok-bg); }
-.status-failed { color: var(--fail); border-color: #efc0ba; background: var(--fail-bg); }
+.status-failed, .status-alert { color: var(--fail); border-color: #efc0ba; background: var(--fail-bg); }
 .status-blocked, .status-error { color: var(--warn); border-color: #f0d898; background: var(--warn-bg); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -403,10 +403,20 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
   border: 2px solid var(--ink);
   border-radius: 12px;
   background: var(--paper);
-  animation: briefing-enter 180ms ease-out;
+  animation: rise-in 180ms ease-out;
 }
 .mission-briefing h2 { margin-top: 0; }
 .mission-briefing .eyebrow { display: block; margin-bottom: 0.5rem; }
 .mission-briefing .incident, .mission-briefing .briefing-goal { font-size: 1.15rem; line-height: 1.8; }
 .mission-briefing .button { margin-top: 1rem; justify-self: start; }
-@keyframes briefing-enter { from { transform: translateY(8px); } to { transform: translateY(0); } }
+@keyframes rise-in { from { transform: translateY(8px); } to { transform: translateY(0); } }
+
+/* 結果は最初から読み取れる。移動だけを段階的に付け、動きの設定で停止できる。 */
+.result-callout { padding: 18px; margin-block: 16px; border: 2px solid var(--fail); border-radius: 8px; animation: rise-in 0.3s ease-out; }
+.result-callout[data-result='reproduced'] { border-color: var(--fail); border-style: solid; }
+.result-callout[data-result='secured'] { border-color: var(--ok); }
+.result-callout[data-result='insufficient'] { border-color: var(--fail); border-style: dashed; }
+.result-callout h2 { font-size: 1.15rem; }
+.result-group[data-reveal='true'] { animation: rise-in 0.3s ease-out backwards; }
+.result-group[data-reveal='true']:nth-of-type(2) { animation-delay: 0.15s; }
+.result-group[data-reveal='true']:nth-of-type(3) { animation-delay: 0.3s; }

@@ -45,3 +45,17 @@ export const BLOCKED_LABEL = {
   'injection-failed': '開始できません',
   'platform-error': '実行環境のエラー',
 } as const;
+
+/** 検証結果パネルとコールアウトで共用する総評。 */
+export const VERDICT_REASON: Record<ResultGroup, string> = {
+  attack: '攻撃をまだ防げていません',
+  normal: '普段の使い方が壊れています',
+  regression: 'ほかの守りが壊れています',
+};
+
+export const VERDICT_TITLE = {
+  secured: '防御できました',
+  insufficient: 'まだ合格ではありません',
+} as const;
+
+export const VERDICT_SUCCESS = '攻撃を防ぎ、普段の使い方も通りました。';

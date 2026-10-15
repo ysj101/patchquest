@@ -45,7 +45,7 @@ export class ExerciseView {
   constructor(
     private readonly actions: ExerciseActions,
     /** 状況・調査に続けて並べるタブと、状況タブの末尾に置く要素（ヒントなど） */
-    extras: { tabs: TabSpec[]; storyFooter: HTMLElement },
+    extras: { tabs: TabSpec[]; storyFooter: HTMLElement; callout: HTMLElement },
   ) {
     this.storyFooter = extras.storyFooter;
     this.investigation = new InvestigationPanel({ send: actions.send });
@@ -76,6 +76,7 @@ export class ExerciseView {
         h('strong', {}, '学習用に脆弱性を注入した架空のサービスです。'),
         ' 実在のサービスの診断結果ではありません。データはすべて架空で、このブラウザの中だけで動いています。',
       ),
+      extras.callout,
       this.briefing,
       this.workbench,
     );

@@ -15,6 +15,8 @@ import { GuidePanel } from './guide';
 import { missionList, type MissionEntry } from './mission-list';
 import { PreflightView } from './preflight';
 import { RepairPanel } from './repair';
+import { ResultEffects } from './result-effects';
+import { verificationEffect } from './result-effect-model';
 
 type Screen = 'list' | 'preflight' | 'exercise';
 
@@ -26,6 +28,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const openSettings = () => openEffectSettings(effects);
   const store = await ProgressStore.open();
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
+  const resultEffects = new ResultEffects(effects, (message) => announce(live, message));
   const listView = h('section', { class: 'list-view' });
   const main = h('main', { id: 'main' });
 
@@ -76,6 +79,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
         { id: 'debrief', label: '振り返り', panel: debrief.element },
       ],
       storyFooter: hints.element,
+      callout: resultEffects.element,
     },
   );
   const exercise = new BrowserRuntimeAdapter({
@@ -179,12 +183,15 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   function updateExercise(snapshot: ExerciseSnapshot): void {
     exerciseView.update(snapshot);
+    resultEffects.update(snapshot);
     repair.update(snapshot);
     hints.update(snapshot);
     debrief.update(snapshot);
   }
 
   async function applyDefense(defenseId: string | null): Promise<void> {
+    // 同じ対策の再適用や、脆弱な状態での取り消しでは演習の状態が変わらないので、ここで消す
+    resultEffects.clear();
     await orchestrator.applyDefense(defenseId);
     announce(live, defenseId ? '対策を適用しました。検証して確かめましょう' : '対策を取り消しました');
   }
@@ -192,11 +199,11 @@ export async function startApp(root: HTMLElement): Promise<void> {
   async function verify(): Promise<void> {
     announce(live, '検証を始めました');
     const report = await orchestrator.verify();
-    const snapshot = orchestrator.snapshot;
+    const effect = verificationEffect(report, orchestrator.snapshot?.attempt.state === 'Passed');
+    if (effect) resultEffects.show(effect);
     repair.focusResults();
     if (!report) announce(live, '実行環境のエラーで検証できませんでした（不合格には数えません）');
-    else if (report.passed) announce(live, snapshot?.attempt.state === 'Passed' ? '防御できました。すべての検印がそろいました' : '防御できました。防御の検印を押しました');
-    else announce(live, '検証が終わりました。まだ合格ではありません');
+    else if (!effect) announce(live, '実行環境のエラーで判定できませんでした（不合格には数えません）');
   }
 
   async function resetToInitial(): Promise<void> {
@@ -207,6 +214,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       danger: true,
     });
     if (!ok) return;
+    resultEffects.clear();
     await orchestrator.resetToInitial();
     guide.reach('reset');
     sessions.clear();
@@ -220,7 +228,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   function observe(exchange: Exchange): void {
     const reproduced = orchestrator.onExchange(exchange);
     if (exchange.kind === 'request' || exchange.events.length > 0) exerciseView.investigation.record(exchange, exerciseView.label(exchange.actor));
-    if (reproduced) announce(live, '再現の検印を押しました。事故を自分の操作で再現できました');
+    if (reproduced) resultEffects.show({ kind: 'reproduced', detail: '再現の検印を押しました。事故を自分の操作で再現できました。' });
   }
 
   /** 信頼された演習ハーネスとして、表示する利用者を切り替えて最初の画面を開く */
@@ -243,6 +251,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (!snapshot || !app) return;
     viewer = app.descriptor.users[0] ?? ANONYMOUS;
     sessions.clear();
+    // 続きから始めると attemptId・configHash・検証結果が前回と同じなので、前回のコールアウトは明示的に消す
+    resultEffects.clear();
     const showBriefing = snapshot.attempt.attemptId === briefingAttemptId;
     exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null, showBriefing);
     repair.setup(snapshot);

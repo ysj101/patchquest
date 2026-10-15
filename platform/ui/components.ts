@@ -3,9 +3,10 @@ import { BADGE_KINDS, type AttemptRecord, type BadgeKind } from '../contract';
 import { h } from './dom';
 import { BADGE_HINT, BADGE_LABEL } from './labels';
 
-export type StatusKind = 'idle' | 'running' | 'passed' | 'failed' | 'blocked' | 'error';
+export type StatusKind = 'alert' | 'idle' | 'running' | 'passed' | 'failed' | 'blocked' | 'error';
 
 const STATUS_MARK: Record<StatusKind, string> = {
+  alert: '⚠',
   idle: '・',
   running: '◌',
   passed: '✓',
