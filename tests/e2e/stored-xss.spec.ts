@@ -10,7 +10,9 @@ const ATTACK = '<img src="x" onerror="pqMarker()">';
 test('保存した攻撃コメントが別の利用者の画面で実行され、文字としての表示だけが合格する', async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto('/');
-  await expect(page.locator('[data-mission="stored-xss"]').getByRole('heading', { name: 'コメントからのスクリプト実行を防ぐ' })).toBeVisible();
+  const card = page.locator('[data-mission="stored-xss"]');
+  await expect(card.getByRole('heading', { name: '保存型 XSS' })).toBeVisible();
+  await expect(card.getByText('コメントからのスクリプト実行を防ぐ', { exact: true })).toBeVisible();
   await expect(page.locator('[data-mission="stored-xss"]')).toContainText('目安 15 分');
   await startMission(page, 'stored-xss');
   const app = preview(page);

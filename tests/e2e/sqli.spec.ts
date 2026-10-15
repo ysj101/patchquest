@@ -23,7 +23,9 @@ async function leakedPrivates(page: Page): Promise<void> {
 test('登録済みの検索語で他人のメモが返り、値としてのバインドだけが合格する', async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto('/');
-  await expect(page.locator('[data-mission="sqli"]').getByRole('heading', { name: '検索条件からの情報漏えいを防ぐ' })).toBeVisible();
+  const card = page.locator('[data-mission="sqli"]');
+  await expect(card.getByRole('heading', { name: 'SQL インジェクション' })).toBeVisible();
+  await expect(card.getByText('検索条件からの情報漏えいを防ぐ', { exact: true })).toBeVisible();
   await expect(page.locator('[data-mission="sqli"]')).toContainText('目安 15 分');
   await startMission(page, 'sqli');
   const app = preview(page);

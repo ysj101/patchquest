@@ -16,7 +16,9 @@ async function openBobsFirstMemo(page: Page): Promise<void> {
 test('画面の「前のメモ」から事故を再現し、リンクを隠すだけ・すべて断るでは不合格、所有者の照合で合格する', async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto('/');
-  await expect(page.locator('[data-mission="idor"]').getByRole('heading', { name: '非公開メモを守る' })).toBeVisible();
+  const card = page.locator('[data-mission="idor"]');
+  await expect(card.getByRole('heading', { name: 'IDOR' })).toBeVisible();
+  await expect(card.getByText('非公開メモを守る', { exact: true })).toBeVisible();
   await startMission(page, 'idor');
   const app = preview(page);
 
