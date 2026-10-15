@@ -91,3 +91,5 @@ push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）�
 | esbuild・Vitest・Playwright・TypeScript | 開発時のビルドとテスト（配布物には含まない） | MIT / Apache License 2.0 |
 | ESLint・typescript-eslint・eslint-plugin-import-x・eslint-import-resolver-typescript・globals・jscpd・knip | 開発時の静的検査（配布物には含まない） | MIT / ISC |
 | eslint-plugin-sonarjs | 開発時の静的検査（配布物には含まない） | LGPL-3.0 |
+
+効果音は初期値オフです。設定で音量とオン／オフを変更でき、同梱コードで合成するため外部通信は行いません。

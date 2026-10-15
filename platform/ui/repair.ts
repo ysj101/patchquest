@@ -5,7 +5,7 @@ import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
-import { GROUP_LABEL } from './labels';
+import { GROUP_LABEL, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
 
 export interface RepairActions {
   apply(defenseId: string | null): Promise<void>;
@@ -16,17 +16,13 @@ export interface RepairActions {
 /** 検証結果の総評。記号と言葉で示す */
 function verdict(report: VerificationReport): HTMLElement {
   const failed = report.outcomes.filter((o) => !o.passed);
-  if (failed.length === 0) return h('div', { class: 'banner banner-ok' }, status('passed', '防御できました'), ' 攻撃を防ぎ、普段の使い方も通りました。');
+  if (failed.length === 0) return h('div', { class: 'banner banner-ok' }, status('passed', VERDICT_TITLE.secured), ` ${VERDICT_SUCCESS}`);
   if (failed.some((o) => o.error)) {
     return h('div', { class: 'banner banner-warn' }, status('error', '判定できませんでした'), ' 実行環境のエラーです。不合格には数えません。もう一度検証してください。');
   }
   const groups = new Set(failed.map((o) => o.group));
-  const reasons = [
-    groups.has('attack') && '攻撃をまだ防げていません',
-    groups.has('normal') && '普段の使い方が壊れています',
-    groups.has('regression') && 'ほかの守りが壊れています',
-  ].filter(Boolean);
-  return h('div', { class: 'banner banner-error' }, status('failed', 'まだ合格ではありません'), ` ${reasons.join('。')}。`);
+  const reasons = RESULT_GROUPS.filter((group) => groups.has(group)).map((group) => VERDICT_REASON[group]);
+  return h('div', { class: 'banner banner-error' }, status('failed', VERDICT_TITLE.insufficient), ` ${reasons.join('。')}。`);
 }
 
 function outcomeItem(o: TestOutcome): HTMLElement {
@@ -47,7 +43,7 @@ function results(report: VerificationReport, stale: boolean): HTMLElement[] {
       const items = report.outcomes.filter((o) => o.group === group);
       if (items.length === 0) return null;
       const passed = items.filter((o) => o.passed).length;
-      return h('section', { class: 'result-group' }, h('h4', {}, `${GROUP_LABEL[group]}（${passed}/${items.length} 件合格）`), h('ul', { class: 'outcomes' }, ...items.map(outcomeItem)));
+      return h('section', { class: 'result-group', 'data-reveal': report.passed && !stale }, h('h4', {}, `${GROUP_LABEL[group]}（${passed}/${items.length} 件合格）`), h('ul', { class: 'outcomes' }, ...items.map(outcomeItem)));
     }),
   ].filter((e): e is HTMLElement => e !== null);
 }

@@ -23,6 +23,9 @@ export const test = base.extend<{ externalRequests: string[] }>({
 
 export { expect };
 
+/** 演出設定を開くボタン */
+export const settingsButton = (page: Page) => page.getByRole('button', { name: '設定', exact: true });
+
 /** 演習画面の教材アプリ（隔離 iframe） */
 export const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
 /** 検証結果のパネル */
