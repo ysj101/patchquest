@@ -1,5 +1,5 @@
 // テスト用の演習の記録（test-pack の構成）
-import type { AttemptRecord } from '../../platform/contract';
+import { initialAttemptProgress, type AttemptRecord } from '../../platform/contract';
 
 export function makeAttempt(attemptId: string, overrides: Partial<AttemptRecord> = {}): AttemptRecord {
   return {
@@ -16,12 +16,7 @@ export function makeAttempt(attemptId: string, overrides: Partial<AttemptRecord>
     createdAt: '2026-10-12T00:00:00Z',
     state: 'Prepared',
     configHash: 'c'.repeat(64),
-    appliedDefense: null,
-    badges: { reproduction: { achieved: false }, defense: { achieved: false }, understanding: { achieved: false } },
-    lastVerification: null,
-    hintsOpened: [],
-    solutionViewed: false,
-    answers: {},
+    ...initialAttemptProgress(),
     ...overrides,
   };
 }

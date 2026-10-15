@@ -5,19 +5,9 @@ import { Evaluator } from '../../platform/evaluator/evaluator';
 import { Orchestrator, type CatalogApp } from '../../platform/orchestrator/orchestrator';
 import { verifyPack } from '../../platform/orchestrator/pack-verification';
 import { EngineRuntime } from '../support/engine-runtime';
+import { nodePack } from '../support/node-pack';
 import { testApp } from '../support/test-app';
 import { testPack } from '../support/test-pack';
-
-/** 描画の手順を含むテストを除いた、Node 用のテスト専用パック（Node の実行環境は画面を描画できない） */
-const nodePack: MissionPack = {
-  ...testPack,
-  manifest: {
-    ...testPack.manifest,
-    runtime: { adapter: 'browser', capabilities: ['sqlite'] },
-    hooks: testPack.manifest.hooks.filter((h) => h.id !== 'note.render'),
-    tests: { ...testPack.manifest.tests, cases: testPack.manifest.tests.cases.filter((t) => t.steps.every((s) => s.kind === 'request')) },
-  },
-};
 
 function withManifest(change: (m: MissionPack['manifest']) => void): MissionPack {
   const copy = structuredClone({ ...nodePack, implementations: {} }) as MissionPack;

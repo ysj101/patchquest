@@ -9,6 +9,7 @@
   --primary: #2c3e9c;
   --primary-soft: #e9ecf8;
   --seal: #c23b2a;
+  --seal-bg: #fdf1ee;
   --ok: #1c6e46;
   --ok-bg: #e6f3eb;
   --fail: #a8251b;
@@ -140,7 +141,7 @@ main > section > * + * { margin-top: 16px; }
 .seals-small .seal-mark { font-size: 0.9rem; }
 .seals-small .seal-label { font-size: 0.6rem; }
 .seal[data-state='todo'] .seal-stamp { border-style: dashed; }
-.seal[data-state='done'] .seal-stamp { border-color: var(--seal); color: var(--seal); background: #fdf1ee; animation: stamp 0.35s ease-out; }
+.seal[data-state='done'] .seal-stamp { border-color: var(--seal); color: var(--seal); background: var(--seal-bg); animation: stamp 0.35s ease-out; }
 .seal[data-state='stale'] .seal-stamp { border-color: var(--warn); border-style: dotted; color: var(--warn); }
 @keyframes stamp { from { transform: rotate(-6deg) scale(1.25); opacity: 0.4; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
 
@@ -159,7 +160,7 @@ main > section > * + * { margin-top: 16px; }
   content: '→'; position: absolute; right: -16px; top: 50%; transform: translateY(-50%);
   color: var(--muted); font-weight: 800;
 }
-.hero-step .seal-stamp { --size: 54px; flex: none; border-color: var(--seal); color: var(--seal); background: #fdf1ee; }
+.hero-step .seal-stamp { --size: 54px; flex: none; border-color: var(--seal); color: var(--seal); background: var(--seal-bg); }
 .hero-step-text { display: grid; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
 .hero-step-text strong { color: var(--ink); font-size: 1.05rem; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-top: 6px; }
@@ -420,3 +421,14 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .result-group[data-reveal='true'] { animation: rise-in 0.3s ease-out backwards; }
 .result-group[data-reveal='true']:nth-of-type(2) { animation-delay: 0.15s; }
 .result-group[data-reveal='true']:nth-of-type(3) { animation-delay: 0.3s; }
+
+/* 演習票の五段階。状態は色と文字で示し、新規到達だけを動かす。 */
+.stage-progress { grid-column: 1 / -1; }
+.stage-count { font-size: 0.95rem; margin-block: 0 10px; }
+.stages { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.stages li { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px dashed var(--muted); border-radius: 6px; font-size: 0.85rem; }
+.stage-number { font-family: var(--font-mono); font-weight: bold; }
+.stage-status { font-size: 0.75rem; }
+.stages [data-state='done'] { color: var(--seal); border: 1px solid var(--seal); background: var(--seal-bg); }
+.stages [data-state='current'] { border: 2px solid currentColor; font-weight: bold; }
+.stages .stage-arrived { animation: rise-in 0.3s ease-out; }

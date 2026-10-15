@@ -3,6 +3,7 @@
 import {
   BADGE_KINDS,
   Checker,
+  emptyMilestones,
   RESULT_GROUPS,
   TRANSITIONS,
   type AttemptRecord,
@@ -14,7 +15,7 @@ import {
 } from '../contract';
 
 export const PROGRESS_FORMAT = 'patchquest-progress';
-export const PROGRESS_SCHEMA_VERSION = 2;
+export const PROGRESS_SCHEMA_VERSION = 3;
 // 読み込める最も古い版。spec §13 に従い、版を上げても旧版の読み込みを維持する。
 const OLDEST_READABLE_SCHEMA_VERSION = 1;
 // 演習をまたぐ記録の入れ物 profile が加わった版。
@@ -25,7 +26,9 @@ const MAX_ATTEMPTS = 1000;
 const MAX_TEXT = 4096;
 const STATES = Object.keys(TRANSITIONS) as ExerciseState[];
 
-/** 演習をまたぐ記録。既知の項目はまだなく、#67・#71・#73 でここに追加する。 */
+/** 演習をまたぐ記録。既知の項目はまだなく、#71・#73 でここに追加する。
+ * 演習内のステージ（spec §9）は Attempt の milestones と達成印から導くので profile には持たない。spec §13 の「ステージ到達」はこの意味で Attempt から再計算する。
+ */
 export type ProgressProfile = Record<string, never>;
 
 export interface ProgressFile {
@@ -86,6 +89,13 @@ function report(c: Checker, path: string, v: unknown): VerificationReport | null
   };
 }
 
+function milestones(checker: Checker, path: string, value: unknown): AttemptRecord['milestones'] {
+  if (value === undefined) return emptyMilestones();
+  const record = checker.obj(path, value);
+  const read = (key: string) => record[key] === null ? null : checker.str(`${path}.${key}`, record[key], MAX_TEXT);
+  return { briefedAt: read('briefedAt'), firstRequestAt: read('firstRequestAt'), firstDefenseAt: read('firstDefenseAt') };
+}
+
 function attempt(c: Checker, path: string, v: unknown): AttemptRecord {
   const a = c.obj(path, v);
   const text = (key: string) => c.str(`${path}.${key}`, a[key], MAX_TEXT);
@@ -105,6 +115,7 @@ function attempt(c: Checker, path: string, v: unknown): AttemptRecord {
     createdAt: text('createdAt'),
     state: c.oneOf(`${path}.state`, a.state, STATES),
     configHash: text('configHash'),
+    milestones: milestones(c, `${path}.milestones`, a.milestones),
     appliedDefense: a.appliedDefense === null ? null : text('appliedDefense'),
     badges: Object.fromEntries(BADGE_KINDS.map((k) => [k, badge(c, `${path}.badges.${k}`, badges[k])])) as Record<BadgeKind, Badge>,
     lastVerification: report(c, `${path}.lastVerification`, a.lastVerification),
