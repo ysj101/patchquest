@@ -2,12 +2,13 @@
 // 動く教材アプリと利用者の切り替え、調査・対策・振り返りの道具を並べる
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { radioOption, sealStates, seals, tabs, type TabSpec } from './components';
+import { radioOption, sealStates, seals, settingsButton, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
 import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
 
 export interface ExerciseActions {
+  openSettings(): void;
   back(): void;
   /** 信頼された演習ハーネスとして、表示する利用者を切り替える */
   switchUser(actor: ActorKey): void;
@@ -55,7 +56,7 @@ export class ExerciseView {
         { class: 'ticket' },
         h('div', { class: 'ticket-main' }, this.ticket, this.title, this.state),
         this.sealSlot,
-        h('div', { class: 'ticket-actions' }, h('button', { type: 'button', class: 'button button-quiet', on: { click: actions.back } }, '課題一覧へ戻る')),
+        h('div', { class: 'ticket-actions' }, h('button', { type: 'button', class: 'button button-quiet', on: { click: actions.back } }, '課題一覧へ戻る'), settingsButton(() => actions.openSettings())),
       ),
       h(
         'p',
