@@ -1,11 +1,6 @@
 // 学習UI：対策パネル・検証結果・ヒント・振り返り（Issue #13）
 import type { Page } from '@playwright/test';
-import { expect, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
-
-async function startExercise(page: Page): Promise<void> {
-  await startMission(page, 'test-pack');
-  await expect(preview(page).getByRole('heading', { name: 'ノート（alice）' })).toBeVisible();
-}
+import { enterWorkbench, expect, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
 
 /** bob として alice のノートを読み、再現の検印を得る */
 async function reproduce(page: Page): Promise<void> {
@@ -20,7 +15,8 @@ async function reproduce(page: Page): Promise<void> {
 }
 
 test.beforeEach(async ({ page }) => {
-  await startExercise(page);
+  await startMission(page, 'test-pack');
+  await expect(preview(page).getByRole('heading', { name: 'ノート（alice）' })).toBeVisible();
 });
 
 test('正常系を壊す対策は、検証結果に理由と期待・実測が出て合格しない', async ({ page }) => {
@@ -110,7 +106,7 @@ test('初期状態へ戻すと対策とデータが戻り、新しいデータ�
   const ticket = await page.locator('.ticket-id').textContent();
   await page.getByRole('tab', { name: '振り返り' }).click();
   await page.getByRole('button', { name: '新しいデータで再挑戦する' }).click();
-  await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await enterWorkbench(page);
   await expect(page.locator('.ticket-id')).not.toHaveText(ticket!);
   await expect(seals(page)).toContainText('再現：未達成');
 });
@@ -122,7 +118,7 @@ test('対策を適用した演習を続きから始めると、開始前チェ�
 
   await page.locator('[data-mission="test-pack"]').getByRole('button', { name: '続きから始める' }).click();
   await expect(page.getByText('前回の対策「所有者を照合する」を適用し直しました')).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: '演習を始める' }).click();
+  await enterWorkbench(page);
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(page.getByText('適用中の対策：所有者を照合する')).toBeVisible();
   // 記録の合格は、再検証するまで現在の合格として扱わない

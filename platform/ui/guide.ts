@@ -69,9 +69,9 @@ export class GuidePanel {
     });
   }
 
-  /** 画面の操作で起きた出来事を知らせる */
-  reach(milestone: ReportedMilestone): void {
-    if (!this.element.hidden) this.advance(() => this.reached.add(milestone));
+  /** 画面の操作で起きた出来事を知らせる。同時に起きた出来事はまとめて渡すと、読み上げが 1 回になる */
+  reach(...milestones: ReportedMilestone[]): void {
+    if (!this.element.hidden) this.advance(() => milestones.forEach((milestone) => this.reached.add(milestone)));
   }
 
   /** 案内先に印を付け直す。案内先が閉じたタブの中なら、そのタブを開く操作に印を付ける。画面が切り替わったときにも呼ぶ */

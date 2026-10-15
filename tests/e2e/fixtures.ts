@@ -1,3 +1,4 @@
+// E2E の通信制限と、演習の共通操作を提供する
 import { test as base, expect, type Page } from '@playwright/test';
 
 // すべてのE2Eテストで、localhost以外への通信を遮断し、発生したら失敗にする（spec §12, A19）
@@ -29,11 +30,45 @@ export const verifyResults = (page: Page) => page.locator('[data-anchor="results
 /** 演習票の達成印 */
 export const ticketSeals = (page: Page) => page.locator('.ticket').getByRole('list', { name: '達成印' });
 
-/** 課題一覧から課題を始め、開始前チェックを終えて演習画面を開く */
+/** 導入を閉じてミッションを始めるボタン */
+export const launchButton = (page: Page) => page.getByRole('button', { name: 'ミッション開始', exact: true });
+
+/** 課題一覧のカードから新規・再挑戦・再開を選び、開始前チェックを終えて演習画面を開く */
+export async function openMission(page: Page, missionId: string, options: { resume?: boolean } = {}): Promise<void> {
+  const name = options.resume ? '続きから始める' : /この課題を始める|最初から始める/;
+  await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name }).click();
+  await beginExercise(page);
+}
+
+/** 課題一覧から課題を始め、導入を閉じて作業台に入る */
 export async function startMission(page: Page, missionId: string): Promise<void> {
   await page.goto('/');
-  await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name: 'この課題を始める' }).click();
+  await openMission(page, missionId);
+  await finishBriefing(page);
+}
+
+/** 開始前チェック後、初回の導入があれば閉じて作業台に入る */
+export async function enterWorkbench(page: Page): Promise<void> {
+  await beginExercise(page);
+  await finishBriefing(page);
+}
+
+/** 作業台の状況タブが見え、導入が閉じてタイトルへフォーカスが移ったことを確かめる */
+export async function expectWorkbench(page: Page): Promise<void> {
+  await expect(page.locator('[data-anchor="briefing"]')).toBeHidden();
+  await expect(page.getByRole('tab', { name: '状況' })).toBeVisible();
+  await expect(page.locator('#exercise-title')).toBeFocused();
+}
+
+async function beginExercise(page: Page): Promise<void> {
   await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await expect(page.locator('.exercise')).toBeVisible();
+}
+
+async function finishBriefing(page: Page): Promise<void> {
+  const launch = launchButton(page);
+  if (await launch.isVisible()) await launch.click();
+  await expectWorkbench(page);
 }
 
 /** 対策パネルで対策を選んで適用し、検証を始める */
