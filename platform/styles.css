@@ -63,10 +63,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* サイトの見出し */
 .site-header {
-  display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 14px clamp(16px, 4vw, 40px);
   background: var(--ink); color: #fff;
 }
+.header-settings { margin-left: auto; }
+.header-settings .button { color: var(--ink); }
 .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: 0.02em; display: flex; gap: 8px; align-items: center; }
 .brand-mark { color: var(--seal); }
 .brand-tagline { color: #c6cdd8; font-size: 0.9rem; }
@@ -195,6 +197,7 @@ main > section > * + * { margin-top: 16px; }
   display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px;
 }
+.ticket-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .ticket h1 { font-size: 1.35rem; }
 .ticket-main { display: grid; gap: 4px; }
 .ticket-id { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
@@ -213,6 +216,15 @@ main > section > * + * { margin-top: 16px; }
 .dialog { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 24px; max-width: 480px; }
 .dialog::backdrop { background: rgb(27 36 48 / 0.45); }
 .dialog > * + * { margin-top: 12px; }
+.effect-settings { width: min(440px, 100%); }
+.effect-settings fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; }
+.effect-settings legend { font-weight: 700; padding: 0; }
+.effect-options { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.effect-option { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
+.effect-option input { accent-color: var(--primary); }
+.effect-volume { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.effect-volume input[type='range'] { width: 100%; accent-color: var(--primary); }
+.effect-volume span { font-variant-numeric: tabular-nums; min-width: 3.5em; text-align: right; }
 
 /* ガイドが画面上部を占めていないとき、教材アプリはスクロールしても見える位置に留める */
 @media (min-width: 961px) and (min-height: 720px) {
@@ -224,8 +236,15 @@ main > section > * + * { margin-top: 16px; }
   .ticket { grid-template-columns: 1fr; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
+/* 演出の設定で動きをオフにしたとき。OS の prefers-reduced-motion は data-motion へ反映するので、ここでは媒体特性を見ない */
+html[data-motion='off'],
+html[data-motion='off']::before,
+html[data-motion='off']::after,
+html[data-motion='off'] *,
+html[data-motion='off'] *::before,
+html[data-motion='off'] *::after {
+  animation: none !important;
+  transition: none !important;
 }
 
 /* 画面の切り替えで見出しへ移したフォーマスは枠を出さない（キーボードでの移動先はボタンなどに枠が出る） */
@@ -377,9 +396,6 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 /* はみ出しを切り取る入れ物（.tools・.app-pane）の中にあるものは、点線を内側に描く */
 :is([role='tab'], [role='tabpanel'], .preview-slot)[data-guide-target] { outline-offset: -6px; animation-name: guide-pulse-inset; }
 @keyframes guide-pulse-inset { 50% { outline-offset: -9px; } }
-@media (prefers-reduced-motion: reduce) {
-  [data-guide-target], .seal[data-state='done'] .seal-stamp { animation: none; }
-}
 @media (max-width: 720px) {
   .guide-coach { grid-template-columns: auto minmax(0, 1fr); }
   .guide-actions { grid-column: 1 / -1; justify-content: flex-start; }

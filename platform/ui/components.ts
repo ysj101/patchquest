@@ -71,30 +71,39 @@ export function radioOption(
   );
 }
 
-/** 確認ダイアログ。Escape で閉じ、閉じたらフォーカスを元へ戻す */
-export function confirmDialog(options: { title: string; body: string; confirm: string; cancel?: string; danger?: boolean }): Promise<boolean> {
+/**
+ * モーダルダイアログを開く。Escape と close() で閉じ、閉じたらフォーカスを開く前の要素へ戻す。
+ * 戻り値は dialog.returnValue
+ */
+export function openModal(dialog: HTMLDialogElement): Promise<string> {
+  const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   return new Promise((resolve) => {
-    const previous = document.activeElement as HTMLElement | null;
-    const dialog = h(
-      'dialog',
-      { class: 'dialog', 'aria-labelledby': 'dialog-title' },
-      h('h2', { id: 'dialog-title' }, options.title),
-      h('p', {}, options.body),
-      h(
-        'div',
-        { class: 'actions' },
-        h('button', { type: 'button', class: 'button', on: { click: () => dialog.close('cancel') } }, options.cancel ?? 'やめる'),
-        h('button', { type: 'button', class: `button ${options.danger ? 'button-danger' : 'button-primary'}`, on: { click: () => dialog.close('confirm') } }, options.confirm),
-      ),
-    );
     dialog.addEventListener('close', () => {
+      const value = dialog.returnValue;
       dialog.remove();
       previous?.focus();
-      resolve(dialog.returnValue === 'confirm');
+      resolve(value);
     });
     document.body.append(dialog);
     dialog.showModal();
   });
+}
+
+/** 確認ダイアログ。Escape で閉じ、閉じたらフォーカスを元へ戻す */
+export function confirmDialog(options: { title: string; body: string; confirm: string; cancel?: string; danger?: boolean }): Promise<boolean> {
+  const dialog = h(
+    'dialog',
+    { class: 'dialog', 'aria-labelledby': 'dialog-title' },
+    h('h2', { id: 'dialog-title' }, options.title),
+    h('p', {}, options.body),
+    h(
+      'div',
+      { class: 'actions' },
+      h('button', { type: 'button', class: 'button', on: { click: () => dialog.close('cancel') } }, options.cancel ?? 'やめる'),
+      h('button', { type: 'button', class: `button ${options.danger ? 'button-danger' : 'button-primary'}`, on: { click: () => dialog.close('confirm') } }, options.confirm),
+    ),
+  );
+  return openModal(dialog).then((value) => value === 'confirm');
 }
 
 /**

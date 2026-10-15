@@ -8,6 +8,7 @@ import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
 import { confirmDialog } from './components';
 import { announce, fill, h } from './dom';
 import { DebriefPanel, HintsPanel } from './debrief';
+import { effectSettingsButton, installEffectSettings } from './effects';
 import { ExerciseView } from './exercise';
 import { GuidePanel } from './guide';
 import { missionList, type MissionEntry } from './mission-list';
@@ -19,6 +20,7 @@ type Screen = 'list' | 'preflight' | 'exercise';
 const appVersionOf = (appId: string) => catalog.apps.find((a) => a.descriptor.id === appId)?.descriptor.version ?? '';
 
 export async function startApp(root: HTMLElement): Promise<void> {
+  installEffectSettings();
   const store = await ProgressStore.open();
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const listView = h('section', { class: 'list-view' });
@@ -90,6 +92,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       { class: 'site-header' },
       h('p', { class: 'brand' }, h('span', { class: 'brand-mark', 'aria-hidden': true }, '◆'), 'PatchQuest'),
       h('p', { class: 'brand-tagline' }, 'セキュリティの直し方を、壊れても困らない場所で練習する'),
+      h('div', { class: 'header-settings' }, effectSettingsButton()),
     ),
     main,
     live,

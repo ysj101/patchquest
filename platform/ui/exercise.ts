@@ -4,6 +4,7 @@ import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '.
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, sealStates, seals, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
+import { effectSettingsButton } from './effects';
 import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
 
@@ -55,7 +56,12 @@ export class ExerciseView {
         { class: 'ticket' },
         h('div', { class: 'ticket-main' }, this.ticket, this.title, this.state),
         this.sealSlot,
-        h('div', { class: 'ticket-actions' }, h('button', { type: 'button', class: 'button button-quiet', on: { click: actions.back } }, '課題一覧へ戻る')),
+        h(
+          'div',
+          { class: 'ticket-actions' },
+          effectSettingsButton('button button-quiet'),
+          h('button', { type: 'button', class: 'button button-quiet', on: { click: actions.back } }, '課題一覧へ戻る'),
+        ),
       ),
       h(
         'p',
