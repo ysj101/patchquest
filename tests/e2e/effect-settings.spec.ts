@@ -1,6 +1,6 @@
 // 演出設定の保存、動きの抑制、キーボード操作と保存失敗の通知を確認する。
 import type { Page } from '@playwright/test';
-import { test, expect, startMission, settingsButton } from './fixtures';
+import { test, expect, startMission, settingsButton, turnMotionOffWithKeyboard } from './fixtures';
 
 const motionOff = (page: Page) => page.getByRole('radio', { name: 'オフ', exact: true });
 
@@ -43,14 +43,7 @@ test('キーボードだけで設定を開いて変更し Esc で閉じ、元の
     if (await button.evaluate((element) => element === document.activeElement)) break;
   }
   await expect(button).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('radio', { name: 'OS の設定に従う' })).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await expect(motionOff(page)).toBeChecked();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(button).toBeFocused();
+  await turnMotionOffWithKeyboard(page);
 });
 
 test('保存領域が無効でもメモリで変更でき、保存不可を表示する', async ({ page }) => {

@@ -1,3 +1,4 @@
+// 通常の E2E と、動きを抑えた環境での完走確認を設定する。
 import { defineConfig } from '@playwright/test';
 
 const port = 4173;
@@ -15,7 +16,14 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${port}`,
   },
-  projects: BROWSERS,
+  projects: [
+    ...BROWSERS,
+    {
+      name: 'chrome-quiet',
+      use: { channel: 'chrome', contextOptions: { reducedMotion: 'reduce' } },
+      testMatch: ['missions/idor/__tests__/idor.spec.ts', 'tests/e2e/stored-xss.spec.ts', 'tests/e2e/sqli.spec.ts', 'tests/e2e/onboarding.spec.ts'],
+    },
+  ],
   // 配布物と同じく、ビルド成果物をlocalhost限定の静的サーバで配信する
   webServer: {
     command: `python3 -m http.server ${port} --bind 127.0.0.1 --directory dist`,
