@@ -3,9 +3,10 @@
 import { RESULT_GROUPS, type DefenseDef, type TestOutcome, type VerificationReport } from '../contract';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
+import { securityComparison } from './security-comparison';
 import { radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
-import { GROUP_LABEL, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
+import { GROUP_LABEL, STALE_VERIFICATION, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
 
 export interface RepairActions {
   apply(defenseId: string | null): Promise<void>;
@@ -35,10 +36,11 @@ function outcomeItem(o: TestOutcome): HTMLElement {
   );
 }
 
-function results(report: VerificationReport, stale: boolean): HTMLElement[] {
+function results(report: VerificationReport, stale: boolean, before: VerificationReport | null): HTMLElement[] {
   return [
-    stale ? h('p', { class: 'banner banner-warn' }, '対策を変えたため、この結果はいまの構成のものではありません。もう一度検証してください。') : null,
+    stale ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null,
     verdict(report),
+    securityComparison(before, report),
     ...RESULT_GROUPS.map((group) => {
       const items = report.outcomes.filter((o) => o.group === group);
       if (items.length === 0) return null;
@@ -125,11 +127,11 @@ export class RepairPanel {
     if (verifying) fill(this.verifyNote, status('running', '検証しています…'));
 
     const report = attempt.lastVerification;
-    if (!this.resultsGuard.changed(`${attempt.attemptId}|${report?.runId}|${attempt.configHash}|${snapshot.platformError}`)) return;
+    if (!this.resultsGuard.changed(`${attempt.attemptId}|${report?.runId}|${attempt.configHash}|${snapshot.platformError}|${snapshot.vulnerableVerification?.runId}`)) return;
     if (snapshot.platformError) {
       fill(this.results, h('div', { class: 'banner banner-warn', role: 'alert' }, status('error', '実行環境のエラー'), ` ${snapshot.platformError}（不合格には数えません）`));
     } else if (report) {
-      fill(this.results, ...results(report, !isCurrent(report, attempt.configHash)));
+      fill(this.results, ...results(report, !isCurrent(report, attempt.configHash), snapshot.vulnerableVerification));
     } else {
       fill(this.results, h('p', { class: 'muted' }, 'まだ検証していません。'));
     }

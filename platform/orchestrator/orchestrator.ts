@@ -2,104 +2,24 @@
 // 演習用インスタンスの準備、対策の切り替え、再検証、リセットを状態遷移表に沿って行う
 import {
   RuntimeError,
-  initialAttemptProgress,
+  MAX_HISTORY,
+  summarizeVerification,
   canTransition,
   isInExercise,
-  satisfies,
-  validatePack,
-  type AppDescriptor,
   type AttemptRecord,
   type Exchange,
   type ExerciseState,
-  type ImplementationRegistry,
   type ImplementationSelection,
-  type MissionPack,
-  type RuntimeAdapter,
-  type TestCase,
   type VerificationReport,
 } from '../contract';
-import { Evaluator, configHash, detectReproduction } from '../evaluator/evaluator';
-import type { Scope } from '../evaluator/scenario';
+import { configHash, detectReproduction } from '../evaluator/evaluator';
+import { Blocked, type Current, type ExerciseSnapshot, type OrchestratorDeps, type PreflightEntry, type PreflightStep } from './types';
+import { createCurrent } from './start';
+import { runPreflightSteps } from './preflight';
 import { buildSubject, withChanges } from './subject';
 
-/** カタログに登録された教材アプリのうち、進行に必要な部分 */
-export interface CatalogApp {
-  descriptor: AppDescriptor;
-  tests: TestCase[];
-  implementations: ImplementationRegistry;
-}
-
-/** パックが対応する版の教材アプリ */
-export function compatibleApp<A extends CatalogApp>(apps: readonly A[], pack: MissionPack): A | undefined {
-  const { appId, versions } = pack.manifest.appCompatibility;
-  return apps.find((a) => a.descriptor.id === appId && satisfies(a.descriptor.version, versions));
-}
-
-/** パックを教材アプリの契約（フック・機能・利用者・共通テスト・基準実装）に照らして検証する */
-export function validateForApp(pack: MissionPack, app: CatalogApp): string[] {
-  return validatePack(pack, { app: app.descriptor, appTestIds: app.tests.map((t) => t.id), sharedImplementations: app.implementations });
-}
-
-export type PreflightStep = 'compatibility' | 'baseline' | 'inject' | 'prepare';
-
-export interface PreflightEntry {
-  step: PreflightStep;
-  status: 'running' | 'passed' | 'failed';
-  detail: string;
-}
-
-/** 開始できない理由。incompatible・injection-failed は開始不可、platform-error は基盤エラー（いずれも不合格に数えない） */
-export interface BlockedReason {
-  kind: 'incompatible' | 'injection-failed' | 'platform-error';
-  message: string;
-}
-
-export interface ExerciseSnapshot {
-  attempt: AttemptRecord;
-  pack: MissionPack;
-  /** fixture の値。操作の {{キー}} を展開するのに使う */
-  refs: Scope;
-  implementations: ImplementationSelection;
-  preflight: PreflightEntry[];
-  blocked: BlockedReason | null;
-  /** 直近の検証で起きた基盤エラー */
-  platformError: string | null;
-  /**
-   * 防御の達成印が、この演習で現在の構成を検証して得たものか。
-   * 記録から続きを始めた場合は、再検証するまで現在の合格として扱わない（spec §13）
-   */
-  defenseCurrent: boolean;
-}
-
-export interface OrchestratorDeps {
-  apps: CatalogApp[];
-  packs: MissionPack[];
-  evaluator: Evaluator;
-  /** 演習用インスタンス。プレイヤーが操作する画面を持つ */
-  exercise: RuntimeAdapter;
-  randomSeed?: () => number;
-  newId?: () => string;
-  now?: () => Date;
-}
-
-class Blocked extends Error {
-  constructor(readonly reason: BlockedReason) {
-    super(reason.message);
-  }
-}
-
-interface Current {
-  snapshot: ExerciseSnapshot;
-  /** 対応する教材アプリ。見つからなければ互換性の確認で開始不可にする */
-  app: CatalogApp | undefined;
-  tests: TestCase[];
-  /** 注入後の状態 V の実装 */
-  vulnerable: ImplementationSelection;
-  /** パックが交換するフックの基準実装 */
-  baseline: ImplementationSelection;
-  /** この演習で発行した実行 ID。これ以外のやり取り（古い演習の応答など）は無視する */
-  runIds: Set<string>;
-}
+export { compatibleApp, validateForApp } from './types';
+export type { CatalogApp, ExerciseSnapshot, PreflightStep } from './types';
 
 export class Orchestrator {
   private current: Current | null = null;
@@ -138,55 +58,10 @@ export class Orchestrator {
    */
   async start(packId: string, options: { variantId?: string; seed?: number; resume?: AttemptRecord } = {}): Promise<ExerciseSnapshot> {
     const { resume } = options;
-    const variantId = resume?.variantId ?? options.variantId;
-    const seed = resume?.seed ?? options.seed;
-    const pack = this.deps.packs.find((p) => p.manifest.id === packId);
-    if (!pack) throw new Error(`課題 ${packId} は登録されていません`);
-    const { manifest } = pack;
-    const variant = manifest.fixtures.variants.find((v) => v.id === (variantId ?? manifest.fixtures.variants[0]?.id));
-    const recipe = manifest.mutationRecipes.find((r) => r.id === variant?.recipe);
-    const app = compatibleApp(this.deps.apps, pack) ?? this.deps.apps.find((a) => a.descriptor.id === manifest.appCompatibility.appId);
-
-    // 続きから始めるときは、達成印・ヒント・回答を記録から引き継ぐ。検証結果は再検証するまで古いものとして扱う
-    const carried = resume && {
-      attemptId: resume.attemptId,
-      createdAt: resume.createdAt,
-      badges: structuredClone(resume.badges),
-      milestones: { ...resume.milestones },
-      lastVerification: resume.lastVerification,
-      hintsOpened: [...resume.hintsOpened],
-      solutionViewed: resume.solutionViewed,
-      answers: { ...resume.answers },
-    };
-    const attempt: AttemptRecord = {
-      attemptId: this.newId(),
-      missionId: manifest.id,
-      missionVersion: manifest.version,
-      variantId: variant?.id ?? '',
-      recipeId: recipe?.id ?? '',
-      recipeVersion: recipe?.version ?? '',
-      appId: manifest.appCompatibility.appId,
-      appVersion: app?.descriptor.version ?? '',
-      seed: seed ?? this.randomSeed(),
-      fixtureHash: '',
-      createdAt: this.now().toISOString(),
-      state: 'Selected',
-      configHash: '',
-      ...initialAttemptProgress(),
-      ...carried,
-    };
-    const vulnerable = withChanges({}, recipe?.apply ?? []);
-    const baseline = Object.fromEntries(
-      manifest.hooks.map((h) => [h.id, app?.descriptor.hooks.find((d) => d.id === h.id)?.baseline ?? '']),
-    );
-    this.current = {
-      snapshot: { attempt, pack, refs: {}, implementations: {}, preflight: [], blocked: null, platformError: null, defenseCurrent: false },
-      app,
-      tests: [...(app?.tests ?? []), ...manifest.tests.cases],
-      vulnerable,
-      baseline,
-      runIds: new Set(),
-    };
+    this.current = createCurrent(this.deps, { ...options, packId }, {
+      newId: this.newId, now: this.now, randomSeed: this.randomSeed,
+    });
+    const { manifest } = this.current.snapshot.pack;
     await this.runPreflight();
     const resumedDefense = resume?.appliedDefense;
     if (resumedDefense && this.current?.snapshot.attempt.state === 'Prepared' && manifest.defenses.some((d) => d.id === resumedDefense)) {
@@ -277,6 +152,12 @@ export class Orchestrator {
     }
     if (this.current !== c) return null;
     attempt.lastVerification = report;
+    // 長い演習でも保存容量を増やし続けないよう、直近 100 件を保持する。
+    const { groups, undetermined } = summarizeVerification(report);
+    attempt.history = [...attempt.history, {
+      runId: report.runId, at: this.now().toISOString(), defenseId: attempt.appliedDefense,
+      passed: report.passed, groups, undetermined,
+    }].slice(-MAX_HISTORY);
     if (report.passed) {
       attempt.badges.defense = { achieved: true, runId: report.runId, configHash: report.configHash, at: this.now().toISOString() };
     }
@@ -329,67 +210,19 @@ export class Orchestrator {
   private async runPreflight(): Promise<void> {
     const c = this.require();
     const { snapshot } = c;
-    const { attempt, pack } = snapshot;
     snapshot.preflight = [];
+    snapshot.vulnerableVerification = null;
     snapshot.blocked = null;
     snapshot.platformError = null;
     this.transition('Preflight');
     this.emit();
 
     try {
-      await this.step('compatibility', async () => {
-        const { app } = c;
-        const { appId, versions } = pack.manifest.appCompatibility;
-        if (!app) throw new Blocked({ kind: 'incompatible', message: `対応する教材アプリ ${appId} ${versions} がありません` });
-        const errors = validateForApp(pack, app);
-        const missing = pack.manifest.runtime.capabilities.filter((cap) => !this.deps.exercise.capabilities.includes(cap));
-        if (missing.length) errors.push(`実行環境に必要な機能がありません: ${missing.join(', ')}`);
-        if (!attempt.recipeId) errors.push('開始条件（バリエーション）に対応するレシピがありません');
-        if (errors.length) throw new Blocked({ kind: 'incompatible', message: errors.join('\n') });
-        return `${app.descriptor.id}@${app.descriptor.version} とパック ${pack.manifest.id}@${pack.manifest.version} は互換`;
-      });
-
-      await this.step('baseline', async () => {
-        const report = await this.deps.evaluator.runSuite(this.subject({}), c.tests, [], this.newRunId('preflight'), '');
-        const failed = report.outcomes.filter((o) => !o.passed);
-        if (failed.length) {
-          throw new Blocked({ kind: 'platform-error', message: `安全な基準状態で失敗したテストがあります: ${failed.map((o) => o.title).join('、')}` });
-        }
-        return `基準状態で ${report.outcomes.length} 件のテストがすべて通過`;
-      });
-
-      await this.step('inject', async () => {
-        const recipe = pack.manifest.mutationRecipes.find((r) => r.id === attempt.recipeId)!;
-        const hooks = recipe.apply.map((change) => change.hook);
-        if (new Set(hooks).size !== hooks.length) throw new Blocked({ kind: 'injection-failed', message: '同じフックへ二重に注入しようとしています' });
-
-        const subject = this.subject(c.vulnerable);
-        const probes = pack.manifest.probes.filter((p) => recipe.verify.probes.includes(p.id));
-        const outcomes = await this.deps.evaluator.runProbes(subject, probes, this.newRunId('preflight'));
-        const notReached = outcomes.filter((o) => !o.succeeded);
-        if (notReached.length) {
-          throw new Blocked({ kind: 'injection-failed', message: `注入後に攻撃が成立しませんでした: ${notReached.map((o) => `${o.probeId}（${o.actual}）`).join('、')}` });
-        }
-        // 攻撃の成立は probe で確かめたので、ここでは攻撃阻止以外のテストだけを実行する
-        const others = c.tests.filter((t) => !pack.manifest.tests.target.includes(t.id));
-        const report = await this.deps.evaluator.runSuite(subject, others, pack.manifest.tests.target, this.newRunId('preflight'), '');
-        const broken = report.outcomes.filter((o) => !o.passed);
-        if (broken.length) {
-          throw new Blocked({ kind: 'injection-failed', message: `注入後に正常系・対象外のテストが失敗しました: ${broken.map((o) => o.title).join('、')}` });
-        }
-        return `攻撃の成立を確認（${outcomes.length} 件）。正常系と対象外のテストは通過`;
-      });
-
-      await this.step('prepare', async () => {
-        // 事前検証で変わったデータは検証インスタンスに閉じている。演習用は同じ seed の脆弱な初期状態から作る
-        const fixture = await this.deps.exercise.prepare(this.subject(c.vulnerable));
-        await this.deps.exercise.start();
-        snapshot.refs = fixture.refs;
-        snapshot.implementations = { ...c.vulnerable };
-        attempt.fixtureHash = fixture.hash;
-        attempt.configHash = await this.hashFor(c.vulnerable);
-        return '脆弱な初期状態を用意しました';
-      });
+      await runPreflightSteps({
+        current: c, deps: this.deps,
+        subject: (implementations) => this.subject(implementations),
+        newRunId: () => this.newRunId('preflight'), hashFor: (implementations) => this.hashFor(implementations),
+      }, (name, work) => this.step(name, work));
     } catch (e) {
       if (this.current !== c) return;
       snapshot.blocked =
