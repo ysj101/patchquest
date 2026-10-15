@@ -191,7 +191,7 @@
   },
   "platform/progress/schema.ts": {
     "id-length": {
-      "count": 19
+      "count": 17
     }
   },
   "platform/progress/store.ts": {
@@ -205,7 +205,7 @@
       "count": 3
     },
     "id-length": {
-      "count": 12
+      "count": 11
     }
   },
   "platform/ui/app.ts": {

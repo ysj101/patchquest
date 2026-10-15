@@ -1,5 +1,4 @@
-// 進捗 JSON の検証（spec §13）。読み込んだ値は既知の項目だけを取り出して作り直し、
-// 任意のコードや課題パックとして扱わない
+// 進捗 JSON の検証（spec §13）。既知の項目だけを作り直す。schemaVersion 1 は 2 へ変換する
 import {
   BADGE_KINDS,
   Checker,
@@ -14,18 +13,46 @@ import {
 } from '../contract';
 
 export const PROGRESS_FORMAT = 'patchquest-progress';
-export const PROGRESS_SCHEMA_VERSION = 1;
-/** 進捗 JSON の上限（初期案 1MB、spec §14） */
+export const PROGRESS_SCHEMA_VERSION = 2;
+/** 進捗 JSON の上限（初期案 1MB、spec §14）。profile を含むファイル全体に適用する */
 export const MAX_PROGRESS_BYTES = 1024 * 1024;
-const MAX_ATTEMPTS = 1000;
-const MAX_TEXT = 4096;
+/** 配列の件数上限（操作履歴 1000 件、spec §14）。attempts と profile の両方に使う */
+export const MAX_ATTEMPTS = 1000;
+/** 文字列 1 件の上限（入力 1 件 4KB、spec §14） */
+export const MAX_TEXT = 4096;
 const STATES = Object.keys(TRANSITIONS) as ExerciseState[];
+
+/**
+ * 演習をまたぐ記録の 1 件。識別子以外の項目（ステージ到達・XP・実績）は後続の課題でこの型に足す。
+ * 未知の項目は取り込まない。
+ */
+export interface ProfileEntry {
+  /** MAX_TEXT 以内 */
+  id: string;
+}
+
+/**
+ * 演習をまたぐ記録の置き場所（spec §13）。
+ * ステージ到達・XP・実績の解除の中身は #67・#71・#73 で決める。いまは識別子の並びだけを検証する。
+ */
+export interface CrossAttemptProfile {
+  /** 件数は MAX_ATTEMPTS まで */
+  entries: ProfileEntry[];
+}
 
 export interface ProgressFile {
   format: typeof PROGRESS_FORMAT;
   schemaVersion: typeof PROGRESS_SCHEMA_VERSION;
   exportedAt: string;
   attempts: AttemptRecord[];
+  /** 演習をまたぐ記録。Attempt とは別に保存する */
+  profile: CrossAttemptProfile;
+}
+
+/** parseProgress の結果。replaceProfile が false の v1 ファイルは、保存済みの profile を上書きしない */
+export interface ParsedProgress {
+  file: ProgressFile;
+  replaceProfile: boolean;
 }
 
 export class ProgressFormatError extends Error {
@@ -110,13 +137,38 @@ function attempt(c: Checker, path: string, v: unknown): AttemptRecord {
   };
 }
 
+/** 演習をまたぐ記録がまだ無いときの値。schemaVersion 1 を 2 に変換するときもこれを使う */
+export function emptyProfile(): CrossAttemptProfile {
+  return { entries: [] };
+}
+
+function profileEntry(checker: Checker, path: string, value: unknown): ProfileEntry {
+  const entry = checker.obj(path, value);
+  return { id: checker.str(`${path}.id`, entry.id, MAX_TEXT) };
+}
+
+/** profile を既知の項目だけに作り直す。文字列は MAX_TEXT、件数は MAX_ATTEMPTS */
+function readProfile(checker: Checker, value: unknown): CrossAttemptProfile {
+  const source = checker.obj('profile', value);
+  const entries = checker.list('profile.entries', source.entries);
+  if (entries.length > MAX_ATTEMPTS) checker.fail('profile.entries', `${MAX_ATTEMPTS} 件以内にしてください`);
+  return {
+    entries: entries.slice(0, MAX_ATTEMPTS).map((entry, index) => profileEntry(checker, `profile.entries[${index}]`, entry)),
+  };
+}
+
+function supportedSchemaVersion(value: unknown): 1 | typeof PROGRESS_SCHEMA_VERSION {
+  if (value === 1 || value === PROGRESS_SCHEMA_VERSION) return value;
+  throw new ProgressFormatError(`schemaVersion: 対応していない版です（対応: 1〜${PROGRESS_SCHEMA_VERSION}）`);
+}
+
 function byteLength(text: string): number {
   // UTF-8 では 1 つの UTF-16 単位が最大 3 バイト。それで収まるなら数えずに済ませる
   return text.length * 3 <= MAX_PROGRESS_BYTES ? text.length : new TextEncoder().encode(text).length;
 }
 
 /** 進捗 JSON を検証して読み込む。サイズ・形式・版・各項目の違反は ProgressFormatError */
-export function parseProgress(text: string): ProgressFile {
+export function parseProgress(text: string): ParsedProgress {
   if (byteLength(text) > MAX_PROGRESS_BYTES) {
     throw new ProgressFormatError(`ファイルが大きすぎます（上限 ${MAX_PROGRESS_BYTES / 1024 / 1024}MB）`);
   }
@@ -126,20 +178,19 @@ export function parseProgress(text: string): ProgressFile {
   } catch {
     throw new ProgressFormatError('JSON として読み込めません');
   }
-  const c = new Checker();
-  const root = c.obj('進捗', value);
+  const checker = new Checker();
+  const root = checker.obj('進捗', value);
   if (root.format !== PROGRESS_FORMAT) throw new ProgressFormatError('format: PatchQuest の進捗ファイルではありません');
-  if (root.schemaVersion !== PROGRESS_SCHEMA_VERSION) {
-    throw new ProgressFormatError(`schemaVersion: 対応していない版です（対応: ${PROGRESS_SCHEMA_VERSION}）`);
-  }
-  const attempts = c.list('attempts', root.attempts);
-  if (attempts.length > MAX_ATTEMPTS) c.fail('attempts', `${MAX_ATTEMPTS} 件以内にしてください`);
+  const version = supportedSchemaVersion(root.schemaVersion);
+  const attempts = checker.list('attempts', root.attempts);
+  if (attempts.length > MAX_ATTEMPTS) checker.fail('attempts', `${MAX_ATTEMPTS} 件以内にしてください`);
   const file: ProgressFile = {
     format: PROGRESS_FORMAT,
     schemaVersion: PROGRESS_SCHEMA_VERSION,
-    exportedAt: c.str('exportedAt', root.exportedAt, MAX_TEXT),
-    attempts: attempts.slice(0, MAX_ATTEMPTS).map((a, i) => attempt(c, `attempts[${i}]`, a)),
+    exportedAt: checker.str('exportedAt', root.exportedAt, MAX_TEXT),
+    attempts: attempts.slice(0, MAX_ATTEMPTS).map((item, index) => attempt(checker, `attempts[${index}]`, item)),
+    profile: version === 1 ? emptyProfile() : readProfile(checker, root.profile),
   };
-  if (c.errors.length) throw new ProgressFormatError(c.errors.slice(0, 5).join('\n'));
-  return file;
+  if (checker.errors.length > 0) throw new ProgressFormatError(checker.errors.slice(0, 5).join('\n'));
+  return { file, replaceProfile: version === PROGRESS_SCHEMA_VERSION };
 }
