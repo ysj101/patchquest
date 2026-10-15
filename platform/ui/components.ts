@@ -71,10 +71,25 @@ export function radioOption(
   );
 }
 
+/** モーダルを開き、Esc・閉じる操作の後に元の要素へフォーカスを戻す。 */
+export function showDialog(dialog: HTMLDialogElement): void {
+  const previous = document.activeElement as HTMLElement | null;
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+    previous?.focus();
+  }, { once: true });
+  document.body.append(dialog);
+  dialog.showModal();
+}
+
+/** 両画面で共用する演出設定への入口。 */
+export function settingsButton(open: () => void): HTMLButtonElement {
+  return h('button', { type: 'button', class: 'button button-quiet', on: { click: open } }, '設定');
+}
+
 /** 確認ダイアログ。Escape で閉じ、閉じたらフォーカスを元へ戻す */
 export function confirmDialog(options: { title: string; body: string; confirm: string; cancel?: string; danger?: boolean }): Promise<boolean> {
   return new Promise((resolve) => {
-    const previous = document.activeElement as HTMLElement | null;
     const dialog = h(
       'dialog',
       { class: 'dialog', 'aria-labelledby': 'dialog-title' },
@@ -88,12 +103,9 @@ export function confirmDialog(options: { title: string; body: string; confirm: s
       ),
     );
     dialog.addEventListener('close', () => {
-      dialog.remove();
-      previous?.focus();
       resolve(dialog.returnValue === 'confirm');
     });
-    document.body.append(dialog);
-    dialog.showModal();
+    showDialog(dialog);
   });
 }
 
