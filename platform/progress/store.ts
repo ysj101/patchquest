@@ -1,6 +1,6 @@
 // 進捗の保存・復元・削除・JSON 入出力（spec §13）。ブラウザ内（IndexedDB）にだけ保存し、外部へは送らない。
 // 保存できない環境ではメモリで続け、その理由と書き出しの必要を呼び出し側へ伝える
-import type { AttemptRecord } from '../contract';
+import { emptyMilestones, type AttemptRecord } from '../contract';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile, type ProgressProfile } from './schema';
 
 export interface ProgressBackend {
@@ -141,7 +141,11 @@ export class ProgressStore {
   }
 
   async list(): Promise<AttemptRecord[]> {
-    return (await this.withBackend((b) => b.getAll())).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const records = await this.withBackend((b) => b.getAll());
+    // 旧版の IndexedDB に保存された記録も、JSON 取り込みと同じ未到達の形にそろえる。
+    return records.map((record) => ({
+      ...record, milestones: (record as Partial<AttemptRecord>).milestones ?? emptyMilestones(),
+    })).sort((first, second) => first.createdAt.localeCompare(second.createdAt));
   }
 
   clear(): Promise<void> {

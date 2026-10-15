@@ -83,6 +83,8 @@ export interface AttemptRecord {
   /** 現在の対策構成のハッシュ */
   configHash: string;
   appliedDefense: string | null;
+  /** 初回の到達時刻。対策の取り消しやリセットでも保持する */
+  milestones: { briefedAt: string | null; firstRequestAt: string | null; firstDefenseAt: string | null };
   badges: Record<BadgeKind, Badge>;
   /** 直近の検証結果 */
   lastVerification: VerificationReport | null;
@@ -90,4 +92,22 @@ export interface AttemptRecord {
   solutionViewed: boolean;
   /** 理解確認の回答（設問 ID → 選択肢 ID） */
   answers: Record<string, string>;
+}
+
+/** 未到達の時刻を持つ、演習ごとに独立した記録を作る。 */
+export function emptyMilestones(): AttemptRecord['milestones'] {
+  return { briefedAt: null, firstRequestAt: null, firstDefenseAt: null };
+}
+
+/** 新しい演習の操作記録と達成印。呼ぶたびに独立した入れ物を作る。 */
+export function initialAttemptProgress() {
+  return {
+    appliedDefense: null,
+    milestones: emptyMilestones(),
+    badges: { reproduction: { achieved: false }, defense: { achieved: false }, understanding: { achieved: false } },
+    lastVerification: null,
+    hintsOpened: [],
+    solutionViewed: false,
+    answers: {},
+  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'milestones' | 'badges' | 'lastVerification' | 'hintsOpened' | 'solutionViewed' | 'answers'>;
 }

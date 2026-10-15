@@ -1,5 +1,6 @@
 // 進捗の保存・復元（Issue #10、A15・A16）
 import type { Page } from '@playwright/test';
+import { emptyMilestones } from '../../platform/contract';
 import { makeAttempt } from '../support/attempt';
 import { expect, test } from './fixtures';
 
@@ -28,7 +29,7 @@ test('書き出した JSON を別のブラウザ環境へ復元でき、不正�
   await open(page);
   await page.evaluate((a) => window.progressTest.save(a), attempt('exported'));
   const json = await page.evaluate(() => window.progressTest.exportJson());
-  expect(JSON.parse(json)).toMatchObject({ schemaVersion: 2, profile: {} });
+  expect(JSON.parse(json)).toMatchObject({ schemaVersion: 3, profile: {} });
 
   const other = await browser.newContext();
   const otherPage = await other.newPage();
@@ -57,7 +58,7 @@ test('IndexedDB を使えない環境では理由を返し、メモリで続け�
 
 test('v1 の既存 DB を v2 へ更新し、達成印を持つ記録を保つ', async ({ page }) => {
   await page.goto('/test/');
-  const legacy = makeAttempt('旧DB', { badges: { reproduction: { achieved: true }, defense: { achieved: false }, understanding: { achieved: false } } });
+  const legacy = { ...makeAttempt('旧DB', { badges: { reproduction: { achieved: true }, defense: { achieved: false }, understanding: { achieved: false } } }), milestones: undefined };
   await page.evaluate((record) => new Promise<void>((resolve, reject) => {
     const request = indexedDB.open('patchquest', 1);
     request.onupgradeneeded = () => {
@@ -72,7 +73,7 @@ test('v1 の既存 DB を v2 へ更新し、達成印を持つ記録を保つ', 
   await open(page);
   expect(await page.evaluate(() => window.progressTest.reason())).toBeNull();
   const exported = JSON.parse(await page.evaluate(() => window.progressTest.exportJson())) as unknown;
-  expect(exported).toMatchObject({ schemaVersion: 2, profile: {}, attempts: [legacy] });
+  expect(exported).toMatchObject({ schemaVersion: 3, profile: {}, attempts: [{ ...legacy, milestones: emptyMilestones() }] });
   await page.reload();
   await expect(page.locator('body[data-ready="true"]')).toBeAttached();
   expect(await page.evaluate(() => window.progressTest.ids())).toEqual(['旧DB']);
