@@ -1,6 +1,6 @@
 // ステージを操作記録と達成印だけから導けることを確かめる。
 import { expect, it } from 'vitest';
-import { stageStates } from '../../platform/ui/stages';
+import { stageStates } from '../../platform/progress/stages';
 import { makeAttempt } from '../support/attempt';
 
 it('未到達の最初のステージを現在地にし、順不同の到達も保つ', () => {

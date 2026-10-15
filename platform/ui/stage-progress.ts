@@ -1,15 +1,15 @@
 // ステージの表示を差分更新し、新しく到達した項目だけを演出・通知する。
 import type { AttemptRecord } from '../contract';
-import { sealStates } from './components';
 import { fill, h, renderGuard } from './dom';
-import { stageStates } from './stages';
+import { sealStates, stageStates } from '../progress/stages';
 
 const STATE_LABELS = { done: '済', current: 'いま', todo: 'これから' };
 
 export class StageProgress {
   private readonly heading = h('h2', { class: 'stage-count' });
+  readonly header = h('div', { class: 'stage-heading' }, this.heading);
   private readonly list = h('ol', { class: 'stages', 'aria-label': 'ステージ' });
-  readonly element = h('section', { class: 'stage-progress' }, this.heading, this.list);
+  readonly element = h('section', { class: 'stage-progress' }, this.header, this.list);
   private guard = renderGuard();
   private previous: ReturnType<typeof stageStates> | null = null;
 

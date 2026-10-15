@@ -56,10 +56,10 @@ describe('ProgressStore', () => {
     ]);
 
     const json = await store.exportJson(new Date('2026-10-12T09:00:00Z'));
-    expect(JSON.parse(json)).toMatchObject({ format: PROGRESS_FORMAT, schemaVersion: 4, profile: {}, exportedAt: '2026-10-12T09:00:00.000Z' });
+    expect(JSON.parse(json)).toMatchObject({ format: PROGRESS_FORMAT, schemaVersion: 5, profile: {}, exportedAt: '2026-10-12T09:00:00.000Z' });
 
     const restored = ProgressStore.inMemory();
-    expect(await restored.importJson(json)).toEqual({ ok: true, imported: 2 });
+    expect(await restored.importJson(json)).toEqual({ ok: true, imported: 2, xpRecomputed: false });
     expect(await restored.list()).toEqual(await store.list());
 
     await store.clear();
@@ -69,7 +69,7 @@ describe('ProgressStore', () => {
   it.each([
     ['JSON でない', () => 'not json', /JSON として読み込めません/],
     ['形式が違う', () => progressJson({ format: 'other', schemaVersion: 1, profile: undefined }), /PatchQuest の進捗ファイルではありません/],
-    ['版が違う', () => progressJson({ schemaVersion: 5 }), /対応していない版.*対応: 1〜4/],
+    ['版が違う', () => progressJson({ schemaVersion: 6 }), /対応していない版.*対応: 1〜5/],
     ['大きすぎる', () => ' '.repeat(MAX_PROGRESS_BYTES + 1), /大きすぎます/],
     [
       '項目の型が違う',
@@ -98,23 +98,23 @@ describe('ProgressStore', () => {
     expect(restored?.badges.reproduction).toEqual({ achieved: true });
   });
 
-  it('v1 を v4 に変換し、達成印を保って同じ記録を置き換える', async () => {
+  it('v1 を v5 に変換し、達成印を保って同じ記録を置き換える', async () => {
     const store = ProgressStore.inMemory();
     await store.save(attempt('旧版', { state: 'Passed' }));
     const legacy = progressJson({ schemaVersion: 1, profile: undefined, attempts: [attempt('旧版')] });
-    expect(parseProgress(legacy)).toMatchObject({ schemaVersion: 4, profile: {} });
-    expect(await store.importJson(legacy)).toEqual({ ok: true, imported: 1 });
+    expect(parseProgress(legacy)).toMatchObject({ schemaVersion: 5, profile: {} });
+    expect(await store.importJson(legacy)).toEqual({ ok: true, imported: 1, xpRecomputed: false });
     expect(await store.list()).toEqual([attempt('旧版')]);
     expect(parseProgress(await store.exportJson()).attempts[0]?.badges).toEqual(attempt('旧版').badges);
   });
 
-  it.each([0, -1, 5, 1.5, '2', null, true])('未対応の版 %s は理由を示し既存進捗を変えない', async (version) => {
+  it.each([0, -1, 6, 1.5, '2', null, true])('未対応の版 %s は理由を示し既存進捗を変えない', async (version) => {
     const store = ProgressStore.inMemory();
     await store.save(attempt('保持'));
     const before = await store.exportJson(new Date(0));
     const invalid = progressJson({ schemaVersion: version });
     expect(() => parseProgress(invalid)).toThrow(ProgressFormatError);
-    expect(await store.importJson(invalid)).toEqual({ ok: false, error: 'schemaVersion: 対応していない版です（対応: 1〜4）' });
+    expect(await store.importJson(invalid)).toEqual({ ok: false, error: 'schemaVersion: 対応していない版です（対応: 1〜5）' });
     expect(await store.exportJson(new Date(0))).toBe(before);
   });
 
@@ -129,12 +129,12 @@ describe('ProgressStore', () => {
 
   it('profile の未知の項目を捨て、別の保存先へ復元して削除できる', async () => {
     const store = ProgressStore.inMemory();
-    const source = progressJson({ attempts: [attempt('新形式')], profile: { xp: 999, stage: '未知' } });
-    expect(await store.importJson(source)).toEqual({ ok: true, imported: 1 });
+    const source = progressJson({ attempts: [attempt('新形式')], profile: { stage: '未知' } });
+    expect(await store.importJson(source)).toEqual({ ok: true, imported: 1, xpRecomputed: false });
     const exported = await store.exportJson();
-    expect(parseProgress(exported)).toMatchObject({ schemaVersion: 4, profile: {} });
+    expect(parseProgress(exported)).toMatchObject({ schemaVersion: 5, profile: { xp: { total: 30 } } });
     const restored = ProgressStore.inMemory();
-    expect(await restored.importJson(exported)).toEqual({ ok: true, imported: 1 });
+    expect(await restored.importJson(exported)).toEqual({ ok: true, imported: 1, xpRecomputed: false });
     expect(await restored.list()).toEqual([attempt('新形式')]);
     await restored.clear();
     expect(parseProgress(await restored.exportJson())).toMatchObject({ attempts: [], profile: {} });
@@ -222,10 +222,10 @@ describe('進捗の保存先', () => {
     vi.spyOn(backend, 'putProfile').mockRejectedValue(new Error('保存不可'));
     const store = await ProgressStore.open();
     const source = progressJson({ attempts: [attempt('追加')] });
-    expect(await store.importJson(source)).toEqual({ ok: true, imported: 1 });
+    expect(await store.importJson(source)).toEqual({ ok: true, imported: 1, xpRecomputed: false });
     expect(store.unavailableReason).toMatch(/保存不可/);
     expect((await store.list()).map((record) => record.attemptId)).toEqual(['保持', '追加']);
-    expect(parseProgress(await store.exportJson()).profile).toEqual({});
+    expect(parseProgress(await store.exportJson()).profile).toEqual({ xp: { total: 30 } });
   });
 });
 
@@ -238,7 +238,7 @@ it('v2 の到達記録は未到達で補い、v3 の時刻は書き出しと取�
   const milestones = { briefedAt: '2026-10-15T00:00:00Z', firstRequestAt: '2026-10-15T00:01:00Z', firstDefenseAt: '2026-10-15T00:02:00Z' };
   await store.save(attempt('新形式', { milestones }));
   const restored = ProgressStore.inMemory();
-  expect(await restored.importJson(await store.exportJson())).toEqual({ ok: true, imported: 1 });
+  expect(await restored.importJson(await store.exportJson())).toEqual({ ok: true, imported: 1, xpRecomputed: false });
   expect((await restored.list())[0]?.milestones).toEqual(milestones);
 });
 

@@ -1,5 +1,6 @@
 // 学習UIの共通部品。合否や状態は色だけでなく記号と言葉でも示す（spec §10）
-import { BADGE_KINDS, type AttemptRecord, type BadgeKind } from '../contract';
+import { BADGE_KINDS, type BadgeKind } from '../contract';
+import type { SealState } from '../progress/stages';
 import { h } from './dom';
 import { BADGE_HINT, BADGE_LABEL } from './labels';
 
@@ -20,9 +21,6 @@ export function status(kind: StatusKind, text: string): HTMLSpanElement {
   return h('span', { class: `status status-${kind}` }, h('span', { class: 'status-mark', 'aria-hidden': true }, STATUS_MARK[kind]), text);
 }
 
-/** 達成印の状態。stale は記録上は達成しているが、現在の構成では未確認 */
-export type SealState = 'done' | 'todo' | 'stale';
-
 const SEAL_MARK: Record<SealState, string> = { done: '済', todo: '未', stale: '再' };
 const SEAL_TEXT: Record<SealState, string> = { done: '達成', todo: '未達成', stale: '記録あり（再検証で確定）' };
 
@@ -40,16 +38,6 @@ export function seals(states: Record<BadgeKind, SealState>, size: 'large' | 'sma
       ),
     ),
   );
-}
-
-/** 記録の達成印を表示用の状態にする。防御は現在の構成で確認できたときだけ「済」 */
-export function sealStates(attempt: AttemptRecord | undefined, defenseCurrent: boolean): Record<BadgeKind, SealState> {
-  const badges = attempt?.badges;
-  return {
-    reproduction: badges?.reproduction.achieved ? 'done' : 'todo',
-    defense: !badges?.defense.achieved ? 'todo' : defenseCurrent ? 'done' : 'stale',
-    understanding: badges?.understanding.achieved ? 'done' : 'todo',
-  };
 }
 
 /** ラジオボタンの選択肢。ラベル全体を押せる */
