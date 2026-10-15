@@ -14,11 +14,11 @@ import {
   type VerificationReport,
 } from '../contract';
 
-import { MAX_TEXT, readHistory } from './history';
+import { MAX_TEXT, count, readHistory } from './history';
 
 export const PROGRESS_FORMAT = 'patchquest-progress';
 
-export const PROGRESS_SCHEMA_VERSION = 4;
+export const PROGRESS_SCHEMA_VERSION = 5;
 // 読み込める最も古い版。spec §13 に従い、版を上げても旧版の読み込みを維持する。
 const OLDEST_READABLE_SCHEMA_VERSION = 1;
 // 演習をまたぐ記録の入れ物 profile が加わった版。
@@ -28,10 +28,10 @@ export const MAX_PROGRESS_BYTES = 1024 * 1024;
 const MAX_ATTEMPTS = 1000;
 const STATES = Object.keys(TRANSITIONS) as ExerciseState[];
 
-/** 演習をまたぐ記録。既知の項目はまだなく、#71・#73 でここに追加する。
+/** 演習をまたぐ記録。XP の合計を保存し、Attempt の記録から照合する。
  * 演習内のステージ（spec §9）は Attempt の milestones と達成印から導くので profile には持たない。spec §13 の「ステージ到達」はこの意味で Attempt から再計算する。
  */
-export type ProgressProfile = Record<string, never>;
+export type ProgressProfile = { xp?: { total: number } };
 
 export interface ProgressFile {
   format: typeof PROGRESS_FORMAT;
@@ -137,6 +137,14 @@ function byteLength(text: string): number {
   return text.length * 3 <= MAX_PROGRESS_BYTES ? text.length : new TextEncoder().encode(text).length;
 }
 
+function readProfile(checker: Checker, value: unknown): ProgressProfile {
+  const profile = checker.obj('profile', value);
+  if (profile.xp === undefined) return {};
+  const xp = checker.obj('profile.xp', profile.xp);
+  const total = count(checker, 'profile.xp.total', xp.total);
+  return { xp: { total } };
+}
+
 /** 進捗 JSON を検証して読み込む。サイズ・形式・版・各項目の違反は ProgressFormatError */
 export function parseProgress(text: string): ProgressFile {
   if (byteLength(text) > MAX_PROGRESS_BYTES) {
@@ -156,8 +164,7 @@ export function parseProgress(text: string): ProgressFile {
     || schemaVersion < OLDEST_READABLE_SCHEMA_VERSION || schemaVersion > PROGRESS_SCHEMA_VERSION) {
     throw new ProgressFormatError(`schemaVersion: 対応していない版です（対応: ${OLDEST_READABLE_SCHEMA_VERSION}〜${PROGRESS_SCHEMA_VERSION}）`);
   }
-  // v1 には profile が無い。v2 では入れ物がオブジェクトであることだけ確かめ、既知の項目はまだ無いので中身は捨てる
-  if (schemaVersion >= PROFILE_SINCE_SCHEMA_VERSION) c.obj('profile', root.profile);
+  const profile = schemaVersion >= PROFILE_SINCE_SCHEMA_VERSION ? readProfile(c, root.profile) : {};
   const attempts = c.list('attempts', root.attempts);
   if (attempts.length > MAX_ATTEMPTS) c.fail('attempts', `${MAX_ATTEMPTS} 件以内にしてください`);
   const file: ProgressFile = {
@@ -165,7 +172,7 @@ export function parseProgress(text: string): ProgressFile {
     schemaVersion: PROGRESS_SCHEMA_VERSION,
     exportedAt: c.str('exportedAt', root.exportedAt, MAX_TEXT),
     attempts: attempts.slice(0, MAX_ATTEMPTS).map((a, i) => attempt(c, `attempts[${i}]`, a)),
-    profile: {},
+    profile,
   };
   if (c.errors.length) throw new ProgressFormatError(c.errors.slice(0, 5).join('\n'));
   return file;

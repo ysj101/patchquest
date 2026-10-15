@@ -3,8 +3,11 @@ import { catalog } from '@catalog';
 import { ANONYMOUS, RuntimeError, isInExercise, satisfies, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
+import { xpFromAttempts } from '../progress/xp';
+import { importBanner, importMessage } from './progress-feedback';
 import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
+import { downloadProgress } from './progress-download';
 import { browserEffects } from './browser-effects';
 import { openEffectSettings } from './effect-settings-panel';
 import { confirmDialog } from './components';
@@ -113,6 +116,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   fill(main, guide.element, listView, preflightView.element, exerciseView.element);
 
   let screen: Screen = 'list';
+  let others: AttemptRecord[] = [];
   function show(next: Screen): void {
     screen = next;
     const snapshot = orchestrator.snapshot;
@@ -129,6 +133,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   // 状態が変わるたびに画面を更新し、まとまった変更ごとに保存する
   let saveScheduled = false;
+  let saved = Promise.resolve();
   orchestrator.subscribe((snapshot: ExerciseSnapshot) => {
     const { attempt } = snapshot;
     if (screen === 'preflight') preflightView.update(snapshot);
@@ -138,12 +143,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
     saveScheduled = true;
     queueMicrotask(() => {
       saveScheduled = false;
-      void store.save(structuredClone(attempt));
+      const record = structuredClone(attempt);
+      // 保存先の失敗理由は withBackend が unavailableReason に残す。次の保存と一覧表示は止めない。
+      saved = saved.then(() => store.save(record)).catch(() => undefined);
     });
   });
 
-  async function entries(): Promise<MissionEntry[]> {
-    const records = await store.list();
+  function entries(records: AttemptRecord[]): MissionEntry[] {
     const live = orchestrator.snapshot;
     return catalog.packs.map((pack) => {
       const latest = records.filter((r) => r.missionId === pack.manifest.id).at(-1);
@@ -156,16 +162,19 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   async function showList(message?: string): Promise<void> {
     await exercise.stop();
+    await saved;
+    const records = await store.list();
+    const xp = await store.xp(records);
     fill(
       listView,
-      missionList(await entries(), store.unavailableReason, {
+      missionList(entries(records), store.unavailableReason, {
         openSettings,
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
         exportProgress: () => void exportProgress(),
         importProgress: (file) => void importProgress(file),
         clearProgress: () => void clearProgress(),
-      }),
+      }, xp),
     );
     show('list');
     if (message) announce(live, message);
@@ -175,11 +184,14 @@ export async function startApp(root: HTMLElement): Promise<void> {
   /** 導入を見せる演習の ID。同じ課題の記録（今回の演習を除く）が保存済みなら見せない */
   let briefingAttemptId: string | null = null;
   async function begin(packId: string, resume?: AttemptRecord): Promise<void> {
+    others = [];
+    exerciseView.xp.reset();
     // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の「演習を始める」を残さない）
     const started = orchestrator.start(packId, { resume });
     show('preflight');
     announce(live, '開始前チェックを始めました');
-    const [records, snapshot] = await Promise.all([resume ? [] : store.list(), started]);
+    const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
+    others = records.filter((record) => record.attemptId !== snapshot.attempt.attemptId);
     const seen = records.some((record) => record.missionId === packId && record.attemptId !== snapshot.attempt.attemptId);
     briefingAttemptId = !resume && (!!store.unavailableReason || !seen) ? snapshot.attempt.attemptId : null;
     announce(live, isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
@@ -187,6 +199,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   function updateExercise(snapshot: ExerciseSnapshot): void {
     exerciseView.update(snapshot);
+    exerciseView.xp.update(xpFromAttempts([...others, snapshot.attempt]));
     resultEffects.update(snapshot);
     repair.update(snapshot);
     hints.update(snapshot);
@@ -299,24 +312,16 @@ export async function startApp(root: HTMLElement): Promise<void> {
   }
 
   async function exportProgress(): Promise<void> {
-    const blob = new Blob([await store.exportJson()], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = h('a', { href: url, download: `patchquest-progress-${new Date().toISOString().slice(0, 10)}.json` });
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    await downloadProgress(store);
     announce(live, '進捗を書き出しました');
     guide.reach('exported');
   }
 
   async function importProgress(file: File): Promise<void> {
     const result = await store.importJson(await file.text());
-    await showList(result.ok ? `進捗を ${result.imported} 件読み込みました` : `進捗を読み込めませんでした：${result.error}`);
-    if (!result.ok) {
-      const banner = h('p', { class: 'banner banner-error', role: 'alert' }, `進捗を読み込めませんでした。今の進捗はそのままです。（${result.error}）`);
-      listView.querySelector('.progress-tools')?.append(banner);
-    }
+    await showList(importMessage(result));
+    const banner = importBanner(result);
+    if (banner) listView.querySelector('.progress-tools')?.append(banner);
   }
 
   async function clearProgress(): Promise<void> {

@@ -424,7 +424,8 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 
 /* 演習票の五段階。状態は色と文字で示し、新規到達だけを動かす。 */
 .stage-progress { grid-column: 1 / -1; }
-.stage-count { font-size: 0.95rem; margin-block: 0 10px; }
+.stage-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-bottom: 10px; }
+.stage-count { font-size: 0.95rem; margin: 0; }
 .stages { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .stages li { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px dashed var(--muted); border-radius: 6px; font-size: 0.85rem; }
 .stage-number { font-family: var(--font-mono); font-weight: bold; }
@@ -441,3 +442,6 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .security-count { font-weight: 700; }
 .security-history ol { display: grid; gap: 16px; padding-left: 24px; }
 .security-history time { font-size: 0.8rem; overflow-wrap: anywhere; }
+
+.xp-badge { display: flex; gap: 12px; font-size: 0.9rem; }
+.xp-gain { color: var(--seal); font-weight: bold; animation: rise-in 0.3s ease-out; }

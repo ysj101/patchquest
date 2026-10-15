@@ -3,7 +3,8 @@ import { MAX_HISTORY, RESULT_GROUPS, type Checker, type VerificationEntry } from
 
 export const MAX_TEXT = 4096;
 
-function count(checker: Checker, path: string, value: unknown): number {
+/** 非負整数を検査し、違反は検査器へ記録する。 */
+export function count(checker: Checker, path: string, value: unknown): number {
   const number = checker.num(path, value);
   if (!Number.isInteger(number) || number < 0) checker.fail(path, '非負整数が必要です');
   return number;

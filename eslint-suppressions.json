@@ -210,9 +210,6 @@
     },
     "id-length": {
       "count": 2
-    },
-    "sonarjs/no-nested-conditional": {
-      "count": 1
     }
   },
   "platform/ui/debrief.ts": {
@@ -546,7 +543,7 @@
   },
   "tests/e2e/ui-repair.spec.ts": {
     "@typescript-eslint/no-non-null-assertion": {
-      "count": 3
+      "count": 1
     }
   },
   "tests/e2e/ui-shell.spec.ts": {

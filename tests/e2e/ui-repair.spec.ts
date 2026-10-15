@@ -1,18 +1,5 @@
 // 学習UI：対策パネル・検証結果・ヒント・振り返り（Issue #13）
-import type { Page } from '@playwright/test';
-import { enterWorkbench, expect, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
-
-/** bob として alice のノートを読み、再現の検印を得る */
-async function reproduce(page: Page): Promise<void> {
-  await page.getByRole('tab', { name: '調査' }).click();
-  const entry = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();
-  await entry.locator('summary').click();
-  const id = (JSON.parse((await entry.locator('.log-block').nth(1).locator('pre').textContent())!) as { notes: { id: number }[] }).notes[0]!.id;
-  await page.getByRole('radio', { name: 'bob' }).check();
-  await page.getByLabel('ノート ID').fill(String(id));
-  await page.getByRole('button', { name: '送る', exact: true }).click();
-  await expect(seals(page)).toContainText('再現：達成');
-}
+import { enterWorkbench, expect, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await startMission(page, 'test-pack');
@@ -31,7 +18,8 @@ test('正常系を壊す対策は、検証結果に理由と期待・実測が�
 });
 
 test('再現・正しい対策・理解確認をそろえると解決になり、対策を変えると防御は再検証待ちになる', async ({ page }) => {
-  await reproduce(page);
+  await page.getByRole('tab', { name: '調査' }).click();
+  await reproduceNoteLeak(page);
   await verifyWith(page, '所有者を照合する');
   await expect(page.locator('[data-anchor="results"]')).toContainText('防御できました', { timeout: 15_000 });
   await expect(seals(page)).toContainText('防御：達成');

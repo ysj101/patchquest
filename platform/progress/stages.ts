@@ -1,6 +1,6 @@
-// 演習の操作記録と達成印から、五つのステージの到達と現在地を導く。
-import type { AttemptRecord } from '../contract';
-import { sealStates } from './components';
+// 操作記録と達成印から、ステージの到達・現在地と達成印の表示状態を導く。
+import type { AttemptRecord, BadgeKind } from '../contract';
+
 
 export const STAGES = [
   { id: 'briefed', label: '事件を確認' },
@@ -23,4 +23,18 @@ export function stageStates(attempt: AttemptRecord, defenseCurrent: boolean) {
   ];
   const current = reached.indexOf(false);
   return STAGES.map((stage, index) => ({ ...stage, state: reached[index] ? 'done' as const : 'todo' as const, current: index === current }));
+}
+
+/** 達成印の状態。stale は記録上は達成しているが、現在の構成では未確認 */
+export type SealState = 'done' | 'todo' | 'stale';
+
+/** 記録の達成印を表示用の状態にする。防御は現在の構成で確認できたときだけ「済」 */
+export function sealStates(attempt: AttemptRecord | undefined, defenseCurrent: boolean): Record<BadgeKind, SealState> {
+  const badges = attempt?.badges;
+  const defense = defenseCurrent ? 'done' : 'stale';
+  return {
+    reproduction: badges?.reproduction.achieved ? 'done' : 'todo',
+    defense: badges?.defense.achieved ? defense : 'todo',
+    understanding: badges?.understanding.achieved ? 'done' : 'todo',
+  };
 }

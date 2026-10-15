@@ -1,11 +1,13 @@
 // 演習画面（spec §10）。演習票の見出し（課題・状態・達成印）、注入した架空サービスであることの表示、
 // 動く教材アプリと利用者の切り替え、調査・対策・振り返りの道具を並べる
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
+import { sealStates } from '../progress/stages';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { radioOption, sealStates, seals, settingsButton, tabs, type TabSpec } from './components';
+import { radioOption, seals, settingsButton, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
 import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
+import { XpBadge } from './xp-badge';
 import { StageProgress } from './stage-progress';
 
 export interface ExerciseActions {
@@ -37,6 +39,7 @@ export class ExerciseView {
   private readonly ticket = h('p', { class: 'ticket-id' });
   private readonly state = h('p', { class: 'state-stamp' });
   private readonly stages: StageProgress;
+  readonly xp: XpBadge;
   private readonly sealSlot = h('div', { class: 'ticket-seals' });
   private readonly toolTabs: ReturnType<typeof tabs>;
   private readonly storyFooter: HTMLElement;
@@ -50,7 +53,9 @@ export class ExerciseView {
     extras: { tabs: TabSpec[]; storyFooter: HTMLElement; callout: HTMLElement },
     announce: (message: string) => void,
   ) {
+    this.xp = new XpBadge(announce);
     this.stages = new StageProgress(announce);
+    this.stages.header.append(this.xp.element);
     this.storyFooter = extras.storyFooter;
     this.investigation = new InvestigationPanel({ send: actions.send });
     this.toolTabs = tabs('演習の道具', [
@@ -105,6 +110,7 @@ export class ExerciseView {
       ),
     );
     this.stages.reset();
+    this.xp.reset();
     const story = snapshot.pack.manifest.story;
     fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
     fill(
