@@ -262,6 +262,7 @@ MVPではXP、ストリーク、時間競争を導入しない。MVP後の拡張
 | - | - |
 | id / version / schemaVersion | 課題ID、不変のパック版、定義形式の版 |
 | title / learningObjectives | 表示名と到達目標 |
+| vulnerability | 訓練する脆弱性。name（一覧の見出し）、cwe、category（技能の分類。id と label）。mission では必須で、tutorial では省略できる。同じ category.id は同じ技能として扱い、課題 ID では分岐しない。owasp は任意 |
 | appCompatibility | アプリIDと対応バージョン |
 | runtime / capabilities | 必要なアダプターと機能 |
 | hooks / conflicts | 交換する処理と競合条件 |

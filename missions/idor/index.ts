@@ -29,8 +29,13 @@ export const idorPack: MissionPack = {
     version: '1.0.0',
     kind: 'mission',
     title: '非公開メモを守る',
-    summary:
-      '別の利用者の非公開メモが見えるという問い合わせを調べます。メモの番号を変えるだけで他人のメモが読める原因を突き止め、画面ではなくメモを取り出す処理の側で守ります。',
+    summary: '番号を変えるだけで、他人の非公開メモが読めてしまう。',
+    vulnerability: {
+      name: 'IDOR',
+      cwe: 'CWE-639',
+      category: { id: 'access-control', label: 'アクセス制御' },
+      owasp: 'A01:2021',
+    },
     learningObjectives: [
       '利用者を切り替えて、別の利用者の非公開メモを ID 指定で読めてしまうことを再現できる',
       '画面のリンクを隠すことと、取り出す処理で所有者を照合することの違いを説明できる',

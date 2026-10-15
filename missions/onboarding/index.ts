@@ -23,7 +23,7 @@ export const onboardingPack: MissionPack = {
     version: '1.1.0',
     kind: 'tutorial',
     title: '練習：はじめての修正',
-    summary: 'わざと壊したメモアプリで「こわす → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
+    summary: 'タイトルの文字数制限が効かない不具合を、一通り直してみる。',
     learningObjectives: ['不具合を自分の操作で起こしてみる', '直し方を選び、自動テストで確かめる', 'なぜ起きたかをふりかえる'],
     estimatedMinutes: 3,
     story: {

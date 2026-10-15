@@ -1,13 +1,8 @@
 // 配布物の確認（Issue #14）。外部ネットワークを遮断し、新しいブラウザ環境（冷えたキャッシュ）で開く
-import { expect, test } from '../e2e/fixtures';
+import { expect, openMissionList, test } from '../e2e/fixtures';
 
 test('展開した配布物を localhost で開くと課題一覧が表示され、エラーが出ない', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
-  expect(errors).toEqual([]);
+  expect(await openMissionList(page)).toEqual([]);
 });
 
 test('演習に必要なファイルがすべて同梱され、検証用のページは含まれない', async ({ page, request }) => {

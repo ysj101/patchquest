@@ -26,6 +26,20 @@ missions/<パックID>/
     <パックID>.spec.ts  # 画面での再現など、固有の E2E（任意）
 ```
 
+### 脆弱性の種類
+
+`manifest.vulnerability` は、その課題が訓練する脆弱性である。課題一覧は `name` をカードの見出しにし、`cwe`・`category.label`・任意の `owasp` と目安時間を見出しのそばに出す。`kind` が `mission` のときは必須、`tutorial`（操作の練習）では省略できる。
+
+| 項目 | 意味 |
+| - | - |
+| `name` | 画面に出す短い名前。例: `IDOR`、`保存型 XSS` |
+| `cwe` | `CWE-` と番号。例: `CWE-639` |
+| `category.id` | 技能の分類キー。小文字・数字・ハイフン。同じ id の課題は同じ技能としてまとまる。課題 ID では分岐しない |
+| `category.label` | 分類の表示名。例: `アクセス制御` |
+| `owasp` | 任意。OWASP Top 10 などの分類。例: `A01:2021` |
+
+分類ごとの習熟度を出すときも、この `category` を使い、別の項目は足さない。
+
 ## 2. フックと実装
 
 教材アプリはフックを `AppDescriptor.hooks` で公開する。

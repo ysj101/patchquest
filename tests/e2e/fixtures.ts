@@ -22,6 +22,21 @@ export const test = base.extend<{ externalRequests: string[] }>({
 
 export { expect };
 
+/** 課題一覧の見出し。同梱課題の脆弱性名を、マニフェストの順に並べたもの */
+export const missionListHeading = 'IDOR・保存型 XSS・SQL インジェクションを、壊れたメモアプリで練習する';
+
+/** 課題一覧を開き、見出しを確かめて、その間のページエラーを返す */
+export async function openMissionList(page: Page): Promise<string[]> {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: missionListHeading })).toBeVisible();
+  return errors;
+}
+
 /** 演習画面の教材アプリ（隔離 iframe） */
 export const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
 /** 検証結果のパネル */

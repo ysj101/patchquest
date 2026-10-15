@@ -24,6 +24,24 @@ export interface ValidationContext {
 }
 
 const PACK_ID = /^[a-z][a-z0-9-]*$/;
+const CWE_ID = /^CWE-\d+$/;
+
+/** kind が mission の課題は訓練する脆弱性を宣言する。tutorial では省略できる */
+function checkVulnerability(checker: Checker, kind: unknown, value: unknown): void {
+  if (value === undefined) {
+    if (kind === 'mission') checker.fail('vulnerability', '課題（mission）では脆弱性の種類が必要です');
+    return;
+  }
+  const vuln = checker.obj('vulnerability', value);
+  checker.text('vulnerability.name', vuln.name);
+  const cwe = checker.text('vulnerability.cwe', vuln.cwe);
+  if (cwe !== '' && !CWE_ID.test(cwe)) checker.fail('vulnerability.cwe', 'CWE-番号 の形式が必要です（例: CWE-639）');
+  const category = checker.obj('vulnerability.category', vuln.category);
+  const categoryId = checker.text('vulnerability.category.id', category.id);
+  if (categoryId !== '' && !PACK_ID.test(categoryId)) checker.fail('vulnerability.category.id', '小文字・数字・ハイフンで、英字から始めてください');
+  checker.text('vulnerability.category.label', category.label);
+  if (vuln.owasp !== undefined) checker.text('vulnerability.owasp', vuln.owasp);
+}
 export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): string[] {
   const c = new Checker();
   const m = c.obj('manifest', pack.manifest as unknown);
@@ -35,6 +53,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   c.oneOf('kind', m.kind, PACK_KINDS);
   c.text('title', m.title);
   c.text('summary', m.summary);
+  checkVulnerability(c, m.kind, m.vulnerability);
   c.text('solution', m.solution);
   c.texts('learningObjectives', m.learningObjectives, true);
   if (typeof m.estimatedMinutes !== 'number' || !(m.estimatedMinutes > 0)) c.fail('estimatedMinutes', '正の数が必要です');

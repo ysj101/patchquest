@@ -19,6 +19,11 @@ export interface MissionManifest {
   summary: string;
   learningObjectives: string[];
   estimatedMinutes: number;
+  /**
+   * 訓練する脆弱性。kind が mission のとき必須。tutorial では省略できる。
+   * 一覧の見出しと、分類ごとの習熟度の集計に使う。別の項目は足さない。
+   */
+  vulnerability?: VulnerabilityDef;
   story: StoryDef;
   /** versions は 'x.y.z'（完全一致）か '^x.y.z'（同じメジャー版で x.y.z 以上） */
   appCompatibility: { appId: string; versions: string };
@@ -47,6 +52,30 @@ export interface MissionManifest {
   debrief: DebriefDef;
   /** 操作ガイド。kind が tutorial のパックでは必須 */
   guide?: GuideStep[];
+}
+
+/**
+ * 技能の分類。同じ id の課題は同じ技能としてまとまる。
+ * 集計や表示は id と label だけで行い、課題 ID では分岐しない。
+ */
+export interface VulnerabilityCategory {
+  /** 安定した分類キー。小文字・数字・ハイフン。例: 'access-control' */
+  id: string;
+  /** 分類の表示名。例: 'アクセス制御' */
+  label: string;
+}
+
+/**
+ * この課題が訓練する脆弱性。name はカードの見出し、cwe と owasp は見出しのそばに出す。
+ */
+export interface VulnerabilityDef {
+  /** 短い名前。例: 'IDOR'、'保存型 XSS' */
+  name: string;
+  /** CWE 識別子。例: 'CWE-639' */
+  cwe: string;
+  category: VulnerabilityCategory;
+  /** OWASP Top 10 などの分類。例: 'A01:2021'。該当がなければ省略 */
+  owasp?: string;
 }
 
 export interface StoryDef {

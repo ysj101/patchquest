@@ -19,8 +19,13 @@ export const storedXssPack: MissionPack = {
     version: '1.0.0',
     kind: 'mission',
     title: 'コメントからのスクリプト実行を防ぐ',
-    summary:
-      '共有ページのコメントが、別の利用者の画面でスクリプトとして動く問い合わせを調べます。危険な HTML 解釈を、文字として表示する描画に戻します。',
+    summary: '保存したコメントが、別の利用者の画面でスクリプトとして動く。',
+    vulnerability: {
+      name: '保存型 XSS',
+      cwe: 'CWE-79',
+      category: { id: 'xss', label: 'XSS 対策' },
+      owasp: 'A03:2021',
+    },
     learningObjectives: [
       '検証済みの攻撃コメントを保存し、別の利用者が開いたときに画面で実行されることを再現できる',
       'script タグだけを消すことと、文字として表示することの違いを説明できる',

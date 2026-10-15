@@ -1,6 +1,6 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, missionListHeading, test } from './fixtures';
 
 /** Tab キーだけで、指定した名前のボタンまでフォーカスを移す */
 async function tabTo(page: Page, name: string | RegExp, max = 40): Promise<void> {
@@ -16,7 +16,25 @@ const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: missionListHeading })).toBeVisible();
+});
+
+test('課題カードは脆弱性の名前を先に出し、できるようになることは畳んである', async ({ page }) => {
+  await expect(page.locator('.hero-lead')).toHaveText('このブラウザの中だけで練習します。進め方は再現、防御、理解。');
+  await expect(page.getByRole('button', { name: 'まずは練習（3 分）' })).toBeVisible();
+
+  const idor = card(page, 'idor');
+  await expect(idor.getByRole('heading', { level: 3 })).toHaveText('IDOR');
+  await expect(idor.locator('.mission-kicker')).toHaveText('CWE-639 · アクセス制御 · A01:2021 · 目安 15 分');
+  await expect(idor.locator('.mission-subtitle')).toHaveText('非公開メモを守る');
+  await expect(idor.locator('.objectives ul')).toBeHidden();
+  await idor.locator('summary').click();
+  await expect(idor.locator('.objectives ul')).toBeVisible();
+
+  await expect(card(page, 'stored-xss').getByRole('heading', { level: 3 })).toHaveText('保存型 XSS');
+  await expect(card(page, 'stored-xss').locator('.mission-kicker')).toContainText('CWE-79');
+  await expect(card(page, 'sqli').getByRole('heading', { level: 3 })).toHaveText('SQL インジェクション');
+  await expect(card(page, 'sqli').locator('.mission-kicker')).toHaveText('CWE-89 · A03:2021 · 目安 15 分');
 });
 
 test('キーボードだけで課題一覧から開始前チェックを経て演習を始められる', async ({ page }) => {
@@ -46,7 +64,7 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
   await page.getByRole('button', { name: 'もう一度チェックする' }).click();
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: missionListHeading })).toBeVisible();
 });
 
 test('進捗を保存し、続きから始め、書き出し・読み込み・削除ができる', async ({ page }) => {

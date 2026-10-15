@@ -152,21 +152,8 @@ main > section > * + * { margin-top: 16px; }
   word-break: auto-phrase;
 }
 .hero h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); text-wrap: balance; }
-.hero-lead { color: var(--muted); max-width: 46em; }
-.hero-flow { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-.hero-step { position: relative; display: flex; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--paper); }
-.hero-step:not(:last-child)::after {
-  content: '→'; position: absolute; right: -16px; top: 50%; transform: translateY(-50%);
-  color: var(--muted); font-weight: 800;
-}
-.hero-step .seal-stamp { --size: 54px; flex: none; border-color: var(--seal); color: var(--seal); background: #fdf1ee; }
-.hero-step-text { display: grid; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
-.hero-step-text strong { color: var(--ink); font-size: 1.05rem; }
-.hero-cta { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-top: 6px; }
-@media (max-width: 760px) {
-  .hero-flow { grid-template-columns: 1fr; gap: 8px; }
-  .hero-step:not(:last-child)::after { display: none; }
-}
+.hero-lead { color: var(--muted); max-width: 40em; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
 .mission-section { display: grid; gap: 8px; margin-top: 32px; }
 .mission-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); margin-top: 8px; }
 .mission-card {
@@ -174,7 +161,12 @@ main > section > * + * { margin-top: 16px; }
   border-radius: var(--radius); padding: 18px 20px; display: grid; gap: 10px; align-content: start;
 }
 .mission-card-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
-.objectives { margin: 0; padding-left: 1.2em; }
+.vuln-name { font-size: 1.5rem; font-weight: 800; color: var(--primary); letter-spacing: 0.01em; }
+.mission-kicker { color: var(--muted); font-size: 0.85rem; }
+.mission-subtitle { font-weight: 700; }
+.mission-summary { color: var(--muted); }
+.mission-card .objectives summary { cursor: pointer; color: var(--muted); font-weight: 700; }
+.mission-card .objectives ul { margin: 8px 0 0; padding-left: 1.2em; }
 .progress-tools { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
 
 /* 開始前チェック */

@@ -26,8 +26,13 @@ export const sqliPack: MissionPack = {
     kind: 'mission',
     title: '検索条件からの情報漏えいを防ぐ',
     estimatedMinutes: 15,
-    summary:
-      '自分のメモを探す検索で、別の利用者のメモまで結果に含まれる問い合わせを調べます。検索語のつなぎ込みを、値としてバインドするクエリに戻します。',
+    summary: '検索語次第で、他人のメモまで結果に混ざる。',
+    vulnerability: {
+      name: 'SQL インジェクション',
+      cwe: 'CWE-89',
+      category: { id: 'sql-injection', label: 'SQL インジェクション' },
+      owasp: 'A03:2021',
+    },
     learningObjectives: [
       '登録済みの検索語で、所有者の条件を迂回し、別の利用者のメモが結果に含まれることを再現できる',
       '特定の語だけを禁止することと、検索語を値としてバインドすることの違いを説明できる',

@@ -1,5 +1,5 @@
-// ミッション一覧（spec §10）。何をする場所かの説明と練習への入口、学習目標・目安時間・達成印・開始と、進捗の書き出し・読み込み・削除
-import type { AttemptRecord, MissionPack } from '../contract';
+// ミッション一覧（spec §10）。脆弱性の名前を先に出し、練習への入口・達成印・開始と、進捗の書き出し・読み込み・削除を置く
+import type { AttemptRecord, MissionManifest, MissionPack } from '../contract';
 import { sealStates, seals } from './components';
 import { h } from './dom';
 
@@ -21,77 +21,109 @@ export interface MissionListActions {
   clearProgress(): void;
 }
 
+/** 同梱の教材はメモアプリ（spec §8）。脆弱性の名前はマニフェストから並べ、課題 ID では分岐しない */
+function heroTitle(missions: MissionEntry[]): string {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const entry of missions) {
+    const name = entry.pack.manifest.vulnerability?.name;
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    names.push(name);
+  }
+  if (names.length === 0) return '壊れたメモアプリで、脆弱性を直す練習';
+  return `${names.join('・')}を、壊れたメモアプリで練習する`;
+}
+
+function metaLine(manifest: MissionManifest): string {
+  const time = `目安 ${manifest.estimatedMinutes} 分`;
+  const vuln = manifest.vulnerability;
+  if (!vuln) return time;
+  const parts = [vuln.cwe];
+  if (vuln.category.label !== vuln.name) parts.push(vuln.category.label);
+  if (vuln.owasp) parts.push(vuln.owasp);
+  parts.push(time);
+  return parts.join(' · ');
+}
+
+function objectives(manifest: MissionManifest): HTMLElement {
+  return h(
+    'details',
+    { class: 'objectives' },
+    h('summary', {}, 'この課題でできるようになること'),
+    h('ul', {}, ...manifest.learningObjectives.map((objective) => h('li', {}, objective))),
+  );
+}
+
+function startButtons(entry: MissionEntry, actions: MissionListActions): HTMLElement[] {
+  const { manifest } = entry.pack;
+  const latest = entry.latest;
+  const begin = h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める');
+  if (!latest || !entry.resumable) return [begin];
+  const restart = h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, '最初から始める');
+  return [h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.resume(latest) } }, '続きから始める'), restart];
+}
+
 function card(entry: MissionEntry, actions: MissionListActions): HTMLElement {
   const { manifest } = entry.pack;
   const titleId = `mission-${manifest.id}`;
-  const buttons =
-    entry.latest && entry.resumable
-      ? [
-          h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.resume(entry.latest!) } }, '続きから始める'),
-          h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
-        ]
-      : [h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
+  const vuln = manifest.vulnerability;
+  const labelledBy = vuln ? `${titleId} ${titleId}-title` : titleId;
   return h(
     'article',
-    { class: 'mission-card', 'aria-labelledby': titleId, 'data-mission': manifest.id },
-    h('header', { class: 'mission-card-head' }, h('h3', { id: titleId }, manifest.title), seals(sealStates(entry.latest, entry.defenseCurrent), 'small')),
+    { class: 'mission-card', 'aria-labelledby': labelledBy, 'data-mission': manifest.id },
+    h(
+      'header',
+      { class: 'mission-card-head' },
+      h(
+        'div',
+        {},
+        h('h3', { id: titleId, class: vuln ? 'vuln-name' : undefined }, vuln ? vuln.name : manifest.title),
+        h('p', { class: 'mission-kicker' }, metaLine(manifest)),
+        vuln ? h('p', { id: `${titleId}-title`, class: 'mission-subtitle' }, manifest.title) : null,
+      ),
+      seals(sealStates(entry.latest, entry.defenseCurrent), 'small'),
+    ),
     h('p', { class: 'mission-summary' }, manifest.summary),
-    h('h4', { class: 'eyebrow' }, 'この課題でできるようになること'),
-    h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((o) => h('li', {}, o))),
-    h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`),
+    objectives(manifest),
     entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が更新されたため、前回の続きからは始められません。') : null,
-    h('div', { class: 'actions' }, ...buttons),
+    h('div', { class: 'actions' }, ...startButtons(entry, actions)),
   );
 }
 
-/** 何をする場所かを一目で示す。3 つの検印（再現・防御・理解）が、そのまま課題の進め方になっている */
-const FLOW: { label: string; title: string; text: string }[] = [
-  { label: '再現', title: 'こわす', text: '不具合を自分の操作で起こしてみる' },
-  { label: '防御', title: 'なおす', text: '直し方を選び、自動テストで合否を確かめる' },
-  { label: '理解', title: 'ふりかえる', text: 'なぜ起きたか、どう防ぐかを確かめる' },
-];
+function practiceButton(tutorial: MissionEntry | undefined, actions: MissionListActions): HTMLElement | null {
+  if (!tutorial || tutorial.latest?.badges.understanding.achieved) return null;
+  const minutes = tutorial.pack.manifest.estimatedMinutes;
+  return h(
+    'div',
+    { class: 'hero-cta' },
+    h(
+      'button',
+      { type: 'button', class: 'button button-primary button-chunky button-big', on: { click: () => actions.start(tutorial.pack.manifest.id) } },
+      `まずは練習（${minutes} 分）`,
+    ),
+  );
+}
 
-function hero(tutorial: MissionEntry | undefined, actions: MissionListActions): HTMLElement {
-  const finished = tutorial?.latest?.badges.understanding.achieved;
+function hero(tutorial: MissionEntry | undefined, missions: MissionEntry[], actions: MissionListActions): HTMLElement {
   return h(
     'section',
     { class: 'hero', 'aria-labelledby': 'hero-title' },
-    h('h1', { id: 'hero-title', tabIndex: -1 }, 'わざと壊したアプリで、こわして、なおして、たしかめる。'),
-    h(
-      'p',
-      { class: 'hero-lead' },
-      'PatchQuest は、アプリのセキュリティの不具合を自分の手で再現し、直し方を選んで、自動テストで確かめる練習場です。すべてこのブラウザの中で動き、本物のサービスには触れません。',
-    ),
-    h(
-      'ol',
-      { class: 'hero-flow', 'aria-label': '課題の進め方' },
-      ...FLOW.map((flow, i) =>
-        h(
-          'li',
-          { class: 'hero-step' },
-          h('span', { class: 'seal-stamp', 'aria-hidden': true }, h('span', { class: 'seal-mark' }, String(i + 1)), h('span', { class: 'seal-label' }, flow.label)),
-          h('span', { class: 'hero-step-text' }, h('strong', {}, flow.title), flow.text),
-        ),
-      ),
-    ),
-    tutorial && !finished
-      ? h(
-          'div',
-          { class: 'hero-cta' },
-          h(
-            'button',
-            { type: 'button', class: 'button button-primary button-chunky button-big', on: { click: () => actions.start(tutorial.pack.manifest.id) } },
-            `まずは練習（${tutorial.pack.manifest.estimatedMinutes} 分）`,
-          ),
-          h('p', { class: 'note' }, '操作ガイドつきで、流れをひと通り体験できます。'),
-        )
-      : null,
+    h('h1', { id: 'hero-title', tabIndex: -1 }, heroTitle(missions)),
+    h('p', { class: 'hero-lead' }, 'このブラウザの中だけで練習します。進め方は再現、防御、理解。'),
+    practiceButton(tutorial, actions),
   );
 }
 
-function section(title: string, lead: string, entries: MissionEntry[], actions: MissionListActions): HTMLElement | null {
+function section(title: string, lead: string | null, entries: MissionEntry[], actions: MissionListActions): HTMLElement | null {
   if (entries.length === 0) return null;
-  return h('section', { class: 'mission-section' }, h('h2', {}, title), h('p', { class: 'lead' }, lead), h('div', { class: 'mission-grid' }, ...entries.map((e) => card(e, actions))));
+  return h(
+    'section',
+    { class: 'mission-section' },
+    h('h2', {}, title),
+    lead ? h('p', { class: 'lead' }, lead) : null,
+    h('div', { class: 'mission-grid' }, ...entries.map((entry) => card(entry, actions))),
+  );
 }
 
 export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions): HTMLElement {
@@ -109,23 +141,23 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
       },
     },
   });
-  const tutorials = entries.filter((e) => e.pack.manifest.kind === 'tutorial');
-  const missions = entries.filter((e) => e.pack.manifest.kind === 'mission');
+  const tutorials = entries.filter((entry) => entry.pack.manifest.kind === 'tutorial');
+  const missions = entries.filter((entry) => entry.pack.manifest.kind === 'mission');
   return h(
     'div',
     { class: 'mission-list', 'data-anchor': 'mission-list' },
-    hero(tutorials[0], actions),
+    hero(tutorials[0], missions, actions),
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,
-    section('練習', '操作ガイドつきの短い課題です。何度でもやり直せます。', tutorials, actions),
+    section('練習', null, tutorials, actions),
     section('課題', 'どの課題からでも始められます。', missions, actions),
     entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
     h(
       'section',
       { class: 'progress-tools', 'aria-labelledby': 'progress-tools-title', 'data-anchor': 'progress-export' },
       h('h2', { id: 'progress-tools-title' }, '進捗'),
-      h('p', { class: 'lead' }, '進捗はこのブラウザの中だけに保存されます。別のブラウザへ移すときは書き出したファイルを読み込みます。'),
+      h('p', { class: 'lead' }, 'このブラウザに保存します。別の場所へ移すときは書き出してください。'),
       h(
         'div',
         { class: 'actions' },

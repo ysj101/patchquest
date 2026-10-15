@@ -31,6 +31,7 @@ function samplePack(): MissionPack {
     summary: '契約の検証用',
     learningObjectives: ['所有者の照合を説明できる'],
     estimatedMinutes: 10,
+    vulnerability: { name: 'IDOR', cwe: 'CWE-639', category: { id: 'access-control', label: 'アクセス制御' } },
     story: { incident: '問い合わせ', goal: '守る', protectedAssets: ['非公開メモ'], normalUse: ['本人が読める'] },
     appCompatibility: { appId: 'memo', versions: '^1.0.0' },
     runtime: { adapter: 'browser', capabilities: ['sqlite'] },
@@ -121,6 +122,12 @@ function withManifest(change: (m: MissionManifest) => void): MissionPack {
   return pack;
 }
 
+function vulnOf(manifest: MissionManifest): NonNullable<MissionManifest['vulnerability']> {
+  const vuln = manifest.vulnerability;
+  if (!vuln) throw new Error('検証データに脆弱性がありません');
+  return vuln;
+}
+
 describe('validatePack', () => {
   it('正しいパックはエラーなしで通る', () => {
     expect(validatePack(samplePack(), { app })).toEqual([]);
@@ -141,6 +148,11 @@ describe('validatePack', () => {
     ['ID の重複', (m) => m.probes.push({ ...m.probes[0]! }), /「read-other」が重複しています/],
     ['テストの手順で未定義の利用者', (m) => (m.tests.cases[0]!.steps[0]!.as = 'carol'), /未定義の利用者「carol」/],
     ['チュートリアルにガイドがない', (m) => (m.kind = 'tutorial'), /^guide: /],
+    ['課題に脆弱性の種類がない', (manifest) => (manifest.vulnerability = undefined), /^vulnerability: /],
+    ['CWE が空', (manifest) => (vulnOf(manifest).cwe = ''), /^vulnerability\.cwe: /],
+    ['CWE の形式が不正', (manifest) => (vulnOf(manifest).cwe = '639'), /^vulnerability\.cwe: /],
+    ['分類 ID の形式が不正', (manifest) => (vulnOf(manifest).category.id = 'Access'), /^vulnerability\.category\.id: /],
+    ['OWASP の分類が空', (manifest) => (vulnOf(manifest).owasp = ''), /^vulnerability\.owasp: /],
     [
       'ガイドのやり直しの出来事が未知',
       (manifest) => (manifest.guide = [{ id: 'g', title: 't', body: 'b', anchor: 'verify', until: 'verify-passed', retry: { when: 'oops' as never, text: 'x' } }]),
@@ -149,6 +161,17 @@ describe('validatePack', () => {
   ])('%s場合は拒否する', (_, change, message) => {
     const errors = validatePack(withManifest(change), { app });
     expect(errors.some((e) => message.test(e)), errors.join('\n')).toBe(true);
+  });
+
+  it('チュートリアルは脆弱性の種類がなくても通り、書けば形式を確かめる', () => {
+    const tutorial = withManifest((manifest) => {
+      manifest.kind = 'tutorial';
+      manifest.vulnerability = undefined;
+      manifest.guide = [{ id: 'start', title: '始める', body: '開始前チェックを終える', anchor: 'preflight', until: 'started' }];
+    });
+    expect(validatePack(tutorial, { app })).toEqual([]);
+    tutorial.manifest.vulnerability = { name: 'IDOR', cwe: 'CWE-639', category: { id: 'access-control', label: 'アクセス制御' }, owasp: 'A01:2021' };
+    expect(validatePack(tutorial, { app })).toEqual([]);
   });
 
   it('アプリとの非互換（版・フック契約・機能）を拒否する', () => {
