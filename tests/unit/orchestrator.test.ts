@@ -75,6 +75,20 @@ describe('Orchestrator', () => {
     expect(exercise.prepared).toBe(1);
   });
 
+  it('注入後も対象のテストが通るなら開始を止める', async () => {
+    const pack = withManifest((manifest) => {
+      const target = manifest.tests.cases.find((test) => test.id === 'test.read-other-denied');
+      if (!target) throw new Error('対象テストがありません');
+      target.steps = [
+        { kind: 'request', as: 'bob', request: { method: 'GET', path: '/notes/{{notes.alice.id}}' }, expect: { status: [200, 403, 404] } },
+      ];
+    });
+    const { orchestrator } = setup([pack]);
+    const snapshot = await orchestrator.start('test-pack');
+    expect(snapshot.blocked).toMatchObject({ kind: 'injection-failed', message: '注入後も攻撃阻止のテストが通っています: 他人のノートは読めない' });
+    expect(snapshot.vulnerableVerification).toBeNull();
+  });
+
   it('実行環境にない機能を要求するパックは開始しない', async () => {
     const { orchestrator, exercise } = setup([testPack]);
     const snapshot = await orchestrator.start('test-pack');

@@ -7,3 +7,4 @@ export * from './scenario';
 export * from './validate';
 export * from './version';
 export * from './hash';
+export * from './security-status';

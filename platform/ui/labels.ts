@@ -59,3 +59,6 @@ export const VERDICT_TITLE = {
 } as const;
 
 export const VERDICT_SUCCESS = '攻撃を防ぎ、普段の使い方も通りました。';
+
+/** 構成変更後の検証結果を現在の合格と誤認させないための警告。 */
+export const STALE_VERIFICATION = '対策を変えたため、この結果はいまの構成のものではありません。もう一度検証してください。';

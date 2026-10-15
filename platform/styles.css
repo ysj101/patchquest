@@ -432,3 +432,12 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .stages [data-state='done'] { color: var(--seal); border: 1px solid var(--seal); background: var(--seal-bg); }
 .stages [data-state='current'] { border: 2px solid currentColor; font-weight: bold; }
 .stages .stage-arrived { animation: rise-in 0.3s ease-out; }
+
+/* 実測の比較は件数と言葉を主にし、色は補助に使う。 */
+.security-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.security-row { padding: 12px; border-radius: var(--radius); background: var(--warn-bg); }
+.security-row[data-complete='true'] { background: var(--ok-bg); }
+.security-row[data-phase='before'] { background: var(--fail-bg); }
+.security-count { font-weight: 700; }
+.security-history ol { display: grid; gap: 16px; padding-left: 24px; }
+.security-history time { font-size: 0.8rem; overflow-wrap: anywhere; }

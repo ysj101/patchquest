@@ -76,8 +76,11 @@ export function radioOption(
 export function showDialog(dialog: HTMLDialogElement): void {
   const previous = document.activeElement as HTMLElement | null;
   dialog.addEventListener('close', () => {
+    // close イベントは遅れて届くので、利用者がすでに移したフォーカスを奪わない。
+    const active = document.activeElement;
+    const moved = active !== null && active !== document.body && !dialog.contains(active);
     dialog.remove();
-    previous?.focus();
+    if (!moved) previous?.focus();
   }, { once: true });
   document.body.append(dialog);
   dialog.showModal();

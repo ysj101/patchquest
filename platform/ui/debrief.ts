@@ -1,9 +1,12 @@
 // ヒント・振り返り・理解確認（spec §9, §10）。ヒントは減点しないが利用を記録する。
 // 理解確認は登録済みの選択肢で判定し、自由記述は採点しない
+import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { confirmDialog, radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
-import { HINT_LABEL } from './labels';
+import { securityComparison } from './security-comparison';
+import { securityHistory } from './security-history';
+import { HINT_LABEL, STALE_VERIFICATION } from './labels';
 
 export interface HintActions {
   openHint(level: 1 | 2 | 3): void;
@@ -62,17 +65,42 @@ export class DebriefPanel {
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack } = snapshot;
     const { answers } = attempt;
-    const key = `${attempt.attemptId}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}`;
+    const key = `${attempt.attemptId}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}`;
     if (!this.guard.changed(key)) return;
-    const { debrief, transferCheck, fixtures } = pack.manifest;
+    const { debrief, fixtures } = pack.manifest;
     if (!attempt.badges.defense.achieved) {
       fill(
         this.element,
         h('section', { class: 'tool-section' }, h('h3', {}, '振り返り'), h('p', { class: 'muted' }, '対策を検証して防御に合格すると、原因と対策の振り返り、理解の確認ができます。')),
+        securityHistory(snapshot),
         this.retrySection(fixtures.variants.length),
       );
       return;
     }
+    const form = this.transferForm(snapshot);
+    fill(
+      this.element,
+      attempt.lastVerification && !isCurrent(attempt.lastVerification, attempt.configHash) ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null,
+      attempt.lastVerification ? securityComparison(snapshot.vulnerableVerification, attempt.lastVerification) : null,
+      securityHistory(snapshot),
+      h('section', { class: 'tool-section' }, h('h3', {}, '原因'), h('p', {}, debrief.cause)),
+      h('section', { class: 'tool-section' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
+      h('section', { class: 'tool-section' }, h('h3', {}, '持ち帰ること'), h('ul', {}, ...debrief.takeaways.map((t) => h('li', {}, t)))),
+      h(
+        'section',
+        { class: 'tool-section', 'aria-labelledby': 'transfer-title' },
+        h('h3', { id: 'transfer-title' }, '理解の確認'),
+        h('p', { class: 'note' }, '演習とは違う状況で、原因と有効な対策を選びます。'),
+        attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '理解の検印を押しました')) : null,
+        form,
+      ),
+      this.retrySection(fixtures.variants.length),
+    );
+  }
+
+  private transferForm(snapshot: ExerciseSnapshot): HTMLFormElement {
+    const { transferCheck } = snapshot.pack.manifest;
+    const { answers } = snapshot.attempt;
     const form = h(
       'form',
       { class: 'transfer', on: { submit: (e) => (e.preventDefault(), this.submit(form, snapshot)) } },
@@ -96,21 +124,7 @@ export class DebriefPanel {
       }),
       h('div', { class: 'actions' }, h('button', { type: 'submit', class: 'button button-primary' }, '回答する')),
     );
-    fill(
-      this.element,
-      h('section', { class: 'tool-section' }, h('h3', {}, '原因'), h('p', {}, debrief.cause)),
-      h('section', { class: 'tool-section' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
-      h('section', { class: 'tool-section' }, h('h3', {}, '持ち帰ること'), h('ul', {}, ...debrief.takeaways.map((t) => h('li', {}, t)))),
-      h(
-        'section',
-        { class: 'tool-section', 'aria-labelledby': 'transfer-title' },
-        h('h3', { id: 'transfer-title' }, '理解の確認'),
-        h('p', { class: 'note' }, '演習とは違う状況で、原因と有効な対策を選びます。'),
-        attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '理解の検印を押しました')) : null,
-        form,
-      ),
-      this.retrySection(fixtures.variants.length),
-    );
+    return form;
   }
 
   private submit(form: HTMLFormElement, snapshot: ExerciseSnapshot): void {
