@@ -1,6 +1,6 @@
 // ミッション一覧（spec §10）。何をする場所かの説明と練習への入口、学習目標・目安時間・達成印・開始と、進捗の書き出し・読み込み・削除
 import type { AttemptRecord, MissionPack } from '../contract';
-import { sealStates, seals } from './components';
+import { sealStates, seals, settingsButton } from './components';
 import { h } from './dom';
 
 export interface MissionEntry {
@@ -14,6 +14,7 @@ export interface MissionEntry {
 }
 
 export interface MissionListActions {
+  openSettings(): void;
   start(packId: string): void;
   resume(record: AttemptRecord): void;
   exportProgress(): void;
@@ -56,7 +57,7 @@ function hero(tutorial: MissionEntry | undefined, actions: MissionListActions): 
   return h(
     'section',
     { class: 'hero', 'aria-labelledby': 'hero-title' },
-    h('h1', { id: 'hero-title', tabIndex: -1 }, 'わざと壊したアプリで、こわして、なおして、たしかめる。'),
+    h('header', { class: 'actions' }, h('h1', { id: 'hero-title', tabIndex: -1 }, 'わざと壊したアプリで、こわして、なおして、たしかめる。'), settingsButton(() => actions.openSettings())),
     h(
       'p',
       { class: 'hero-lead' },

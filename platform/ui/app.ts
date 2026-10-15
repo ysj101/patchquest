@@ -5,6 +5,8 @@ import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
+import { browserEffects } from './browser-effects';
+import { openEffectSettings } from './effect-settings-panel';
 import { confirmDialog } from './components';
 import { announce, fill, h } from './dom';
 import { DebriefPanel, HintsPanel } from './debrief';
@@ -19,6 +21,9 @@ type Screen = 'list' | 'preflight' | 'exercise';
 const appVersionOf = (appId: string) => catalog.apps.find((a) => a.descriptor.id === appId)?.descriptor.version ?? '';
 
 export async function startApp(root: HTMLElement): Promise<void> {
+  const effectWarning = h('p', { class: 'banner banner-warn', role: 'status' });
+  const effects = browserEffects(document.documentElement, effectWarning);
+  const openSettings = () => openEffectSettings(effects);
   const store = await ProgressStore.open();
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const listView = h('section', { class: 'list-view' });
@@ -56,6 +61,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const exerciseView = new ExerciseView(
     {
       back: () => void showList(),
+      openSettings,
       switchUser: (actor) => {
         guide.reach('user-switched');
         void showViewer(actor);
@@ -91,6 +97,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       h('p', { class: 'brand' }, h('span', { class: 'brand-mark', 'aria-hidden': true }, '◆'), 'PatchQuest'),
       h('p', { class: 'brand-tagline' }, 'セキュリティの直し方を、壊れても困らない場所で練習する'),
     ),
+    effectWarning,
     main,
     live,
   );
@@ -143,6 +150,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     fill(
       listView,
       missionList(await entries(), store.unavailableReason, {
+        openSettings,
         start: (packId) => void begin(() => orchestrator.start(packId)),
         resume: (record) => void begin(() => orchestrator.start(record.missionId, { resume: record })),
         exportProgress: () => void exportProgress(),

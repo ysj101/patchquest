@@ -224,8 +224,15 @@ main > section > * + * { margin-top: 16px; }
   .ticket { grid-template-columns: 1fr; }
 }
 
+/* 動きの抑制。browser-effects が設定と OS の設定から data-motion を決める。
+   属性が付く前（スクリプト未実行）でも OS の設定だけは CSS で尊重する */
+[data-motion='off'], [data-motion='off'] *, [data-motion='off'] *::before, [data-motion='off'] *::after {
+  animation: none !important; transition: none !important;
+}
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
+  :root:not([data-motion='on']), :root:not([data-motion='on']) *, :root:not([data-motion='on']) *::before, :root:not([data-motion='on']) *::after {
+    animation: none !important; transition: none !important;
+  }
 }
 
 /* 画面の切り替えで見出しへ移したフォーマスは枠を出さない（キーボードでの移動先はボタンなどに枠が出る） */
@@ -377,10 +384,11 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 /* はみ出しを切り取る入れ物（.tools・.app-pane）の中にあるものは、点線を内側に描く */
 :is([role='tab'], [role='tabpanel'], .preview-slot)[data-guide-target] { outline-offset: -6px; animation-name: guide-pulse-inset; }
 @keyframes guide-pulse-inset { 50% { outline-offset: -9px; } }
-@media (prefers-reduced-motion: reduce) {
-  [data-guide-target], .seal[data-state='done'] .seal-stamp { animation: none; }
-}
 @media (max-width: 720px) {
   .guide-coach { grid-template-columns: auto minmax(0, 1fr); }
   .guide-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* 演出設定の選択肢はラベル全体を操作できる。 */
+.effect-settings fieldset { padding: 10px; }
+.effect-option { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
