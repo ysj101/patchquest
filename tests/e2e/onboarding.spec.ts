@@ -1,7 +1,7 @@
 // オンボーディング（練習用パック）。一覧の「まずは練習」から、操作ガイドに沿って
 // こわす → なおす → たしかめる → ふりかえる を最後まで進められる
 import type { Page } from '@playwright/test';
-import { expect, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
+import { dismissStoryIntro, expect, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
 
 const guide = (page: Page) => page.getByRole('complementary', { name: '操作ガイド' });
 const target = (page: Page) => page.locator('[data-guide-target]');
@@ -22,6 +22,8 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expectStep(page, '1 / 5', '準備ができたら始めよう');
   await expect(target(page)).toHaveAttribute('data-anchor', 'preflight');
   await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  // 事件の提示はガイドの started より前。閉じると「こわしてみよう」に進む
+  await dismissStoryIntro(page);
 
   // 案内先が閉じたタブの中にあるときは、そのタブを指す。開くと中の案内先を指す
   await expectStep(page, '2 / 5', 'こわしてみよう');

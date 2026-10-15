@@ -1,11 +1,13 @@
 // 演習画面（spec §10）。演習票の見出し（課題・状態・達成印）、注入した架空サービスであることの表示、
-// 動く教材アプリと利用者の切り替え、調査・対策・振り返りの道具を並べる
-import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
+// 動く教材アプリと利用者の切り替え、調査・対策・振り返りの道具を並べる。
+// 事件の提示は同じ画面の状態で、この要素と教材アプリの iframe は作り直さない
+import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest, type StoryDef } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { radioOption, sealStates, seals, tabs, type TabSpec } from './components';
+import { injectionNotice, radioOption, sealStates, seals, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
 import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
+import { StoryIntro } from './story-intro';
 
 export interface ExerciseActions {
   back(): void;
@@ -15,6 +17,8 @@ export interface ExerciseActions {
   reloadView(): void;
   /** 現在の利用者として、ブラウザ内の呼び出しを送る。失敗したら理由を返す */
   send(request: AppRequest): Promise<string | null>;
+  /** 状況タブから、事件の提示を読み直す */
+  reread(): void;
 }
 
 /** 利用者の表示名 */
@@ -27,6 +31,7 @@ export class ExerciseView {
   /** 教材アプリのプレビュー（隔離 iframe）を置く場所。iframe を作り直さないよう、この要素は使い回す */
   readonly previewSlot = h('div', { class: 'preview-slot', 'data-anchor': 'app-preview' });
   readonly investigation: InvestigationPanel;
+  private readonly intro = new StoryIntro();
   private readonly users = h('fieldset', { class: 'user-switcher', 'data-anchor': 'user-switcher' });
   private readonly storySlot = h('div', {});
   private readonly title = h('h1', { id: 'exercise-title', tabIndex: -1 });
@@ -57,12 +62,7 @@ export class ExerciseView {
         this.sealSlot,
         h('div', { class: 'ticket-actions' }, h('button', { type: 'button', class: 'button button-quiet', on: { click: actions.back } }, '課題一覧へ戻る')),
       ),
-      h(
-        'p',
-        { class: 'banner banner-notice', role: 'note' },
-        h('strong', {}, '学習用に脆弱性を注入した架空のサービスです。'),
-        ' 実在のサービスの診断結果ではありません。データはすべて架空で、このブラウザの中だけで動いています。',
-      ),
+      injectionNotice(),
       h(
         'div',
         { class: 'workbench' },
@@ -74,7 +74,27 @@ export class ExerciseView {
         ),
         h('div', { class: 'tools' }, this.toolTabs.element),
       ),
+      this.intro.element,
     );
+  }
+
+  get isIntroOpen(): boolean {
+    return this.intro.isOpen;
+  }
+
+  /** 事件の提示を開く。閉じたら onDismiss。プレビューの入れ物はそのまま */
+  showIntro(story: StoryDef, onDismiss: () => void): void {
+    this.element.dataset.intro = 'open';
+    this.intro.show(story, () => {
+      this.element.dataset.intro = 'closed';
+      onDismiss();
+    });
+  }
+
+  /** 2 回目以降は導入を出さない。状況タブから読み直せる */
+  skipIntro(): void {
+    this.element.dataset.intro = 'closed';
+    this.intro.closeSilently();
   }
 
   focus(): void {
@@ -93,7 +113,7 @@ export class ExerciseView {
         ),
       ),
     );
-    fill(this.storySlot, storyPanel(snapshot.pack.manifest.story), this.storyFooter);
+    fill(this.storySlot, storyPanel(snapshot.pack.manifest.story, () => this.actions.reread()), this.storyFooter);
     this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describeEvent);
     this.investigation.setViewer(actorLabel(viewer));
     this.toolTabs.select('story');

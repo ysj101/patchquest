@@ -213,6 +213,18 @@ main > section > * + * { margin-top: 16px; }
 .dialog { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 24px; max-width: 480px; }
 .dialog::backdrop { background: rgb(27 36 48 / 0.45); }
 .dialog > * + * { margin-top: 12px; }
+/* 事件の提示。30 秒で読める 1 画面。色だけでなく見出しと注意書きで意味を伝える */
+.story-intro {
+  width: min(40rem, calc(100% - 32px));
+  max-width: 40rem;
+  padding: 28px 32px;
+  border: 3px solid var(--seal);
+  word-break: auto-phrase;
+}
+.story-intro-mark { font-size: 1.5rem; line-height: 1; }
+.story-intro-alert { color: var(--seal); letter-spacing: 0.14em; font-size: 1rem; }
+.story-intro .incident { font-size: 1.15rem; }
+.story-intro-request { font-size: 1.05rem; font-weight: 700; }
 
 /* ガイドが画面上部を占めていないとき、教材アプリはスクロールしても見える位置に留める */
 @media (min-width: 961px) and (min-height: 720px) {

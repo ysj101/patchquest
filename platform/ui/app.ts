@@ -62,6 +62,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
       },
       reloadView: () => void showViewer(viewer),
       send: (request) => send(request),
+      reread: () => {
+        const story = orchestrator.snapshot?.pack.manifest.story;
+        if (story) exerciseView.showIntro(story, () => exerciseView.focus());
+      },
     },
     {
       tabs: [
@@ -97,17 +101,22 @@ export async function startApp(root: HTMLElement): Promise<void> {
   fill(main, guide.element, listView, preflightView.element, exerciseView.element);
 
   let screen: Screen = 'list';
+  /** 続きから始めたときは、事件の提示を既定で出さない */
+  let skipIntroForResume = false;
+  /** 導入を読んでいるあいだに画面の準備が終わったとき、閉じたあとで知らせる */
+  let viewerAnnouncePending = false;
   function show(next: Screen): void {
     screen = next;
     const snapshot = orchestrator.snapshot;
     if (snapshot && next === 'preflight') preflightView.update(snapshot);
     if (snapshot && next === 'exercise') updateExercise(snapshot);
+    // 前回の導入の開閉が残っていると、次の課題で「閉じた」と誤って判断する
+    if (next !== 'exercise') delete exerciseView.element.dataset.intro;
     listView.hidden = next !== 'list';
     preflightView.element.hidden = next !== 'preflight';
     exerciseView.element.hidden = next !== 'exercise';
     guide.refresh();
     if (next === 'preflight') preflightView.focus();
-    if (next === 'exercise') exerciseView.focus();
   }
 
 
@@ -144,7 +153,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       listView,
       missionList(await entries(), store.unavailableReason, {
         start: (packId) => void begin(() => orchestrator.start(packId)),
-        resume: (record) => void begin(() => orchestrator.start(record.missionId, { resume: record })),
+        resume: (record) => void begin(() => orchestrator.start(record.missionId, { resume: record }), true),
         exportProgress: () => void exportProgress(),
         importProgress: (file) => void importProgress(file),
         clearProgress: () => void clearProgress(),
@@ -155,7 +164,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     listView.querySelector<HTMLElement>('h1')?.focus();
   }
 
-  async function begin(run: () => Promise<ExerciseSnapshot>): Promise<void> {
+  async function begin(run: () => Promise<ExerciseSnapshot>, resumed = false): Promise<void> {
+    skipIntroForResume = resumed;
     show('preflight');
     announce(live, '開始前チェックを始めました');
     const snapshot = await run();
@@ -216,7 +226,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     exerciseView.setViewer(actor);
     try {
       await exercise.showView(actor, app.descriptor.entryRoute, orchestrator.newRunId());
-      announce(live, `${exerciseView.label(actor)} として表示しています`);
+      if (exerciseView.isIntroOpen) viewerAnnouncePending = true;
+      else announce(live, `${exerciseView.label(actor)} として表示しています`);
     } catch (e) {
       announce(live, `画面を表示できませんでした：${e instanceof Error ? e.message : String(e)}`);
     }
@@ -228,11 +239,35 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (!snapshot || !app) return;
     viewer = app.descriptor.users[0] ?? ANONYMOUS;
     sessions.clear();
+    viewerAnnouncePending = false;
     exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null);
     repair.setup(snapshot);
+    // 導入は演習画面の状態。操作ガイドの started は、導入を閉じたとき（出さないときは直ちに）に達する。
+    // 練習課題の最初のステップは開始前チェックに留まり、導入のあいだはモーダルの下にある
+    const firstRun = await opensStoryIntro(snapshot);
     show('exercise');
-    guide.reach('started');
+    if (firstRun) exerciseView.showIntro(snapshot.pack.manifest.story, () => enterExercise());
+    else exerciseView.skipIntro();
+    if (!firstRun) enterExercise();
     await showViewer(viewer);
+  }
+
+  /** 同じ課題を初めて演習画面まで進めたときだけ、事件の提示を出す */
+  async function opensStoryIntro(snapshot: ExerciseSnapshot): Promise<boolean> {
+    if (skipIntroForResume) return false;
+    const records = await store.list();
+    const missionId = snapshot.pack.manifest.id;
+    const attemptId = snapshot.attempt.attemptId;
+    return !records.some((record) => record.missionId === missionId && record.attemptId !== attemptId);
+  }
+
+  /** 導入を閉じたか、初めから出さなかったとき。ガイドはここから演習の手順に進む */
+  function enterExercise(): void {
+    guide.reach('started');
+    exerciseView.focus();
+    if (!viewerAnnouncePending) return;
+    viewerAnnouncePending = false;
+    announce(live, `${exerciseView.label(viewer)} として表示しています`);
   }
 
   /** 利用者ごとのセッション。演習を始めるたびに発行し直す */

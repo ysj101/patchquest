@@ -29,11 +29,24 @@ export const verifyResults = (page: Page) => page.locator('[data-anchor="results
 /** 演習票の達成印 */
 export const ticketSeals = (page: Page) => page.locator('.ticket').getByRole('list', { name: '達成印' });
 
-/** 課題一覧から課題を始め、開始前チェックを終えて演習画面を開く */
+/**
+ * 事件の提示が出ていれば閉じる。2 回目以降で出ていなければ、開閉が決まるまで待つ。
+ * 導入は演習画面の状態なので、閉じたあとも同じ画面のまま操作できる
+ */
+export async function dismissStoryIntro(page: Page): Promise<void> {
+  const exercise = page.locator('.exercise');
+  await expect(exercise).toHaveAttribute('data-intro', /^(open|closed)$/);
+  if ((await exercise.getAttribute('data-intro')) !== 'open') return;
+  await page.getByRole('button', { name: 'MISSION START' }).click();
+  await expect(exercise).toHaveAttribute('data-intro', 'closed');
+}
+
+/** 課題一覧から課題を始め、開始前チェックと事件の提示を終えて演習画面を開く */
 export async function startMission(page: Page, missionId: string): Promise<void> {
   await page.goto('/');
   await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name: 'この課題を始める' }).click();
   await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await dismissStoryIntro(page);
 }
 
 /** 対策パネルで対策を選んで適用し、検証を始める */

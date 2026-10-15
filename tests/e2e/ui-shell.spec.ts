@@ -1,6 +1,6 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { dismissStoryIntro, expect, test } from './fixtures';
 
 /** Tab キーだけで、指定した名前のボタンまでフォーカスを移す */
 async function tabTo(page: Page, name: string | RegExp, max = 40): Promise<void> {
@@ -32,6 +32,11 @@ test('キーボードだけで課題一覧から開始前チェックを経て�
   await expect(page.locator('.check .status-passed')).toHaveCount(4);
   await page.keyboard.press('Enter');
 
+  const intro = page.getByRole('dialog', { name: 'SECURITY ALERT' });
+  await expect(intro.getByRole('button', { name: 'MISSION START' })).toBeFocused();
+  await expect(intro).toContainText('学習用に脆弱性を注入した架空のサービスです。');
+  await page.keyboard.press('Escape');
+
   await expect(page.locator('#exercise-title')).toBeFocused();
   await expect(page.getByText('学習用に脆弱性を注入した架空のサービスです。', { exact: true })).toBeVisible();
   await expect(page.getByRole('list', { name: '達成印' })).toContainText('再現：未達成');
@@ -52,12 +57,15 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
 test('進捗を保存し、続きから始め、書き出し・読み込み・削除ができる', async ({ page }) => {
   await card(page, 'test-pack').getByRole('button', { name: 'この課題を始める' }).click();
   await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await dismissStoryIntro(page);
   const ticket = await page.locator('.ticket-id').textContent();
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
 
-  // 続きから始めると、同じ演習票（同じ seed）で環境を作り直す
+  // 続きから始めると、同じ演習票（同じ seed）で環境を作り直す。事件の提示は出さない
   await card(page, 'test-pack').getByRole('button', { name: '続きから始める' }).click();
   await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
+  await expect(page.locator('.exercise')).toHaveAttribute('data-intro', 'closed');
+  await expect(page.getByRole('dialog', { name: 'SECURITY ALERT' })).toBeHidden();
   await expect(page.locator('.ticket-id')).toHaveText(ticket!);
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
 

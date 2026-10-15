@@ -71,6 +71,16 @@ export function radioOption(
   );
 }
 
+/** 演習用に問題を注入したことの明示（spec §4 手順 5）。導入と演習画面の両方に置く */
+export function injectionNotice(): HTMLParagraphElement {
+  return h(
+    'p',
+    { class: 'banner banner-notice', role: 'note' },
+    h('strong', {}, '学習用に脆弱性を注入した架空のサービスです。'),
+    ' 実在のサービスの診断結果ではありません。データはすべて架空で、このブラウザの中だけで動いています。',
+  );
+}
+
 /** 確認ダイアログ。Escape で閉じ、閉じたらフォーカスを元へ戻す */
 export function confirmDialog(options: { title: string; body: string; confirm: string; cancel?: string; danger?: boolean }): Promise<boolean> {
   return new Promise((resolve) => {

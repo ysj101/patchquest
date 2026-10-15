@@ -1,6 +1,6 @@
 // 調査パネル（spec §10）。定型の操作とリクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, type ActionDef, type AppRequest, type Exchange, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent } from '../contract';
+import { HTTP_METHODS, type ActionDef, type AppRequest, type Exchange, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef } from '../contract';
 import { expandRequest, type Scope } from '../evaluator/scenario';
 import { status } from './components';
 import { fill, h } from './dom';
@@ -178,12 +178,18 @@ export class InvestigationPanel {
   }
 }
 
-/** 状況パネル：問い合わせ・目標・守るもの・普段の使い方 */
-export function storyPanel(story: { incident: string; goal: string; protectedAssets: string[]; normalUse: string[] }): HTMLElement {
+/** 状況パネル：問い合わせ・目標・守るもの・普段の使い方。事件の提示はここから読み直せる */
+export function storyPanel(story: StoryDef, reread: () => void): HTMLElement {
   return h(
     'div',
     { class: 'story', 'data-anchor': 'story' },
-    h('section', { class: 'tool-section' }, h('h3', {}, '問い合わせ'), h('p', { class: 'incident' }, story.incident)),
+    h(
+      'section',
+      { class: 'tool-section' },
+      h('h3', {}, '問い合わせ'),
+      h('p', { class: 'incident' }, story.incident),
+      h('p', {}, h('button', { type: 'button', class: 'button button-quiet', on: { click: reread } }, '事件の提示を読み直す')),
+    ),
     h('section', { class: 'tool-section' }, h('h3', {}, '目標'), h('p', {}, story.goal)),
     h('section', { class: 'tool-section' }, h('h3', {}, '守るもの'), h('ul', {}, ...story.protectedAssets.map((a) => h('li', {}, a)))),
     h('section', { class: 'tool-section' }, h('h3', {}, '壊してはいけない普段の使い方'), h('ul', {}, ...story.normalUse.map((a) => h('li', {}, a)))),
