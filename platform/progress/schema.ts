@@ -14,18 +14,26 @@ import {
 } from '../contract';
 
 export const PROGRESS_FORMAT = 'patchquest-progress';
-export const PROGRESS_SCHEMA_VERSION = 1;
+export const PROGRESS_SCHEMA_VERSION = 2;
+// 読み込める最も古い版。spec §13 に従い、版を上げても旧版の読み込みを維持する。
+const OLDEST_READABLE_SCHEMA_VERSION = 1;
+// 演習をまたぐ記録の入れ物 profile が加わった版。
+const PROFILE_SINCE_SCHEMA_VERSION = 2;
 /** 進捗 JSON の上限（初期案 1MB、spec §14） */
 export const MAX_PROGRESS_BYTES = 1024 * 1024;
 const MAX_ATTEMPTS = 1000;
 const MAX_TEXT = 4096;
 const STATES = Object.keys(TRANSITIONS) as ExerciseState[];
 
+/** 演習をまたぐ記録。既知の項目はまだなく、#67・#71・#73 でここに追加する。 */
+export type ProgressProfile = Record<string, never>;
+
 export interface ProgressFile {
   format: typeof PROGRESS_FORMAT;
   schemaVersion: typeof PROGRESS_SCHEMA_VERSION;
   exportedAt: string;
   attempts: AttemptRecord[];
+  profile: ProgressProfile;
 }
 
 export class ProgressFormatError extends Error {
@@ -129,9 +137,13 @@ export function parseProgress(text: string): ProgressFile {
   const c = new Checker();
   const root = c.obj('進捗', value);
   if (root.format !== PROGRESS_FORMAT) throw new ProgressFormatError('format: PatchQuest の進捗ファイルではありません');
-  if (root.schemaVersion !== PROGRESS_SCHEMA_VERSION) {
-    throw new ProgressFormatError(`schemaVersion: 対応していない版です（対応: ${PROGRESS_SCHEMA_VERSION}）`);
+  const schemaVersion = root.schemaVersion;
+  if (typeof schemaVersion !== 'number' || !Number.isInteger(schemaVersion)
+    || schemaVersion < OLDEST_READABLE_SCHEMA_VERSION || schemaVersion > PROGRESS_SCHEMA_VERSION) {
+    throw new ProgressFormatError(`schemaVersion: 対応していない版です（対応: ${OLDEST_READABLE_SCHEMA_VERSION}〜${PROGRESS_SCHEMA_VERSION}）`);
   }
+  // v1 には profile が無い。v2 では入れ物がオブジェクトであることだけ確かめ、既知の項目はまだ無いので中身は捨てる
+  if (schemaVersion >= PROFILE_SINCE_SCHEMA_VERSION) c.obj('profile', root.profile);
   const attempts = c.list('attempts', root.attempts);
   if (attempts.length > MAX_ATTEMPTS) c.fail('attempts', `${MAX_ATTEMPTS} 件以内にしてください`);
   const file: ProgressFile = {
@@ -139,6 +151,7 @@ export function parseProgress(text: string): ProgressFile {
     schemaVersion: PROGRESS_SCHEMA_VERSION,
     exportedAt: c.str('exportedAt', root.exportedAt, MAX_TEXT),
     attempts: attempts.slice(0, MAX_ATTEMPTS).map((a, i) => attempt(c, `attempts[${i}]`, a)),
+    profile: {},
   };
   if (c.errors.length) throw new ProgressFormatError(c.errors.slice(0, 5).join('\n'));
   return file;
