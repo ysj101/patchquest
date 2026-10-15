@@ -160,6 +160,7 @@ export interface DebriefDef {
 export const GUIDE_ANCHORS = [
   'mission-list',
   'preflight',
+  'briefing',
   'story',
   'user-switcher',
   'app-preview',
@@ -179,6 +180,7 @@ export type GuideAnchor = (typeof GUIDE_ANCHORS)[number];
 /** ガイドの各ステップを完了とみなす出来事 */
 export const GUIDE_MILESTONES = [
   'started',
+  'briefed',
   'user-switched',
   'request-sent',
   'reproduced',

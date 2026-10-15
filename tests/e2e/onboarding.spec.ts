@@ -19,13 +19,20 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(guide(page)).toBeHidden();
   await page.getByRole('button', { name: 'まずは練習（3 分）' }).click();
 
-  await expectStep(page, '1 / 5', '準備ができたら始めよう');
+  await expectStep(page, '1 / 6', '準備ができたら始めよう');
   await expect(target(page)).toHaveAttribute('data-anchor', 'preflight');
   await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
 
-  // 案内先が閉じたタブの中にあるときは、そのタブを指す。開くと中の案内先を指す
-  await expectStep(page, '2 / 5', 'こわしてみよう');
+  await expectStep(page, '2 / 6', '何が起きたか読んでみよう');
   await expect(guide(page)).toContainText('準備 OK！');
+  await expect(target(page)).toHaveAttribute('data-anchor', 'briefing');
+  await guide(page).getByRole('button', { name: '場所を表示' }).click();
+  await expect(page.locator('[data-anchor="briefing"]')).toBeFocused();
+  await page.getByRole('button', { name: 'ミッション開始', exact: true }).click();
+
+  // 案内先が閉じたタブの中にあるときは、そのタブを指す。開くと中の案内先を指す
+  await expectStep(page, '3 / 6', 'こわしてみよう');
+  await expect(guide(page)).toContainText('今回の依頼を確認できました！');
   await expect(target(page)).toHaveAttribute('role', 'tab');
   await expect(target(page)).toHaveText('調査');
   await page.getByRole('tab', { name: '調査' }).click();
@@ -34,7 +41,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(seals(page)).toContainText('再現：達成');
 
   // 「場所を表示」は、案内先のタブを開いてフォーカスを移す
-  await expectStep(page, '3 / 5', 'なおし方を選ぼう');
+  await expectStep(page, '4 / 6', 'なおし方を選ぼう');
   await expect(guide(page)).toContainText('保存できてしまいました');
   await expect(target(page)).toHaveText('対策');
   await guide(page).getByRole('button', { name: '場所を表示' }).click();
@@ -43,13 +50,13 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
 
   // 不十分な対策では「おしい！」と次の手を示し、正しい対策で次へ進む
   await verifyWith(page, '入力欄で 41 文字目を打てなくする');
-  await expectStep(page, '4 / 5', 'たしかめよう');
+  await expectStep(page, '5 / 6', 'たしかめよう');
   await expect(guide(page).locator('.guide-retry')).toContainText('おしい！', { timeout: 15_000 });
   await expect(guide(page).locator('.guide-praise')).toHaveCount(0);
   await verifyWith(page, '保存するときに文字数を確かめる');
   await expect(seals(page)).toContainText('防御：達成', { timeout: 15_000 });
 
-  await expectStep(page, '5 / 5', 'ふりかえろう');
+  await expectStep(page, '6 / 6', 'ふりかえろう');
   await expect(guide(page)).toContainText('合格！ 攻撃を防げました');
   await page.getByRole('tab', { name: '振り返り' }).click();
   await page.getByRole('radio', { name: 'コメントを保存するときに文字数を確かめる' }).check();
@@ -83,9 +90,9 @@ test('「入力欄で 41 文字目を打てなくする」を適用すると、�
 
 test('ガイドのステップは飛ばせる。練習用でない課題を始めるとガイドは閉じる', async ({ page }) => {
   await startMission(page, 'onboarding');
-  await expectStep(page, '2 / 5', 'こわしてみよう');
+  await expectStep(page, '3 / 6', 'こわしてみよう');
   await guide(page).getByRole('button', { name: 'このステップを飛ばす' }).click();
-  await expectStep(page, '3 / 5', 'なおし方を選ぼう');
+  await expectStep(page, '4 / 6', 'なおし方を選ぼう');
   await expect(guide(page).locator('.guide-praise')).toHaveCount(0);
   await expect(guide(page).getByRole('list', { name: '練習の手順' })).toContainText('こわしてみよう：飛ばした');
 
