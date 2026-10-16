@@ -26,7 +26,7 @@ export const idorPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'idor',
-    version: '1.4.0',
+    version: '1.5.0',
     kind: 'mission',
     title: '非公開メモを守る',
     summary:
@@ -38,6 +38,7 @@ export const idorPack: MissionPack = {
     ],
     estimatedMinutes: 15,
     vulnerability: { name: 'IDOR', fullName: '安全でない直接オブジェクト参照', cwe: 'CWE-639', category: 'authorization' },
+    difficulty: 'beginner',
     story: {
       workedExample: WORKED_EXAMPLE,
       requester: {
