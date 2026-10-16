@@ -26,7 +26,7 @@ export const idorPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'idor',
-    version: '1.1.0',
+    version: '1.2.0',
     kind: 'mission',
     title: '非公開メモを守る',
     summary:
@@ -37,6 +37,7 @@ export const idorPack: MissionPack = {
       '対策の後も、所有者がメモを作成・閲覧・更新・削除できることを確かめられる',
     ],
     estimatedMinutes: 15,
+    vulnerability: { name: 'IDOR', fullName: '安全でない直接オブジェクト参照', cwe: 'CWE-639', category: 'authorization' },
     story: {
       requester: {
         name: 'bob さん', role: 'メモアプリの利用者',

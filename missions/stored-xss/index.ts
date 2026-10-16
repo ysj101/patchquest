@@ -16,7 +16,7 @@ export const storedXssPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'stored-xss',
-    version: '1.1.0',
+    version: '1.2.0',
     kind: 'mission',
     title: 'コメントからのスクリプト実行を防ぐ',
     summary:
@@ -27,6 +27,7 @@ export const storedXssPack: MissionPack = {
       '対策のあと、保存済みの攻撃コメントが動かず、日本語・記号・角括弧のコメントは文字のまま読めることを確かめられる',
     ],
     estimatedMinutes: 15,
+    vulnerability: { name: '保存型 XSS', fullName: '格納型クロスサイトスクリプティング', cwe: 'CWE-79', category: 'output-encoding' },
     story: {
       requester: {
         name: 'carol さん', role: '共有ページの利用者',
