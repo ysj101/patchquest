@@ -1,5 +1,5 @@
-// 演習画面（spec §10）。演習票の見出し（課題・状態・達成印）、注入した架空サービスであることの表示、
-// 動く教材アプリと利用者の切り替え、調査・対策・振り返りの道具を並べる
+// 演習画面（spec §10）。調査デスクの形で、上に演習票（課題・状態・達成印・架空サービスの表示）、
+// 左に依頼とステージ、中央に動く教材アプリと観測ログ、右に状況・調査・対策・振り返りの道具、下に演習票番号を並べる
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
 import { sealStates } from '../progress/stages';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
@@ -39,6 +39,7 @@ export class ExerciseView {
   private readonly storySlot = h('div', {});
   private readonly title = h('h1', { id: 'exercise-title', tabIndex: -1 });
   private readonly ticket = h('p', { class: 'ticket-id' });
+  private readonly request = h('div', { class: 'desk-request' });
   private readonly state = h('p', { class: 'state-stamp' });
   private readonly stages: StageProgress;
   readonly xp: XpBadge;
@@ -79,20 +80,21 @@ export class ExerciseView {
       h(
         'header',
         { class: 'ticket' },
-        h('div', { class: 'ticket-main' }, this.ticket, this.title, this.state),
+        h('button', { type: 'button', class: 'button button-quiet ticket-back', on: { click: actions.back } }, '課題一覧へ戻る'),
+        h('div', { class: 'ticket-main' }, this.title, this.state),
+        h('p', { class: 'fictional-label', role: 'note' }, h('strong', {}, '学習用に脆弱性を注入した架空のサービスです。')),
         this.sealSlot,
-        h('div', { class: 'ticket-actions' }, h('button', { type: 'button', class: 'button button-quiet', on: { click: actions.back } }, '課題一覧へ戻る'), settingsButton(() => actions.openSettings())),
-        this.stages.element,
-      ),
-      h(
-        'p',
-        { class: 'banner banner-notice', role: 'note' },
-        h('strong', {}, '学習用に脆弱性を注入した架空のサービスです。'),
-        ' 実在のサービスの診断結果ではありません。データはすべて架空で、このブラウザの中だけで動いています。',
+        settingsButton(() => actions.openSettings()),
       ),
       extras.callout,
       this.briefing,
       this.workbench,
+      h(
+        'footer',
+        { class: 'desk-status' },
+        this.ticket,
+        h('p', {}, '実在のサービスの診断結果ではありません。データはすべて架空で、このブラウザの中だけで動いています。'),
+      ),
     );
   }
 
@@ -117,6 +119,7 @@ export class ExerciseView {
     this.xp.reset();
     this.achievements.reset();
     const story = snapshot.pack.manifest.story;
+    fill(this.request, h('h2', {}, '依頼'), h('p', {}, story.incident));
     fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
     fill(
       this.briefing,
@@ -137,9 +140,11 @@ export class ExerciseView {
   private buildWorkbench(): void {
     fill(
       this.workbench,
+      h('aside', { class: 'desk-brief', 'aria-label': '依頼とステージ' }, this.request, this.stages.element),
       h('div', { class: 'app-pane' },
         h('div', { class: 'preview-bar' }, this.users, h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.actions.reloadView() } }, '最初の画面を開き直す')),
         this.previewSlot,
+        this.investigation.logSection,
       ),
       h('div', { class: 'tools' }, this.toolTabs.element),
     );
@@ -176,6 +181,6 @@ export class ExerciseView {
     this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}${attempt.challenge ? '・別条件で挑戦中' : ''}`;
     this.state.textContent = STATE_LABEL[attempt.state];
     this.state.dataset.state = attempt.state;
-    fill(this.sealSlot, seals(sealStates(attempt, defenseCurrent)));
+    fill(this.sealSlot, seals(sealStates(attempt, defenseCurrent), 'small'));
   }
 }

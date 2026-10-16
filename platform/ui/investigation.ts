@@ -47,6 +47,8 @@ function fieldControl(field: FieldDef, id: string): HTMLInputElement | HTMLSelec
 
 export class InvestigationPanel {
   readonly element: HTMLElement;
+  /** 観測ログ。道具のタブではなく、教材アプリの下に置く */
+  readonly logSection: HTMLElement;
   private readonly log = h('ol', { class: 'log', reversed: true });
   private readonly method = h('select', { 'aria-label': 'メソッド' }, ...HTTP_METHODS.map((m) => h('option', { value: m }, m)));
   private readonly path = h('input', { type: 'text', class: 'mono', 'aria-label': 'パス', spellcheck: false, value: '/' });
@@ -67,19 +69,19 @@ export class InvestigationPanel {
         'section',
         { class: 'tool-section', 'aria-labelledby': 'editor-title', 'data-anchor': 'request-editor' },
         h('h3', { id: 'editor-title' }, 'リクエストを編集して送る'),
-        h('p', { class: 'note' }, '送信者：', this.viewer, '（画面の上で切り替えた利用者として送ります）'),
+        h('p', { class: 'note' }, '送信者：', this.viewer, '（画面の上で切り替えた利用者として送ります）。ブラウザの中の教材アプリへの呼び出しで、実際のネットワーク通信ではありません。'),
         h('div', { class: 'request-line' }, this.method, this.path),
         this.body,
         h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary', on: { click: () => void this.sendEditor() } }, 'このリクエストを送る')),
         this.editorMessage,
       ),
-      h(
-        'section',
-        { class: 'tool-section', 'aria-labelledby': 'log-title', 'data-anchor': 'investigation-log' },
-        h('h3', { id: 'log-title' }, '観測ログ'),
-        h('p', { class: 'note' }, 'ブラウザの中で教材アプリへ送った呼び出しと、計測した事象の記録です。実際のネットワーク通信ではありません。'),
-        this.log,
-      ),
+    );
+    this.logSection = h(
+      'section',
+      { class: 'log-section', 'aria-labelledby': 'log-title', 'data-anchor': 'investigation-log' },
+      h('h3', { id: 'log-title' }, '観測ログ'),
+      h('p', { class: 'note' }, 'ブラウザの中で教材アプリへ送った呼び出しと、計測した事象の記録です。実際のネットワーク通信ではありません。'),
+      this.log,
     );
   }
 

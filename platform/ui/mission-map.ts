@@ -1,11 +1,11 @@
-// ミッションマップ（spec §9）。課題をカタログの並び順で推奨順路としてつなぎ、各ノードに脆弱性名・達成印・ステージ到達・開始を置く。
-// 推奨は見せ方だけで、どの課題もロックしない。終点は実績「すべての課題を解決」の状態をそのまま見せる
+// ミッションマップ（spec §9）。課題をカタログの並び順で推奨順路の表としてつなぎ、各行に脆弱性名・実行環境・ステージ到達・目安・開始を置く。
+// 推奨は見せ方だけで、どの課題もロックしない。次に進むおすすめの 1 行だけを強調し、終点は実績「すべての課題を解決」の状態をそのまま見せる
 import type { AttemptRecord, MissionPack, VulnerabilityDef } from '../contract';
 import { ACHIEVEMENTS, titleFor, type UnlockedAchievements } from '../progress/achievements';
-import { STAGES, allBadgesAchieved, sealStates, stageStates } from '../progress/stages';
-import { seals, status, type StatusKind } from './components';
+import { STAGES, allBadgesAchieved, stageStates } from '../progress/stages';
+import { status, type StatusKind } from './components';
 import { h } from './dom';
-import { VULNERABILITY_CATEGORY_LABEL } from './labels';
+import { RUNTIME_LABEL, VULNERABILITY_CATEGORY_LABEL } from './labels';
 import type { MasterySummary } from '../progress/mastery';
 import { masteryLine } from './mastery';
 
@@ -31,6 +31,14 @@ export interface MissionActions {
 /** 完了済みの記録があるか。防御の現在性や対策の取り消しでは変わらない */
 export const hasCompleted = (records: readonly AttemptRecord[]): boolean => records.some(allBadgesAchieved);
 
+/** 練習課題を先に、続けて課題をカタログの順に並べる（順路の順） */
+function routeOrder(entries: MissionEntry[]): MissionEntry[] {
+  return [...entries.filter((entry) => entry.pack.manifest.kind === 'tutorial'), ...entries.filter((entry) => entry.pack.manifest.kind === 'mission')];
+}
+
+/** 次に進むおすすめ。順路の順で、まだ完了していない最初の課題 */
+export const nextEntry = (entries: MissionEntry[]): MissionEntry | undefined => routeOrder(entries).find((entry) => !entry.completed);
+
 /** 脆弱性の通称を主役にし、正式名・CWE・分類を添える。課題の題名より先に目に入る位置に置く */
 function vulnerabilityLabel(vulnerability: VulnerabilityDef): HTMLElement {
   return h(
@@ -38,34 +46,6 @@ function vulnerabilityLabel(vulnerability: VulnerabilityDef): HTMLElement {
     { class: 'vulnerability' },
     h('strong', { class: 'vulnerability-name' }, vulnerability.name),
     h('span', { class: 'vulnerability-detail' }, `${vulnerability.fullName} ・ ${vulnerability.cwe} ・ ${VULNERABILITY_CATEGORY_LABEL[vulnerability.category]}`),
-  );
-}
-
-function card(entry: MissionEntry, actions: MissionActions, mastery: MasterySummary): HTMLElement {
-  const { manifest } = entry.pack;
-  const titleId = `mission-${manifest.id}`;
-  const { latest } = entry;
-  const buttons =
-    latest && entry.resumable
-      ? [
-          h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.resume(latest) } }, '続きから始める'),
-          h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
-        ]
-      : [h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
-  if (entry.completed) buttons.push(h('button', { type: 'button', class: 'button', on: { click: () => actions.challenge(manifest.id) } }, '別条件で挑戦する'));
-  return h(
-    'article',
-    { class: 'mission-card', 'aria-labelledby': titleId },
-    h(
-      'header',
-      { class: 'mission-card-head' },
-      h('div', {}, manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null, h('h3', { id: titleId }, manifest.title), h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`), manifest.vulnerability ? masteryLine(mastery[manifest.vulnerability.category]) : null),
-      seals(sealStates(entry.latest, entry.defenseCurrent), 'small'),
-    ),
-    h('p', { class: 'mission-summary' }, manifest.summary),
-    h('details', { class: 'objectives-fold' }, h('summary', {}, 'この課題でできるようになること'), h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((objective) => h('li', {}, objective)))),
-    entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が更新されたため、前回の続きからは始められません。') : null,
-    h('div', { class: 'actions' }, ...buttons),
   );
 }
 
@@ -84,19 +64,70 @@ function progressOf(entry: MissionEntry): { state: NodeProgress; done: number; t
   return { state: done === STAGES.length ? 'done' : 'doing', done, total: STAGES.length };
 }
 
-function node(entry: MissionEntry, marker: string, markerLabel: string, actions: MissionActions, mastery: MasterySummary): HTMLElement {
+/** 到達したステージ数を区切りの帯で示す。数は横の文字でも読める */
+function stageBar(done: number, total: number): HTMLElement {
+  return h('span', { class: 'stage-bar', 'aria-hidden': true }, ...Array.from({ length: total }, (_, i) => h('span', { 'data-done': i < done })));
+}
+
+function buttons(entry: MissionEntry, actions: MissionActions, isNext: boolean): HTMLElement[] {
+  const { manifest } = entry.pack;
+  const { latest } = entry;
+  const main = isNext ? 'button button-primary' : 'button';
+  const list =
+    latest && entry.resumable
+      ? [
+          h('button', { type: 'button', class: main, on: { click: () => actions.resume(latest) } }, '続きから始める'),
+          h('button', { type: 'button', class: 'button button-quiet', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
+        ]
+      : [h('button', { type: 'button', class: main, on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
+  if (entry.completed) list.push(h('button', { type: 'button', class: 'button button-quiet', on: { click: () => actions.challenge(manifest.id) } }, '別条件で挑戦する'));
+  return list;
+}
+
+/** 概要・学習目標・習熟度は畳んでおき、行は名前と状態だけで読めるようにする */
+function details(entry: MissionEntry, mastery: MasterySummary): HTMLElement {
+  const { manifest } = entry.pack;
+  return h(
+    'details',
+    { class: 'objectives-fold' },
+    h('summary', {}, 'この課題でできるようになること'),
+    h('p', { class: 'mission-summary' }, manifest.summary),
+    h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((objective) => h('li', {}, objective))),
+    manifest.vulnerability ? masteryLine(mastery[manifest.vulnerability.category]) : null,
+  );
+}
+
+function node(entry: MissionEntry, marker: string, markerLabel: string, actions: MissionActions, mastery: MasterySummary, isNext: boolean): HTMLElement {
   const { manifest } = entry.pack;
   const progress = progressOf(entry);
   const label = PROGRESS_LABEL[progress.state];
+  const titleId = `mission-${manifest.id}`;
   return h(
     'li',
-    { class: 'map-node', 'data-mission': manifest.id, 'data-progress': progress.state },
+    { class: 'map-node', 'data-mission': manifest.id, 'data-progress': progress.state, 'data-next': isNext ? '' : undefined },
     h('div', { class: 'map-marker', 'aria-hidden': true }, marker),
     h(
-      'div',
-      { class: 'map-body' },
-      h('p', { class: 'map-status' }, h('span', { class: 'visually-hidden' }, `${markerLabel}：`), status(label.kind, label.text), h('span', { class: 'meta' }, `ステージ ${progress.done} / ${progress.total}`)),
-      card(entry, actions, mastery),
+      'article',
+      { class: 'mission-card', 'aria-labelledby': titleId },
+      h(
+        'div',
+        { class: 'mission-main' },
+        manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null,
+        h('h3', { id: titleId }, manifest.title),
+        details(entry, mastery),
+        entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が更新されたため、前回の続きからは始められません。') : null,
+      ),
+      h('p', { class: 'mission-runtime' }, h('span', { class: 'runtime-label', 'data-runtime': manifest.runtime.adapter }, RUNTIME_LABEL[manifest.runtime.adapter])),
+      h(
+        'p',
+        { class: 'map-status' },
+        h('span', { class: 'visually-hidden' }, `${markerLabel}：`),
+        status(label.kind, label.text),
+        stageBar(progress.done, progress.total),
+        h('span', { class: 'meta' }, `ステージ ${progress.done} / ${progress.total}`),
+      ),
+      h('p', { class: 'meta mission-time' }, `目安 ${manifest.estimatedMinutes} 分`),
+      h('div', { class: 'actions mission-actions' }, ...buttons(entry, actions, isNext)),
     ),
   );
 }
@@ -123,23 +154,42 @@ function goalNode(achievements: UnlockedAchievements): HTMLElement {
   );
 }
 
+/** 表の見出し行。読み上げでは各行の中の文字で足りるので、見た目だけの行として置く */
+const tableHead = () =>
+  h(
+    'div',
+    { class: 'mission-table-head', 'aria-hidden': true },
+    h('span', {}, ''),
+    h('span', {}, '課題'),
+    h('span', {}, '実行環境'),
+    h('span', {}, '進捗'),
+    h('span', {}, '目安'),
+    h('span', {}, ''),
+  );
+
 /** 練習課題を START に置き、課題をカタログの順に番号付きでつなぐ。順路はおすすめで、どこからでも始められる */
-/** mastery は分類ごとの習熟度。課題のカードに、その課題の分類の 1 行を添える */
+/** mastery は分類ごとの習熟度。各行の詳細に、その課題の分類の 1 行を添える */
 export function missionMap(entries: MissionEntry[], achievements: UnlockedAchievements, actions: MissionActions, mastery: MasterySummary): HTMLElement | null {
   if (entries.length === 0) return null;
+  const next = nextEntry(entries);
   const tutorials = entries.filter((entry) => entry.pack.manifest.kind === 'tutorial');
   const missions = entries.filter((entry) => entry.pack.manifest.kind === 'mission');
   return h(
     'section',
     { class: 'mission-section', 'aria-labelledby': 'map-title' },
     h('h2', { id: 'map-title' }, 'おすすめの順路'),
-    h('p', { class: 'lead' }, '上から順に進むのがおすすめですが、どの課題からでも始められます。練習は操作ガイドつきで、何度でもやり直せます。'),
+    h('p', { class: 'note' }, '上からの順がおすすめです。どの課題からでも始められます。'),
     h(
-      'ol',
-      { class: 'mission-map', 'aria-label': 'おすすめの順路' },
-      ...tutorials.map((entry) => node(entry, 'START', '練習', actions, mastery)),
-      ...missions.map((entry, index) => node(entry, String(index + 1), `課題 ${index + 1}`, actions, mastery)),
-      goalNode(achievements),
+      'div',
+      { class: 'mission-table' },
+      tableHead(),
+      h(
+        'ol',
+        { class: 'mission-map', 'aria-label': 'おすすめの順路' },
+        ...tutorials.map((entry) => node(entry, 'START', '練習', actions, mastery, entry === next)),
+        ...missions.map((entry, index) => node(entry, String(index + 1), `課題 ${index + 1}`, actions, mastery, entry === next)),
+        goalNode(achievements),
+      ),
     ),
   );
 }

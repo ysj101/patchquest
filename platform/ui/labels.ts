@@ -1,5 +1,5 @@
 // 画面に出す名前。利用者が操作・認識するものの名前で書く
-import type { BadgeKind, ExerciseState, ResultGroup, VulnerabilityCategory } from '../contract';
+import type { BadgeKind, ExerciseState, MissionManifest, ResultGroup, VulnerabilityCategory } from '../contract';
 import type { PreflightStep } from '../orchestrator/orchestrator';
 
 export const STATE_LABEL: Record<ExerciseState, string> = {
@@ -76,3 +76,8 @@ export const MASTERY_NOTE = '習熟度は達成印と、別の条件（seed）�
 
 export const XP_NOTE = 'XP は取り組みへの報酬です。理解度や達成印の判定は変わりません';
 export const PROFILE_RECOMPUTED = '取り込んだファイルの XP または実績は、そのファイルの記録と合わなかったため、記録から計算し直しました';
+
+/** 課題が動く実行環境（spec §11 の RuntimeAdapter）。一覧で、どこで動く課題かを示す */
+export const RUNTIME_LABEL: Record<MissionManifest['runtime']['adapter'], string> = {
+  browser: 'ブラウザ',
+};
