@@ -44,7 +44,7 @@ test('完走した課題を別条件で挑戦すると、新しい seed・閉じ
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(page.locator('.debrief .challenge')).toHaveCount(0);
   const firstAsked = await complete(page);
-  expect(firstAsked).toEqual(['invoice-cause', 'comment-edit-defense']);
+  expect(firstAsked).toEqual(['invoice-cause', 'comment-edit-defense', 'photo-download-cause', 'orders-api-defense']);
   await expect(mastery(page)).toHaveAttribute('data-stars', '3');
 
   // 1 回目の挑戦：全問を出し終えているので同じ設問を 1 問出し直すと知らせる

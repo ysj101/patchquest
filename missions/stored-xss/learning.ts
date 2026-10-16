@@ -90,6 +90,64 @@ export const TRANSFER_CHECK: TransferQuestion[] = [
       },
     ],
   },
+  {
+    id: 'support-ticket-cause',
+    situation:
+      '別のサービスの問い合わせフォームは、誰でも本文を送れます。送られた本文はサポート担当の管理画面で innerHTML で表示されます。ある人が本文にスクリプトを含めて送ると、担当者が管理画面を開いたときにその処理が動き、担当者の権限で設定が変えられました。',
+    prompt: 'この事故のいちばんの原因はどれでしょうか。',
+    choices: [
+      {
+        id: 'admin-html',
+        label: '管理画面が、保存した本文を HTML として解釈して描いている',
+        correct: true,
+        explanation: '誰が書いたかに関係なく、保存した文字列を HTML として描けば開いた人の画面で動きます。担当者の画面こそ文字として出す必要があります。',
+      },
+      {
+        id: 'anonymous-form',
+        label: 'ログインしていない人でも問い合わせを送れること',
+        correct: false,
+        explanation: 'ログインを求めても、会員が同じ本文を送れば同じことが起きます。原因は描き方です。',
+      },
+      {
+        id: 'no-captcha',
+        label: 'フォームに自動投稿を防ぐ仕組みがないこと',
+        correct: false,
+        explanation: '自動投稿を防いでも、人が 1 件送れば十分です。描き方が原因です。',
+      },
+    ],
+  },
+  {
+    id: 'markdown-diary-defense',
+    situation:
+      '日記アプリの本文は Markdown で書け、太字や箇条書きは表示に残したい決まりです。ほかの人の日記を開くと、本文に仕込まれたスクリプトが動きました。すでに危険な本文が保存されています。',
+    prompt: '太字や箇条書きを残したまま、開いた人の画面でスクリプトが動かないようにする対策はどれでしょうか。',
+    choices: [
+      {
+        id: 'sanitize-allowlist',
+        label: '表示するたびに、Markdown から作った HTML を許可したタグ・属性だけ残す処理（サニタイズ）に通す',
+        correct: true,
+        explanation: '装飾に必要なタグだけを残し、スクリプトやイベント属性は落とします。表示の側で行うので、保存済みの本文にも効きます。',
+      },
+      {
+        id: 'client-escape',
+        label: '投稿画面の JavaScript で危険な文字を消してから送る',
+        correct: false,
+        explanation: 'ブラウザ側の処理は、要求を直接送れば省けます。保存済みの本文にも効きません。',
+      },
+      {
+        id: 'keyword-reject',
+        label: '「script」や「onerror」という語を含む本文の保存を断る',
+        correct: false,
+        explanation: '語の一覧は拾い切れず、別の書き方が残ります。保存済みの本文にも効きません。',
+      },
+      {
+        id: 'text-only',
+        label: 'Markdown をやめて、本文を textContent で文字として出す',
+        correct: false,
+        explanation: 'スクリプトは動きませんが、太字や箇条書きという決まった使い方が壊れます。この状況では装飾を残す必要があります。',
+      },
+    ],
+  },
 ];
 
 export const DEBRIEF: DebriefDef = {

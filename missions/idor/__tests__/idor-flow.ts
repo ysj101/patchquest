@@ -1,6 +1,6 @@
 // IDOR の E2E で共用する操作。画面の「前のメモ」で再現し、所有者の照合で合格し、理解確認に答える
 import type { Page } from '@playwright/test';
-import { expect, expectCalloutMatchesVerdict, preview, ticketSeals as seals, verifyResults as results, verifyWith } from '../../../tests/e2e/fixtures';
+import { answerTransferCheck as answerAll, expect, expectCalloutMatchesVerdict, preview, ticketSeals as seals, verifyResults as results, verifyWith } from '../../../tests/e2e/fixtures';
 
 /** bob の非公開メモを開き、「前のメモ」で bob のもう 1 つのメモ（一つ前の番号）へ移る */
 export async function openBobsFirstMemo(page: Page): Promise<void> {
@@ -34,19 +34,9 @@ export async function secureByOwnerCheck(page: Page): Promise<void> {
 export const CORRECT_CHOICES: Record<string, string> = {
   'invoice-cause': '請求書を取り出す処理が、要求した会社がその請求書の持ち主かを確かめていない',
   'comment-edit-defense': '編集する処理で、セッションの利用者とコメントの投稿者を照合する',
+  'photo-download-cause': '写真を取り出す処理が、要求した利用者がそのアルバムの持ち主かを確かめていない',
+  'orders-api-defense': 'どの利用者の注文を返すかはトークンから決め、要求の userId は使わない（または一致を確かめる）',
 };
 
 /** 振り返りを開き、表示されている設問すべてに正解して理解の達成印を得る。答えた設問 ID を返す */
-export async function answerTransferCheck(page: Page): Promise<string[]> {
-  await page.getByRole('tab', { name: '振り返り' }).click();
-  const questions = page.locator('.transfer .question');
-  const asked = await questions.evaluateAll((items) => items.map((item) => item.querySelector('input[type=radio]')?.getAttribute('name') ?? ''));
-  for (const id of asked) {
-    const label = CORRECT_CHOICES[id];
-    if (!label) throw new Error(`設問 ${id} の正解が分かりません`);
-    await page.getByRole('radio', { name: label }).check();
-  }
-  await page.getByRole('button', { name: '回答する' }).click();
-  await expect(seals(page)).toContainText('理解：達成');
-  return asked;
-}
+export const answerTransferCheck = (page: Page): Promise<string[]> => answerAll(page, CORRECT_CHOICES);

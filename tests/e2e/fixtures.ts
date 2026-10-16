@@ -132,6 +132,23 @@ export async function turnMotionOffWithKeyboard(page: Page): Promise<void> {
   await expect(settingsButton(page)).toBeFocused();
 }
 
+/**
+ * 振り返りを開き、表示されている設問すべてに正解して理解の達成印を得る。
+ * correct は設問 ID → 正解のラベル。出ていない設問には答えず、正解の分からない設問が出たら止める。答えた設問 ID を返す
+ */
+export async function answerTransferCheck(page: Page, correct: Record<string, string>): Promise<string[]> {
+  await page.getByRole('tab', { name: '振り返り' }).click();
+  const asked = await page.locator('.transfer .question').evaluateAll((items) => items.map((item) => item.querySelector('input[type=radio]')?.getAttribute('name') ?? ''));
+  for (const id of asked) {
+    const label = correct[id];
+    if (!label) throw new Error(`設問 ${id} の正解が分かりません`);
+    await page.getByRole('radio', { name: label, exact: true }).check();
+  }
+  await page.getByRole('button', { name: '回答する' }).click();
+  await expect(ticketSeals(page)).toContainText('理解：達成');
+  return asked;
+}
+
 /** alice の一覧応答からノート ID を取得し、bob で読んで再現の検印を得る。 */
 export async function reproduceNoteLeak(page: Page): Promise<void> {
   const entry = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();

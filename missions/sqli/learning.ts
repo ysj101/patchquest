@@ -85,6 +85,64 @@ export const TRANSFER_CHECK: TransferQuestion[] = [
       },
     ],
   },
+  {
+    id: 'login-cause',
+    situation:
+      "別の会員サイトのログインは、入力したメールアドレスとパスワードを SELECT 文の文字列にそのままつないで照合しています。パスワード欄に ' OR '1'='1 と入れると、正しいパスワードを知らなくてもログインできました。",
+    prompt: 'この事故のいちばんの原因はどれでしょうか。',
+    choices: [
+      {
+        id: 'login-concat',
+        label: '入力を SQL の文字列につないでいるため、入力の中で照合の条件を書き換えられる',
+        correct: true,
+        explanation: '入力が SQL の一部になると、常に真になる条件を足せます。入力は値として渡します。',
+      },
+      {
+        id: 'plain-password',
+        label: 'パスワードをハッシュ化せずに保存している',
+        correct: false,
+        explanation: 'それ自体は別の問題ですが、この事故は条件が書き換えられたことで起きています。ハッシュ化しても文字列につないでいれば同じです。',
+      },
+      {
+        id: 'email-format',
+        label: 'メールアドレスの形式を検査していない',
+        correct: false,
+        explanation: '形式の検査では、パスワード欄の入力は止まりません。原因は SQL の構文として解釈していることです。',
+      },
+    ],
+  },
+  {
+    id: 'sort-column-defense',
+    situation:
+      '商品一覧は ?sort=price のような指定で並び替えられます。処理は指定された名前を ORDER BY に文字列としてつないでいて、ここは値をバインドできる場所ではありません。細工した指定で、ほかの表の内容を推測できることが分かりました。',
+    prompt: '並び替えを残したまま、指定で SQL を書き換えられないようにする対策はどれでしょうか。',
+    choices: [
+      {
+        id: 'allowlist-column',
+        label: '受け付ける列名を決まった一覧から選び、一覧にない指定は断る',
+        correct: true,
+        explanation: '列名のような SQL の構造は値としてバインドできません。使える名前を決めておけば、指定が SQL の構文になることはありません。',
+      },
+      {
+        id: 'bind-orderby',
+        label: 'ORDER BY の列名もプレースホルダでバインドする',
+        correct: false,
+        explanation: 'バインドした値は文字列の定数として扱われ、列を指しません。並び替えが効かなくなるだけで、構造を指定する場所の対策にはなりません。',
+      },
+      {
+        id: 'escape-quotes',
+        label: '指定に含まれる引用符を二重にしてからつなぐ',
+        correct: false,
+        explanation: '列名の位置には引用符がないので、引用符の処理では書き換えを止められません。',
+      },
+      {
+        id: 'block-keywords',
+        label: 'UNION や -- を含む指定を断る',
+        correct: false,
+        explanation: '語の一覧は拾い切れず、別の書き方が残ります。',
+      },
+    ],
+  },
 ];
 
 export const DEBRIEF: DebriefDef = {
