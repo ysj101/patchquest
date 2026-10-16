@@ -1,22 +1,14 @@
-// ミッション一覧（spec §10）。どの脆弱性を練習する場所かを脆弱性名で示し、練習への入口、課題ごとの脆弱性名・目安時間・達成印・開始と、進捗の書き出し・読み込み・削除を置く
-import type { AttemptRecord, MissionPack, VulnerabilityDef } from '../contract';
-import { seals, settingsButton } from './components';
-import { sealStates } from '../progress/stages';
+// ミッション一覧（spec §10）。どの脆弱性を練習する場所かを脆弱性名で示し、練習への入口、推奨順路のマップ（課題ごとの脆弱性名・達成印・ステージ到達・開始）と、進捗の書き出し・読み込み・削除を置く
+import type { AttemptRecord } from '../contract';
+import { settingsButton } from './components';
 import type { ProfileSummary } from '../progress/profile';
 import { achievementList } from './achievement-list';
-import { VULNERABILITY_CATEGORY_LABEL, XP_NOTE } from './labels';
+import { XP_NOTE } from './labels';
+import { missionMap, type MissionEntry } from './mission-map';
 import { xpLabel } from './xp-badge';
 import { h } from './dom';
 
-export interface MissionEntry {
-  pack: MissionPack;
-  /** この課題の直近の記録 */
-  latest?: AttemptRecord;
-  /** 直近の記録の防御が、現在の構成で確認済みか */
-  defenseCurrent: boolean;
-  /** 続きから始められるか（教材の版が記録と同じ） */
-  resumable: boolean;
-}
+export type { MissionEntry } from './mission-map';
 
 export interface MissionListActions {
   openSettings(): void;
@@ -25,42 +17,6 @@ export interface MissionListActions {
   exportProgress(): void;
   importProgress(file: File): void;
   clearProgress(): void;
-}
-
-/** 脆弱性の通称を主役にし、正式名・CWE・分類を添える。課題の題名より先に目に入る位置に置く */
-function vulnerabilityLabel(vulnerability: VulnerabilityDef): HTMLElement {
-  return h(
-    'p',
-    { class: 'vulnerability' },
-    h('strong', { class: 'vulnerability-name' }, vulnerability.name),
-    h('span', { class: 'vulnerability-detail' }, `${vulnerability.fullName} ・ ${vulnerability.cwe} ・ ${VULNERABILITY_CATEGORY_LABEL[vulnerability.category]}`),
-  );
-}
-
-function card(entry: MissionEntry, actions: MissionListActions): HTMLElement {
-  const { manifest } = entry.pack;
-  const titleId = `mission-${manifest.id}`;
-  const buttons =
-    entry.latest && entry.resumable
-      ? [
-          h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.resume(entry.latest!) } }, '続きから始める'),
-          h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
-        ]
-      : [h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
-  return h(
-    'article',
-    { class: 'mission-card', 'aria-labelledby': titleId, 'data-mission': manifest.id },
-    h(
-      'header',
-      { class: 'mission-card-head' },
-      h('div', {}, manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null, h('h3', { id: titleId }, manifest.title), h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`)),
-      seals(sealStates(entry.latest, entry.defenseCurrent), 'small'),
-    ),
-    h('p', { class: 'mission-summary' }, manifest.summary),
-    h('details', { class: 'objectives-fold' }, h('summary', {}, 'この課題でできるようになること'), h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((o) => h('li', {}, o)))),
-    entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が更新されたため、前回の続きからは始められません。') : null,
-    h('div', { class: 'actions' }, ...buttons),
-  );
 }
 
 /** 何をする場所かを一目で示す。3 つの検印（再現・防御・理解）が、そのまま課題の進め方になっている */
@@ -111,11 +67,6 @@ function hero(tutorial: MissionEntry | undefined, missions: MissionEntry[], acti
   );
 }
 
-function section(title: string, lead: string, entries: MissionEntry[], actions: MissionListActions): HTMLElement | null {
-  if (entries.length === 0) return null;
-  return h('section', { class: 'mission-section' }, h('h2', {}, title), h('p', { class: 'lead' }, lead), h('div', { class: 'mission-grid' }, ...entries.map((e) => card(e, actions))));
-}
-
 export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements }: ProfileSummary): HTMLElement {
   const fileInput = h('input', {
     type: 'file',
@@ -143,8 +94,7 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,
-    section('練習', '操作ガイドつきの短い課題です。何度でもやり直せます。', tutorials, actions),
-    section('課題', 'どの課題からでも始められます。', missions, actions),
+    missionMap(entries, achievements, actions),
     entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
     h(
       'section',
