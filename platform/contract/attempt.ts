@@ -79,6 +79,14 @@ export interface VerificationEntry {
   groups: Record<ResultGroup, { passed: number; total: number }>;
 }
 
+/** 別条件での挑戦（チャレンジ）。完了済みの課題を新しい seed・variant で解き直し、理解確認は出題した設問だけで判定する */
+export interface ChallengeInfo {
+  /** この演習で出す理解確認の設問 ID */
+  questionIds: string[];
+  /** 全問を出し終えていて、前回と同じ設問を出し直したか（画面で知らせる） */
+  repeatsPrevious: boolean;
+}
+
 /** 演習 1 回分の記録。開始時に版・seed を固定する（spec §5.3） */
 export interface AttemptRecord {
   attemptId: string;
@@ -115,6 +123,8 @@ export interface AttemptRecord {
   solutionViewed: boolean;
   /** 理解確認の回答（設問 ID → 選択肢 ID） */
   answers: Record<string, string>;
+  /** 別条件での挑戦なら出題の条件。通常の演習は null */
+  challenge: ChallengeInfo | null;
 }
 
 /** 未到達の時刻を持つ、演習ごとに独立した記録を作る。 */
@@ -136,5 +146,6 @@ export function initialAttemptProgress() {
     hintsOpened: [],
     solutionViewed: false,
     answers: {},
-  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'milestones' | 'badges' | 'lastVerification' | 'history' | 'firstPass' | 'verifications' | 'normalBroken' | 'hintsOpened' | 'solutionViewed' | 'answers'>;
+    challenge: null as ChallengeInfo | null,
+  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'milestones' | 'badges' | 'lastVerification' | 'history' | 'firstPass' | 'verifications' | 'normalBroken' | 'hintsOpened' | 'solutionViewed' | 'answers' | 'challenge'>;
 }

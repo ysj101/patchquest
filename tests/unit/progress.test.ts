@@ -56,7 +56,7 @@ describe('ProgressStore', () => {
     ]);
 
     const json = await store.exportJson(new Date('2026-10-12T09:00:00Z'));
-    expect(JSON.parse(json)).toMatchObject({ format: PROGRESS_FORMAT, schemaVersion: 7, profile: {}, exportedAt: '2026-10-12T09:00:00.000Z' });
+    expect(JSON.parse(json)).toMatchObject({ format: PROGRESS_FORMAT, schemaVersion: 8, profile: {}, exportedAt: '2026-10-12T09:00:00.000Z' });
 
     const restored = ProgressStore.inMemory();
     expect(await restored.importJson(json)).toEqual({ ok: true, imported: 2, profileRecomputed: false });
@@ -69,7 +69,7 @@ describe('ProgressStore', () => {
   it.each([
     ['JSON でない', () => 'not json', /JSON として読み込めません/],
     ['形式が違う', () => progressJson({ format: 'other', schemaVersion: 1, profile: undefined }), /PatchQuest の進捗ファイルではありません/],
-    ['版が違う', () => progressJson({ schemaVersion: 8 }), /対応していない版.*対応: 1〜7/],
+    ['版が違う', () => progressJson({ schemaVersion: 9 }), /対応していない版.*対応: 1〜8/],
     ['大きすぎる', () => ' '.repeat(MAX_PROGRESS_BYTES + 1), /大きすぎます/],
     [
       '項目の型が違う',
@@ -98,23 +98,23 @@ describe('ProgressStore', () => {
     expect(restored?.badges.reproduction).toEqual({ achieved: true });
   });
 
-  it('v1 を v7 に変換し、達成印を保って同じ記録を置き換える', async () => {
+  it('v1 を v8 に変換し、達成印を保って同じ記録を置き換える', async () => {
     const store = ProgressStore.inMemory();
     await store.save(attempt('旧版', { state: 'Passed' }));
     const legacy = progressJson({ schemaVersion: 1, profile: undefined, attempts: [attempt('旧版')] });
-    expect(parseProgress(legacy)).toMatchObject({ schemaVersion: 7, profile: {} });
+    expect(parseProgress(legacy)).toMatchObject({ schemaVersion: 8, profile: {} });
     expect(await store.importJson(legacy)).toEqual({ ok: true, imported: 1, profileRecomputed: false });
     expect(await store.list()).toEqual([attempt('旧版')]);
     expect(parseProgress(await store.exportJson()).attempts[0]?.badges).toEqual(attempt('旧版').badges);
   });
 
-  it.each([0, -1, 8, 1.5, '2', null, true])('未対応の版 %s は理由を示し既存進捗を変えない', async (version) => {
+  it.each([0, -1, 9, 1.5, '2', null, true])('未対応の版 %s は理由を示し既存進捗を変えない', async (version) => {
     const store = ProgressStore.inMemory();
     await store.save(attempt('保持'));
     const before = await store.exportJson(new Date(0));
     const invalid = progressJson({ schemaVersion: version });
     expect(() => parseProgress(invalid)).toThrow(ProgressFormatError);
-    expect(await store.importJson(invalid)).toEqual({ ok: false, error: 'schemaVersion: 対応していない版です（対応: 1〜7）' });
+    expect(await store.importJson(invalid)).toEqual({ ok: false, error: 'schemaVersion: 対応していない版です（対応: 1〜8）' });
     expect(await store.exportJson(new Date(0))).toBe(before);
   });
 
@@ -132,7 +132,7 @@ describe('ProgressStore', () => {
     const source = progressJson({ attempts: [attempt('新形式')], profile: { stage: '未知' } });
     expect(await store.importJson(source)).toEqual({ ok: true, imported: 1, profileRecomputed: false });
     const exported = await store.exportJson();
-    expect(parseProgress(exported)).toMatchObject({ schemaVersion: 7, profile: { xp: { total: 30 } } });
+    expect(parseProgress(exported)).toMatchObject({ schemaVersion: 8, profile: { xp: { total: 30 } } });
     const restored = ProgressStore.inMemory();
     expect(await restored.importJson(exported)).toEqual({ ok: true, imported: 1, profileRecomputed: false });
     expect(await restored.list()).toEqual([attempt('新形式')]);
@@ -259,6 +259,16 @@ it.each([1, 2, 3])('v%s の履歴がない記録は空の履歴で補う', async
   const store = ProgressStore.inMemory();
   await store.save(legacy as unknown as AttemptRecord);
   expect((await store.list())[0]?.history).toEqual([]);
+});
+
+it('v8 の別条件での挑戦の条件を書き出しと取り込みで保ち、v7 以前の記録は通常の演習として読む', () => {
+  const challenge = { questionIds: ['q2'], repeatsPrevious: true };
+  const parsed = parseProgress(progressJson({ attempts: [attempt('c', { challenge })] }));
+  expect(parsed.attempts[0]?.challenge).toEqual(challenge);
+  const legacy: Partial<AttemptRecord> = attempt('旧版');
+  delete legacy.challenge;
+  expect(parseProgress(progressJson({ schemaVersion: 7, attempts: [legacy] })).attempts[0]?.challenge).toBeNull();
+  expect(() => parseProgress(progressJson({ attempts: [{ ...attempt('x'), challenge: { questionIds: [], repeatsPrevious: false } }] }))).toThrow(/challenge\.questionIds/);
 });
 
 it('改善履歴を保存して読み込み、最新100件に制限する', async () => {

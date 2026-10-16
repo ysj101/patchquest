@@ -1,9 +1,9 @@
 // 演習開始時に固定する版・seed・構成と、再開時に引き継ぐ記録を組み立てる。
-import { initialAttemptProgress, type AttemptRecord, type MissionPack } from '../contract';
+import { initialAttemptProgress, type AttemptRecord, type ChallengeInfo, type MissionPack } from '../contract';
 import { compatibleApp, type Current, type OrchestratorDeps } from './types';
 import { withChanges } from './subject';
 
-type StartOptions = { variantId?: string; seed?: number; resume?: AttemptRecord };
+export type StartOptions = { variantId?: string; seed?: number; resume?: AttemptRecord; challenge?: ChallengeInfo };
 type Sources = { newId: () => string; now: () => Date; randomSeed: () => number };
 
 function carried(resume: AttemptRecord | undefined) {
@@ -13,6 +13,7 @@ function carried(resume: AttemptRecord | undefined) {
     lastVerification: resume.lastVerification, history: structuredClone(resume.history),
     firstPass: structuredClone(resume.firstPass), verifications: resume.verifications, normalBroken: resume.normalBroken,
     hintsOpened: [...resume.hintsOpened], solutionViewed: resume.solutionViewed, answers: { ...resume.answers },
+    challenge: resume.challenge === null ? null : { ...resume.challenge, questionIds: [...resume.challenge.questionIds] },
   };
 }
 
@@ -33,7 +34,7 @@ function newAttempt(pack: MissionPack, app: Current['app'], options: StartOption
     appId: manifest.appCompatibility.appId, appVersion: app?.descriptor.version ?? '',
     seed: options.resume?.seed ?? options.seed ?? sources.randomSeed(), fixtureHash: '',
     createdAt: sources.now().toISOString(), state: 'Selected', configHash: '',
-    ...initialAttemptProgress(), ...carried(options.resume),
+    ...initialAttemptProgress(), challenge: options.challenge ?? null, ...carried(options.resume),
   };
 }
 

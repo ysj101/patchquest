@@ -2,9 +2,9 @@
 // 演習用インスタンスの準備、対策の切り替え、再検証、リセットを状態遷移表に沿って行う
 import {
   RuntimeError,
+  askedQuestions,
   canTransition,
   isInExercise,
-  type AttemptRecord,
   type Exchange,
   type ExerciseState,
   type ImplementationSelection,
@@ -13,7 +13,7 @@ import {
 import { configHash, detectReproduction } from '../evaluator/evaluator';
 import { Blocked, type Current, type ExerciseSnapshot, type OrchestratorDeps, type PreflightEntry, type PreflightStep } from './types';
 import { recordVerification } from './verification-record';
-import { createCurrent } from './start';
+import { createCurrent, type StartOptions } from './start';
 import { runPreflightSteps } from './preflight';
 import { buildSubject, withChanges } from './subject';
 
@@ -53,9 +53,10 @@ export class Orchestrator {
   /**
    * 新しい演習を始める。基準状態から作り直し、前の演習の注入・対策・データを引き継がない。
    * 事前検証に合格するまで演習用インスタンスには触れないため、失敗しても部分適用は残らない。
-   * resume を渡すと、保存した記録の seed と対策構成から環境を作り直して続きを始める（データは初期化される）
+   * resume を渡すと、保存した記録の seed と対策構成から環境を作り直して続きを始める（データは初期化される）。
+   * challenge を渡すと別条件での挑戦として記録し、理解確認はその設問だけで判定する
    */
-  async start(packId: string, options: { variantId?: string; seed?: number; resume?: AttemptRecord } = {}): Promise<ExerciseSnapshot> {
+  async start(packId: string, options: StartOptions = {}): Promise<ExerciseSnapshot> {
     const { resume } = options;
     this.current = createCurrent(this.deps, { ...options, packId }, {
       newId: this.newId, now: this.now, randomSeed: this.randomSeed,
@@ -160,12 +161,12 @@ export class Orchestrator {
     return report;
   }
 
-  /** 理解確認に答える。すべて正解なら理解の達成印を付ける */
+  /** 理解確認に答える。この演習で出した設問（チャレンジなら選んだ設問だけ）がすべて正解なら理解の達成印を付ける */
   answerTransfer(answers: Record<string, string>): boolean {
     const c = this.require();
     const { attempt, pack } = c.snapshot;
     attempt.answers = { ...answers };
-    const correct = pack.manifest.transferCheck.every((q) => q.choices.find((ch) => ch.id === answers[q.id])?.correct === true);
+    const correct = askedQuestions(pack.manifest, attempt).every((q) => q.choices.find((ch) => ch.id === answers[q.id])?.correct === true);
     if (correct && !attempt.badges.understanding.achieved) {
       attempt.badges.understanding = { achieved: true, at: this.now().toISOString() };
     }

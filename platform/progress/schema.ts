@@ -20,11 +20,13 @@ import { MAX_TEXT, count, readHistory } from './history';
 
 export const PROGRESS_FORMAT = 'patchquest-progress';
 
-export const PROGRESS_SCHEMA_VERSION = 7;
+export const PROGRESS_SCHEMA_VERSION = 8;
 // 読み込める最も古い版。spec §13 に従い、版を上げても旧版の読み込みを維持する。
 const OLDEST_READABLE_SCHEMA_VERSION = 1;
 // 演習をまたぐ記録の入れ物 profile が加わった版。
 const PROFILE_SINCE_SCHEMA_VERSION = 2;
+// 別条件での挑戦（challenge）が加わった版。これより前の記録は通常の演習として読む。
+const CHALLENGE_SINCE_SCHEMA_VERSION = 8;
 /** 進捗 JSON の上限（初期案 1MB、spec §14） */
 export const MAX_PROGRESS_BYTES = 1024 * 1024;
 const MAX_ATTEMPTS = 1000;
@@ -112,6 +114,15 @@ function firstPass(checker: Checker, path: string, value: unknown): AttemptRecor
   };
 }
 
+function challenge(checker: Checker, path: string, value: unknown, version: number): AttemptRecord['challenge'] {
+  if (value === null || (value === undefined && version < CHALLENGE_SINCE_SCHEMA_VERSION)) return null;
+  const record = checker.obj(path, value);
+  return {
+    questionIds: checker.list(`${path}.questionIds`, record.questionIds, true).slice(0, 50).map((id, index) => checker.str(`${path}.questionIds[${index}]`, id, MAX_TEXT)),
+    repeatsPrevious: checker.bool(`${path}.repeatsPrevious`, record.repeatsPrevious),
+  };
+}
+
 function verificationFacts(checker: Checker, path: string, record: Record<string, unknown>, version: number) {
   return {
     ...(version >= 7 || record.firstPass !== undefined ? { firstPass: firstPass(checker, `${path}.firstPass`, record.firstPass) } : {}),
@@ -152,6 +163,7 @@ function attempt(c: Checker, path: string, v: unknown, version: number): Attempt
         .slice(0, 50)
         .map(([k, val]) => [c.str(`${path}.answers`, k, MAX_TEXT), c.str(`${path}.answers.${k}`, val, MAX_TEXT)]),
     ),
+    challenge: challenge(c, `${path}.challenge`, a.challenge, version),
   });
 }
 
