@@ -20,13 +20,21 @@ export const onboardingPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'onboarding',
-    version: '1.2.0',
+    version: '1.3.0',
     kind: 'tutorial',
     title: '練習：はじめての修正',
     summary: 'わざと壊したメモアプリで「こわす → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
     learningObjectives: ['不具合を自分の操作で起こしてみる', '直し方を選び、自動テストで確かめる', 'なぜ起きたかをふりかえる'],
     estimatedMinutes: 3,
     story: {
+      requester: {
+        name: 'サポート担当', role: 'メモアプリのサポート',
+        reactions: {
+          reproduced: '長すぎるタイトルが保存されてしまったね。',
+          secured: '直してくれてありがとう。文字数の決まりを守れるね。',
+          closing: '短いタイトルは今までどおり使えるね。',
+        },
+      },
       incident: 'メモのタイトルは 40 文字までの決まりなのに、もっと長いタイトルでも保存できてしまう、という報告がありました。',
       goal: '40 文字を超えるタイトルは保存されないようにします。40 文字までなら、これまでどおり保存できるようにします。',
       protectedAssets: ['タイトルは 40 文字までという決まり'],

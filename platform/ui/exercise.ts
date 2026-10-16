@@ -9,6 +9,7 @@ import { InvestigationPanel, storyPanel, type EventDescriber } from './investiga
 import { STATE_LABEL } from './labels';
 import { AchievementToast } from './achievement-toast';
 import { XpBadge } from './xp-badge';
+import { characterVoice, guideVoice } from './characters';
 import { StageProgress } from './stage-progress';
 
 export interface ExerciseActions {
@@ -120,7 +121,8 @@ export class ExerciseView {
     fill(
       this.briefing,
       h('h2', { id: 'briefing-title' }, h('span', { class: 'eyebrow', 'aria-hidden': true }, 'SECURITY ALERT'), 'セキュリティ警報'),
-      h('p', { class: 'incident' }, story.incident),
+      story.requester ? characterVoice({ name: story.requester.name, role: story.requester.role, text: story.incident }, { bodyClass: 'incident' }) : h('p', { class: 'incident' }, story.incident),
+      guideVoice('briefing'),
       h('h3', {}, '依頼'),
       h('p', { class: 'briefing-goal' }, story.goal),
       this.launch,

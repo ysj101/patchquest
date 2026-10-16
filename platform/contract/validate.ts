@@ -44,6 +44,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   c.text('story.goal', story.goal);
   c.texts('story.protectedAssets', story.protectedAssets, true);
   c.texts('story.normalUse', story.normalUse, true);
+  if (story.requester !== undefined) checkRequester(c, story.requester);
 
   const compat = c.obj('appCompatibility', m.appCompatibility);
   c.text('appCompatibility.appId', compat.appId);
@@ -216,4 +217,12 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   }
 
   return c.errors;
+}
+
+function checkRequester(checker: Checker, value: unknown): void {
+  const requester = checker.obj('story.requester', value);
+  checker.text('story.requester.name', requester.name);
+  checker.text('story.requester.role', requester.role);
+  const reactions = checker.obj('story.requester.reactions', requester.reactions);
+  for (const scene of ['reproduced', 'secured', 'closing']) checker.text(`story.requester.reactions.${scene}`, reactions[scene]);
 }

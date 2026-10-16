@@ -71,6 +71,7 @@ const tasks = [
     outdir: `${outdir}/assets`,
   }),
   buildSandboxDocument('runtimes/browser/preview/preview.sandbox.html', `${outdir}/assets/preview.html`),
+  cp('platform/ui/avatars', `${outdir}/assets/avatars`, { recursive: true }),
   cp('platform/index.html', `${outdir}/index.html`),
   // SQLite WASMは、それを読み込むWorkerと同じディレクトリから取得される
   cp(sqliteWasm, `${outdir}/assets/sqlite3.wasm`),

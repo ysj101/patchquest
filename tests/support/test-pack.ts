@@ -12,7 +12,12 @@ export const testPack: MissionPack = {
     summary: '基盤の検証に使う',
     learningObjectives: ['検証用'],
     estimatedMinutes: 5,
-    story: { incident: '他人のノートが見える', goal: '所有者だけが読めるようにする', protectedAssets: ['ノート本文'], normalUse: ['本人がノートを読める'] },
+    story: {
+      requester: {
+        name: 'ノートの依頼人', role: 'ノートアプリの利用者',
+        reactions: { reproduced: 'ほかの人のノートまで読めてしまうんだね。', secured: '守ってくれてありがとう。', closing: '誰のノートかを確かめるんだね。' },
+      },
+      incident: '他人のノートが見える', goal: '所有者だけが読めるようにする', protectedAssets: ['ノート本文'], normalUse: ['本人がノートを読める'] },
     appCompatibility: { appId: 'test-app', versions: '^1.0.0' },
     runtime: { adapter: 'browser', capabilities: ['sqlite', 'dom-preview'] },
     prerequisites: { features: ['notes'] },

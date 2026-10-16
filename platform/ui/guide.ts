@@ -4,6 +4,7 @@
 import type { AttemptRecord, GuideMilestone, GuideStep } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { REVEALABLE_ATTR, REVEAL_EVENT, SHOWN_EVENT } from './components';
+import { characterFace, GUIDE } from './characters';
 import { fill, h } from './dom';
 
 /** 案内している場所に付ける印（CSS で枠を描く） */
@@ -37,7 +38,7 @@ export interface GuideActions {
 }
 
 export class GuidePanel {
-  readonly element = h('aside', { class: 'guide', 'aria-labelledby': 'guide-title', hidden: true });
+  readonly element = h('aside', { class: 'guide', 'aria-label': '操作ガイド', hidden: true });
   /** ガイドしている演習。別の演習が始まったら、そのパックのガイドで始め直す */
   private attemptId: string | null = null;
   private steps: GuideStep[] = [];
@@ -150,7 +151,7 @@ export class GuidePanel {
       h(
         'div',
         { class: 'guide-bar' },
-        h('h2', { id: 'guide-title', class: 'visually-hidden' }, '操作ガイド'),
+        h('h2', {}, `${GUIDE.name}の操作ガイド`),
         h('button', { type: 'button', class: 'guide-close', 'aria-label': 'ガイドを閉じる', title: 'ガイドを閉じる', on: { click: () => this.close() } }, '✕'),
         h('ol', { class: 'guide-track', 'aria-label': '練習の手順' }, ...this.steps.map(trackItem)),
         h('p', { class: 'guide-count' }, step ? `${this.steps.indexOf(step) + 1} / ${this.steps.length}` : '完了'),
@@ -158,7 +159,7 @@ export class GuidePanel {
       h(
         'div',
         { class: 'guide-coach', 'data-done': step ? null : 'true' },
-        h('span', { class: 'guide-avatar', 'aria-hidden': true }, '◆'),
+        characterFace(GUIDE.name, true),
         h(
           'div',
           { class: 'guide-bubble' },
