@@ -108,7 +108,7 @@ describe('ProgressStore', () => {
     expect(parseProgress(await store.exportJson()).attempts[0]?.badges).toEqual(attempt('旧版').badges);
   });
 
-  it.each([0, -1, 8, 1.5, '2', null, true])('未対応の版 %s は理由を示し既存進捗を変えない', async (version) => {
+  it.each([0, -1, 9, 1.5, '2', null, true])('未対応の版 %s は理由を示し既存進捗を変えない', async (version) => {
     const store = ProgressStore.inMemory();
     await store.save(attempt('保持'));
     const before = await store.exportJson(new Date(0));

@@ -109,6 +109,7 @@ export class DebriefPanel {
       return;
     }
     const form = this.transferForm(snapshot);
+    const kind = transferKind(attempt.challenge);
     const closing = requesterVoice(pack.manifest.story.requester, 'closing');
     fill(
       this.element,
@@ -125,7 +126,7 @@ export class DebriefPanel {
         'section',
         { class: 'tool-section', 'aria-labelledby': 'transfer-title' },
         h('h3', { id: 'transfer-title' }, '理解の確認'),
-        h('p', { class: 'note', 'data-transfer-note': transferKind(attempt.challenge) }, TRANSFER_NOTE[transferKind(attempt.challenge)]),
+        h('p', { class: 'note', 'data-transfer-note': kind }, TRANSFER_NOTE[kind]),
         attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '理解の検印を押しました')) : null,
         form,
       ),
@@ -183,7 +184,7 @@ export class DebriefPanel {
       challengeAvailable
         ? h(
             'div',
-            { class: 'challenge', 'data-anchor': 'challenge' },
+            { class: 'challenge' },
             h('h4', { class: 'eyebrow' }, '別条件で挑戦'),
             h(
               'p',

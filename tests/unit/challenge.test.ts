@@ -34,6 +34,12 @@ describe('planChallenge', () => {
     expect(plan.challenge).toEqual({ questionIds: [first], repeatsPrevious: false });
   });
 
+  it('旧版のパックで出した、いまの版にない設問は数えず、止めずに選ぶ', () => {
+    const stale = record('old', 3, '2026-10-11T00:00:00Z', { questionIds: ['removed-question'], repeatsPrevious: false });
+    const plan = planChallenge(idorPack, [stale, record('a', 42, '2026-10-12T00:00:00Z')], sequence(8));
+    expect(plan.challenge).toEqual({ questionIds: [[first, second][8 % 2]], repeatsPrevious: true });
+  });
+
   it('他の課題の記録は数えず、記録がなければ最初の variant と seed で選んだ設問になる', () => {
     const plan = planChallenge(idorPack, [makeAttempt('other', { missionId: 'sqli', seed: 5 })], sequence(5));
     expect(plan).toEqual({ variantId: 'default', seed: 5, challenge: { questionIds: [second], repeatsPrevious: false } });
