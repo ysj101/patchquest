@@ -2,14 +2,14 @@
 // 検証済みの固定ペイロードを保存し、別の利用者が開くと実行マーカーで再現する（A08）。
 // script タグの削除では不合格、コメントの非表示は正常系が壊れ、文字としての表示で合格する（A09）。
 // ペイロードは隔離 iframe の外の Host では要素にならない（A17）
-import { expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith } from './fixtures';
+import { expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from './fixtures';
 
 const CAROL_COMMENT = '来週は演習問題を解いてみます';
 const ATTACK = '<img src="x" onerror="pqMarker()">';
 
 test('保存した攻撃コメントが別の利用者の画面で実行され、文字としての表示だけが合格する', async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto('/');
+  await openHome(page);
   await expect(page.locator('[data-mission="stored-xss"]').getByRole('heading', { name: 'コメントからのスクリプト実行を防ぐ' })).toBeVisible();
   await expect(page.locator('[data-mission="stored-xss"]')).toContainText('目安 15 分');
   await startMission(page, 'stored-xss');

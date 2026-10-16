@@ -1,13 +1,13 @@
 // キャラクターの発言が実際の評価に連動し、演出オフでも読めることを確かめる。
 import {
-  expect, launchButton, openMission, reproduceNoteLeak, settingsButton, startMission,
+  expect, launchButton, openHome, openMission, reproduceNoteLeak, settingsButton, startMission,
   test, turnMotionOffWithKeyboard, verifyWith,
 } from './fixtures';
 
 const requester = '[data-character="requester"]';
 
 test('導入に依頼人の話と案内役を名前・役割・顔付きで表示する', async ({ page }) => {
-  await page.goto('/');
+  await openHome(page);
   await openMission(page, 'test-pack');
   const briefing = page.locator('[data-anchor="briefing"]');
   const voice = briefing.locator(requester);

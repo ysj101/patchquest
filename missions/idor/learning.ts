@@ -1,5 +1,17 @@
 // IDOR パックのヒント・解法・理解確認・振り返り
-import type { DebriefDef, HintDef, TransferQuestion } from '../../platform/contract';
+import type { DebriefDef, HintDef, TransferQuestion, WorkedExample } from '../../platform/contract';
+
+/** 仕組みだけを示す例。対策には触れない（防御は学習者が選ぶ） */
+export const WORKED_EXAMPLE: WorkedExample = {
+  title: '番号を変えるだけで、別の人のメモが返る',
+  steps: [
+    '入力：bob としてログインし、自分のメモ（例えば番号 12）を開く。要求は GET /api/memos/12。',
+    '処理：メモを取り出す処理は、番号 12 の行を探して、見つかればそのまま返す。誰が要求したかは見ていない。',
+    '入力を変える：番号を 1 つ減らして GET /api/memos/11 を送る。',
+    '結果：番号 11 は alice の非公開メモだが、処理は同じように行を探して返すので、bob の画面に alice のメモの本文が表示される。',
+  ],
+  takeaway: '「ログインしているか」と「このメモを読んでよい人か」は別の確認で、後者が抜けていると番号を知るだけで他人のメモが読める。',
+};
 
 export const HINTS: HintDef[] = [
   {

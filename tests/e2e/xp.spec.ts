@@ -1,6 +1,6 @@
 // XP の段階報酬・再挑戦・改変した進捗の照合をブラウザで確かめる。
 import type { Page } from '@playwright/test';
-import { expect, enterWorkbench, reproduceNoteLeak, launchButton, openMission, test, ticketSeals, turnMotionOffWithKeyboard, settingsButton } from './fixtures';
+import { expect, enterWorkbench, reproduceNoteLeak, launchButton, openMission, test, ticketSeals, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
 
 const badge = (page: Page) => page.locator('.xp-badge');
 const gain = (page: Page, amount: number) => expect(badge(page).locator('.xp-gain')).toHaveText(`+${amount} XP`);
@@ -27,7 +27,7 @@ async function finish(page: Page): Promise<void> {
 }
 
 test('各段階で報酬を受け取り、再挑戦は20 XPだけ加算し、再開時は演出しない', async ({ page }) => {
-  await page.goto('/');
+  await openHome(page);
   await openMission(page, 'test-pack');
   await expect(badge(page)).toContainText('Lv.1 ・ 0 XP');
   await launchButton(page).click();
@@ -68,7 +68,7 @@ test('改変したXPは取り込み時に注記し、記録から計算した値
   await expect(page.locator('body[data-ready="true"]')).toBeAttached();
   const source = JSON.parse(await page.evaluate(() => window.progressTest.exportJson())) as { profile: { xp: { total: number } } };
   source.profile.xp = { total: 999 };
-  await page.goto('/');
+  await openHome(page);
   await page.locator('input[type="file"]').setInputFiles({ name: '進捗.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)) });
   await expect(page.locator('.banner-warn').filter({ hasText: '取り込んだファイルの XP または実績は、そのファイルの記録と合わなかったため、記録から計算し直しました' })).toBeVisible();
   await expect(page.locator('.xp-summary')).toContainText('Lv.1 ・ 0 XP');
@@ -76,7 +76,7 @@ test('改変したXPは取り込み時に注記し、記録から計算した値
 });
 
 test('動きオフでも獲得量と読み上げを文字で示す', async ({ page }) => {
-  await page.goto('/');
+  await openHome(page);
   await settingsButton(page).focus();
   await turnMotionOffWithKeyboard(page);
   await openMission(page, 'test-pack');

@@ -1,12 +1,11 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { enterWorkbench, expect, tabTo, test } from './fixtures';
+import { enterWorkbench, expect, tabTo, test, openHome } from './fixtures';
 
 const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
+  await openHome(page);
 });
 
 test('一覧は練習する脆弱性名を先に見せ、学習目標は開くまで畳んである', async ({ page }) => {

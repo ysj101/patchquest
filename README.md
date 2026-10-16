@@ -83,7 +83,7 @@ push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）�
 | missions/ | 課題パック。開発用の固有テストと検証データは各パックの `__tests__/` |
 | catalog/ | 同梱パックの登録 |
 | tests/ | 共通のユニットテスト（tests/unit）と E2E テスト（tests/e2e）、テスト用の部品（tests/support） |
-| scripts/ | ビルドと検査のスクリプト |
+| scripts/ | ビルドと検査のスクリプト、効果の検証の集計（`pnpm run metrics`。[docs/evaluation-metrics.md](docs/evaluation-metrics.md)） |
 
 ## 依存ソフトウェアのライセンス
 
