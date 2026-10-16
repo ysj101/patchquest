@@ -8,6 +8,24 @@ export const MANIFEST_SCHEMA_VERSION = 1;
 export const PACK_KINDS = ['mission', 'tutorial'] as const;
 export type PackKind = (typeof PACK_KINDS)[number];
 
+/**
+ * 課題が扱う脆弱性の分類。一覧・マップ・習熟度はこの分類だけで組み立て、課題 ID で分岐しない（spec §11.3）。
+ * authorization: 認可（誰のものかの照合） / output-encoding: 出力（文字として表示する） / data-access: データアクセス（値をバインドする）
+ */
+export const VULNERABILITY_CATEGORIES = ['authorization', 'output-encoding', 'data-access'] as const;
+export type VulnerabilityCategory = (typeof VULNERABILITY_CATEGORIES)[number];
+
+/** 課題が扱う脆弱性の種類。一覧のカードで題名より先に見せる */
+export interface VulnerabilityDef {
+  /** 短い通称。例: 'IDOR'、'保存型 XSS' */
+  name: string;
+  /** 正式な名前。例: '安全でない直接オブジェクト参照' */
+  fullName: string;
+  /** CWE の ID。例: 'CWE-639' */
+  cwe: string;
+  category: VulnerabilityCategory;
+}
+
 export interface MissionManifest {
   schemaVersion: typeof MANIFEST_SCHEMA_VERSION;
   /** 小文字・数字・ハイフン。例: 'idor' */
@@ -19,6 +37,8 @@ export interface MissionManifest {
   summary: string;
   learningObjectives: string[];
   estimatedMinutes: number;
+  /** 扱う脆弱性。kind が mission のパックでは必須。tutorial（操作の練習）では省略し、一覧に脆弱性名を出さない */
+  vulnerability?: VulnerabilityDef;
   story: StoryDef;
   /** versions は 'x.y.z'（完全一致）か '^x.y.z'（同じメジャー版で x.y.z 以上） */
   appCompatibility: { appId: string; versions: string };

@@ -9,6 +9,21 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
 });
 
+test('一覧は練習する脆弱性名を先に見せ、学習目標は開くまで畳んである', async ({ page }) => {
+  await expect(page.locator('.hero-lead')).toContainText('IDOR・保存型 XSS・SQL インジェクションの 3 つを');
+  const idor = card(page, 'idor');
+  await expect(idor.locator('.vulnerability-name')).toHaveText('IDOR');
+  await expect(idor.locator('.vulnerability-detail')).toHaveText('安全でない直接オブジェクト参照 ・ CWE-639 ・ 認可');
+  await expect(idor.getByRole('heading', { name: '非公開メモを守る' })).toBeVisible();
+  await expect(idor.getByText('目安 15 分')).toBeVisible();
+  await expect(idor.locator('.objectives')).toBeHidden();
+  await idor.getByText('この課題でできるようになること').click();
+  await expect(idor.locator('.objectives')).toBeVisible();
+  // 練習課題は操作の練習なので、脆弱性名を出さない
+  await expect(card(page, 'onboarding').locator('.vulnerability')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
+});
+
 test('キーボードだけで課題一覧から開始前チェックを経て演習を始められる', async ({ page }) => {
   await tabTo(page, 'この課題を始める');
   await page.keyboard.press('Enter');

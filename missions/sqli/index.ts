@@ -26,6 +26,7 @@ export const sqliPack: MissionPack = {
     kind: 'mission',
     title: '検索条件からの情報漏えいを防ぐ',
     estimatedMinutes: 15,
+    vulnerability: { name: 'SQL インジェクション', fullName: 'SQL コマンドの不適切な無害化', cwe: 'CWE-89', category: 'data-access' },
     summary:
       '自分のメモを探す検索で、別の利用者のメモまで結果に含まれる問い合わせを調べます。検索語のつなぎ込みを、値としてバインドするクエリに戻します。',
     learningObjectives: [

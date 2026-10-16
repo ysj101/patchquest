@@ -27,6 +27,7 @@ export const storedXssPack: MissionPack = {
       '対策のあと、保存済みの攻撃コメントが動かず、日本語・記号・角括弧のコメントは文字のまま読めることを確かめられる',
     ],
     estimatedMinutes: 15,
+    vulnerability: { name: '保存型 XSS', fullName: '格納型クロスサイトスクリプティング', cwe: 'CWE-79', category: 'output-encoding' },
     story: {
       workedExample: WORKED_EXAMPLE,
       requester: {

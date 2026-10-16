@@ -7,6 +7,7 @@ import {
   GUIDE_MILESTONES,
   MANIFEST_SCHEMA_VERSION,
   PACK_KINDS,
+  VULNERABILITY_CATEGORIES,
   type MissionPack,
 } from './manifest';
 import { ANONYMOUS, CAPABILITIES, HTTP_METHODS, type AppDescriptor, type ImplementationRegistry } from './runtime';
@@ -38,6 +39,8 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   c.text('solution', m.solution);
   c.texts('learningObjectives', m.learningObjectives, true);
   if (typeof m.estimatedMinutes !== 'number' || !(m.estimatedMinutes > 0)) c.fail('estimatedMinutes', '正の数が必要です');
+  if (m.kind === 'mission' && m.vulnerability === undefined) c.fail('vulnerability', 'kind が mission のパックでは必須です');
+  if (m.vulnerability !== undefined) checkVulnerability(c, m.vulnerability);
 
   const story = c.obj('story', m.story);
   c.text('story.incident', story.incident);
@@ -233,4 +236,13 @@ function checkRequester(checker: Checker, value: unknown): void {
   checker.text('story.requester.role', requester.role);
   const reactions = checker.obj('story.requester.reactions', requester.reactions);
   for (const scene of ['reproduced', 'secured', 'closing']) checker.text(`story.requester.reactions.${scene}`, reactions[scene]);
+}
+
+const CWE_ID = /^CWE-\d+$/;
+function checkVulnerability(checker: Checker, value: unknown): void {
+  const vulnerability = checker.obj('vulnerability', value);
+  checker.text('vulnerability.name', vulnerability.name);
+  checker.text('vulnerability.fullName', vulnerability.fullName);
+  if (!CWE_ID.test(checker.text('vulnerability.cwe', vulnerability.cwe))) checker.fail('vulnerability.cwe', "'CWE-数字' の形式が必要です");
+  checker.oneOf('vulnerability.category', vulnerability.category, VULNERABILITY_CATEGORIES);
 }
