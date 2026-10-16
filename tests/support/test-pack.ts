@@ -12,7 +12,7 @@ export const testPack: MissionPack = {
     summary: '基盤の検証に使う',
     learningObjectives: ['検証用'],
     estimatedMinutes: 5,
-    vulnerability: { name: 'IDOR', fullName: '安全でない直接オブジェクト参照', cwe: 'CWE-639', category: 'authorization' },
+    vulnerability: { name: 'IDOR', plain: '番号を変えるだけで、他人のノートが読めてしまう問題', fullName: '安全でない直接オブジェクト参照', cwe: 'CWE-639', category: 'authorization' },
     difficulty: 'beginner',
     story: {
       requester: {

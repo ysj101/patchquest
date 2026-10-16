@@ -2,7 +2,7 @@
 // 理解確認は登録済みの選択肢で判定し、自由記述は採点しない
 import { askedQuestions } from '../contract';
 import { characterVoice, guideVoice, requesterVoice } from './characters';
-import type { VulnerabilityCategory } from '../contract';
+import type { VulnerabilityCategory, VulnerabilityDef } from '../contract';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { confirmDialog, radioOption, status } from './components';
@@ -12,6 +12,7 @@ import { securityHistory } from './security-history';
 import { HINT_LABEL, STALE_VERIFICATION } from './labels';
 import type { MasterySummary } from '../progress/mastery';
 import { masteryEvidence, masteryLine } from './mastery';
+import { vulnerabilityTerms } from './vulnerability-terms';
 
 export interface HintActions {
   openHint(level: 1 | 2 | 3): void;
@@ -54,6 +55,11 @@ export class HintsPanel {
     });
     if (ok) this.actions.viewSolution();
   }
+}
+
+/** 学び終えた時点で、体験した問題を正式な名前と結びつける。一覧の ⓘ と同じ言い方で出す */
+function termsNote(vulnerability: VulnerabilityDef): HTMLElement {
+  return h('div', { class: 'terms-note' }, h('p', { class: 'eyebrow' }, `いま直した問題は「${vulnerability.name}」と呼ばれます`), vulnerabilityTerms(vulnerability));
 }
 
 /** この課題の分類の習熟度と判定の根拠。分類のないパックでは出さない */
@@ -118,7 +124,7 @@ export class DebriefPanel {
       securityHistory(snapshot),
       guideVoice('closing'),
       closing ? characterVoice(closing) : null,
-      h('section', { class: 'tool-section' }, h('h3', {}, '原因'), h('p', {}, debrief.cause)),
+      h('section', { class: 'tool-section' }, h('h3', {}, '原因'), h('p', {}, debrief.cause), pack.manifest.vulnerability ? termsNote(pack.manifest.vulnerability) : null),
       h('section', { class: 'tool-section' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
       h('section', { class: 'tool-section' }, h('h3', {}, '持ち帰ること'), h('ul', {}, ...debrief.takeaways.map((t) => h('li', {}, t)))),
       masterySection(pack.manifest.vulnerability?.category, mastery),

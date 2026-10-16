@@ -8,22 +8,56 @@ test.beforeEach(async ({ page }) => {
   await openHome(page);
 });
 
-test('一覧は脆弱性名を先に見せ、リード文で脆弱性を列挙せず、学習目標は開くまで畳んである', async ({ page }) => {
+test('一覧の行は通称と一言だけで、正式名・CWE・分類は ⓘ を開くまで出さない', async ({ page }) => {
   await expect(page.locator('.hero-lead')).not.toContainText('IDOR');
   await expect(page.locator('.hero-lead')).not.toContainText('3 つ');
   const idor = card(page, 'idor');
   await expect(idor.locator('.vulnerability-name')).toHaveText('IDOR');
-  await expect(idor.locator('.vulnerability-detail')).toHaveText('安全でない直接オブジェクト参照 ・ CWE-639 ・ 認可');
+  await expect(idor.locator('.vulnerability-plain')).toHaveText('メモの番号を変えるだけで、他人の非公開メモが読めてしまう問題');
   await expect(idor.getByRole('heading', { name: '非公開メモを守る' })).toBeVisible();
   await expect(idor.getByText('目安 15 分')).toBeVisible();
-  await expect(idor.locator('.objectives')).toBeHidden();
-  await idor.getByText('この課題でできるようになること').click();
-  await expect(idor.locator('.objectives')).toBeVisible();
+  // 行に見えている文字に専門用語を出さない
+  const panel = idor.locator('.info-panel');
+  await expect(panel).toBeHidden();
+  await expect(idor.getByText('CWE-639')).toBeHidden();
+  await expect(idor.getByText('安全でない直接オブジェクト参照')).toBeHidden();
+  await expect(idor.locator('.mission-summary')).toBeHidden();
+  await idor.getByText('課題の概要').click();
+  await expect(idor.locator('.mission-summary')).toBeVisible();
   // 未着手の課題に習熟度の★は出さない
   await expect(idor.locator('.mastery-line')).toHaveCount(0);
-  // 練習課題は操作の練習なので、脆弱性名を出さない
+  // 練習課題は操作の練習なので、脆弱性名も ⓘ も出さない
   await expect(card(page, 'onboarding').locator('.vulnerability')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
+});
+
+test('ⓘ はクリックとキーボード（Enter・Space・Esc）で開閉し、一言 → できるようになること → 用語の順で CWE の説明を添える', async ({ page }) => {
+  const idor = card(page, 'idor');
+  const info = idor.getByRole('button', { name: 'IDOR の説明' });
+  const panel = idor.locator('.info-panel');
+  await expect(info).toHaveAttribute('aria-expanded', 'false');
+  await info.click();
+  await expect(info).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel).toBeVisible();
+  const headings = panel.locator('.eyebrow');
+  await expect(headings).toHaveText(['一言でいうと', 'この課題でできるようになること', '用語']);
+  await expect(panel.locator('.terms')).toContainText('IDOR（安全でない直接オブジェクト参照）');
+  await expect(panel.locator('.terms')).toContainText('認可');
+  await expect(panel.locator('.terms')).toContainText('CWE-639');
+  await expect(panel.locator('.terms')).toContainText('ソフトウェアの弱点に共通の番号をつけた一覧');
+  await info.click();
+  await expect(panel).toBeHidden();
+
+  // キーボードだけ：Enter で開き、Esc で閉じてフォーカスはボタンに残る。Space でも開く
+  await tabTo(page, info);
+  await page.keyboard.press('Enter');
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(info).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(panel).toBeVisible();
+  await expect(info).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('課題は練習を先頭に難易度順に並び、難易度と進捗を文字で示し、どの課題もロックされない', async ({ page }) => {

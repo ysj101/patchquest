@@ -22,11 +22,11 @@ export const sqliPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sqli',
-    version: '1.5.0',
+    version: '1.6.0',
     kind: 'mission',
     title: '検索条件からの情報漏えいを防ぐ',
     estimatedMinutes: 15,
-    vulnerability: { name: 'SQL インジェクション', fullName: 'SQL コマンドの不適切な無害化', cwe: 'CWE-89', category: 'data-access' },
+    vulnerability: { name: 'SQL インジェクション', plain: '検索の言葉に細工をすると、見えないはずのデータまで取り出せてしまう問題', fullName: 'SQL コマンドの不適切な無害化', cwe: 'CWE-89', category: 'data-access' },
     difficulty: 'advanced',
     summary:
       '自分のメモを探す検索で、別の利用者のメモまで結果に含まれる問い合わせを調べます。検索語のつなぎ込みを、値としてバインドするクエリに戻します。',
