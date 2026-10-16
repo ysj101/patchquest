@@ -2,7 +2,7 @@
 // 画面の「前のメモ」から別の利用者の非公開メモを開いて再現し、リンクを隠すだけでは不合格（A06）、
 // すべて断ると正常系が壊れ（A05）、所有者の照合で合格する（A07）
 import type { Page } from '@playwright/test';
-import { expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith } from '../../../tests/e2e/fixtures';
+import { expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from '../../../tests/e2e/fixtures';
 
 /** bob の非公開メモを開き、「前のメモ」で bob のもう 1 つのメモ（一つ前の番号）へ移る */
 async function openBobsFirstMemo(page: Page): Promise<void> {
@@ -15,7 +15,7 @@ async function openBobsFirstMemo(page: Page): Promise<void> {
 
 test('画面の「前のメモ」から事故を再現し、リンクを隠すだけ・すべて断るでは不合格、所有者の照合で合格する', async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto('/');
+  await openHome(page);
   await expect(page.locator('[data-mission="idor"]').getByRole('heading', { name: '非公開メモを守る' })).toBeVisible();
   await startMission(page, 'idor');
   const app = preview(page);
