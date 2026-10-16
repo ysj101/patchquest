@@ -1,6 +1,6 @@
 // 分類ごとの習熟度を演習記録から計算し、同じ条件の繰り返しで上がらず、根拠を説明できることを確かめる。
-import { expect, it } from 'vitest';
-import { masteryFromAttempts } from '../../platform/progress/mastery';
+import { describe, expect, it } from 'vitest';
+import { REVIEW_CONSOLIDATION, masteryFromAttempts } from '../../platform/progress/mastery';
 import { makeAttempt } from '../support/attempt';
 
 const categories = { 'test-pack': 'authorization', xss: 'output-encoding' } as const;
@@ -12,7 +12,7 @@ const complete = (id: string, seed = 42, variantId = 'default', createdAt = '202
 
 it('記録がなければ全分類が★0で根拠もない', () => {
   const summary = masteryFromAttempts([], categories);
-  expect(summary.authorization).toEqual({ category: 'authorization', stars: 0, evidence: [] });
+  expect(summary.authorization).toEqual({ category: 'authorization', stars: 0, evidence: [], reviewed: 0, consolidated: false });
   expect(summary['output-encoding'].stars).toBe(0);
   expect(summary['data-access'].stars).toBe(0);
 });
@@ -68,4 +68,37 @@ it('分類ごとに独立して数える', () => {
   expect(summary.authorization.stars).toBe(3);
   expect(summary['output-encoding'].stars).toBe(1);
   expect(summary['data-access'].stars).toBe(0);
+});
+
+describe('復習の正答の反映', () => {
+  const review = (questionId: string, missionId = 'test-pack', correct = true) => ({ at: '2026-10-12T12:00:00Z', missionId, questionId, correct });
+
+  it('復習の正答は★の段階を変えず、設問 ID ごとに 1 回だけ数える', () => {
+    const reviews = [review('q1'), review('q1'), review('q1'), review('q2', 'test-pack', false)];
+    const mastery = masteryFromAttempts([complete('完了')], categories, reviews).authorization;
+    expect(mastery.stars).toBe(3);
+    expect(mastery.reviewed).toBe(1);
+    expect(mastery.consolidated).toBe(false);
+  });
+
+  it(`★3 以上で別の設問 ${REVIEW_CONSOLIDATION} 問に正解すると「復習で定着」になり、★3 未満ではならない`, () => {
+    const reviews = [review('q1'), review('q2'), review('q3')];
+    expect(masteryFromAttempts([complete('完了')], categories, reviews).authorization).toMatchObject({ stars: 3, reviewed: 3, consolidated: true });
+    const half = makeAttempt('防御まで', { badges: { reproduction: { achieved: true }, defense: { achieved: true }, understanding: { achieved: false } } });
+    expect(masteryFromAttempts([half], categories, reviews).authorization).toMatchObject({ stars: 2, reviewed: 3, consolidated: false });
+  });
+
+  it('進捗 JSON 由来の課題 ID が __proto__ でも、分類なしとして扱い落ちない', () => {
+    const reviews = [review('q1', '__proto__')];
+    const attempt = makeAttempt('不正', { missionId: '__proto__', badges: { reproduction: { achieved: true }, defense: { achieved: false }, understanding: { achieved: false } } });
+    const summary = masteryFromAttempts([attempt], categories, reviews);
+    expect(Object.values(summary).map((mastery) => [mastery.stars, mastery.reviewed])).toEqual([[0, 0], [0, 0], [0, 0]]);
+  });
+
+  it('分類の分からない課題の復習は数えず、別の分類には効かない', () => {
+    const reviews = [review('q1', 'unknown'), review('q2', 'xss')];
+    const summary = masteryFromAttempts([complete('完了')], categories, reviews);
+    expect(summary.authorization.reviewed).toBe(0);
+    expect(summary['output-encoding'].reviewed).toBe(1);
+  });
 });

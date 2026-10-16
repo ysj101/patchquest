@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { ANONYMOUS, RuntimeError, isInExercise, satisfies, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
+import { ANONYMOUS, RuntimeError, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { profileFromAttempts } from '../progress/profile';
@@ -14,8 +14,10 @@ import { announce, fill, h } from './dom';
 import { DebriefPanel, HintsPanel } from './debrief';
 import { ExerciseView } from './exercise';
 import { GuidePanel } from './guide';
-import { missionList, type MissionEntry } from './mission-list';
+import { missionList } from './mission-list';
+import { missionEntries } from './mission-entries';
 import { hasCompleted } from './mission-map';
+import { habitSections } from './habits';
 import { planChallenge, type ChallengePlan } from '../progress/challenge';
 import { progressActions } from './progress-actions';
 import { PreflightView } from './preflight';
@@ -26,8 +28,6 @@ import { serialLatest } from './serial';
 
 type Screen = 'list' | 'preflight' | 'exercise';
 
-
-const appVersionOf = (appId: string) => catalog.apps.find((a) => a.descriptor.id === appId)?.descriptor.version ?? '';
 
 export async function startApp(root: HTMLElement): Promise<void> {
   const effectWarning = h('p', { class: 'banner banner-warn', role: 'status' });
@@ -155,17 +155,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
     });
   });
 
-  function entries(records: AttemptRecord[]): MissionEntry[] {
-    const live = orchestrator.snapshot;
-    return catalog.packs.map((pack) => {
-      const latest = records.filter((r) => r.missionId === pack.manifest.id).at(-1);
-      const resumable = !!latest && latest.missionVersion === pack.manifest.version && satisfies(appVersionOf(latest.appId), pack.manifest.appCompatibility.versions);
-      // 防御が現在の合格なのは、この画面で検証した演習だけ。保存した記録は再検証するまで確定しない
-      const defenseCurrent = !!latest && live?.attempt.attemptId === latest.attemptId && live.defenseCurrent;
-      return { pack, latest, resumable, defenseCurrent, completed: hasCompleted(records.filter((record) => record.missionId === pack.manifest.id)) };
-    });
-  }
-
   async function showList(message?: string): Promise<void> {
     await exercise.stop();
     await saved;
@@ -173,7 +162,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     const profile = await store.profile(records);
     fill(
       listView,
-      missionList(entries(records), store.unavailableReason, {
+      missionList(missionEntries(records, orchestrator.snapshot), store.unavailableReason, {
         openSettings,
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
@@ -181,7 +170,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
         exportProgress: () => void progress.exportProgress(),
         importProgress: (file) => void progress.importProgress(file),
         clearProgress: () => void progress.clearProgress(),
-      }, profile),
+      }, profile, habitSections({ packs: catalog.packs, records, profile, store, refresh: (text) => void showList(text) })),
     );
     show('list');
     if (message) announce(live, message);

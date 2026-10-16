@@ -45,7 +45,7 @@ it('一覧で取得済みの記録を使い、二度読みせず古い保存値�
   const records = await store.list();
   const list = vi.spyOn(store, 'list');
   const summary = await store.profile(records);
-  expect(summary.xp).toEqual({ total: 10, level: 1, nextLevelAt: 100, byMission: { 'test-pack': { stages: 10, retries: 0 } } });
+  expect(summary.xp).toEqual({ total: 10, level: 1, nextLevelAt: 100, byMission: { 'test-pack': { stages: 10, retries: 0 } }, review: 0 });
   expect(list).not.toHaveBeenCalled();
   expect(parseProgress(await store.exportJson()).profile).toEqual({ xp: { total: 10 }, achievements: {} });
 });

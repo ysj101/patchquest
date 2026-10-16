@@ -132,6 +132,9 @@ export async function turnMotionOffWithKeyboard(page: Page): Promise<void> {
   await expect(settingsButton(page)).toBeFocused();
 }
 
+/** test-pack の理解確認の正解（設問 ID → 選択肢のラベル） */
+export const TEST_PACK_ANSWERS: Record<string, string> = { q1: '取得時に所有者を照合する' };
+
 /**
  * 振り返りを開き、表示されている設問すべてに正解して理解の達成印を得る。
  * correct は設問 ID → 正解のラベル。出ていない設問には答えず、正解の分からない設問が出たら止める。答えた設問 ID を返す

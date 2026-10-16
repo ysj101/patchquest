@@ -1,6 +1,6 @@
 // 分類ごとの習熟度の表示。★だけでなく段階の名前でも示し、判定の根拠を開いて確かめられるようにする（spec §9, §10）
 import type { VulnerabilityCategory } from '../contract';
-import { MASTERY_MAX, type CategoryMastery, type MasterySummary } from '../progress/mastery';
+import { MASTERY_MAX, REVIEW_CONSOLIDATION, type CategoryMastery, type MasterySummary } from '../progress/mastery';
 import { h } from './dom';
 import { MASTERY_LEVEL_LABEL, MASTERY_NOTE, VULNERABILITY_CATEGORY_LABEL } from './labels';
 
@@ -16,7 +16,17 @@ export function masteryLine(mastery: CategoryMastery): HTMLElement {
     h('span', { class: 'mastery-label' }, `${VULNERABILITY_CATEGORY_LABEL[mastery.category]}の習熟度`),
     stars(mastery),
     h('span', { class: 'mastery-level' }, `Lv${mastery.stars}：${MASTERY_LEVEL_LABEL[mastery.stars] ?? ''}`),
+    mastery.consolidated ? h('span', { class: 'mastery-consolidated' }, '復習で定着') : null,
   );
+}
+
+/** 復習の正答が習熟度の表示にどう効いたか。★の段階は変えない */
+function reviewNote(mastery: CategoryMastery): HTMLElement | null {
+  if (mastery.reviewed === 0) return null;
+  const text = mastery.consolidated
+    ? `復習で定着：別の設問 ${mastery.reviewed} 問に正解しました（★は変わりません）`
+    : `復習の正答：${mastery.reviewed} 問（Lv3 以上で ${REVIEW_CONSOLIDATION} 問に正解すると「復習で定着」。★は変わりません）`;
+  return h('p', { class: 'note mastery-review' }, text);
 }
 
 /** 判定の根拠。どの演習のどの達成が、どの★に効いたか */
@@ -34,6 +44,7 @@ export function masteryEvidence(mastery: CategoryMastery): HTMLElement {
             h('li', {}, `★${item.stars}：${item.reason}（課題 ${item.missionId}・seed ${item.seed}・演習票 ${item.attemptId.slice(0, 8)}）`),
           ),
         ),
+    reviewNote(mastery),
   );
 }
 
