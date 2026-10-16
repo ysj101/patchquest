@@ -48,6 +48,15 @@ const leak = (runId: string, refs: Record<string, unknown>): Exchange => ({
   events: [],
 });
 
+/** 演習を始め、再現の達成印を得て、正しい対策を適用した直後の状態を作る */
+async function startDefended() {
+  const { orchestrator } = setup();
+  const snapshot = await orchestrator.start('test-pack');
+  orchestrator.onExchange(leak(orchestrator.newRunId(), snapshot.refs));
+  await orchestrator.applyDefense('owner-only');
+  return { orchestrator, snapshot };
+}
+
 describe('Orchestrator', () => {
   it('互換性・基準状態・注入を確かめ、同じ seed の脆弱な初期状態で開始する（A02）', async () => {
     const { orchestrator, exercise } = setup();
@@ -155,10 +164,7 @@ describe('Orchestrator', () => {
   });
 
   it('合格後に対策を変えたら、再検証で合格するまで Passed に戻らない', async () => {
-    const { orchestrator } = setup();
-    const snapshot = await orchestrator.start('test-pack');
-    orchestrator.onExchange(leak(orchestrator.newRunId(), snapshot.refs));
-    await orchestrator.applyDefense('owner-only');
+    const { orchestrator, snapshot } = await startDefended();
     await orchestrator.verify();
     orchestrator.answerTransfer({ q1: 'owner' });
     expect(snapshot.attempt.state).toBe('Passed');
@@ -211,10 +217,7 @@ describe('Orchestrator', () => {
   });
 
   it('初期状態へ戻すと対策を破棄して脆弱な初期状態に戻り、達成印は残る（A13）', async () => {
-    const { orchestrator } = setup();
-    const snapshot = await orchestrator.start('test-pack');
-    orchestrator.onExchange(leak(orchestrator.newRunId(), snapshot.refs));
-    await orchestrator.applyDefense('owner-only');
+    const { orchestrator, snapshot } = await startDefended();
     await orchestrator.resetToInitial();
     expect(snapshot.attempt).toMatchObject({ state: 'Prepared', appliedDefense: null });
     expect(snapshot.implementations).toEqual({ 'note.read': 'test-pack/any-owner' });

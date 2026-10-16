@@ -7,6 +7,13 @@ const PAGE = '/api/pages/{{pages.shared.id}}';
 const PAGE_VIEW = { route: '/pages/{{pages.shared.id}}' };
 const OWN_RESULTS_ONLY = [{ path: 'results.*.ownerId', is: { equals: '{{users.alice.id}}' } }];
 const DENIED = { status: [403, 404], body: [{ path: '', is: { notContains: '{{memos.alice.private.body}}' } }] };
+/** 所有者 alice が自分の非公開メモを本文まで読める。正常系と、他者の操作後に本文が残っている確認で使う */
+const ALICE_READS_OWN_PRIVATE: TestCase['steps'][number] = {
+  kind: 'request',
+  as: 'alice',
+  request: { method: 'GET', path: ALICE_PRIVATE },
+  expect: { status: 200, body: [{ path: 'memo.body', is: { equals: '{{memos.alice.private.body}}' } }] },
+};
 
 export const MEMO_TESTS: TestCase[] = [
   // 正常系
@@ -28,12 +35,7 @@ export const MEMO_TESTS: TestCase[] = [
     category: 'normal',
     title: '所有者は自分のメモを読める',
     steps: [
-      {
-        kind: 'request',
-        as: 'alice',
-        request: { method: 'GET', path: ALICE_PRIVATE },
-        expect: { status: 200, body: [{ path: 'memo.body', is: { equals: '{{memos.alice.private.body}}' } }] },
-      },
+      ALICE_READS_OWN_PRIVATE,
     ],
   },
   {
@@ -263,12 +265,7 @@ export const MEMO_TESTS: TestCase[] = [
         request: { method: 'PUT', path: ALICE_PRIVATE, body: { title: '書き換え', body: '書き換え' } },
         expect: { status: [403, 404] },
       },
-      {
-        kind: 'request',
-        as: 'alice',
-        request: { method: 'GET', path: ALICE_PRIVATE },
-        expect: { status: 200, body: [{ path: 'memo.body', is: { equals: '{{memos.alice.private.body}}' } }] },
-      },
+      ALICE_READS_OWN_PRIVATE,
     ],
   },
   {
