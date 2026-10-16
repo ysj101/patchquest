@@ -3,8 +3,7 @@
 import { completeAttempt, canonicalJson, type AttemptRecord } from '../contract';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile, type ProgressProfile } from './schema';
 
-import { profileFromAttempts, storedProfile, type KeptProfile, type ProfileSummary } from './profile';
-import type { AchievementOptions } from './achievements';
+import { profileFromAttempts, storedProfile, type KeptProfile, type ProfileOptions, type ProfileSummary } from './profile';
 import { MAX_REVIEWS, type ReviewEntry } from './review';
 import type { WeeklyGoalId } from './weekly-goal';
 
@@ -137,11 +136,11 @@ export class ProgressStore {
     private backend: ProgressBackend,
     /** 保存できない理由。null なら保存できている */
     private reason: string | null,
-    private readonly options: AchievementOptions,
+    private readonly options: ProfileOptions,
   ) {}
 
   /** IndexedDB を開く。開けなければメモリで続ける */
-  static async open(options: AchievementOptions = { missionIds: [] }): Promise<ProgressStore> {
+  static async open(options: ProfileOptions = { missionIds: [], categories: {} }): Promise<ProgressStore> {
     try {
       return new ProgressStore(await IndexedDbBackend.open(), null, options);
     } catch (e) {
@@ -149,7 +148,7 @@ export class ProgressStore {
     }
   }
 
-  static inMemory(options: AchievementOptions = { missionIds: [] }, reason: string | null = null): ProgressStore {
+  static inMemory(options: ProfileOptions = { missionIds: [], categories: {} }, reason: string | null = null): ProgressStore {
     return new ProgressStore(new MemoryBackend(), reason, options);
   }
 
@@ -194,9 +193,9 @@ export class ProgressStore {
   }
 
   private async updateKept(change: (kept: KeptProfile) => KeptProfile): Promise<ProfileSummary> {
-    const saved = await this.withBackend((backend) => backend.getProfile());
-    const { reviews, weeklyGoal } = saved;
-    await this.withBackend((backend) => backend.putProfile({ ...saved, ...change({ ...(reviews !== undefined && { reviews }), ...(weeklyGoal !== undefined && { weeklyGoal }) }) }));
+    const { reviews, weeklyGoal, ...derived } = await this.withBackend((backend) => backend.getProfile());
+    const kept: KeptProfile = { ...(reviews !== undefined && { reviews }), ...(weeklyGoal !== undefined && { weeklyGoal }) };
+    await this.withBackend((backend) => backend.putProfile({ ...derived, ...change(kept) }));
     return this.profile(await this.list());
   }
 

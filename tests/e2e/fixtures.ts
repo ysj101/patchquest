@@ -132,6 +132,14 @@ export async function turnMotionOffWithKeyboard(page: Page): Promise<void> {
   await expect(settingsButton(page)).toBeFocused();
 }
 
+/** test-pack の振り返りで理解確認に正解し、理解の検印を得る */
+export async function answerTransferCheck(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: '振り返り' }).click();
+  await page.getByRole('radio', { name: '取得時に所有者を照合する' }).check();
+  await page.getByRole('button', { name: '回答する' }).click();
+  await expect(ticketSeals(page)).toContainText('理解：達成');
+}
+
 /** alice の一覧応答からノート ID を取得し、bob で読んで再現の検印を得る。 */
 export async function reproduceNoteLeak(page: Page): Promise<void> {
   const entry = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();

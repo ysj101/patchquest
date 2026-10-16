@@ -67,7 +67,7 @@ function form(question: ReviewQuestion, actions: ReviewActions, now: () => Date)
 export function reviewQuest(question: ReviewQuestion | null, actions: ReviewActions, now: () => Date = () => new Date()): HTMLElement {
   return h(
     'section',
-    { class: 'review-quest', 'aria-labelledby': 'review-title', 'data-anchor': 'review' },
+    { class: 'review-quest', 'aria-labelledby': 'review-title' },
     h('h2', { id: 'review-title' }, '復習クエスト'),
     h('p', { class: 'note' }, NOTE),
     question ? form(question, actions, now) : empty(),

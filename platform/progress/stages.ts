@@ -39,6 +39,12 @@ export function sealStates(attempt: AttemptRecord | undefined, defenseCurrent: b
   };
 }
 
+/** 達成印の最後の時刻。時刻のない達成印しかなければ演習の作成時刻に遡る */
+export function achievedAt(attempt: AttemptRecord): string {
+  const times = Object.values(attempt.badges).flatMap((badge) => badge.at ?? []).sort();
+  return times.at(-1) ?? attempt.createdAt;
+}
+
 /** 再現・防御・理解の達成印が記録上すべて揃っているか。現在の対策の合否とは独立。 */
 export function allBadgesAchieved(attempt: AttemptRecord): boolean {
   return Object.values(attempt.badges).every((badge) => badge.achieved);

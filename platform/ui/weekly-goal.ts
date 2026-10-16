@@ -12,7 +12,7 @@ const NOTE = '任意の目標です。届かなくても減点や警告はあり
 const weekLabel = (start: Date) => `${start.getMonth() + 1}/${start.getDate()} の週`;
 
 /** 今週の回数と目標の関係を、淡々とした文で示す */
-export function weeklyStatusText(activity: WeeklyActivity): string {
+function weeklyStatusText(activity: WeeklyActivity): string {
   const week = weekLabel(activity.weekStart);
   const count = activity.count === 0 ? `${week}はまだ 0 回です` : `${week}は ${activity.count} 回取り組みました`;
   if (!activity.goal) return `${count}。`;
@@ -23,7 +23,7 @@ export function weeklyGoal(activity: WeeklyActivity, actions: WeeklyGoalActions)
   const options: { value: WeeklyGoalId | null; label: string }[] = [{ value: null, label: '設定しない' }, ...WEEKLY_GOALS.map((goal) => ({ value: goal.id, label: goal.label }))];
   return h(
     'section',
-    { class: 'weekly-goal', 'aria-labelledby': 'weekly-goal-title', 'data-anchor': 'weekly-goal' },
+    { class: 'weekly-goal', 'aria-labelledby': 'weekly-goal-title' },
     h('h2', { id: 'weekly-goal-title' }, '週間目標'),
     h('p', { class: 'note' }, NOTE),
     h(

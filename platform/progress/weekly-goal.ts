@@ -2,7 +2,7 @@
 // 未達で減点・喪失・警告はしない（spec §9）
 import type { AttemptRecord } from '../contract';
 import type { ReviewEntry } from './review';
-import { allBadgesAchieved } from './stages';
+import { achievedAt, allBadgesAchieved } from './stages';
 
 export const WEEKLY_GOALS = [
   { id: 'once', label: '週 1 回', min: 1 },
@@ -26,10 +26,9 @@ export function weekStart(now: Date): Date {
   return start;
 }
 
-/** 演習を完了した時刻。3 つの達成印のうち最後に押した時刻で、時刻のない達成印は作成日時に遡る */
+/** 演習を完了した時刻（3 つの達成印のうち最後に押した時刻）。完了していなければ null */
 export function completedAt(attempt: AttemptRecord): string | null {
-  if (!allBadgesAchieved(attempt)) return null;
-  return Object.values(attempt.badges).map((badge) => badge.at ?? attempt.createdAt).sort().at(-1) ?? attempt.createdAt;
+  return allBadgesAchieved(attempt) ? achievedAt(attempt) : null;
 }
 
 export interface WeeklyActivity {

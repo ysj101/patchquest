@@ -45,7 +45,7 @@ it('一覧で取得済みの記録を使い、二度読みせず古い保存値�
   const records = await store.list();
   const list = vi.spyOn(store, 'list');
   const summary = await store.profile(records);
-  expect(summary.xp).toEqual({ total: 10, level: 1, nextLevelAt: 100, byMission: { 'test-pack': { stages: 10, retries: 0 } } });
+  expect(summary.xp).toEqual({ total: 10, level: 1, nextLevelAt: 100, byMission: { 'test-pack': { stages: 10, retries: 0 } }, review: 0 });
   expect(list).not.toHaveBeenCalled();
   expect(parseProgress(await store.exportJson()).profile).toEqual({ xp: { total: 10 }, achievements: {} });
 });
@@ -97,7 +97,7 @@ it('XPと実績の差分は一度だけ保存し、同じ記録の再取得で�
 });
 
 it('渡した課題一覧をprofileと取り込みの両方に使い、全課題の解除も再計算する', async () => {
-  const options = { missionIds: ['test-pack'] };
+  const options = { missionIds: ['test-pack'], categories: {} };
   const store = ProgressStore.inMemory(options);
   const record = makeAttempt('完了');
   record.badges = { reproduction: { achieved: true }, defense: { achieved: true }, understanding: { achieved: true } };
@@ -106,7 +106,7 @@ it('渡した課題一覧をprofileと取り込みの両方に使い、全課題
   const other = ProgressStore.inMemory(options);
   expect(await other.importJson(await store.exportJson())).toMatchObject({ profileRecomputed: false });
   expect(parseProgress(await other.exportJson()).profile.achievements).toHaveProperty('all-missions', record.createdAt);
-  const changed = { missionIds: [record.missionId, '追加課題'] };
+  const changed = { missionIds: [record.missionId, '追加課題'], categories: {} };
   const changedStore = ProgressStore.inMemory(changed);
   expect(await changedStore.importJson(await store.exportJson())).toMatchObject({ profileRecomputed: true });
   expect(parseProgress(await changedStore.exportJson()).profile.achievements).not.toHaveProperty('all-missions');
