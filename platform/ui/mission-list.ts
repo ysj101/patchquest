@@ -1,10 +1,10 @@
-// ミッション一覧（spec §10）。何をする場所かの説明と練習への入口、学習目標・目安時間・達成印・開始と、進捗の書き出し・読み込み・削除
-import type { AttemptRecord, MissionPack } from '../contract';
+// ミッション一覧（spec §10）。どの脆弱性を練習する場所かを脆弱性名で示し、練習への入口、課題ごとの脆弱性名・目安時間・達成印・開始と、進捗の書き出し・読み込み・削除を置く
+import type { AttemptRecord, MissionPack, VulnerabilityDef } from '../contract';
 import { seals, settingsButton } from './components';
 import { sealStates } from '../progress/stages';
 import type { ProfileSummary } from '../progress/profile';
 import { achievementList } from './achievement-list';
-import { XP_NOTE } from './labels';
+import { VULNERABILITY_CATEGORY_LABEL, XP_NOTE } from './labels';
 import { xpLabel } from './xp-badge';
 import { h } from './dom';
 
@@ -27,6 +27,16 @@ export interface MissionListActions {
   clearProgress(): void;
 }
 
+/** 脆弱性の通称を主役にし、正式名・CWE・分類を添える。課題の題名より先に目に入る位置に置く */
+function vulnerabilityLabel(vulnerability: VulnerabilityDef): HTMLElement {
+  return h(
+    'p',
+    { class: 'vulnerability' },
+    h('strong', { class: 'vulnerability-name' }, vulnerability.name),
+    h('span', { class: 'vulnerability-detail' }, `${vulnerability.fullName} ・ ${vulnerability.cwe} ・ ${VULNERABILITY_CATEGORY_LABEL[vulnerability.category]}`),
+  );
+}
+
 function card(entry: MissionEntry, actions: MissionListActions): HTMLElement {
   const { manifest } = entry.pack;
   const titleId = `mission-${manifest.id}`;
@@ -40,34 +50,40 @@ function card(entry: MissionEntry, actions: MissionListActions): HTMLElement {
   return h(
     'article',
     { class: 'mission-card', 'aria-labelledby': titleId, 'data-mission': manifest.id },
-    h('header', { class: 'mission-card-head' }, h('h3', { id: titleId }, manifest.title), seals(sealStates(entry.latest, entry.defenseCurrent), 'small')),
+    h(
+      'header',
+      { class: 'mission-card-head' },
+      h('div', {}, manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null, h('h3', { id: titleId }, manifest.title), h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`)),
+      seals(sealStates(entry.latest, entry.defenseCurrent), 'small'),
+    ),
     h('p', { class: 'mission-summary' }, manifest.summary),
-    h('h4', { class: 'eyebrow' }, 'この課題でできるようになること'),
-    h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((o) => h('li', {}, o))),
-    h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`),
+    h('details', { class: 'objectives-fold' }, h('summary', {}, 'この課題でできるようになること'), h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((o) => h('li', {}, o)))),
     entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が更新されたため、前回の続きからは始められません。') : null,
     h('div', { class: 'actions' }, ...buttons),
   );
 }
 
 /** 何をする場所かを一目で示す。3 つの検印（再現・防御・理解）が、そのまま課題の進め方になっている */
-const FLOW: { label: string; title: string; text: string }[] = [
-  { label: '再現', title: 'こわす', text: '不具合を自分の操作で起こしてみる' },
-  { label: '防御', title: 'なおす', text: '直し方を選び、自動テストで合否を確かめる' },
-  { label: '理解', title: 'ふりかえる', text: 'なぜ起きたか、どう防ぐかを確かめる' },
+const FLOW: { label: string; title: string }[] = [
+  { label: '再現', title: 'こわす' },
+  { label: '防御', title: 'なおす' },
+  { label: '理解', title: 'ふりかえる' },
 ];
 
-function hero(tutorial: MissionEntry | undefined, actions: MissionListActions): HTMLElement {
+/** 練習する脆弱性の通称をカタログの順に並べる（同じ脆弱性の課題が複数あっても 1 回）。課題がないときは何を練習する場所かだけを書く */
+function heroLead(missions: MissionEntry[]): string {
+  const names = [...new Set(missions.flatMap((entry) => entry.pack.manifest.vulnerability?.name ?? []))];
+  const subject = names.length > 0 ? `${names.join('・')}の ${names.length} つを` : 'アプリのセキュリティの不具合を';
+  return `${subject}、わざと壊したアプリで練習します。すべてこのブラウザの中で動き、本物のサービスには触れません。`;
+}
+
+function hero(tutorial: MissionEntry | undefined, missions: MissionEntry[], actions: MissionListActions): HTMLElement {
   const finished = tutorial?.latest?.badges.understanding.achieved;
   return h(
     'section',
     { class: 'hero', 'aria-labelledby': 'hero-title' },
     h('header', { class: 'actions' }, h('h1', { id: 'hero-title', tabIndex: -1 }, 'わざと壊したアプリで、こわして、なおして、たしかめる。'), settingsButton(() => actions.openSettings())),
-    h(
-      'p',
-      { class: 'hero-lead' },
-      'PatchQuest は、アプリのセキュリティの不具合を自分の手で再現し、直し方を選んで、自動テストで確かめる練習場です。すべてこのブラウザの中で動き、本物のサービスには触れません。',
-    ),
+    h('p', { class: 'hero-lead' }, heroLead(missions)),
     h(
       'ol',
       { class: 'hero-flow', 'aria-label': '課題の進め方' },
@@ -76,7 +92,7 @@ function hero(tutorial: MissionEntry | undefined, actions: MissionListActions): 
           'li',
           { class: 'hero-step' },
           h('span', { class: 'seal-stamp', 'aria-hidden': true }, h('span', { class: 'seal-mark' }, String(i + 1)), h('span', { class: 'seal-label' }, flow.label)),
-          h('span', { class: 'hero-step-text' }, h('strong', {}, flow.title), flow.text),
+          h('strong', { class: 'hero-step-text' }, flow.title),
         ),
       ),
     ),
@@ -120,7 +136,7 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
   return h(
     'div',
     { class: 'mission-list', 'data-anchor': 'mission-list' },
-    hero(tutorials[0], actions),
+    hero(tutorials[0], missions, actions),
     h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
     h('p', { class: 'note' }, XP_NOTE),
     achievementList(achievements),

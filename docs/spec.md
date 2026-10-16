@@ -262,6 +262,7 @@ MVPではXP、ストリーク、時間競争を導入しない。MVP後の拡張
 | - | - |
 | id / version / schemaVersion | 課題ID、不変のパック版、定義形式の版 |
 | title / learningObjectives | 表示名と到達目標 |
+| vulnerability | 扱う脆弱性（通称・正式名・CWE・分類）。一覧は課題IDでなくこの項目で脆弱性名と分類を表示する。練習用（tutorial）では省略 |
 | appCompatibility | アプリIDと対応バージョン |
 | runtime / capabilities | 必要なアダプターと機能 |
 | hooks / conflicts | 交換する処理と競合条件 |
