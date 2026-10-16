@@ -170,6 +170,31 @@ describe('validatePack', () => {
     expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`story.requester.${path}:`)]);
   });
 
+  it('仕組みの例は省略でき、題名・手順・分かることが非空なら受け付ける', () => {
+    const pack = samplePack();
+    delete pack.manifest.story.workedExample;
+    expect(validatePack(pack, { app })).toEqual([]);
+    pack.manifest.story.workedExample = { title: '例', steps: ['入力', '結果'], takeaway: '分かること' };
+    expect(validatePack(pack, { app })).toEqual([]);
+  });
+
+  it.each([
+    ['title', { title: ' ', steps: ['入力'], takeaway: '分かること' }],
+    ['steps', { title: '例', steps: [], takeaway: '分かること' }],
+    ['steps[0]', { title: '例', steps: [''], takeaway: '分かること' }],
+    ['takeaway', { title: '例', steps: ['入力'], takeaway: '' }],
+  ])('仕組みの例の %s が空なら拒否する', (path, example) => {
+    const pack = samplePack();
+    pack.manifest.story.workedExample = example;
+    expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`story.workedExample.${path}:`)]);
+  });
+
+  it.each([null, '例', { title: '例' }])('仕組みの例がオブジェクトでなければ拒否する', (example) => {
+    const pack = samplePack();
+    Object.assign(pack.manifest.story, { workedExample: example });
+    expect(validatePack(pack, { app }).some((error) => error.startsWith('story.workedExample'))).toBe(true);
+  });
+
   it.each([null, '依頼人', { name: '依頼人', role: '利用者' }])('依頼人や反応がオブジェクトでなければ拒否する', (requester) => {
     const pack = samplePack();
     Object.assign(pack.manifest.story, { requester });

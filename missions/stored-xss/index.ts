@@ -2,7 +2,7 @@
 // 共有ページのコメント描画を HTML 解釈へ切り替え、別の利用者が開いたときに検証済みペイロードが実行される事故を題材にする
 import type { MissionPack } from '../../platform/contract';
 import { IMPLEMENTATIONS } from './implementations';
-import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK } from './learning';
+import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './learning';
 import { ATTACK_COMMENT, CASES, PLAIN_COMMENT, PROBES, TARGET_CASES } from './tests';
 
 const HOOKS = [{ id: 'comment.render', contract: 1 }];
@@ -16,7 +16,7 @@ export const storedXssPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'stored-xss',
-    version: '1.1.0',
+    version: '1.2.0',
     kind: 'mission',
     title: 'コメントからのスクリプト実行を防ぐ',
     summary:
@@ -28,6 +28,7 @@ export const storedXssPack: MissionPack = {
     ],
     estimatedMinutes: 15,
     story: {
+      workedExample: WORKED_EXAMPLE,
       requester: {
         name: 'carol さん', role: '共有ページの利用者',
         reactions: {

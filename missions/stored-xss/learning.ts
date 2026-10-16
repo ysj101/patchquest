@@ -1,5 +1,17 @@
 // 保存型 XSS パックのヒント・解法・理解確認・振り返り
-import type { DebriefDef, HintDef, TransferQuestion } from '../../platform/contract';
+import type { DebriefDef, HintDef, TransferQuestion, WorkedExample } from '../../platform/contract';
+
+/** 仕組みだけを示す例。対策には触れない（防御は学習者が選ぶ） */
+export const WORKED_EXAMPLE: WorkedExample = {
+  title: '保存した文字列が、別の人の画面でプログラムとして動く',
+  steps: [
+    '入力：bob が共有ページに、コメントとして <img src="x" onerror="pqMarker()"> という文字列を書き込む。保存されるのは、ただの文字列。',
+    '処理：共有ページを表示する処理は、保存したコメントを HTML としてそのまま画面に組み込む。',
+    '別の人が開く：carol が共有ページを開くと、ブラウザは組み込まれた <img> を画像として読み込もうとし、失敗したときに onerror に書かれた処理を実行する。',
+    '結果：carol は何も操作していないのに、bob が書いた処理が carol の画面で、carol として動く。',
+  ],
+  takeaway: '文字列として保存したものを HTML として画面に組み込むと、書いた人ではなく読んだ人の画面で、読んだ人の権限で動く。',
+};
 
 export const HINTS: HintDef[] = [
   {

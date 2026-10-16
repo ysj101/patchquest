@@ -3,7 +3,7 @@
 // 実行するのは SQLite。任意の SQL を書く欄は置かず、登録済みの検索語だけを送る
 import type { MissionPack } from '../../platform/contract';
 import { IMPLEMENTATIONS } from './implementations';
-import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK } from './learning';
+import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './learning';
 import { CASES, OR_TITLE, OR_TRUE, PROBES, TARGET_CASES, UNION_TITLES } from './tests';
 
 const SEARCH = { id: 'memo.search.query', contract: 1 };
@@ -22,7 +22,7 @@ export const sqliPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sqli',
-    version: '1.1.0',
+    version: '1.2.0',
     kind: 'mission',
     title: '検索条件からの情報漏えいを防ぐ',
     estimatedMinutes: 15,
@@ -34,6 +34,7 @@ export const sqliPack: MissionPack = {
       '対策のあと、日本語・引用符・該当なしの検索ができ、他人のメモは返らないことを確かめられる',
     ],
     story: {
+      workedExample: WORKED_EXAMPLE,
       requester: {
         name: 'alice さん', role: 'メモアプリの利用者',
         reactions: {

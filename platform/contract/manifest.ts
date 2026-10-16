@@ -52,10 +52,24 @@ export interface MissionManifest {
 export interface StoryDef {
   /** 依頼人。導入と結果の場面で短い反応を添える（任意。無ければキャラクターなしで表示） */
   requester?: { name: string; role: string; reactions: { reproduced: string; secured: string; closing: string } };
+  /** 脆弱性の仕組みだけを示す短い完成例（任意。無ければ状況タブに出さない） */
+  workedExample?: WorkedExample;
   incident: string;
   goal: string;
   protectedAssets: string[];
   normalUse: string[];
+}
+
+/**
+ * 仕組みを示す完成例（worked example）。初心者が攻撃を試す前に、何が起きるかを読んで理解するためのもの。
+ * 対策の正解（コードや方針）は書かない。防御は学習者が対策パネルで考える
+ */
+export interface WorkedExample {
+  title: string;
+  /** 入力 → 処理 → 結果の順に、各 1〜2 文 */
+  steps: string[];
+  /** この例から分かること 1 文。対策には触れない */
+  takeaway: string;
 }
 
 export interface HookRequirement {

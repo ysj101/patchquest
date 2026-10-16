@@ -17,6 +17,7 @@ export const testPack: MissionPack = {
         name: 'ノートの依頼人', role: 'ノートアプリの利用者',
         reactions: { reproduced: 'ほかの人のノートまで読めてしまうんだね。', secured: '守ってくれてありがとう。', closing: '誰のノートかを確かめるんだね。' },
       },
+      workedExample: { title: '番号を変えると別の人のノートが返る', steps: ['入力：bob が GET /notes/1 を送る', '結果：alice のノートが返る'], takeaway: '誰のノートかを確かめていない' },
       incident: '他人のノートが見える', goal: '所有者だけが読めるようにする', protectedAssets: ['ノート本文'], normalUse: ['本人がノートを読める'] },
     appCompatibility: { appId: 'test-app', versions: '^1.0.0' },
     runtime: { adapter: 'browser', capabilities: ['sqlite', 'dom-preview'] },
