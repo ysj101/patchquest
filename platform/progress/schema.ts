@@ -17,10 +17,12 @@ import {
 
 import { ACHIEVEMENTS } from './achievements';
 import { MAX_TEXT, count, readHistory } from './history';
+import { MAX_REVIEWS, type ReviewEntry } from './review';
+import { WEEKLY_GOAL_IDS, type WeeklyGoalId } from './weekly-goal';
 
 export const PROGRESS_FORMAT = 'patchquest-progress';
 
-export const PROGRESS_SCHEMA_VERSION = 8;
+export const PROGRESS_SCHEMA_VERSION = 9;
 // 読み込める最も古い版。spec §13 に従い、版を上げても旧版の読み込みを維持する。
 const OLDEST_READABLE_SCHEMA_VERSION = 1;
 // 演習をまたぐ記録の入れ物 profile が加わった版。
@@ -34,8 +36,14 @@ const STATES = Object.keys(TRANSITIONS) as ExerciseState[];
 
 /** 演習をまたぐ記録。XP の合計と実績の解除日時を保存し、Attempt の記録から照合する。
  * 演習内のステージ（spec §9）は Attempt の milestones と達成印から導くので profile には持たない。spec §13 の「ステージ到達」はこの意味で Attempt から再計算する。
+ * 復習の回答（reviews）と週間目標（weeklyGoal）は Attempt から導けないため、そのまま保存する（v9 から）。
  */
-export type ProgressProfile = { xp?: { total: number }; achievements?: Record<string, string> };
+export type ProgressProfile = {
+  xp?: { total: number };
+  achievements?: Record<string, string>;
+  reviews?: ReviewEntry[];
+  weeklyGoal?: WeeklyGoalId;
+};
 
 export interface ProgressFile {
   format: typeof PROGRESS_FORMAT;
@@ -184,7 +192,25 @@ function readProfile(checker: Checker, value: unknown): ProgressProfile {
     result.achievements = Object.fromEntries(ACHIEVEMENTS.filter(({ id }) => Object.hasOwn(saved, id))
       .map(({ id }) => [id, checker.str(`profile.achievements.${id}`, saved[id], MAX_TEXT)]));
   }
+  if (profile.reviews !== undefined) result.reviews = readReviews(checker, profile.reviews);
+  if (profile.weeklyGoal !== undefined) result.weeklyGoal = checker.oneOf('profile.weeklyGoal', profile.weeklyGoal, WEEKLY_GOAL_IDS);
   return result;
+}
+
+/** 復習の回答。上限を超えたら最新の分だけを保持する */
+function readReviews(checker: Checker, value: unknown): ReviewEntry[] {
+  const records = checker.list('profile.reviews', value);
+  const start = Math.max(0, records.length - MAX_REVIEWS);
+  return records.slice(start).map((raw, index) => {
+    const path = `profile.reviews[${start + index}]`;
+    const record = checker.obj(path, raw);
+    return {
+      at: checker.str(`${path}.at`, record.at, MAX_TEXT),
+      missionId: checker.text(`${path}.missionId`, record.missionId),
+      questionId: checker.text(`${path}.questionId`, record.questionId),
+      correct: checker.bool(`${path}.correct`, record.correct),
+    };
+  });
 }
 
 /** 進捗 JSON を検証して読み込む。サイズ・形式・版・各項目の違反は ProgressFormatError */

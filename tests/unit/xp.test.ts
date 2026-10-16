@@ -10,7 +10,7 @@ const complete = (id: string, seed = 42, variantId = 'default') => makeAttempt(i
 });
 
 it('空の記録は0 XPでレベル1、次は100 XP', () => {
-  expect(xpFromAttempts([])).toEqual({ total: 0, level: 1, nextLevelAt: 100, byMission: {} });
+  expect(xpFromAttempts([])).toEqual({ total: 0, level: 1, nextLevelAt: 100, byMission: {}, review: 0 });
 });
 
 it('各ステージの到達に10・20・30・30・50 XPを与え、同じ記録の更新で二重に与えない', () => {

@@ -483,8 +483,14 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .mastery-label { color: var(--muted); }
 .mastery-stars { font-family: var(--font-mono); letter-spacing: 0.1em; color: var(--seal); }
 .mastery-level { font-weight: 600; }
+.mastery-consolidated { font-size: 0.85rem; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
 .mastery-evidence summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .mastery-evidence-list { margin: 6px 0 0; padding-left: 1.4em; font-size: 0.85rem; color: var(--muted); }
+.review-quest, .weekly-goal { display: grid; gap: 10px; }
+.review-form { display: grid; gap: 12px; }
+.review-result { display: grid; gap: 8px; }
+.weekly-goal-options { display: flex; flex-wrap: wrap; gap: 8px 16px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.weekly-goal-options legend { font-weight: 700; padding: 0 4px; }
 .achievements time { overflow-wrap: anywhere; }
 
 /* 発言と話者は動きを付けず、文字と同梱の顔で示す。 */

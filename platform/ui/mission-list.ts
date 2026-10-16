@@ -74,7 +74,8 @@ function hero(tutorial: MissionEntry | undefined, missions: MissionEntry[], acti
   );
 }
 
-export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements, mastery }: ProfileSummary): HTMLElement {
+/** 課題一覧。habits は習熟度の下に差し込む区画（復習クエスト・週間目標） */
+export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements, mastery }: ProfileSummary, habits: HTMLElement[] = []): HTMLElement {
   const fileInput = h('input', {
     type: 'file',
     accept: 'application/json,.json',
@@ -99,6 +100,7 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
     h('p', { class: 'note' }, XP_NOTE),
     achievementList(achievements),
     masteryList(mastery, distinctVulnerability(missions, (vulnerability) => vulnerability.category)),
+    ...habits,
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,
