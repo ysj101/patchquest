@@ -451,6 +451,15 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .xp-gain, .achievement-gain { color: var(--seal); font-weight: bold; animation: rise-in 0.3s ease-out; }
 
 .achievements li { margin-block: 16px; }
+.mastery { margin-top: 24px; display: grid; gap: 8px; }
+.mastery-grid { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+.mastery-grid > li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; display: grid; gap: 6px; }
+.mastery-line { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 0.9rem; margin: 0; }
+.mastery-label { color: var(--muted); }
+.mastery-stars { font-family: var(--font-mono); letter-spacing: 0.1em; color: var(--seal); }
+.mastery-level { font-weight: 600; }
+.mastery-evidence summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+.mastery-evidence-list { margin: 6px 0 0; padding-left: 1.4em; font-size: 0.85rem; color: var(--muted); }
 .achievements time { overflow-wrap: anywhere; }
 
 /* 発言と話者は動きを付けず、文字と同梱の顔で示す。 */

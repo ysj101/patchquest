@@ -3,9 +3,11 @@ import type { AttemptRecord, MissionPack, VulnerabilityDef } from '../contract';
 import { seals, settingsButton } from './components';
 import { sealStates } from '../progress/stages';
 import type { ProfileSummary } from '../progress/profile';
+import type { MasterySummary } from '../progress/mastery';
 import { achievementList } from './achievement-list';
 import { VULNERABILITY_CATEGORY_LABEL, XP_NOTE } from './labels';
 import { xpLabel } from './xp-badge';
+import { masteryLine, masteryList } from './mastery';
 import { h } from './dom';
 
 export interface MissionEntry {
@@ -37,7 +39,7 @@ function vulnerabilityLabel(vulnerability: VulnerabilityDef): HTMLElement {
   );
 }
 
-function card(entry: MissionEntry, actions: MissionListActions): HTMLElement {
+function card(entry: MissionEntry, actions: MissionListActions, mastery: MasterySummary): HTMLElement {
   const { manifest } = entry.pack;
   const titleId = `mission-${manifest.id}`;
   const buttons =
@@ -53,7 +55,7 @@ function card(entry: MissionEntry, actions: MissionListActions): HTMLElement {
     h(
       'header',
       { class: 'mission-card-head' },
-      h('div', {}, manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null, h('h3', { id: titleId }, manifest.title), h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`)),
+      h('div', {}, manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null, h('h3', { id: titleId }, manifest.title), h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`), manifest.vulnerability ? masteryLine(mastery[manifest.vulnerability.category]) : null),
       seals(sealStates(entry.latest, entry.defenseCurrent), 'small'),
     ),
     h('p', { class: 'mission-summary' }, manifest.summary),
@@ -70,9 +72,14 @@ const FLOW: { label: string; title: string }[] = [
   { label: '理解', title: 'ふりかえる' },
 ];
 
+/** 課題が扱う脆弱性の項目をカタログの順に重複なく集める。脆弱性のない課題（練習）は飛ばす */
+function distinctVulnerability<T>(missions: MissionEntry[], pick: (vulnerability: VulnerabilityDef) => T): T[] {
+  return [...new Set(missions.flatMap((entry) => (entry.pack.manifest.vulnerability ? [pick(entry.pack.manifest.vulnerability)] : [])))];
+}
+
 /** 練習する脆弱性の通称をカタログの順に並べる（同じ脆弱性の課題が複数あっても 1 回）。課題がないときは何を練習する場所かだけを書く */
 function heroLead(missions: MissionEntry[]): string {
-  const names = [...new Set(missions.flatMap((entry) => entry.pack.manifest.vulnerability?.name ?? []))];
+  const names = distinctVulnerability(missions, (vulnerability) => vulnerability.name);
   const subject = names.length > 0 ? `${names.join('・')}の ${names.length} つを` : 'アプリのセキュリティの不具合を';
   return `${subject}、わざと壊したアプリで練習します。すべてこのブラウザの中で動き、本物のサービスには触れません。`;
 }
@@ -111,12 +118,12 @@ function hero(tutorial: MissionEntry | undefined, missions: MissionEntry[], acti
   );
 }
 
-function section(title: string, lead: string, entries: MissionEntry[], actions: MissionListActions): HTMLElement | null {
+function section(title: string, lead: string, entries: MissionEntry[], actions: MissionListActions, mastery: MasterySummary): HTMLElement | null {
   if (entries.length === 0) return null;
-  return h('section', { class: 'mission-section' }, h('h2', {}, title), h('p', { class: 'lead' }, lead), h('div', { class: 'mission-grid' }, ...entries.map((e) => card(e, actions))));
+  return h('section', { class: 'mission-section' }, h('h2', {}, title), h('p', { class: 'lead' }, lead), h('div', { class: 'mission-grid' }, ...entries.map((e) => card(e, actions, mastery))));
 }
 
-export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements }: ProfileSummary): HTMLElement {
+export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements, mastery }: ProfileSummary): HTMLElement {
   const fileInput = h('input', {
     type: 'file',
     accept: 'application/json,.json',
@@ -140,11 +147,12 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
     h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
     h('p', { class: 'note' }, XP_NOTE),
     achievementList(achievements),
+    masteryList(mastery, distinctVulnerability(missions, (vulnerability) => vulnerability.category)),
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,
-    section('練習', '操作ガイドつきの短い課題です。何度でもやり直せます。', tutorials, actions),
-    section('課題', 'どの課題からでも始められます。', missions, actions),
+    section('練習', '操作ガイドつきの短い課題です。何度でもやり直せます。', tutorials, actions, mastery),
+    section('課題', 'どの課題からでも始められます。', missions, actions, mastery),
     entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
     h(
       'section',
