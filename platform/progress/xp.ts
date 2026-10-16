@@ -1,6 +1,6 @@
 // 演習記録から課題ごとの到達報酬と再挑戦報酬を再計算する。
 import type { AttemptRecord } from '../contract';
-import { stageStates } from './stages';
+import { allBadgesAchieved, stageStates } from './stages';
 
 export const STAGE_XP = [10, 20, 30, 30, 50] as const;
 export const RETRY_XP = 20;
@@ -26,7 +26,7 @@ export function xpFromAttempts(attempts: readonly AttemptRecord[]): XpSummary {
     stageStates(attempt, true).forEach((stage, index) => {
       if (stage.state === 'done') mission.stages.add(index);
     });
-    if (!Object.values(attempt.badges).every((badge) => badge.achieved)) continue;
+    if (!allBadgesAchieved(attempt)) continue;
     const key = `${attempt.variantId}\u0000${attempt.seed}`;
     if (mission.completed.size && !mission.completed.has(key) && mission.retries < MAX_RETRY_BONUSES) mission.retries++;
     mission.completed.add(key);

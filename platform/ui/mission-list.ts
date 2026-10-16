@@ -2,7 +2,8 @@
 import type { AttemptRecord, MissionPack } from '../contract';
 import { seals, settingsButton } from './components';
 import { sealStates } from '../progress/stages';
-import type { XpSummary } from '../progress/xp';
+import type { ProfileSummary } from '../progress/profile';
+import { achievementList } from './achievement-list';
 import { XP_NOTE } from './labels';
 import { xpLabel } from './xp-badge';
 import { h } from './dom';
@@ -99,7 +100,7 @@ function section(title: string, lead: string, entries: MissionEntry[], actions: 
   return h('section', { class: 'mission-section' }, h('h2', {}, title), h('p', { class: 'lead' }, lead), h('div', { class: 'mission-grid' }, ...entries.map((e) => card(e, actions))));
 }
 
-export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, xp: XpSummary): HTMLElement {
+export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements }: ProfileSummary): HTMLElement {
   const fileInput = h('input', {
     type: 'file',
     accept: 'application/json,.json',
@@ -122,6 +123,7 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
     hero(tutorials[0], actions),
     h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
     h('p', { class: 'note' }, XP_NOTE),
+    achievementList(achievements),
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,

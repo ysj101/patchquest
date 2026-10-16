@@ -11,6 +11,7 @@ function carried(resume: AttemptRecord | undefined) {
     attemptId: resume.attemptId, createdAt: resume.createdAt,
     badges: structuredClone(resume.badges), milestones: { ...resume.milestones },
     lastVerification: resume.lastVerification, history: structuredClone(resume.history),
+    firstPass: structuredClone(resume.firstPass), verifications: resume.verifications, normalBroken: resume.normalBroken,
     hintsOpened: [...resume.hintsOpened], solutionViewed: resume.solutionViewed, answers: { ...resume.answers },
   };
 }

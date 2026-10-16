@@ -3,7 +3,7 @@ import { catalog } from '@catalog';
 import { ANONYMOUS, RuntimeError, isInExercise, satisfies, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { xpFromAttempts } from '../progress/xp';
+import { profileFromAttempts } from '../progress/profile';
 import { importBanner, importMessage } from './progress-feedback';
 import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
@@ -23,13 +23,15 @@ import { verificationEffect } from './result-effect-model';
 
 type Screen = 'list' | 'preflight' | 'exercise';
 
+const achievementOptions = { missionIds: catalog.packs.filter((pack) => pack.manifest.kind === 'mission').map((pack) => pack.manifest.id) };
+
 const appVersionOf = (appId: string) => catalog.apps.find((a) => a.descriptor.id === appId)?.descriptor.version ?? '';
 
 export async function startApp(root: HTMLElement): Promise<void> {
   const effectWarning = h('p', { class: 'banner banner-warn', role: 'status' });
   const effects = browserEffects(document.documentElement, effectWarning);
   const openSettings = () => openEffectSettings(effects);
-  const store = await ProgressStore.open();
+  const store = await ProgressStore.open(achievementOptions);
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const resultEffects = new ResultEffects(effects, (message) => announce(live, message));
   const listView = h('section', { class: 'list-view' });
@@ -164,7 +166,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     await exercise.stop();
     await saved;
     const records = await store.list();
-    const xp = await store.xp(records);
+    const profile = await store.profile(records);
     fill(
       listView,
       missionList(entries(records), store.unavailableReason, {
@@ -174,7 +176,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
         exportProgress: () => void exportProgress(),
         importProgress: (file) => void importProgress(file),
         clearProgress: () => void clearProgress(),
-      }, xp),
+      }, profile),
     );
     show('list');
     if (message) announce(live, message);
@@ -185,7 +187,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
   let briefingAttemptId: string | null = null;
   async function begin(packId: string, resume?: AttemptRecord): Promise<void> {
     others = [];
-    exerciseView.xp.reset();
     // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の「演習を始める」を残さない）
     const started = orchestrator.start(packId, { resume });
     show('preflight');
@@ -199,7 +200,9 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   function updateExercise(snapshot: ExerciseSnapshot): void {
     exerciseView.update(snapshot);
-    exerciseView.xp.update(xpFromAttempts([...others, snapshot.attempt]));
+    const profile = profileFromAttempts([...others, snapshot.attempt], achievementOptions);
+    exerciseView.xp.update(profile.xp);
+    exerciseView.achievements.update(profile.achievements);
     resultEffects.update(snapshot);
     repair.update(snapshot);
     hints.update(snapshot);

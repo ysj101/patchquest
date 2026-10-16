@@ -444,4 +444,7 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .security-history time { font-size: 0.8rem; overflow-wrap: anywhere; }
 
 .xp-badge { display: flex; gap: 12px; font-size: 0.9rem; }
-.xp-gain { color: var(--seal); font-weight: bold; animation: rise-in 0.3s ease-out; }
+.xp-gain, .achievement-gain { color: var(--seal); font-weight: bold; animation: rise-in 0.3s ease-out; }
+
+.achievements li { margin-block: 16px; }
+.achievements time { overflow-wrap: anywhere; }

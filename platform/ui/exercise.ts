@@ -7,6 +7,7 @@ import { radioOption, seals, settingsButton, tabs, type TabSpec } from './compon
 import { fill, h } from './dom';
 import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
 import { STATE_LABEL } from './labels';
+import { AchievementToast } from './achievement-toast';
 import { XpBadge } from './xp-badge';
 import { StageProgress } from './stage-progress';
 
@@ -40,6 +41,7 @@ export class ExerciseView {
   private readonly state = h('p', { class: 'state-stamp' });
   private readonly stages: StageProgress;
   readonly xp: XpBadge;
+  readonly achievements: AchievementToast;
   private readonly sealSlot = h('div', { class: 'ticket-seals' });
   private readonly toolTabs: ReturnType<typeof tabs>;
   private readonly storyFooter: HTMLElement;
@@ -54,8 +56,9 @@ export class ExerciseView {
     announce: (message: string) => void,
   ) {
     this.xp = new XpBadge(announce);
+    this.achievements = new AchievementToast(announce);
     this.stages = new StageProgress(announce);
-    this.stages.header.append(this.xp.element);
+    this.stages.header.append(this.xp.element, this.achievements.element);
     this.storyFooter = extras.storyFooter;
     this.investigation = new InvestigationPanel({ send: actions.send });
     this.toolTabs = tabs('演習の道具', [
@@ -111,6 +114,7 @@ export class ExerciseView {
     );
     this.stages.reset();
     this.xp.reset();
+    this.achievements.reset();
     const story = snapshot.pack.manifest.story;
     fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
     fill(

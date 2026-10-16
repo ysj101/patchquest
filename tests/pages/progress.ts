@@ -2,7 +2,7 @@
 import type { AttemptRecord } from '../../platform/contract';
 import { ProgressStore } from '../../platform/progress/store';
 
-const store = await ProgressStore.open();
+const store = await ProgressStore.open({ missionIds: [] });
 
 const progressTest = {
   reason: () => store.unavailableReason,

@@ -70,7 +70,7 @@ test('改変したXPは取り込み時に注記し、記録から計算した値
   source.profile.xp = { total: 999 };
   await page.goto('/');
   await page.locator('input[type="file"]').setInputFiles({ name: '進捗.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)) });
-  await expect(page.locator('.banner-warn').filter({ hasText: '取り込んだファイルの XP は、そのファイルの記録と合わなかったため、記録から計算し直しました' })).toBeVisible();
+  await expect(page.locator('.banner-warn').filter({ hasText: '取り込んだファイルの XP または実績は、そのファイルの記録と合わなかったため、記録から計算し直しました' })).toBeVisible();
   await expect(page.locator('.xp-summary')).toContainText('Lv.1 ・ 0 XP');
   await expect(page.locator('[aria-live="polite"]')).toContainText('記録から計算し直しました');
 });
@@ -83,5 +83,5 @@ test('動きオフでも獲得量と読み上げを文字で示す', async ({ pa
   await launchButton(page).click();
   await gain(page, 10);
   await expect(badge(page).locator('.xp-gain')).toHaveCSS('animation-name', 'none');
-  await expect(page.locator('[aria-live="polite"]')).toHaveText('10 XP を獲得（合計 10）');
+  await expect(page.locator('[aria-live="polite"]')).toContainText('10 XP を獲得（合計 10）');
 });

@@ -104,6 +104,13 @@ export interface AttemptRecord {
   /** 検証のたびに追加。対策の取り消しやリセットでも消さない。
    * 検証順（時刻順）に末尾へ追加し、この順序を保持する。 */
   history: VerificationEntry[];
+  /** 最初に検証に合格した時点の事実。以後の操作で変わらない。実績の判定に使う。
+   * 履歴は上限で切るがこちらは残る。 */
+  firstPass: null | { at: string; verifications: number; normalBroken: boolean; hintsUsed: boolean };
+  /** 報告が得られた検証の総数。履歴を切っても減らさない。 */
+  verifications: number;
+  /** これまでの検証に、判定不能を除く正常系の不合格があったか。 */
+  normalBroken: boolean;
   hintsOpened: (1 | 2 | 3)[];
   solutionViewed: boolean;
   /** 理解確認の回答（設問 ID → 選択肢 ID） */
@@ -123,8 +130,11 @@ export function initialAttemptProgress() {
     badges: { reproduction: { achieved: false }, defense: { achieved: false }, understanding: { achieved: false } },
     lastVerification: null,
     history: [] as VerificationEntry[],
+    firstPass: null,
+    verifications: 0,
+    normalBroken: false,
     hintsOpened: [],
     solutionViewed: false,
     answers: {},
-  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'milestones' | 'badges' | 'lastVerification' | 'history' | 'hintsOpened' | 'solutionViewed' | 'answers'>;
+  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'milestones' | 'badges' | 'lastVerification' | 'history' | 'firstPass' | 'verifications' | 'normalBroken' | 'hintsOpened' | 'solutionViewed' | 'answers'>;
 }
