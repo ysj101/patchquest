@@ -264,11 +264,6 @@
       "count": 9
     }
   },
-  "platform/ui/mission-list.ts": {
-    "id-length": {
-      "count": 1
-    }
-  },
   "platform/ui/preflight.ts": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 1

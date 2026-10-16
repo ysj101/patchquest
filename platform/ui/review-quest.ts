@@ -1,4 +1,4 @@
-// 課題一覧の復習クエスト。解決済みの課題の理解確認から 1 問を出し、答えると解説と XP の増減を文字で示す。達成印は変えない
+// 記録ページの復習クエスト。解決済みの課題の理解確認から 1 問を出し、答えると解説と XP の増減を文字で示す。達成印は変えない
 import type { ReviewEntry, ReviewQuestion } from '../progress/review';
 import { REVIEW_XP } from '../progress/review';
 import { radioOption, status } from './components';

@@ -1,4 +1,4 @@
-// 課題一覧の「続ける仕組み」（復習クエストと週間目標）を、保存済みの記録と進捗の保存先からまとめて組み立てる
+// 記録ページの「続ける仕組み」（復習クエストと週間目標）を、保存済みの記録と進捗の保存先からまとめて組み立てる
 import type { AttemptRecord, MissionPack } from '../contract';
 import type { ProfileSummary } from '../progress/profile';
 import { pickReview, reviewCandidates, type ReviewEntry } from '../progress/review';

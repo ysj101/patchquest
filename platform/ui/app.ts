@@ -1,4 +1,4 @@
-// 学習UIの組み立て。課題一覧・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
+// 学習UIの組み立て。課題一覧・記録・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
 import { ANONYMOUS, RuntimeError, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
@@ -18,6 +18,9 @@ import { missionList } from './mission-list';
 import { missionEntries } from './mission-entries';
 import { hasCompleted } from './mission-table';
 import { habitSections } from './habits';
+import { recordsPage } from './records';
+import { siteNav } from './site-nav';
+import { reviewCandidates } from '../progress/review';
 import { planChallenge, type ChallengePlan } from '../progress/challenge';
 import { progressActions } from './progress-actions';
 import { PreflightView } from './preflight';
@@ -26,7 +29,7 @@ import { ResultEffects } from './result-effects';
 import { verificationEffect } from './result-effect-model';
 import { serialLatest } from './serial';
 
-type Screen = 'list' | 'preflight' | 'exercise';
+type Screen = 'list' | 'records' | 'preflight' | 'exercise';
 
 
 export async function startApp(root: HTMLElement): Promise<void> {
@@ -36,7 +39,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const store = await ProgressStore.open(profileOptions);
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const resultEffects = new ResultEffects(effects, (message) => announce(live, message));
-  const listView = h('section', { class: 'list-view' }), main = h('main', { id: 'main' });
+  const listView = h('section', { class: 'list-view' }), recordsView = h('section', { class: 'records-view' }), main = h('main', { id: 'main' });
+  const nav = siteNav((page) => void (page === 'list' ? showList() : showRecords()));
 
   let orchestrator: Orchestrator;
   /** 練習用パックの操作ガイド。演習が始まるたびにそのパックのガイドで始め直し、課題一覧へ戻っても表示し続ける */
@@ -62,15 +66,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
       const correct = orchestrator.answerTransfer(answers);
       announce(live, correct ? '理解の検印を押しました' : 'まだ正解でない設問があります');
     },
-    retry: () => {
-      const packId = orchestrator.snapshot?.pack.manifest.id;
-      if (packId) void begin(packId);
-    },
-    challenge: () => {
-      const packId = orchestrator.snapshot?.pack.manifest.id;
-      if (packId) void challenge(packId);
-    },
+    retry: () => withCurrentPack((packId) => begin(packId)),
+    challenge: () => withCurrentPack((packId) => challenge(packId)),
   });
+  function withCurrentPack(run: (packId: string) => Promise<void>): void {
+    const packId = orchestrator.snapshot?.pack.manifest.id;
+    if (packId) void run(packId);
+  }
   const exerciseView = new ExerciseView(
     {
       back: () => void showList(),
@@ -114,12 +116,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
       'header',
       { class: 'site-header' },
       h('p', { class: 'brand' }, h('img', { class: 'brand-mark', src: './assets/brand/mark.svg', alt: '' }), 'PatchQuest'),
+      nav.element,
     ),
     effectWarning,
     main,
     live,
   );
-  fill(main, guide.element, listView, preflightView.element, exerciseView.element);
+  fill(main, guide.element, listView, recordsView, preflightView.element, exerciseView.element);
 
   let screen: Screen = 'list';
   let others: AttemptRecord[] = [];
@@ -129,6 +132,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (snapshot && next === 'preflight') preflightView.update(snapshot);
     if (snapshot && next === 'exercise') updateExercise(snapshot);
     listView.hidden = next !== 'list';
+    recordsView.hidden = next !== 'records';
+    nav.select(next === 'list' || next === 'records' ? next : null);
     preflightView.element.hidden = next !== 'preflight';
     exerciseView.element.hidden = next !== 'exercise';
     guide.refresh();
@@ -154,26 +159,38 @@ export async function startApp(root: HTMLElement): Promise<void> {
     });
   });
 
-  async function showList(message?: string): Promise<void> {
+  /** 演習を止め、保存を待ってから、保存済みの記録と演習をまたぐ記録を読む（一覧と記録ページの共通の下準備） */
+  async function loadRecords() {
     await exercise.stop();
     await saved;
     const records = await store.list();
-    const profile = await store.profile(records);
+    return { records, profile: await store.profile(records) };
+  }
+
+  async function showList(message?: string): Promise<void> {
+    const { records, profile } = await loadRecords();
     fill(
       listView,
-      missionList(missionEntries(records, orchestrator.snapshot), store.unavailableReason, {
+      missionList(missionEntries(records, orchestrator.snapshot), {
         openSettings,
+        openRecords: () => void showRecords(),
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
         challenge: (packId) => void challenge(packId),
-        exportProgress: () => void progress.exportProgress(),
-        importProgress: (file) => void progress.importProgress(file),
-        clearProgress: () => void progress.clearProgress(),
-      }, profile, habitSections({ packs: catalog.packs, records, profile, store, refresh: (text) => void showList(text) })),
+      }, { mastery: profile.mastery, reviewAvailable: reviewCandidates(catalog.packs, records).length > 0, storageWarning: store.unavailableReason }),
     );
     show('list');
     if (message) announce(live, message);
     listView.querySelector<HTMLElement>('h1')?.focus();
+  }
+
+  async function showRecords(message?: string): Promise<void> {
+    const { records, profile } = await loadRecords();
+    const habits = habitSections({ packs: catalog.packs, records, profile, store, refresh: (text) => void showRecords(text) });
+    fill(recordsView, recordsPage(profile, catalog.packs, habits, store.unavailableReason, progress));
+    show('records');
+    if (message) announce(live, message);
+    recordsView.querySelector<HTMLElement>('h1')?.focus();
   }
 
   /** 導入を見せる演習の ID。同じ課題の記録（今回の演習を除く）が保存済みなら見せない */
@@ -314,7 +331,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     }
   }
 
-  const progress = progressActions({ store, listView, guide, showList, announce: (message) => announce(live, message) });
+  const progress = progressActions({ store, view: recordsView, guide, refresh: showRecords, announce: (message) => announce(live, message) });
 
   await showList();
 }
