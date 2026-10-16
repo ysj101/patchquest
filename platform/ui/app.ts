@@ -16,7 +16,7 @@ import { ExerciseView } from './exercise';
 import { GuidePanel } from './guide';
 import { missionList } from './mission-list';
 import { missionEntries } from './mission-entries';
-import { hasCompleted } from './mission-map';
+import { hasCompleted } from './mission-table';
 import { habitSections } from './habits';
 import { planChallenge, type ChallengePlan } from '../progress/challenge';
 import { progressActions } from './progress-actions';

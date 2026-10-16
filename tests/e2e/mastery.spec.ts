@@ -8,7 +8,8 @@ const authorization = (page: Page) => listSection(page).locator('.mastery-line[d
 test('達成印に応じて認可の習熟度が★と文字で上がり、根拠に演習と達成の種類を示す', async ({ page }) => {
   await openHome(page);
   await expect(authorization(page)).toHaveText('認可の習熟度☆☆☆☆☆Lv0：未着手');
-  await expect(page.locator('[data-mission="test-pack"] .mastery-line')).toContainText('Lv0：未着手');
+  // 課題の行の習熟度は完了した課題にだけ出す。未着手と練習課題には出さない
+  await expect(page.locator('[data-mission="test-pack"] .mastery-line')).toHaveCount(0);
   await expect(page.locator('[data-mission="onboarding"] .mastery-line')).toHaveCount(0);
 
   await openMission(page, 'test-pack');
@@ -30,5 +31,6 @@ test('達成印に応じて認可の習熟度が★と文字で上がり、根�
 
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
   await expect(authorization(page)).toHaveText('認可の習熟度★★★☆☆Lv3：理解まで');
+  // 完了した課題の行には、その分類の習熟度が付く
   await expect(page.locator('[data-mission="test-pack"] .mastery-line')).toHaveAttribute('data-stars', '3');
 });

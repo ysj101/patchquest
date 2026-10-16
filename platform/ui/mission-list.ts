@@ -1,16 +1,16 @@
-// ミッション一覧（spec §10）。左のメニューと、右に「課題の見出しと次の一歩 → 推奨順路の表 → あなたの記録 → 進捗」を置く。
-// 表は脆弱性名・実行環境・ステージ到達・目安・開始を 1 行にまとめ、XP・実績・習熟度・復習・週間目標は順路の下の「あなたの記録」に集める
-import type { AttemptRecord, VulnerabilityDef } from '../contract';
+// ミッション一覧（spec §10）。左のメニューと、右に「見出しと 1 行の説明と次の一歩 → 難易度順の課題の表 → あなたの記録 → 進捗」を置く。
+// 表は脆弱性名・難易度・進捗・目安・開始を 1 行にまとめ、XP・実績・習熟度・復習・週間目標は表の下の「あなたの記録」に集める
+import type { AttemptRecord, VulnerabilityCategory } from '../contract';
 import { settingsButton } from './components';
 import type { ProfileSummary } from '../progress/profile';
 import { achievementList } from './achievement-list';
 import { XP_NOTE } from './labels';
-import { missionMap, nextEntry, type MissionEntry } from './mission-map';
+import { missionTable, nextEntry, type MissionEntry } from './mission-table';
 import { xpLabel } from './xp-badge';
 import { masteryList } from './mastery';
 import { h } from './dom';
 
-export type { MissionEntry } from './mission-map';
+export type { MissionEntry } from './mission-table';
 
 export interface MissionListActions {
   openSettings(): void;
@@ -22,17 +22,13 @@ export interface MissionListActions {
   clearProgress(): void;
 }
 
-/** 課題が扱う脆弱性の項目をカタログの順に重複なく集める。脆弱性のない課題（練習）は飛ばす */
-function distinctVulnerability<T>(missions: MissionEntry[], pick: (vulnerability: VulnerabilityDef) => T): T[] {
-  return [...new Set(missions.flatMap((entry) => (entry.pack.manifest.vulnerability ? [pick(entry.pack.manifest.vulnerability)] : [])))];
+/** 課題が扱う脆弱性の分類をカタログの順に重複なく集める。脆弱性のない課題（練習）は飛ばす */
+function distinctCategories(missions: MissionEntry[]): VulnerabilityCategory[] {
+  return [...new Set(missions.flatMap((entry) => entry.pack.manifest.vulnerability?.category ?? []))];
 }
 
-/** 練習する脆弱性の通称をカタログの順に並べる（同じ脆弱性の課題が複数あっても 1 回）。課題がないときは何を練習する場所かだけを書く */
-function heroLead(missions: MissionEntry[]): string {
-  const names = distinctVulnerability(missions, (vulnerability) => vulnerability.name);
-  const subject = names.length > 0 ? `${names.join('・')}の ${names.length} つを` : 'アプリのセキュリティの不具合を';
-  return `${subject}、わざと壊したアプリで練習します。すべてこのブラウザの中で動き、本物のサービスには触れません。`;
-}
+/** 何をする場所かの 1 行。脆弱性の数や名前は表の各行が示すので、ここでは列挙しない */
+const HERO_LEAD = 'わざと壊したアプリで、セキュリティの不具合を自分の手で再現し、直し方を選んで、自動テストで確かめる練習場です。すべてこのブラウザの中で動き、本物のサービスには触れません。';
 
 /** 次の一歩。練習が終わっていなければ練習、途中の課題があればその続き。どちらもなければ置かない */
 function nextAction(entries: MissionEntry[], actions: MissionListActions): HTMLElement | null {
@@ -48,11 +44,11 @@ function nextAction(entries: MissionEntry[], actions: MissionListActions): HTMLE
   return h('button', { type: 'button', class: 'button button-primary button-big', on: { click: () => actions.resume(record) } }, `続きから：${name}`);
 }
 
-function hero(entries: MissionEntry[], missions: MissionEntry[], actions: MissionListActions): HTMLElement {
+function hero(entries: MissionEntry[], actions: MissionListActions): HTMLElement {
   return h(
     'header',
     { class: 'hero' },
-    h('div', { class: 'hero-text' }, h('h1', { id: 'hero-title', tabIndex: -1 }, '課題'), h('p', { class: 'hero-lead' }, heroLead(missions))),
+    h('div', { class: 'hero-text' }, h('h1', { id: 'hero-title', tabIndex: -1 }, '課題'), h('p', { class: 'hero-lead' }, HERO_LEAD)),
     h('div', { class: 'actions' }, nextAction(entries, actions), settingsButton(() => actions.openSettings())),
   );
 }
@@ -63,7 +59,7 @@ function sideNav(): HTMLElement {
   return h(
     'nav',
     { class: 'side-nav', 'aria-label': '一覧のメニュー' },
-    h('ul', {}, link('#map-title', '課題'), link('#records-title', '記録'), link('#progress-tools-title', '進捗')),
+    h('ul', {}, link('#table-title', '課題'), link('#records-title', '記録'), link('#progress-tools-title', '進捗')),
     h('p', { class: 'meta side-nav-foot' }, '保存先：このブラウザ'),
   );
 }
@@ -79,7 +75,7 @@ function records({ xp, achievements, mastery }: ProfileSummary, missions: Missio
       h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
     ),
     h('p', { class: 'note' }, XP_NOTE),
-    h('div', { class: 'records-grid' }, masteryList(mastery, distinctVulnerability(missions, (vulnerability) => vulnerability.category)), ...habits, achievementList(achievements)),
+    h('div', { class: 'records-grid' }, masteryList(mastery, distinctCategories(missions)), ...habits, achievementList(achievements)),
   );
 }
 
@@ -124,11 +120,11 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
     h(
       'div',
       { class: 'list-main' },
-      hero(entries, missions, actions),
+      hero(entries, actions),
       storageWarning
         ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
         : null,
-      missionMap(entries, profile.achievements, actions, profile.mastery),
+      missionTable(entries, actions, profile.mastery),
       entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
       records(profile, missions, habits),
       progressTools(actions),

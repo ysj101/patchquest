@@ -15,6 +15,8 @@
 
 `manifest.vulnerability` は課題が扱う脆弱性の種類で、`kind: 'mission'` のパックでは必須（`kind: 'tutorial'` では省略し、一覧に脆弱性名を出さない）。`name`（短い通称。例: `'IDOR'`）、`fullName`（正式な名前。例: `'安全でない直接オブジェクト参照'`）、`cwe`（`'CWE-639'` の形式）、`category`（`VULNERABILITY_CATEGORIES` のいずれか。`authorization`＝認可、`output-encoding`＝出力、`data-access`＝データアクセス）を持つ。課題一覧は題名より先にこの通称と CWE を見せ、分類ごとの表示（マップ・習熟度）もこの項目から組み立てる。コアは課題 ID で分岐しないので、新しい分類が要るときは `VULNERABILITY_CATEGORIES` に足す（§8 の記録に残す）。
 
+`manifest.difficulty` は課題の難易度で、`kind: 'mission'` では必須（`beginner`＝入門、`intermediate`＝基本、`advanced`＝応用。`tutorial` では省略し、一覧の先頭に置く）。一覧はこの順（同じ難易度ではカタログの順）に並べるだけで、課題をロックしない（spec §9）。
+
 プラットフォームは任意のソースコード文字列を実行しない。パックが動かせるのは、教材アプリが公開する**フック**（交換点）の実装を、登録済みの関数へ切り替えることだけである。
 
 パックの開発用のファイル（固有のテストと検証用データ）は、同じディレクトリの `__tests__/` に置く。配布物には入らない。

@@ -26,6 +26,10 @@ export interface VulnerabilityDef {
   category: VulnerabilityCategory;
 }
 
+/** 課題の難易度。一覧はこの順（入門 → 基本 → 応用）に並べる。ロックには使わない（spec §9） */
+export const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'] as const;
+export type Difficulty = (typeof DIFFICULTIES)[number];
+
 export interface MissionManifest {
   schemaVersion: typeof MANIFEST_SCHEMA_VERSION;
   /** 小文字・数字・ハイフン。例: 'idor' */
@@ -39,6 +43,8 @@ export interface MissionManifest {
   estimatedMinutes: number;
   /** 扱う脆弱性。kind が mission のパックでは必須。tutorial（操作の練習）では省略し、一覧に脆弱性名を出さない */
   vulnerability?: VulnerabilityDef;
+  /** 難易度。kind が mission のパックでは必須。tutorial では省略し、一覧の先頭に置く */
+  difficulty?: Difficulty;
   story: StoryDef;
   /** versions は 'x.y.z'（完全一致）か '^x.y.z'（同じメジャー版で x.y.z 以上） */
   appCompatibility: { appId: string; versions: string };

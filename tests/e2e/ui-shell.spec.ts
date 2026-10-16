@@ -8,8 +8,9 @@ test.beforeEach(async ({ page }) => {
   await openHome(page);
 });
 
-test('一覧は練習する脆弱性名を先に見せ、学習目標は開くまで畳んである', async ({ page }) => {
-  await expect(page.locator('.hero-lead')).toContainText('IDOR・保存型 XSS・SQL インジェクションの 3 つを');
+test('一覧は脆弱性名を先に見せ、リード文で脆弱性を列挙せず、学習目標は開くまで畳んである', async ({ page }) => {
+  await expect(page.locator('.hero-lead')).not.toContainText('IDOR');
+  await expect(page.locator('.hero-lead')).not.toContainText('3 つ');
   const idor = card(page, 'idor');
   await expect(idor.locator('.vulnerability-name')).toHaveText('IDOR');
   await expect(idor.locator('.vulnerability-detail')).toHaveText('安全でない直接オブジェクト参照 ・ CWE-639 ・ 認可');
@@ -18,31 +19,32 @@ test('一覧は練習する脆弱性名を先に見せ、学習目標は開く�
   await expect(idor.locator('.objectives')).toBeHidden();
   await idor.getByText('この課題でできるようになること').click();
   await expect(idor.locator('.objectives')).toBeVisible();
+  // 未着手の課題に習熟度の★は出さない
+  await expect(idor.locator('.mastery-line')).toHaveCount(0);
   // 練習課題は操作の練習なので、脆弱性名を出さない
   await expect(card(page, 'onboarding').locator('.vulnerability')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
 });
 
-test('課題はカタログの順の推奨順路として並び、練習が START・実績が GOAL になり、どの課題もロックされない', async ({ page }) => {
-  const map = page.getByRole('list', { name: 'おすすめの順路' });
-  const nodes = map.locator('.map-node[data-mission]');
-  await expect(nodes).toHaveCount(6);
-  expect(await nodes.evaluateAll((items) => items.map((item) => item.getAttribute('data-mission')))).toEqual(['onboarding', 'idor', 'stored-xss', 'sqli', 'test-pack', 'test-broken']);
-  await expect(card(page, 'onboarding').locator('.map-marker')).toHaveText('START');
-  await expect(card(page, 'idor').locator('.map-marker')).toHaveText('1');
-  await expect(card(page, 'sqli').locator('.map-marker')).toHaveText('3');
-  // 進捗はノードごとに文字でも示す。推奨は見せ方だけで、どの課題も開始ボタンが押せる
+test('課題は練習を先頭に難易度順に並び、難易度と進捗を文字で示し、どの課題もロックされない', async ({ page }) => {
+  const table = page.getByRole('list', { name: '課題の一覧' });
+  const rows = table.locator('.mission-row');
+  await expect(rows).toHaveCount(6);
+  // 練習 → 入門（idor, test-pack, test-broken はカタログ順）→ 基本（stored-xss）→ 応用（sqli）
+  expect(await rows.evaluateAll((items) => items.map((item) => item.getAttribute('data-mission')))).toEqual(['onboarding', 'idor', 'test-pack', 'test-broken', 'stored-xss', 'sqli']);
+  await expect(card(page, 'onboarding').locator('.difficulty-label')).toHaveText('練習');
+  await expect(card(page, 'idor').locator('.difficulty-label')).toHaveText('入門');
+  await expect(card(page, 'stored-xss').locator('.difficulty-label')).toHaveText('基本');
+  await expect(card(page, 'sqli').locator('.difficulty-label')).toHaveText('応用');
+  // 順路の飾り（START・番号・GOAL・次の行の強調）は置かない
+  await expect(page.locator('.map-marker, .map-goal, [data-next]')).toHaveCount(0);
+  // 進捗は文字と達成印で示す。並びは見せ方だけで、どの課題も開始ボタンが押せる
   for (const id of ['onboarding', 'idor', 'stored-xss', 'sqli']) {
-    await expect(card(page, id).locator('.map-status')).toContainText('未着手');
-    await expect(card(page, id).locator('.map-status')).toContainText('ステージ 0 / 5');
+    await expect(card(page, id).locator('.mission-progress')).toContainText('未着手');
+    await expect(card(page, id).getByRole('list', { name: '達成印' })).toContainText('再現：未達成');
     await expect(card(page, id).getByRole('button', { name: 'この課題を始める' })).toBeEnabled();
   }
-  const goal = map.locator('.map-goal');
-  await expect(goal.locator('.map-marker')).toHaveText('GOAL');
-  await expect(goal).toContainText('すべての課題を解決');
-  await expect(goal).toContainText('未解除');
-  await expect(goal).toContainText('いまの称号：新人');
-  // Tab 順は順路の順。START の開始ボタンの次に課題 1 の開始ボタンが来る
+  // Tab 順は表の順。練習の開始ボタンの次に入門の開始ボタンが来る
   await tabTo(page, card(page, 'onboarding').getByRole('button', { name: 'この課題を始める' }));
   await tabTo(page, card(page, 'idor').getByRole('button', { name: 'この課題を始める' }), 3);
 });
@@ -84,9 +86,9 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   await enterWorkbench(page);
   const ticket = await page.locator('.ticket-id').textContent();
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
-  // マップのノードは、導入を読んだ分だけステージが進み「途中」になる
+  // 表の行は、導入を読んだ分だけステージが進み「途中」になる
   await expect(card(page, 'test-pack')).toHaveAttribute('data-progress', 'doing');
-  await expect(card(page, 'test-pack').locator('.map-status')).toContainText('ステージ 1 / 5');
+  await expect(card(page, 'test-pack').locator('.mission-progress')).toContainText('途中');
 
   // 続きから始めると、同じ演習票（同じ seed）で環境を作り直す
   await card(page, 'test-pack').getByRole('button', { name: '続きから始める' }).click();
