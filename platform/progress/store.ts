@@ -3,8 +3,10 @@
 import { completeAttempt, canonicalJson, type AttemptRecord } from '../contract';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile, type ProgressProfile } from './schema';
 
-import { profileFromAttempts, storedProfile, type ProfileSummary } from './profile';
+import { profileFromAttempts, storedProfile, type KeptProfile, type ProfileSummary } from './profile';
 import type { AchievementOptions } from './achievements';
+import { MAX_REVIEWS, type ReviewEntry } from './review';
+import type { WeeklyGoalId } from './weekly-goal';
 
 export interface ProgressBackend {
   getAll(): Promise<AttemptRecord[]>;
@@ -112,6 +114,22 @@ export class IndexedDbBackend implements ProgressBackend {
   }
 }
 
+/** 取り込み時に、復習の回答は同じ回答を重ねずに合わせ、週間目標は手元の選択を優先する */
+function mergeKept(local: KeptProfile, imported: KeptProfile): KeptProfile {
+  const seen = new Set<string>();
+  const reviews = [...(local.reviews ?? []), ...(imported.reviews ?? [])]
+    .filter((review) => {
+      const key = `${review.at}\u0000${review.missionId}\u0000${review.questionId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((first, second) => first.at.localeCompare(second.at))
+    .slice(-MAX_REVIEWS);
+  const weeklyGoal = local.weeklyGoal ?? imported.weeklyGoal;
+  return { ...(reviews.length > 0 && { reviews }), ...(weeklyGoal !== undefined && { weeklyGoal }) };
+}
+
 export type ImportResult = { ok: true; imported: number; profileRecomputed: boolean } | { ok: false; error: string };
 
 export class ProgressStore {
@@ -154,15 +172,32 @@ export class ProgressStore {
     return this.withBackend((b) => b.clear());
   }
 
-  /** XP と実績を記録から照合し、差分を一度の保存で黙って補正する。 */
+  /** XP と実績を記録から照合し、差分を一度の保存で黙って補正する。復習の回答と週間目標は保存値をそのまま使う。 */
   async profile(records: readonly AttemptRecord[]): Promise<ProfileSummary> {
-    const summary = profileFromAttempts(records, this.options);
     const saved = await this.withBackend((backend) => backend.getProfile());
+    const summary = profileFromAttempts(records, this.options, saved);
     const profile = storedProfile(summary);
     if (canonicalJson(saved) !== canonicalJson(profile)) {
       await this.withBackend((backend) => backend.putProfile(profile));
     }
     return summary;
+  }
+
+  /** 復習の回答を追記し、XP を照合して保存する */
+  async recordReview(entry: ReviewEntry): Promise<ProfileSummary> {
+    return this.updateKept((kept) => ({ ...kept, reviews: [...(kept.reviews ?? []), entry].slice(-MAX_REVIEWS) }));
+  }
+
+  /** 週間目標を選ぶ（null で設定しない） */
+  async setWeeklyGoal(goal: WeeklyGoalId | null): Promise<ProfileSummary> {
+    return this.updateKept(({ reviews }) => ({ ...(reviews !== undefined && { reviews }), ...(goal !== null && { weeklyGoal: goal }) }));
+  }
+
+  private async updateKept(change: (kept: KeptProfile) => KeptProfile): Promise<ProfileSummary> {
+    const saved = await this.withBackend((backend) => backend.getProfile());
+    const { reviews, weeklyGoal } = saved;
+    await this.withBackend((backend) => backend.putProfile({ ...saved, ...change({ ...(reviews !== undefined && { reviews }), ...(weeklyGoal !== undefined && { weeklyGoal }) }) }));
+    return this.profile(await this.list());
   }
 
   async exportJson(now = new Date()): Promise<string> {
@@ -184,14 +219,15 @@ export class ProgressStore {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
-    const expected = profileFromAttempts(file.attempts, this.options);
+    const expected = profileFromAttempts(file.attempts, this.options, file.profile);
     const xpDiffers = file.profile.xp !== undefined && file.profile.xp.total !== expected.xp.total;
     const achievementsDiffer = file.profile.achievements !== undefined
       && JSON.stringify(Object.keys(file.profile.achievements).sort()) !== JSON.stringify(Object.keys(expected.achievements).sort());
     const profileRecomputed = xpDiffers || achievementsDiffer;
     const merged = new Map((await this.list()).map((record) => [record.attemptId, record]));
     for (const record of file.attempts) merged.set(record.attemptId, record);
-    const profile = storedProfile(profileFromAttempts([...merged.values()], this.options));
+    const local = await this.withBackend((backend) => backend.getProfile());
+    const profile = storedProfile(profileFromAttempts([...merged.values()], this.options, mergeKept(local, file.profile)));
     await this.withBackend(async (backend) => {
       await backend.put(file.attempts);
       await backend.putProfile(profile);

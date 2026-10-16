@@ -476,6 +476,11 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .xp-gain, .achievement-gain { color: var(--seal); font-weight: bold; animation: rise-in 0.3s ease-out; }
 
 .achievements li { margin-block: 16px; }
+.review-quest, .weekly-goal { display: grid; gap: 10px; }
+.review-form { display: grid; gap: 12px; }
+.review-result { display: grid; gap: 8px; }
+.weekly-goal-options { display: flex; flex-wrap: wrap; gap: 8px 16px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.weekly-goal-options legend { font-weight: 700; padding: 0 4px; }
 .achievements time { overflow-wrap: anywhere; }
 
 /* 発言と話者は動きを付けず、文字と同梱の顔で示す。 */
