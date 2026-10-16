@@ -12,6 +12,7 @@ export const testPack: MissionPack = {
     summary: '基盤の検証に使う',
     learningObjectives: ['検証用'],
     estimatedMinutes: 5,
+    vulnerability: { name: 'IDOR', fullName: '安全でない直接オブジェクト参照', cwe: 'CWE-639', category: 'authorization' },
     story: {
       requester: {
         name: 'ノートの依頼人', role: 'ノートアプリの利用者',
