@@ -7,7 +7,7 @@ import { listFiles } from './scan.mjs';
 
 /** platform/progress/schema.ts と同じ値 */
 export const PROGRESS_FORMAT = 'patchquest-progress';
-export const PROGRESS_SCHEMA_VERSIONS = { oldest: 1, newest: 8 };
+export const PROGRESS_SCHEMA_VERSIONS = { oldest: 1, newest: 9 };
 export const MAX_PROGRESS_BYTES = 1024 * 1024;
 
 /**

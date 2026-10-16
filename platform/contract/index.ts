@@ -9,3 +9,4 @@ export * from './version';
 export * from './hash';
 export * from './security-status';
 export * from './attempt-progress';
+export * from './challenge';

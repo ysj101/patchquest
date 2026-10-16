@@ -6,7 +6,7 @@ import { parseProgress, ProgressFormatError } from '../../platform/progress/sche
 import { ProgressStore } from '../../platform/progress/store';
 import { makeAttempt } from '../support/attempt';
 
-const json = (profile: unknown, schemaVersion = 8) => JSON.stringify({ format: 'patchquest-progress', schemaVersion, exportedAt: '', profile, attempts: [] });
+const json = (profile: unknown, schemaVersion = 9) => JSON.stringify({ format: 'patchquest-progress', schemaVersion, exportedAt: '', profile, attempts: [] });
 const local = (day: number, hour = 12) => new Date(2026, 9, day, hour).toISOString();
 const review = (day: number, questionId = 'q1', correct = true): ReviewEntry => ({ at: local(day), missionId: 'test-pack', questionId, correct });
 const reached = () => makeAttempt('到達', { milestones: { briefedAt: '時刻', firstRequestAt: null, firstDefenseAt: null } });
