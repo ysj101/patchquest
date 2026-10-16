@@ -173,7 +173,7 @@ export class ExerciseView {
     const { attempt, pack, defenseCurrent } = snapshot;
     this.stages.update(attempt, defenseCurrent);
     this.title.textContent = pack.manifest.title;
-    this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}`;
+    this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}${attempt.challenge ? '・別条件で挑戦中' : ''}`;
     this.state.textContent = STATE_LABEL[attempt.state];
     this.state.dataset.state = attempt.state;
     fill(this.sealSlot, seals(sealStates(attempt, defenseCurrent)));

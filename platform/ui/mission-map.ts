@@ -2,7 +2,7 @@
 // 推奨は見せ方だけで、どの課題もロックしない。終点は実績「すべての課題を解決」の状態をそのまま見せる
 import type { AttemptRecord, MissionPack, VulnerabilityDef } from '../contract';
 import { ACHIEVEMENTS, titleFor, type UnlockedAchievements } from '../progress/achievements';
-import { STAGES, sealStates, stageStates } from '../progress/stages';
+import { STAGES, allBadgesAchieved, sealStates, stageStates } from '../progress/stages';
 import { seals, status, type StatusKind } from './components';
 import { h } from './dom';
 import { VULNERABILITY_CATEGORY_LABEL } from './labels';
@@ -15,12 +15,19 @@ export interface MissionEntry {
   defenseCurrent: boolean;
   /** 続きから始められるか（教材の版が記録と同じ） */
   resumable: boolean;
+  /** 再現・防御・理解がそろった記録があるか（別条件での挑戦を出す条件） */
+  completed: boolean;
 }
 
 export interface MissionActions {
   start(packId: string): void;
   resume(record: AttemptRecord): void;
+  /** 完了済みの課題を、新しい seed・variant と別の設問で解き直す */
+  challenge(packId: string): void;
 }
+
+/** 完了済みの記録があるか。防御の現在性や対策の取り消しでは変わらない */
+export const hasCompleted = (records: readonly AttemptRecord[]): boolean => records.some(allBadgesAchieved);
 
 /** 脆弱性の通称を主役にし、正式名・CWE・分類を添える。課題の題名より先に目に入る位置に置く */
 function vulnerabilityLabel(vulnerability: VulnerabilityDef): HTMLElement {
@@ -43,6 +50,7 @@ function card(entry: MissionEntry, actions: MissionActions): HTMLElement {
           h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
         ]
       : [h('button', { type: 'button', class: 'button button-primary', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
+  if (entry.completed) buttons.push(h('button', { type: 'button', class: 'button', on: { click: () => actions.challenge(manifest.id) } }, '別条件で挑戦する'));
   return h(
     'article',
     { class: 'mission-card', 'aria-labelledby': titleId },

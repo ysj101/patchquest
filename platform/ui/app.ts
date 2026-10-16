@@ -4,10 +4,8 @@ import { ANONYMOUS, RuntimeError, isInExercise, satisfies, type ActorKey, type A
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { profileFromAttempts } from '../progress/profile';
-import { importBanner, importMessage } from './progress-feedback';
 import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
-import { downloadProgress } from './progress-download';
 import { browserEffects } from './browser-effects';
 import { openEffectSettings } from './effect-settings-panel';
 import { confirmDialog } from './components';
@@ -16,6 +14,9 @@ import { DebriefPanel, HintsPanel } from './debrief';
 import { ExerciseView } from './exercise';
 import { GuidePanel } from './guide';
 import { missionList, type MissionEntry } from './mission-list';
+import { hasCompleted } from './mission-map';
+import { planChallenge, type ChallengePlan } from '../progress/challenge';
+import { progressActions } from './progress-actions';
 import { PreflightView } from './preflight';
 import { RepairPanel } from './repair';
 import { ResultEffects } from './result-effects';
@@ -64,6 +65,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
     retry: () => {
       const packId = orchestrator.snapshot?.pack.manifest.id;
       if (packId) void begin(packId);
+    },
+    challenge: () => {
+      const packId = orchestrator.snapshot?.pack.manifest.id;
+      if (packId) void challenge(packId);
     },
   });
   const exerciseView = new ExerciseView(
@@ -158,7 +163,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       const resumable = !!latest && latest.missionVersion === pack.manifest.version && satisfies(appVersionOf(latest.appId), pack.manifest.appCompatibility.versions);
       // 防御が現在の合格なのは、この画面で検証した演習だけ。保存した記録は再検証するまで確定しない
       const defenseCurrent = !!latest && live?.attempt.attemptId === latest.attemptId && live.defenseCurrent;
-      return { pack, latest, resumable, defenseCurrent };
+      return { pack, latest, resumable, defenseCurrent, completed: hasCompleted(records.filter((record) => record.missionId === pack.manifest.id)) };
     });
   }
 
@@ -173,9 +178,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
         openSettings,
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
-        exportProgress: () => void exportProgress(),
-        importProgress: (file) => void importProgress(file),
-        clearProgress: () => void clearProgress(),
+        challenge: (packId) => void challenge(packId),
+        exportProgress: () => void progress.exportProgress(),
+        importProgress: (file) => void progress.importProgress(file),
+        clearProgress: () => void progress.clearProgress(),
       }, profile),
     );
     show('list');
@@ -185,10 +191,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   /** 導入を見せる演習の ID。同じ課題の記録（今回の演習を除く）が保存済みなら見せない */
   let briefingAttemptId: string | null = null;
-  async function begin(packId: string, resume?: AttemptRecord): Promise<void> {
+  async function begin(packId: string, resume?: AttemptRecord, plan?: ChallengePlan): Promise<void> {
     others = [];
     // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の「演習を始める」を残さない）
-    const started = orchestrator.start(packId, { resume });
+    const started = orchestrator.start(packId, { resume, ...plan });
     show('preflight');
     announce(live, '開始前チェックを始めました');
     const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
@@ -196,6 +202,14 @@ export async function startApp(root: HTMLElement): Promise<void> {
     const seen = records.some((record) => record.missionId === packId && record.attemptId !== snapshot.attempt.attemptId);
     briefingAttemptId = !resume && (!!store.unavailableReason || !seen) ? snapshot.attempt.attemptId : null;
     announce(live, isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
+  }
+
+  /** 完了済みの課題を別条件で解き直す。条件は保存済みの記録から決め、同じ seed は使わない */
+  async function challenge(packId: string): Promise<void> {
+    const pack = catalog.packs.find((candidate) => candidate.manifest.id === packId);
+    if (!pack) throw new Error(`課題 ${packId} は登録されていません`);
+    await saved;
+    await begin(packId, undefined, planChallenge(pack, await store.list()));
   }
 
   function updateExercise(snapshot: ExerciseSnapshot): void {
@@ -206,7 +220,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     resultEffects.update(snapshot);
     repair.update(snapshot);
     hints.update(snapshot);
-    debrief.update(snapshot);
+    debrief.update(snapshot, hasCompleted([...others, snapshot.attempt].filter((record) => record.missionId === snapshot.attempt.missionId)));
   }
 
   async function applyDefense(defenseId: string | null): Promise<void> {
@@ -314,30 +328,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     }
   }
 
-  async function exportProgress(): Promise<void> {
-    await downloadProgress(store);
-    announce(live, '進捗を書き出しました');
-    guide.reach('exported');
-  }
-
-  async function importProgress(file: File): Promise<void> {
-    const result = await store.importJson(await file.text());
-    await showList(importMessage(result));
-    const banner = importBanner(result);
-    if (banner) listView.querySelector('.progress-tools')?.append(banner);
-  }
-
-  async function clearProgress(): Promise<void> {
-    const ok = await confirmDialog({
-      title: '進捗をすべて削除しますか？',
-      body: 'このブラウザに保存した達成印と記録がすべて消えます。必要なら先に書き出してください。',
-      confirm: '削除する',
-      danger: true,
-    });
-    if (!ok) return;
-    await store.clear();
-    await showList('進捗を削除しました');
-  }
+  const progress = progressActions({ store, listView, guide, showList, announce: (message) => announce(live, message) });
 
   await showList();
 }

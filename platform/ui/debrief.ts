@@ -1,5 +1,6 @@
 // ヒント・振り返り・理解確認（spec §9, §10）。ヒントは減点しないが利用を記録する。
 // 理解確認は登録済みの選択肢で判定し、自由記述は採点しない
+import { askedQuestions } from '../contract';
 import { characterVoice, guideVoice, requesterVoice } from './characters';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
@@ -55,6 +56,20 @@ export class HintsPanel {
 export interface DebriefActions {
   answer(answers: Record<string, string>): void;
   retry(): void;
+  /** 完了済みの課題を、新しい seed・variant と別の設問で解き直す */
+  challenge(): void;
+}
+
+/** 理解確認の出題の種類。チャレンジでは設問を選んで出していることを文字でも知らせる */
+type TransferKind = 'normal' | 'fresh' | 'repeated';
+const TRANSFER_NOTE: Record<TransferKind, string> = {
+  normal: '演習とは違う状況で、原因と有効な対策を選びます。',
+  fresh: '別条件での挑戦です。前回と違う設問を 1 問出します。',
+  repeated: '別条件での挑戦です。この課題の設問はすべて出し終えているため、前回と同じ設問を 1 問出し直します。',
+};
+function transferKind(challenge: ExerciseSnapshot['attempt']['challenge']): TransferKind {
+  if (challenge === null) return 'normal';
+  return challenge.repeatsPrevious ? 'repeated' : 'fresh';
 }
 
 export class DebriefPanel {
@@ -63,18 +78,20 @@ export class DebriefPanel {
 
   constructor(private readonly actions: DebriefActions) {}
 
-  update(snapshot: ExerciseSnapshot): void {
+  /** challengeAvailable は、この課題に完了済みの記録（今回の演習を含む）があるか */
+  update(snapshot: ExerciseSnapshot, challengeAvailable: boolean): void {
     const { attempt, pack } = snapshot;
     const { answers } = attempt;
-    const key = `${attempt.attemptId}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}`;
+    const key = `${attempt.attemptId}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}|${challengeAvailable}`;
     if (!this.guard.changed(key)) return;
     const { debrief, fixtures } = pack.manifest;
+    const retry = this.retrySection(fixtures.variants.length, challengeAvailable);
     if (!attempt.badges.defense.achieved) {
       fill(
         this.element,
         h('section', { class: 'tool-section' }, h('h3', {}, '振り返り'), h('p', { class: 'muted' }, '対策を検証して防御に合格すると、原因と対策の振り返り、理解の確認ができます。')),
         securityHistory(snapshot),
-        this.retrySection(fixtures.variants.length),
+        retry,
       );
       return;
     }
@@ -94,16 +111,16 @@ export class DebriefPanel {
         'section',
         { class: 'tool-section', 'aria-labelledby': 'transfer-title' },
         h('h3', { id: 'transfer-title' }, '理解の確認'),
-        h('p', { class: 'note' }, '演習とは違う状況で、原因と有効な対策を選びます。'),
+        h('p', { class: 'note', 'data-transfer-note': transferKind(attempt.challenge) }, TRANSFER_NOTE[transferKind(attempt.challenge)]),
         attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '理解の検印を押しました')) : null,
         form,
       ),
-      this.retrySection(fixtures.variants.length),
+      retry,
     );
   }
 
   private transferForm(snapshot: ExerciseSnapshot): HTMLFormElement {
-    const { transferCheck } = snapshot.pack.manifest;
+    const transferCheck = askedQuestions(snapshot.pack.manifest, snapshot.attempt);
     const { answers } = snapshot.attempt;
     const form = h(
       'form',
@@ -133,10 +150,10 @@ export class DebriefPanel {
 
   private submit(form: HTMLFormElement, snapshot: ExerciseSnapshot): void {
     const data = new FormData(form);
-    this.actions.answer(Object.fromEntries(snapshot.pack.manifest.transferCheck.map((q) => [q.id, String(data.get(q.id) ?? '')])));
+    this.actions.answer(Object.fromEntries(askedQuestions(snapshot.pack.manifest, snapshot.attempt).map((q) => [q.id, String(data.get(q.id) ?? '')])));
   }
 
-  private retrySection(variantCount: number): HTMLElement {
+  private retrySection(variantCount: number, challengeAvailable: boolean): HTMLElement {
     return h(
       'section',
       { class: 'tool-section', 'aria-labelledby': 'retry-title' },
@@ -149,6 +166,19 @@ export class DebriefPanel {
           : '新しい演習票で始めます。利用者やメモなどのデータが変わります（脆弱性の種類は同じです）。',
       ),
       h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button', on: { click: this.actions.retry } }, '新しいデータで再挑戦する')),
+      challengeAvailable
+        ? h(
+            'div',
+            { class: 'challenge', 'data-anchor': 'challenge' },
+            h('h4', { class: 'eyebrow' }, '別条件で挑戦'),
+            h(
+              'p',
+              { class: 'note' },
+              '同じ脆弱性を、使ったことのない seed（と別のバリエーション）で解き直します。新しい脆弱性ではありません。ヒントは閉じた状態から始まり、理解確認は前回と違う設問を出します。',
+            ),
+            h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary', on: { click: () => this.actions.challenge() } }, '別条件で挑戦する')),
+          )
+        : null,
     );
   }
 }

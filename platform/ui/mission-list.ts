@@ -14,6 +14,7 @@ export interface MissionListActions {
   openSettings(): void;
   start(packId: string): void;
   resume(record: AttemptRecord): void;
+  challenge(packId: string): void;
   exportProgress(): void;
   importProgress(file: File): void;
   clearProgress(): void;
