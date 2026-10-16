@@ -1,4 +1,4 @@
-// 課題一覧の週間目標。利用者が任意に選び、今週の取り組みを文字で示す。未達でも減点・喪失・警告の表現を使わない（spec §9）
+// 記録ページの週間目標。利用者が任意に選び、今週の取り組みを文字で示す。未達でも減点・喪失・警告の表現を使わない（spec §9）
 import { WEEKLY_GOALS, type WeeklyActivity, type WeeklyGoalId } from '../progress/weekly-goal';
 import { radioOption } from './components';
 import { h } from './dom';

@@ -1,8 +1,15 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { enterWorkbench, expect, tabTo, test, openHome } from './fixtures';
+import { enterWorkbench, expect, tabTo, test, openHome, openMissions, openRecords } from './fixtures';
 
 const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
+
+/** 課題一覧で test-pack の開始ボタンの文言（進捗の有無）を確かめ、進捗の道具のある記録ページへ戻る */
+async function expectTestPackButton(page: Page, name: string): Promise<void> {
+  await openMissions(page);
+  await expect(card(page, 'test-pack').getByRole('button', { name })).toBeVisible();
+  await openRecords(page);
+}
 
 test.beforeEach(async ({ page }) => {
   await openHome(page);
@@ -130,6 +137,8 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   await expect(page.locator('.ticket-id')).toHaveText(ticket!);
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
 
+  // 進捗の道具は記録ページにある
+  await openRecords(page);
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: '進捗を書き出す' }).click();
   const file = await download;
@@ -140,19 +149,20 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   // 不正なファイルは拒否し、今の進捗を残す
   await page.locator('input[type=file]').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"format":"other"}') });
   await expect(page.getByRole('alert')).toContainText('今の進捗はそのままです');
-  await expect(card(page, 'test-pack').getByRole('button', { name: '続きから始める' })).toBeVisible();
+  await expectTestPackButton(page, '続きから始める');
 
   // 削除は確認してから行う。やめるを選べば何も消えない
   await page.getByRole('button', { name: '進捗をすべて削除' }).click();
   await page.keyboard.press('Escape');
-  await expect(card(page, 'test-pack').getByRole('button', { name: '続きから始める' })).toBeVisible();
+  await expectTestPackButton(page, '続きから始める');
   await page.getByRole('button', { name: '進捗をすべて削除' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
-  await expect(card(page, 'test-pack').getByRole('button', { name: 'この課題を始める' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: '記録', exact: true })).toBeFocused();
+  await expectTestPackButton(page, 'この課題を始める');
 
   // 書き出したファイルを読み込めば元に戻る
   await page.locator('input[type=file]').setInputFiles({ name: 'progress.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(exported)) });
-  await expect(card(page, 'test-pack').getByRole('button', { name: '続きから始める' })).toBeVisible();
+  await expectTestPackButton(page, '続きから始める');
 });
 
 test('ブラウザに保存できないときは、書き出しを促す', async ({ page }) => {

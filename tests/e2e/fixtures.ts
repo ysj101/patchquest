@@ -43,11 +43,28 @@ export const launchButton = (page: Page) => page.getByRole('button', { name: '�
  */
 export async function openHome(page: Page): Promise<void> {
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: '課題', exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(pageHeading(page, '課題')).toBeVisible({ timeout: 15_000 });
 }
 
-/** 課題一覧のカードから新規・再挑戦・再開を選び、開始前チェックを終えて演習画面を開く */
+const pageHeading = (page: Page, name: string) => page.getByRole('heading', { level: 1, name, exact: true });
+const siteNav = (page: Page) => page.getByRole('navigation', { name: 'ページ' });
+
+/** 見出しの「記録」から記録ページ（XP・習熟度・実績・復習・週間目標・進捗の道具）を開く */
+export async function openRecords(page: Page): Promise<void> {
+  await siteNav(page).getByRole('button', { name: '記録' }).click();
+  await expect(pageHeading(page, '記録')).toBeVisible();
+}
+
+/** 見出しの「課題」から課題一覧を開く。すでに一覧ならそのまま */
+export async function openMissions(page: Page): Promise<void> {
+  if (await pageHeading(page, '課題').isVisible()) return;
+  await siteNav(page).getByRole('button', { name: '課題' }).click();
+  await expect(pageHeading(page, '課題')).toBeVisible();
+}
+
+/** 課題一覧のカードから新規・再挑戦・再開を選び、開始前チェックを終えて演習画面を開く。記録ページにいれば一覧へ戻ってから選ぶ */
 export async function openMission(page: Page, missionId: string, options: { resume?: boolean } = {}): Promise<void> {
+  await openMissions(page);
   const name = options.resume ? '続きから始める' : /この課題を始める|最初から始める/;
   await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name }).click();
   await beginExercise(page);
