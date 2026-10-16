@@ -71,7 +71,8 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   // 練習を終えたら、一覧の「まずは練習」は出さない
   await expect(guide(page)).toBeHidden();
   await expect(page.getByRole('button', { name: /まずは練習/ })).toHaveCount(0);
-  await expect(page.locator('[data-mission="onboarding"]').getByRole('list', { name: '達成印' })).toContainText('理解：達成');
+  await expect(page.locator('[data-mission="onboarding"] .map-status')).toContainText('完了');
+  await expect(page.locator('[data-mission="onboarding"] .map-status')).toContainText('ステージ 5 / 5');
 });
 
 test('「入力欄で 41 文字目を打てなくする」を適用すると、画面のタイトル入力欄に上限が付く', async ({ page }) => {

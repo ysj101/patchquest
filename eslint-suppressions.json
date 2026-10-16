@@ -265,11 +265,8 @@
     }
   },
   "platform/ui/mission-list.ts": {
-    "@typescript-eslint/unbound-method": {
-      "count": 2
-    },
     "id-length": {
-      "count": 2
+      "count": 1
     }
   },
   "platform/ui/preflight.ts": {

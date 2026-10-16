@@ -1,10 +1,11 @@
-// ミッション一覧（spec §10）。どの脆弱性を練習する場所かを脆弱性名で示し、練習への入口、推奨順路のマップ（課題ごとの脆弱性名・達成印・ステージ到達・開始）と、進捗の書き出し・読み込み・削除を置く
+// ミッション一覧（spec §10）。左のメニューと、右に「課題の見出しと次の一歩 → 推奨順路の表 → あなたの記録 → 進捗」を置く。
+// 表は脆弱性名・実行環境・ステージ到達・目安・開始を 1 行にまとめ、XP・実績・習熟度・復習・週間目標は順路の下の「あなたの記録」に集める
 import type { AttemptRecord, VulnerabilityDef } from '../contract';
 import { settingsButton } from './components';
 import type { ProfileSummary } from '../progress/profile';
 import { achievementList } from './achievement-list';
 import { XP_NOTE } from './labels';
-import { missionMap, type MissionEntry } from './mission-map';
+import { missionMap, nextEntry, type MissionEntry } from './mission-map';
 import { xpLabel } from './xp-badge';
 import { masteryList } from './mastery';
 import { h } from './dom';
@@ -21,13 +22,6 @@ export interface MissionListActions {
   clearProgress(): void;
 }
 
-/** 何をする場所かを一目で示す。3 つの検印（再現・防御・理解）が、そのまま課題の進め方になっている */
-const FLOW: { label: string; title: string }[] = [
-  { label: '再現', title: 'こわす' },
-  { label: '防御', title: 'なおす' },
-  { label: '理解', title: 'ふりかえる' },
-];
-
 /** 課題が扱う脆弱性の項目をカタログの順に重複なく集める。脆弱性のない課題（練習）は飛ばす */
 function distinctVulnerability<T>(missions: MissionEntry[], pick: (vulnerability: VulnerabilityDef) => T): T[] {
   return [...new Set(missions.flatMap((entry) => (entry.pack.manifest.vulnerability ? [pick(entry.pack.manifest.vulnerability)] : [])))];
@@ -40,42 +34,56 @@ function heroLead(missions: MissionEntry[]): string {
   return `${subject}、わざと壊したアプリで練習します。すべてこのブラウザの中で動き、本物のサービスには触れません。`;
 }
 
-function hero(tutorial: MissionEntry | undefined, missions: MissionEntry[], actions: MissionListActions): HTMLElement {
-  const finished = tutorial?.latest?.badges.understanding.achieved;
+/** 次の一歩。練習が終わっていなければ練習、途中の課題があればその続き。どちらもなければ置かない */
+function nextAction(entries: MissionEntry[], actions: MissionListActions): HTMLElement | null {
+  const tutorial = entries.find((entry) => entry.pack.manifest.kind === 'tutorial');
+  if (tutorial && !tutorial.latest?.badges.understanding.achieved) {
+    const label = `まずは練習（${tutorial.pack.manifest.estimatedMinutes} 分）`;
+    return h('button', { type: 'button', class: 'button button-primary button-big', on: { click: () => actions.start(tutorial.pack.manifest.id) } }, label);
+  }
+  const next = nextEntry(entries);
+  const record = next?.latest;
+  if (!next || !record || !next.resumable) return null;
+  const name = next.pack.manifest.vulnerability?.name ?? next.pack.manifest.title;
+  return h('button', { type: 'button', class: 'button button-primary button-big', on: { click: () => actions.resume(record) } }, `続きから：${name}`);
+}
+
+function hero(entries: MissionEntry[], missions: MissionEntry[], actions: MissionListActions): HTMLElement {
   return h(
-    'section',
-    { class: 'hero', 'aria-labelledby': 'hero-title' },
-    h('header', { class: 'actions' }, h('h1', { id: 'hero-title', tabIndex: -1 }, 'わざと壊したアプリで、こわして、なおして、たしかめる。'), settingsButton(() => actions.openSettings())),
-    h('p', { class: 'hero-lead' }, heroLead(missions)),
-    h(
-      'ol',
-      { class: 'hero-flow', 'aria-label': '課題の進め方' },
-      ...FLOW.map((flow, i) =>
-        h(
-          'li',
-          { class: 'hero-step' },
-          h('span', { class: 'seal-stamp', 'aria-hidden': true }, h('span', { class: 'seal-mark' }, String(i + 1)), h('span', { class: 'seal-label' }, flow.label)),
-          h('strong', { class: 'hero-step-text' }, flow.title),
-        ),
-      ),
-    ),
-    tutorial && !finished
-      ? h(
-          'div',
-          { class: 'hero-cta' },
-          h(
-            'button',
-            { type: 'button', class: 'button button-primary button-chunky button-big', on: { click: () => actions.start(tutorial.pack.manifest.id) } },
-            `まずは練習（${tutorial.pack.manifest.estimatedMinutes} 分）`,
-          ),
-          h('p', { class: 'note' }, '操作ガイドつきで、流れをひと通り体験できます。'),
-        )
-      : null,
+    'header',
+    { class: 'hero' },
+    h('div', { class: 'hero-text' }, h('h1', { id: 'hero-title', tabIndex: -1 }, '課題'), h('p', { class: 'hero-lead' }, heroLead(missions))),
+    h('div', { class: 'actions' }, nextAction(entries, actions), settingsButton(() => actions.openSettings())),
   );
 }
 
-/** 課題一覧。habits は習熟度の下に差し込む区画（復習クエスト・週間目標） */
-export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements, mastery }: ProfileSummary, habits: HTMLElement[] = []): HTMLElement {
+/** 左のメニュー。各区画へのページ内リンクと、進捗の保存先 */
+function sideNav(): HTMLElement {
+  const link = (href: string, text: string) => h('li', {}, h('a', { href, class: 'side-link' }, text));
+  return h(
+    'nav',
+    { class: 'side-nav', 'aria-label': '一覧のメニュー' },
+    h('ul', {}, link('#map-title', '課題'), link('#records-title', '記録'), link('#progress-tools-title', '進捗')),
+    h('p', { class: 'meta side-nav-foot' }, '保存先：このブラウザ'),
+  );
+}
+
+function records({ xp, achievements, mastery }: ProfileSummary, missions: MissionEntry[], habits: HTMLElement[]): HTMLElement {
+  return h(
+    'section',
+    { class: 'records', 'aria-labelledby': 'records-title' },
+    h(
+      'div',
+      { class: 'records-head' },
+      h('h2', { id: 'records-title' }, 'あなたの記録'),
+      h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
+    ),
+    h('p', { class: 'note' }, XP_NOTE),
+    h('div', { class: 'records-grid' }, masteryList(mastery, distinctVulnerability(missions, (vulnerability) => vulnerability.category)), ...habits, achievementList(achievements)),
+  );
+}
+
+function progressTools(actions: MissionListActions): HTMLElement {
   const fileInput = h('input', {
     type: 'file',
     accept: 'application/json,.json',
@@ -90,35 +98,40 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
       },
     },
   });
-  const tutorials = entries.filter((e) => e.pack.manifest.kind === 'tutorial');
+  return h(
+    'section',
+    { class: 'progress-tools', 'aria-labelledby': 'progress-tools-title', 'data-anchor': 'progress-export' },
+    h('h2', { id: 'progress-tools-title' }, '進捗'),
+    h('p', { class: 'note' }, '進捗はこのブラウザの中だけに保存されます。別のブラウザへ移すときは書き出したファイルを読み込みます。'),
+    h(
+      'div',
+      { class: 'actions' },
+      h('button', { type: 'button', class: 'button', on: { click: () => actions.exportProgress() } }, '進捗を書き出す'),
+      h('button', { type: 'button', class: 'button', on: { click: () => fileInput.click() } }, '進捗を読み込む'),
+      h('button', { type: 'button', class: 'button button-danger', on: { click: () => actions.clearProgress() } }, '進捗をすべて削除'),
+      fileInput,
+    ),
+  );
+}
+
+/** 課題一覧。habits は習熟度の後に差し込む区画（復習クエスト・週間目標） */
+export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, profile: ProfileSummary, habits: HTMLElement[] = []): HTMLElement {
   const missions = entries.filter((e) => e.pack.manifest.kind === 'mission');
   return h(
     'div',
     { class: 'mission-list', 'data-anchor': 'mission-list' },
-    hero(tutorials[0], missions, actions),
-    h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
-    h('p', { class: 'note' }, XP_NOTE),
-    achievementList(achievements),
-    masteryList(mastery, distinctVulnerability(missions, (vulnerability) => vulnerability.category)),
-    ...habits,
-    storageWarning
-      ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
-      : null,
-    missionMap(entries, achievements, actions, mastery),
-    entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
+    sideNav(),
     h(
-      'section',
-      { class: 'progress-tools', 'aria-labelledby': 'progress-tools-title', 'data-anchor': 'progress-export' },
-      h('h2', { id: 'progress-tools-title' }, '進捗'),
-      h('p', { class: 'lead' }, '進捗はこのブラウザの中だけに保存されます。別のブラウザへ移すときは書き出したファイルを読み込みます。'),
-      h(
-        'div',
-        { class: 'actions' },
-        h('button', { type: 'button', class: 'button', on: { click: actions.exportProgress } }, '進捗を書き出す'),
-        h('button', { type: 'button', class: 'button', on: { click: () => fileInput.click() } }, '進捗を読み込む'),
-        h('button', { type: 'button', class: 'button button-danger', on: { click: actions.clearProgress } }, '進捗をすべて削除'),
-        fileInput,
-      ),
+      'div',
+      { class: 'list-main' },
+      hero(entries, missions, actions),
+      storageWarning
+        ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
+        : null,
+      missionMap(entries, profile.achievements, actions, profile.mastery),
+      entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
+      records(profile, missions, habits),
+      progressTools(actions),
     ),
   );
 }
