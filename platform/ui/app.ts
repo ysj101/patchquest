@@ -114,7 +114,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
       'header',
       { class: 'site-header' },
       h('p', { class: 'brand' }, h('span', { class: 'brand-mark', 'aria-hidden': true }, '◆'), 'PatchQuest'),
-      h('p', { class: 'brand-tagline' }, 'セキュリティの直し方を、壊れても困らない場所で練習する'),
     ),
     effectWarning,
     main,

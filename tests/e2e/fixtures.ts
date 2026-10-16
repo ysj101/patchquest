@@ -43,7 +43,7 @@ export const launchButton = (page: Page) => page.getByRole('button', { name: '�
  */
 export async function openHome(page: Page): Promise<void> {
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { level: 1, name: '課題', exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
 /** 課題一覧のカードから新規・再挑戦・再開を選び、開始前チェックを終えて演習画面を開く */

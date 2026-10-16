@@ -11,7 +11,7 @@ test('初回の事件と依頼、注意書きと演習票を表示し、Escで�
   await expect(launchButton(page)).toBeFocused();
   await expect(briefing(page)).toContainText('知らない人の非公開メモが表示されました');
   await expect(briefing(page)).toContainText('非公開メモは、書いた本人（所有者）だけが読めるようにします。');
-  await expect(page.locator('.banner-notice')).toBeVisible();
+  await expect(page.locator('.fictional-label')).toBeVisible();
   await expect(page.getByRole('button', { name: '課題一覧へ戻る' })).toBeVisible();
   await expect(page.locator('.ticket')).toContainText('非公開メモを守る');
   await expect(page.locator('.workbench')).toBeHidden();

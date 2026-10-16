@@ -15,7 +15,8 @@ async function apply(page: Page): Promise<void> {
 test('IDOR の導入から調査・再現・対策・理解確認まで五段階で進む', async ({ page }) => {
   await openHome(page);
   await openMission(page, 'idor');
-  await count(page, 0);
+  // 導入の間は作業台（ステージを含む）を隠している。数だけを確かめる
+  await expect(page.getByRole('heading', { name: 'ステージ 0 / 5', exact: true, includeHidden: true })).toHaveCount(1);
   await expect(ticketSeals(page)).toContainText('再現：未達成');
   await launchButton(page).click();
   await count(page, 1);

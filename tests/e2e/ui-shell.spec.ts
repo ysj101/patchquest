@@ -76,7 +76,7 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
   await page.getByRole('button', { name: 'もう一度チェックする' }).click();
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: '課題', exact: true })).toBeVisible();
 });
 
 test('進捗を保存し、続きから始め、書き出し・読み込み・削除ができる', async ({ page }) => {
