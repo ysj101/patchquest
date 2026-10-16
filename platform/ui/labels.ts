@@ -1,5 +1,5 @@
 // 画面に出す名前。利用者が操作・認識するものの名前で書く
-import type { BadgeKind, ExerciseState, ResultGroup } from '../contract';
+import type { BadgeKind, ExerciseState, ResultGroup, VulnerabilityCategory } from '../contract';
 import type { PreflightStep } from '../orchestrator/orchestrator';
 
 export const STATE_LABEL: Record<ExerciseState, string> = {
@@ -36,6 +36,13 @@ export const GROUP_LABEL: Record<ResultGroup, string> = {
   attack: '攻撃を防げたか',
   normal: '正常な利用ができるか',
   regression: 'ほかの守りが壊れていないか',
+};
+
+/** 脆弱性の分類の表示名。一覧・マップ・習熟度で共用する */
+export const VULNERABILITY_CATEGORY_LABEL: Record<VulnerabilityCategory, string> = {
+  authorization: '認可',
+  'output-encoding': '出力',
+  'data-access': 'データアクセス',
 };
 
 export const HINT_LABEL = { 1: '着眼点', 2: '調査方法', 3: '修正方針' } as const;
