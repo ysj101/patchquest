@@ -1,6 +1,6 @@
 // ステージの到達・取り消し・再開・別環境への復元を確かめる。
 import type { Page } from '@playwright/test';
-import { expect, launchButton, openMission, preview, startMission, test, ticketSeals, verifyWith } from './fixtures';
+import { expect, launchButton, openMission, preview, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
 
 const stages = (page: Page) => page.getByRole('list', { name: 'ステージ', exact: true });
 const count = (page: Page, total: number) => expect(page.getByRole('heading', { name: `ステージ ${total} / 5`, exact: true })).toBeVisible();
@@ -13,7 +13,7 @@ async function apply(page: Page): Promise<void> {
 }
 
 test('IDOR の導入から調査・再現・対策・理解確認まで五段階で進む', async ({ page }) => {
-  await page.goto('/');
+  await openHome(page);
   await openMission(page, 'idor');
   await count(page, 0);
   await expect(ticketSeals(page)).toContainText('再現：未達成');
@@ -74,7 +74,7 @@ test('到達記録は再開・再読み込み・別環境への取り込みで�
   } finally {
     await other.close();
   }
-  await page.goto('/');
+  await openHome(page);
   await openMission(page, 'idor');
   await count(page, 1);
   await expect(launchButton(page)).toBeHidden();

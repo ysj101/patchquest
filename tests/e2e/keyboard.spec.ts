@@ -1,8 +1,8 @@
 // キーボードだけで導入のスキップ・設定変更・再現・対策・理解確認まで完走できることを確かめる。
-import { expect, expectCalloutMatchesVerdict, expectWorkbench, launchButton, preview, settingsButton, tabTo, test, ticketSeals, turnMotionOffWithKeyboard } from './fixtures';
+import { expect, expectCalloutMatchesVerdict, expectWorkbench, launchButton, preview, settingsButton, tabTo, test, ticketSeals, turnMotionOffWithKeyboard, openHome } from './fixtures';
 
 test('キーボードだけで導入を飛ばし、動きをオフにして演習を完了できる', async ({ page }) => {
-  await page.goto('/');
+  await openHome(page);
   await tabTo(page, page.locator('[data-mission="test-pack"]').getByRole('button', { name: 'この課題を始める' }));
   await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: '演習を始める' })).toBeFocused({ timeout: 15_000 });

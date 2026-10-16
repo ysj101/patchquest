@@ -1,6 +1,6 @@
 // 実績の解除通知・称号・履歴による条件と進捗の照合をブラウザで確かめる。
 import type { Page } from '@playwright/test';
-import { expect, openMission, reproduceNoteLeak, startMission, test, ticketSeals, verifyWith, turnMotionOffWithKeyboard, settingsButton } from './fixtures';
+import { expect, openMission, reproduceNoteLeak, startMission, test, ticketSeals, verifyWith, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
 
 const section = (page: Page) => page.getByRole('region', { name: '実績', exact: true });
 const item = (page: Page, id: string) => section(page).locator(`[data-achievement="${id}"]`);
@@ -59,7 +59,7 @@ test('正常系を壊す検証の後で防御しても正常利用と一度の�
 });
 
 test('ヒント閲覧後はヒントなし実績を付けず、動きオフでも解除を文字と読み上げで伝える', async ({ page }) => {
-  await page.goto('/');
+  await openHome(page);
   await settingsButton(page).focus();
   await turnMotionOffWithKeyboard(page);
   await openMission(page, 'test-pack');
@@ -80,7 +80,7 @@ test('存在しない解除を取り込むと注記し、記録から再判定�
   await expect(page.locator('body[data-ready="true"]')).toBeAttached();
   const source = JSON.parse(await page.evaluate(() => window.progressTest.exportJson())) as { profile: { achievements: Record<string, string> } };
   source.profile.achievements = { 'first-defense': '2026-10-12T00:00:00Z' };
-  await page.goto('/');
+  await openHome(page);
   await page.locator('input[type="file"]').setInputFiles({ name: '進捗.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)) });
   await expect(page.locator('.banner-warn').filter({ hasText: '記録から計算し直しました' })).toBeVisible();
   await expect(item(page, 'first-defense')).toContainText('未解除');

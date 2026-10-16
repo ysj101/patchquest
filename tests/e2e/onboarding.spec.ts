@@ -1,7 +1,7 @@
 // オンボーディング（練習用パック）。一覧の「まずは練習」から、操作ガイドに沿って
 // こわす → なおす → たしかめる → ふりかえる を最後まで進められる
 import type { Page } from '@playwright/test';
-import { expect, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
+import { expect, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from './fixtures';
 
 const guide = (page: Page) => page.getByRole('complementary', { name: '操作ガイド' });
 const target = (page: Page) => page.locator('[data-guide-target]');
@@ -14,9 +14,8 @@ async function expectStep(page: Page, count: string, title: string): Promise<voi
 
 test('「まずは練習」から、操作ガイドに沿って最後まで進められる', async ({ page }) => {
   test.setTimeout(90_000);
-  await page.goto('/');
+  await openHome(page);
   await expect(page.locator('html')).toHaveAttribute('data-motion', await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'off' : 'on');
-  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible();
   await expect(guide(page)).toBeHidden();
   await page.getByRole('button', { name: 'まずは練習（3 分）' }).click();
 
