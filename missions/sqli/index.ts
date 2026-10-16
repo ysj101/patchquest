@@ -22,7 +22,7 @@ export const sqliPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sqli',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'mission',
     title: '検索条件からの情報漏えいを防ぐ',
     estimatedMinutes: 15,
@@ -34,6 +34,14 @@ export const sqliPack: MissionPack = {
       '対策のあと、日本語・引用符・該当なしの検索ができ、他人のメモは返らないことを確かめられる',
     ],
     story: {
+      requester: {
+        name: 'alice さん', role: 'メモアプリの利用者',
+        reactions: {
+          reproduced: '検索でほかの人のメモまで出てしまうんだね。',
+          secured: '直してくれてありがとう。自分のメモをこれまでどおり探せるね。',
+          closing: '検索語は命令ではなく、探したい値として扱うんだね。',
+        },
+      },
       incident:
         '利用者の alice さんから問い合わせがありました。「自分のメモを検索したら、bob さんの非公開のメモまで結果に出ていました。検索語を変えると、ほかの人のメモも混ざるようです」',
       goal: '検索は、検索した本人のメモだけを返します。日本語や引用符を含む語でも、該当が無いときでも、自分のメモの検索はこれまでどおり使えます。',

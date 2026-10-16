@@ -1,5 +1,6 @@
 // ヒント・振り返り・理解確認（spec §9, §10）。ヒントは減点しないが利用を記録する。
 // 理解確認は登録済みの選択肢で判定し、自由記述は採点しない
+import { characterVoice, guideVoice, requesterVoice } from './characters';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { confirmDialog, radioOption, status } from './components';
@@ -78,11 +79,14 @@ export class DebriefPanel {
       return;
     }
     const form = this.transferForm(snapshot);
+    const closing = requesterVoice(pack.manifest.story.requester, 'closing');
     fill(
       this.element,
       attempt.lastVerification && !isCurrent(attempt.lastVerification, attempt.configHash) ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null,
       attempt.lastVerification ? securityComparison(snapshot.vulnerableVerification, attempt.lastVerification) : null,
       securityHistory(snapshot),
+      guideVoice('closing'),
+      closing ? characterVoice(closing) : null,
       h('section', { class: 'tool-section' }, h('h3', {}, '原因'), h('p', {}, debrief.cause)),
       h('section', { class: 'tool-section' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
       h('section', { class: 'tool-section' }, h('h3', {}, '持ち帰ること'), h('ul', {}, ...debrief.takeaways.map((t) => h('li', {}, t)))),

@@ -16,7 +16,7 @@ export const storedXssPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'stored-xss',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'mission',
     title: 'コメントからのスクリプト実行を防ぐ',
     summary:
@@ -28,6 +28,14 @@ export const storedXssPack: MissionPack = {
     ],
     estimatedMinutes: 15,
     story: {
+      requester: {
+        name: 'carol さん', role: '共有ページの利用者',
+        reactions: {
+          reproduced: 'コメントを読むだけで動いてしまうんだね。',
+          secured: '直してくれてありがとう。コメントを文字として読めるね。',
+          closing: '書かれた文字とプログラムを分けて扱うんだね。',
+        },
+      },
       incident:
         '利用者の carol さんから問い合わせがありました。「共有ページを開いたら、bob さんが書いたコメントのところで、自分では操作していない動きが起きました。コメントに書いたことが、ほかの人の画面でプログラムとして動いているようです」',
       goal: 'コメントは保存された文字列のまま、読んだ人の画面では文字として表示します。スクリプトとしては動かしません。日本語・記号・角括弧を含む普通のコメントは、これまでどおり読めます。',
