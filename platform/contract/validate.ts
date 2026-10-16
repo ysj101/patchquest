@@ -7,6 +7,7 @@ import {
   GUIDE_MILESTONES,
   MANIFEST_SCHEMA_VERSION,
   PACK_KINDS,
+  DIFFICULTIES,
   VULNERABILITY_CATEGORIES,
   type MissionPack,
 } from './manifest';
@@ -41,6 +42,8 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   if (typeof m.estimatedMinutes !== 'number' || !(m.estimatedMinutes > 0)) c.fail('estimatedMinutes', '正の数が必要です');
   if (m.kind === 'mission' && m.vulnerability === undefined) c.fail('vulnerability', 'kind が mission のパックでは必須です');
   if (m.vulnerability !== undefined) checkVulnerability(c, m.vulnerability);
+  if (m.kind === 'mission' && m.difficulty === undefined) c.fail('difficulty', 'kind が mission のパックでは必須です');
+  if (m.difficulty !== undefined) c.oneOf('difficulty', m.difficulty, DIFFICULTIES);
 
   const story = c.obj('story', m.story);
   c.text('story.incident', story.incident);

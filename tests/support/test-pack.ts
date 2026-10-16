@@ -13,6 +13,7 @@ export const testPack: MissionPack = {
     learningObjectives: ['検証用'],
     estimatedMinutes: 5,
     vulnerability: { name: 'IDOR', fullName: '安全でない直接オブジェクト参照', cwe: 'CWE-639', category: 'authorization' },
+    difficulty: 'beginner',
     story: {
       requester: {
         name: 'ノートの依頼人', role: 'ノートアプリの利用者',

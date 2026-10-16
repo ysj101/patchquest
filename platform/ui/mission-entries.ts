@@ -2,7 +2,7 @@
 import { catalog } from '@catalog';
 import { satisfies, type AttemptRecord } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { hasCompleted, type MissionEntry } from './mission-map';
+import { hasCompleted, type MissionEntry } from './mission-table';
 
 const appVersionOf = (appId: string) => catalog.apps.find((app) => app.descriptor.id === appId)?.descriptor.version ?? '';
 
