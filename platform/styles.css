@@ -150,23 +150,20 @@ main > section > * + * { margin-top: 16px; }
 .seal[data-state='stale'] .seal-stamp { border-color: var(--warn); border-style: dotted; color: var(--warn); }
 @keyframes stamp { from { transform: rotate(-6deg) scale(1.25); opacity: 0.4; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
 
-/* 課題一覧：左のメニューと右の本文 */
-.mission-list { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start; }
-.side-nav {
-  position: sticky; top: 16px; display: grid; gap: 24px;
-  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px;
+/* 見出しの移動（課題 / 記録）。いまのページは下線で示す */
+.site-nav { display: flex; gap: 4px; margin-left: 8px; }
+.site-link {
+  border: 0; background: transparent; color: var(--muted); font-weight: 700; cursor: pointer;
+  min-height: 36px; padding: 0 12px; border-radius: 8px; border-bottom: 2px solid transparent;
 }
-.side-nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.side-link { display: flex; align-items: center; min-height: 40px; padding: 0 12px; border-radius: 8px; color: var(--ink); text-decoration: none; font-weight: 700; }
-.side-link:hover { background: var(--raised); }
-.side-nav-foot { display: grid; gap: 6px; justify-items: start; border-top: 1px solid var(--line); padding-top: 12px; }
-.list-main { display: grid; gap: 32px; min-width: 0; }
-@media (max-width: 900px) {
-  .mission-list { grid-template-columns: 1fr; gap: 16px; }
-  .side-nav { position: static; grid-template-columns: 1fr auto; align-items: center; }
-  .side-nav ul { display: flex; flex-wrap: wrap; }
-  .side-nav-foot { border-top: 0; padding-top: 0; }
-}
+.site-link:hover { background: var(--raised); color: var(--ink); }
+.site-link[aria-current='page'] { color: var(--ink); border-bottom-color: var(--primary); }
+
+/* 課題一覧と記録ページ */
+.mission-list, .records-page { display: grid; gap: 32px; min-width: 0; }
+.review-notice { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; color: var(--ink); }
+.link-button { border: 0; background: transparent; color: var(--link); text-decoration: underline; cursor: pointer; font: inherit; padding: 0; min-height: 40px; }
+.link-button:hover { color: var(--primary); }
 
 /* 日本語は文節で区切って折り返す */
 .hero { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; word-break: auto-phrase; }
@@ -224,8 +221,6 @@ main > section > * + * { margin-top: 16px; }
 }
 
 /* あなたの記録 */
-.records { display: grid; gap: 12px; }
-.records-head { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; }
 .xp-summary { font-family: var(--font-mono); font-size: 0.87rem; color: var(--muted); }
 .records-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
 .records-grid > section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 0; }
