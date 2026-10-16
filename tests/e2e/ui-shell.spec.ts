@@ -23,6 +23,30 @@ test('一覧は練習する脆弱性名を先に見せ、学習目標は開く�
   await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
 });
 
+test('課題はカタログの順の推奨順路として並び、練習が START・実績が GOAL になり、どの課題もロックされない', async ({ page }) => {
+  const map = page.getByRole('list', { name: 'おすすめの順路' });
+  const nodes = map.locator('.map-node[data-mission]');
+  await expect(nodes).toHaveCount(6);
+  expect(await nodes.evaluateAll((items) => items.map((item) => item.getAttribute('data-mission')))).toEqual(['onboarding', 'idor', 'stored-xss', 'sqli', 'test-pack', 'test-broken']);
+  await expect(card(page, 'onboarding').locator('.map-marker')).toHaveText('START');
+  await expect(card(page, 'idor').locator('.map-marker')).toHaveText('1');
+  await expect(card(page, 'sqli').locator('.map-marker')).toHaveText('3');
+  // 進捗はノードごとに文字でも示す。推奨は見せ方だけで、どの課題も開始ボタンが押せる
+  for (const id of ['onboarding', 'idor', 'stored-xss', 'sqli']) {
+    await expect(card(page, id).locator('.map-status')).toContainText('未着手');
+    await expect(card(page, id).locator('.map-status')).toContainText('ステージ 0 / 5');
+    await expect(card(page, id).getByRole('button', { name: 'この課題を始める' })).toBeEnabled();
+  }
+  const goal = map.locator('.map-goal');
+  await expect(goal.locator('.map-marker')).toHaveText('GOAL');
+  await expect(goal).toContainText('すべての課題を解決');
+  await expect(goal).toContainText('未解除');
+  await expect(goal).toContainText('いまの称号：新人');
+  // Tab 順は順路の順。START の開始ボタンの次に課題 1 の開始ボタンが来る
+  await tabTo(page, card(page, 'onboarding').getByRole('button', { name: 'この課題を始める' }));
+  await tabTo(page, card(page, 'idor').getByRole('button', { name: 'この課題を始める' }), 3);
+});
+
 test('キーボードだけで課題一覧から開始前チェックを経て演習を始められる', async ({ page }) => {
   await tabTo(page, 'この課題を始める');
   await page.keyboard.press('Enter');
@@ -60,6 +84,9 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   await enterWorkbench(page);
   const ticket = await page.locator('.ticket-id').textContent();
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  // マップのノードは、導入を読んだ分だけステージが進み「途中」になる
+  await expect(card(page, 'test-pack')).toHaveAttribute('data-progress', 'doing');
+  await expect(card(page, 'test-pack').locator('.map-status')).toContainText('ステージ 1 / 5');
 
   // 続きから始めると、同じ演習票（同じ seed）で環境を作り直す
   await card(page, 'test-pack').getByRole('button', { name: '続きから始める' }).click();
