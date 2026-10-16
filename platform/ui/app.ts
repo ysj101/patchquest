@@ -20,6 +20,7 @@ import { PreflightView } from './preflight';
 import { RepairPanel } from './repair';
 import { ResultEffects } from './result-effects';
 import { verificationEffect } from './result-effect-model';
+import { serialLatest } from './serial';
 
 type Screen = 'list' | 'preflight' | 'exercise';
 
@@ -34,8 +35,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const store = await ProgressStore.open(achievementOptions);
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const resultEffects = new ResultEffects(effects, (message) => announce(live, message));
-  const listView = h('section', { class: 'list-view' });
-  const main = h('main', { id: 'main' });
+  const listView = h('section', { class: 'list-view' }), main = h('main', { id: 'main' });
 
   let orchestrator: Orchestrator;
   /** 練習用パックの操作ガイド。演習が始まるたびにそのパックのガイドで始め直し、課題一覧へ戻っても表示し続ける */
@@ -131,7 +131,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (next === 'preflight') preflightView.focus();
     if (next === 'exercise') exerciseView.focus();
   }
-
 
   // 状態が変わるたびに画面を更新し、まとまった変更ごとに保存する
   let saveScheduled = false;
@@ -242,7 +241,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
     announce(live, '初期状態へ戻しました');
   }
 
-  // 利用者の切り替えは await せず、複数の表示が同時に進むことがあるため、真偽値ではなく実行 ID ごとに管理する。
   // 初期表示の自動要求と、その後の利用者操作は同じ実行 ID を使うので、読み込み中かどうかで区別する。
   const openingViews = new Set<string>();
   const currentApp = () => catalog.apps.find((a) => a.descriptor.id === orchestrator.snapshot?.attempt.appId);
@@ -254,8 +252,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (reproduced) resultEffects.show({ kind: 'reproduced', detail: '再現の検印を押しました。事故を自分の操作で再現できました。' });
   }
 
-  /** 信頼された演習ハーネスとして、表示する利用者を切り替えて最初の画面を開く */
-  async function showViewer(actor: ActorKey): Promise<void> {
+  // 初期表示と利用者切り替えが同時に走ると描画要求がフレームへ逆順に届き、古い画面が後から上書きしうる。直列化して要求順に描画する
+  const showViewer = serialLatest(async (actor: ActorKey): Promise<void> => {
     const app = currentApp();
     if (!app) return;
     viewer = actor;
@@ -270,7 +268,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     } finally {
       openingViews.delete(runId);
     }
-  }
+  });
 
   async function beginExercise(): Promise<void> {
     const snapshot = orchestrator.snapshot;
