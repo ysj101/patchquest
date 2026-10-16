@@ -1,11 +1,12 @@
 // ミッション一覧（spec §10）。どの脆弱性を練習する場所かを脆弱性名で示し、練習への入口、推奨順路のマップ（課題ごとの脆弱性名・達成印・ステージ到達・開始）と、進捗の書き出し・読み込み・削除を置く
-import type { AttemptRecord } from '../contract';
+import type { AttemptRecord, VulnerabilityDef } from '../contract';
 import { settingsButton } from './components';
 import type { ProfileSummary } from '../progress/profile';
 import { achievementList } from './achievement-list';
 import { XP_NOTE } from './labels';
 import { missionMap, type MissionEntry } from './mission-map';
 import { xpLabel } from './xp-badge';
+import { masteryList } from './mastery';
 import { h } from './dom';
 
 export type { MissionEntry } from './mission-map';
@@ -26,9 +27,14 @@ const FLOW: { label: string; title: string }[] = [
   { label: '理解', title: 'ふりかえる' },
 ];
 
+/** 課題が扱う脆弱性の項目をカタログの順に重複なく集める。脆弱性のない課題（練習）は飛ばす */
+function distinctVulnerability<T>(missions: MissionEntry[], pick: (vulnerability: VulnerabilityDef) => T): T[] {
+  return [...new Set(missions.flatMap((entry) => (entry.pack.manifest.vulnerability ? [pick(entry.pack.manifest.vulnerability)] : [])))];
+}
+
 /** 練習する脆弱性の通称をカタログの順に並べる（同じ脆弱性の課題が複数あっても 1 回）。課題がないときは何を練習する場所かだけを書く */
 function heroLead(missions: MissionEntry[]): string {
-  const names = [...new Set(missions.flatMap((entry) => entry.pack.manifest.vulnerability?.name ?? []))];
+  const names = distinctVulnerability(missions, (vulnerability) => vulnerability.name);
   const subject = names.length > 0 ? `${names.join('・')}の ${names.length} つを` : 'アプリのセキュリティの不具合を';
   return `${subject}、わざと壊したアプリで練習します。すべてこのブラウザの中で動き、本物のサービスには触れません。`;
 }
@@ -67,7 +73,7 @@ function hero(tutorial: MissionEntry | undefined, missions: MissionEntry[], acti
   );
 }
 
-export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements }: ProfileSummary): HTMLElement {
+export function missionList(entries: MissionEntry[], storageWarning: string | null, actions: MissionListActions, { xp, achievements, mastery }: ProfileSummary): HTMLElement {
   const fileInput = h('input', {
     type: 'file',
     accept: 'application/json,.json',
@@ -91,10 +97,11 @@ export function missionList(entries: MissionEntry[], storageWarning: string | nu
     h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
     h('p', { class: 'note' }, XP_NOTE),
     achievementList(achievements),
+    masteryList(mastery, distinctVulnerability(missions, (vulnerability) => vulnerability.category)),
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,
-    missionMap(entries, achievements, actions),
+    missionMap(entries, achievements, actions, mastery),
     entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
     h(
       'section',

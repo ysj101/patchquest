@@ -1,6 +1,7 @@
 // ヒント・振り返り・理解確認（spec §9, §10）。ヒントは減点しないが利用を記録する。
 // 理解確認は登録済みの選択肢で判定し、自由記述は採点しない
 import { characterVoice, guideVoice, requesterVoice } from './characters';
+import type { VulnerabilityCategory } from '../contract';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { confirmDialog, radioOption, status } from './components';
@@ -8,6 +9,8 @@ import { fill, h, renderGuard } from './dom';
 import { securityComparison } from './security-comparison';
 import { securityHistory } from './security-history';
 import { HINT_LABEL, STALE_VERIFICATION } from './labels';
+import type { MasterySummary } from '../progress/mastery';
+import { masteryEvidence, masteryLine } from './mastery';
 
 export interface HintActions {
   openHint(level: 1 | 2 | 3): void;
@@ -52,6 +55,12 @@ export class HintsPanel {
   }
 }
 
+/** この課題の分類の習熟度と判定の根拠。分類のないパックでは出さない */
+function masterySection(category: VulnerabilityCategory | undefined, mastery: MasterySummary): HTMLElement | null {
+  if (category === undefined) return null;
+  return h('section', { class: 'tool-section', 'aria-labelledby': 'mastery-section-title' }, h('h3', { id: 'mastery-section-title' }, '習熟度'), masteryLine(mastery[category]), masteryEvidence(mastery[category]));
+}
+
 export interface DebriefActions {
   answer(answers: Record<string, string>): void;
   retry(): void;
@@ -63,10 +72,11 @@ export class DebriefPanel {
 
   constructor(private readonly actions: DebriefActions) {}
 
-  update(snapshot: ExerciseSnapshot): void {
+  /** mastery はこの演習を含めて計算した分類ごとの習熟度。課題の分類がないパック（練習）では出さない */
+  update(snapshot: ExerciseSnapshot, mastery: MasterySummary): void {
     const { attempt, pack } = snapshot;
     const { answers } = attempt;
-    const key = `${attempt.attemptId}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}`;
+    const key = `${attempt.attemptId}|${attempt.badges.reproduction.achieved}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}`;
     if (!this.guard.changed(key)) return;
     const { debrief, fixtures } = pack.manifest;
     if (!attempt.badges.defense.achieved) {
@@ -74,6 +84,7 @@ export class DebriefPanel {
         this.element,
         h('section', { class: 'tool-section' }, h('h3', {}, '振り返り'), h('p', { class: 'muted' }, '対策を検証して防御に合格すると、原因と対策の振り返り、理解の確認ができます。')),
         securityHistory(snapshot),
+        masterySection(pack.manifest.vulnerability?.category, mastery),
         this.retrySection(fixtures.variants.length),
       );
       return;
@@ -90,6 +101,7 @@ export class DebriefPanel {
       h('section', { class: 'tool-section' }, h('h3', {}, '原因'), h('p', {}, debrief.cause)),
       h('section', { class: 'tool-section' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
       h('section', { class: 'tool-section' }, h('h3', {}, '持ち帰ること'), h('ul', {}, ...debrief.takeaways.map((t) => h('li', {}, t)))),
+      masterySection(pack.manifest.vulnerability?.category, mastery),
       h(
         'section',
         { class: 'tool-section', 'aria-labelledby': 'transfer-title' },

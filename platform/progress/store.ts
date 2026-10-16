@@ -3,8 +3,7 @@
 import { completeAttempt, canonicalJson, type AttemptRecord } from '../contract';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile, type ProgressProfile } from './schema';
 
-import { profileFromAttempts, storedProfile, type ProfileSummary } from './profile';
-import type { AchievementOptions } from './achievements';
+import { profileFromAttempts, storedProfile, type ProfileOptions, type ProfileSummary } from './profile';
 
 export interface ProgressBackend {
   getAll(): Promise<AttemptRecord[]>;
@@ -119,11 +118,11 @@ export class ProgressStore {
     private backend: ProgressBackend,
     /** 保存できない理由。null なら保存できている */
     private reason: string | null,
-    private readonly options: AchievementOptions,
+    private readonly options: ProfileOptions,
   ) {}
 
   /** IndexedDB を開く。開けなければメモリで続ける */
-  static async open(options: AchievementOptions = { missionIds: [] }): Promise<ProgressStore> {
+  static async open(options: ProfileOptions = { missionIds: [], categories: {} }): Promise<ProgressStore> {
     try {
       return new ProgressStore(await IndexedDbBackend.open(), null, options);
     } catch (e) {
@@ -131,7 +130,7 @@ export class ProgressStore {
     }
   }
 
-  static inMemory(options: AchievementOptions = { missionIds: [] }, reason: string | null = null): ProgressStore {
+  static inMemory(options: ProfileOptions = { missionIds: [], categories: {} }, reason: string | null = null): ProgressStore {
     return new ProgressStore(new MemoryBackend(), reason, options);
   }
 
