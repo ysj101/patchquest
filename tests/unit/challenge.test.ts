@@ -5,7 +5,8 @@ import { planChallenge } from '../../platform/progress/challenge';
 import { idorPack } from '../../missions/idor';
 import { makeAttempt } from '../support/attempt';
 
-const [first, second] = idorPack.manifest.transferCheck.map((question) => question.id) as [string, string];
+const ids = idorPack.manifest.transferCheck.map((question) => question.id);
+const [first, second, third, fourth] = ids as [string, string, string, string];
 const record = (id: string, seed: number, createdAt: string, challenge: { questionIds: string[]; repeatsPrevious: boolean } | null = null) =>
   makeAttempt(id, { missionId: 'idor', seed, createdAt, challenge });
 
@@ -25,11 +26,16 @@ describe('planChallenge', () => {
     expect(plan.seed).toBe(7);
     expect(plan.variantId).toBe('default');
     // 通常の演習は全問を出すので、どちらも 1 回ずつ出題済み。seed で 1 問選ぶ
-    expect(plan.challenge).toEqual({ questionIds: [[first, second][7 % 2]], repeatsPrevious: true });
+    expect(plan.challenge).toEqual({ questionIds: [ids[7 % ids.length]], repeatsPrevious: true });
   });
 
   it('出題回数が少ない設問を選び、前回と違えば repeatsPrevious を false にする', () => {
-    const records = [record('a', 42, '2026-10-12T00:00:00Z'), record('b', 7, '2026-10-12T01:00:00Z', { questionIds: [second], repeatsPrevious: true })];
+    const records = [
+      record('a', 42, '2026-10-12T00:00:00Z'),
+      record('b', 7, '2026-10-12T01:00:00Z', { questionIds: [second], repeatsPrevious: true }),
+      record('c', 8, '2026-10-12T02:00:00Z', { questionIds: [third], repeatsPrevious: false }),
+      record('d', 9, '2026-10-12T03:00:00Z', { questionIds: [fourth], repeatsPrevious: false }),
+    ];
     const plan = planChallenge(idorPack, records, sequence(100));
     expect(plan.challenge).toEqual({ questionIds: [first], repeatsPrevious: false });
   });
@@ -37,7 +43,7 @@ describe('planChallenge', () => {
   it('旧版のパックで出した、いまの版にない設問は数えず、止めずに選ぶ', () => {
     const stale = record('old', 3, '2026-10-11T00:00:00Z', { questionIds: ['removed-question'], repeatsPrevious: false });
     const plan = planChallenge(idorPack, [stale, record('a', 42, '2026-10-12T00:00:00Z')], sequence(8));
-    expect(plan.challenge).toEqual({ questionIds: [[first, second][8 % 2]], repeatsPrevious: true });
+    expect(plan.challenge).toEqual({ questionIds: [ids[8 % ids.length]], repeatsPrevious: true });
   });
 
   it('他の課題の記録は数えず、記録がなければ最初の variant と seed で選んだ設問になる', () => {
@@ -62,7 +68,7 @@ describe('planChallenge', () => {
 
 describe('askedQuestions', () => {
   it('通常の演習は全問、チャレンジは記録の設問だけを返し、パックにない設問なら止める', () => {
-    expect(askedQuestions(idorPack.manifest, { challenge: null })).toHaveLength(2);
+    expect(askedQuestions(idorPack.manifest, { challenge: null })).toHaveLength(ids.length);
     expect(askedQuestions(idorPack.manifest, { challenge: { questionIds: [second], repeatsPrevious: false } }).map((question) => question.id)).toEqual([second]);
     expect(() => askedQuestions(idorPack.manifest, { challenge: { questionIds: ['missing'], repeatsPrevious: false } })).toThrow('チャレンジの設問（missing）がパックにありません');
   });

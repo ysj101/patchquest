@@ -2,7 +2,15 @@
 // 登録済みの検索語で他人のメモが返り（A10）、値としてバインドすると日本語・引用符・該当なしも守れる（A11）。
 // UNION という語だけを止めても不合格、検索を止めると正常系が壊れる
 import type { Page } from '@playwright/test';
-import { expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from './fixtures';
+import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from './fixtures';
+
+/** 理解確認の正解の選択肢（設問 ID → ラベル） */
+const CORRECT_CHOICES: Record<string, string> = {
+  'catalog-cause': '検索語を SQL の文字としてつないでいるため、検索語の中で条件を書き換えられる',
+  'catalog-defense': '検索語を値としてバインドし、自分の貸出だけという条件を残す',
+  'login-cause': '入力を SQL の文字列につないでいるため、入力の中で照合の条件を書き換えられる',
+  'sort-column-defense': '受け付ける列名を決まった一覧から選び、一覧にない指定は断る',
+};
 
 const OR_TITLE = "') OR title LIKE '%' --";
 
@@ -64,9 +72,6 @@ test('登録済みの検索語で他人のメモが返り、値としてのバ�
   await search(page, OR_TITLE);
   await expect(app.getByText('該当するメモはありません。')).toBeVisible();
 
-  await page.getByRole('tab', { name: '振り返り' }).click();
-  await page.getByRole('radio', { name: '検索語を SQL の文字としてつないでいるため、検索語の中で条件を書き換えられる' }).check();
-  await page.getByRole('radio', { name: '検索語を値としてバインドし、自分の貸出だけという条件を残す' }).check();
-  await page.getByRole('button', { name: '回答する' }).click();
-  await expect(seals(page)).toContainText('理解：達成');
+  // 通常の演習は理解確認を全問出す
+  expect(await answerTransferCheck(page, CORRECT_CHOICES)).toHaveLength(4);
 });
