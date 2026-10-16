@@ -43,9 +43,20 @@ export function renderGuard(): { changed(key: string): boolean } {
   };
 }
 
-/** 画面読み上げにも伝わる通知（aria-live）。表示は控えめに行う */
+const pendingAnnouncements = new WeakMap<HTMLElement, string[]>();
+
+/** 同じ領域へ次のフレームまでに届いた通知をまとめ、空にするフレームを挟んで読み上げる。 */
 export function announce(region: HTMLElement, message: string): void {
-  region.textContent = '';
-  // 同じ文言でも読み上げられるよう、次のフレームで入れ直す
-  requestAnimationFrame(() => (region.textContent = message));
+  const pending = pendingAnnouncements.get(region);
+  if (pending) {
+    pending.push(message);
+    return;
+  }
+  const messages = [message];
+  pendingAnnouncements.set(region, messages);
+  requestAnimationFrame(() => {
+    region.textContent = '';
+    pendingAnnouncements.delete(region);
+    requestAnimationFrame(() => (region.textContent = messages.join('。')));
+  });
 }

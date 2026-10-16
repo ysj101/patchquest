@@ -29,14 +29,14 @@ test('書き出した JSON を別のブラウザ環境へ復元でき、不正�
   await open(page);
   await page.evaluate((a) => window.progressTest.save(a), attempt('exported'));
   const json = await page.evaluate(() => window.progressTest.exportJson());
-  expect(JSON.parse(json)).toMatchObject({ schemaVersion: 5, profile: {} });
+  expect(JSON.parse(json)).toMatchObject({ schemaVersion: 7, profile: {} });
 
   const other = await browser.newContext();
   const otherPage = await other.newPage();
   await open(otherPage);
   await otherPage.evaluate((a) => window.progressTest.save(a), attempt('existing'));
   expect(await otherPage.evaluate(() => window.progressTest.importJson('{"format":"x"}'))).toMatchObject({ ok: false });
-  expect(await otherPage.evaluate((text) => window.progressTest.importJson(text), json)).toEqual({ ok: true, imported: 1, xpRecomputed: false });
+  expect(await otherPage.evaluate((text) => window.progressTest.importJson(text), json)).toEqual({ ok: true, imported: 1, profileRecomputed: false });
   expect((await otherPage.evaluate(() => window.progressTest.ids())).sort()).toEqual(['existing', 'exported']);
   await other.close();
 });
@@ -58,9 +58,10 @@ test('IndexedDB を使えない環境では理由を返し、メモリで続け�
 
 test('v1 の既存 DB を v2 へ更新し、達成印を持つ記録を保つ', async ({ page }) => {
   await page.goto('/test/');
-  const { milestones, history, ...legacy } = makeAttempt('旧DB', { badges: { reproduction: { achieved: true }, defense: { achieved: false }, understanding: { achieved: false } } });
+  const { milestones, history, firstPass, verifications, normalBroken, ...legacy } = makeAttempt('旧DB', { badges: { reproduction: { achieved: true }, defense: { achieved: false }, understanding: { achieved: false } } });
   expect(milestones).toEqual(emptyMilestones());
   expect(history).toEqual([]);
+  expect([firstPass, verifications, normalBroken]).toEqual([null, 0, false]);
   await page.evaluate((record) => new Promise<void>((resolve, reject) => {
     const request = indexedDB.open('patchquest', 1);
     request.onupgradeneeded = () => {
@@ -75,7 +76,7 @@ test('v1 の既存 DB を v2 へ更新し、達成印を持つ記録を保つ', 
   await open(page);
   expect(await page.evaluate(() => window.progressTest.reason())).toBeNull();
   const exported = JSON.parse(await page.evaluate(() => window.progressTest.exportJson())) as unknown;
-  expect(exported).toMatchObject({ schemaVersion: 5, profile: {}, attempts: [{ ...legacy, milestones: emptyMilestones(), history: [] }] });
+  expect(exported).toMatchObject({ schemaVersion: 7, profile: {}, attempts: [{ ...legacy, milestones: emptyMilestones(), history: [], firstPass: null, verifications: 0, normalBroken: false }] });
   await page.reload();
   await expect(page.locator('body[data-ready="true"]')).toBeAttached();
   expect(await page.evaluate(() => window.progressTest.ids())).toEqual(['旧DB']);

@@ -64,4 +64,4 @@ export const VERDICT_SUCCESS = '攻撃を防ぎ、普段の使い方も通りま
 export const STALE_VERIFICATION = '対策を変えたため、この結果はいまの構成のものではありません。もう一度検証してください。';
 
 export const XP_NOTE = 'XP は取り組みへの報酬です。理解度や達成印の判定は変わりません';
-export const XP_RECOMPUTED = '取り込んだファイルの XP は、そのファイルの記録と合わなかったため、記録から計算し直しました';
+export const PROFILE_RECOMPUTED = '取り込んだファイルの XP または実績は、そのファイルの記録と合わなかったため、記録から計算し直しました';

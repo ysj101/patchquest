@@ -4,6 +4,7 @@ import {
   BADGE_KINDS,
   Checker,
   emptyMilestones,
+  completeAttempt,
   RESULT_GROUPS,
   TRANSITIONS,
   type AttemptRecord,
@@ -14,11 +15,12 @@ import {
   type VerificationReport,
 } from '../contract';
 
+import { ACHIEVEMENTS } from './achievements';
 import { MAX_TEXT, count, readHistory } from './history';
 
 export const PROGRESS_FORMAT = 'patchquest-progress';
 
-export const PROGRESS_SCHEMA_VERSION = 5;
+export const PROGRESS_SCHEMA_VERSION = 7;
 // 読み込める最も古い版。spec §13 に従い、版を上げても旧版の読み込みを維持する。
 const OLDEST_READABLE_SCHEMA_VERSION = 1;
 // 演習をまたぐ記録の入れ物 profile が加わった版。
@@ -28,10 +30,10 @@ export const MAX_PROGRESS_BYTES = 1024 * 1024;
 const MAX_ATTEMPTS = 1000;
 const STATES = Object.keys(TRANSITIONS) as ExerciseState[];
 
-/** 演習をまたぐ記録。XP の合計を保存し、Attempt の記録から照合する。
+/** 演習をまたぐ記録。XP の合計と実績の解除日時を保存し、Attempt の記録から照合する。
  * 演習内のステージ（spec §9）は Attempt の milestones と達成印から導くので profile には持たない。spec §13 の「ステージ到達」はこの意味で Attempt から再計算する。
  */
-export type ProgressProfile = { xp?: { total: number } };
+export type ProgressProfile = { xp?: { total: number }; achievements?: Record<string, string> };
 
 export interface ProgressFile {
   format: typeof PROGRESS_FORMAT;
@@ -98,12 +100,32 @@ function milestones(checker: Checker, path: string, value: unknown): AttemptReco
   return { briefedAt: read('briefedAt'), firstRequestAt: read('firstRequestAt'), firstDefenseAt: read('firstDefenseAt') };
 }
 
-function attempt(c: Checker, path: string, v: unknown): AttemptRecord {
+function firstPass(checker: Checker, path: string, value: unknown): AttemptRecord['firstPass'] {
+  if (value === null) return null;
+  const record = checker.obj(path, value);
+  const verifications = count(checker, `${path}.verifications`, record.verifications);
+  if (verifications === 0) checker.fail(`${path}.verifications`, '正の整数が必要です');
+  return {
+    at: checker.str(`${path}.at`, record.at, MAX_TEXT), verifications,
+    normalBroken: checker.bool(`${path}.normalBroken`, record.normalBroken),
+    hintsUsed: checker.bool(`${path}.hintsUsed`, record.hintsUsed),
+  };
+}
+
+function verificationFacts(checker: Checker, path: string, record: Record<string, unknown>, version: number) {
+  return {
+    ...(version >= 7 || record.firstPass !== undefined ? { firstPass: firstPass(checker, `${path}.firstPass`, record.firstPass) } : {}),
+    ...(version >= 7 || record.verifications !== undefined ? { verifications: count(checker, `${path}.verifications`, record.verifications) } : {}),
+    ...(version >= 7 || record.normalBroken !== undefined ? { normalBroken: checker.bool(`${path}.normalBroken`, record.normalBroken) } : {}),
+  };
+}
+
+function attempt(c: Checker, path: string, v: unknown, version: number): AttemptRecord {
   const a = c.obj(path, v);
   const text = (key: string) => c.str(`${path}.${key}`, a[key], MAX_TEXT);
   const badges = c.obj(`${path}.badges`, a.badges);
   const answers = c.obj(`${path}.answers`, a.answers);
-  return {
+  return completeAttempt({
     attemptId: text('attemptId'),
     missionId: text('missionId'),
     missionVersion: text('missionVersion'),
@@ -121,6 +143,7 @@ function attempt(c: Checker, path: string, v: unknown): AttemptRecord {
     appliedDefense: a.appliedDefense === null ? null : text('appliedDefense'),
     badges: Object.fromEntries(BADGE_KINDS.map((k) => [k, badge(c, `${path}.badges.${k}`, badges[k])])) as Record<BadgeKind, Badge>,
     history: readHistory(c, `${path}.history`, a.history),
+    ...verificationFacts(c, path, a, version),
     lastVerification: report(c, `${path}.lastVerification`, a.lastVerification),
     hintsOpened: c.list(`${path}.hintsOpened`, a.hintsOpened).slice(0, 3).map((h, i) => c.oneOf(`${path}.hintsOpened[${i}]`, h, [1, 2, 3] as const)),
     solutionViewed: c.bool(`${path}.solutionViewed`, a.solutionViewed),
@@ -129,7 +152,7 @@ function attempt(c: Checker, path: string, v: unknown): AttemptRecord {
         .slice(0, 50)
         .map(([k, val]) => [c.str(`${path}.answers`, k, MAX_TEXT), c.str(`${path}.answers.${k}`, val, MAX_TEXT)]),
     ),
-  };
+  });
 }
 
 function byteLength(text: string): number {
@@ -139,10 +162,17 @@ function byteLength(text: string): number {
 
 function readProfile(checker: Checker, value: unknown): ProgressProfile {
   const profile = checker.obj('profile', value);
-  if (profile.xp === undefined) return {};
-  const xp = checker.obj('profile.xp', profile.xp);
-  const total = count(checker, 'profile.xp.total', xp.total);
-  return { xp: { total } };
+  const result: ProgressProfile = {};
+  if (profile.xp !== undefined) {
+    const xp = checker.obj('profile.xp', profile.xp);
+    result.xp = { total: count(checker, 'profile.xp.total', xp.total) };
+  }
+  if (profile.achievements !== undefined) {
+    const saved = checker.obj('profile.achievements', profile.achievements);
+    result.achievements = Object.fromEntries(ACHIEVEMENTS.filter(({ id }) => Object.hasOwn(saved, id))
+      .map(({ id }) => [id, checker.str(`profile.achievements.${id}`, saved[id], MAX_TEXT)]));
+  }
+  return result;
 }
 
 /** 進捗 JSON を検証して読み込む。サイズ・形式・版・各項目の違反は ProgressFormatError */
@@ -171,7 +201,7 @@ export function parseProgress(text: string): ProgressFile {
     format: PROGRESS_FORMAT,
     schemaVersion: PROGRESS_SCHEMA_VERSION,
     exportedAt: c.str('exportedAt', root.exportedAt, MAX_TEXT),
-    attempts: attempts.slice(0, MAX_ATTEMPTS).map((a, i) => attempt(c, `attempts[${i}]`, a)),
+    attempts: attempts.slice(0, MAX_ATTEMPTS).map((a, i) => attempt(c, `attempts[${i}]`, a, schemaVersion)),
     profile,
   };
   if (c.errors.length) throw new ProgressFormatError(c.errors.slice(0, 5).join('\n'));

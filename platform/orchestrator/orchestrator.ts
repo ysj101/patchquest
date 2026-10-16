@@ -2,8 +2,6 @@
 // 演習用インスタンスの準備、対策の切り替え、再検証、リセットを状態遷移表に沿って行う
 import {
   RuntimeError,
-  MAX_HISTORY,
-  summarizeVerification,
   canTransition,
   isInExercise,
   type AttemptRecord,
@@ -14,6 +12,7 @@ import {
 } from '../contract';
 import { configHash, detectReproduction } from '../evaluator/evaluator';
 import { Blocked, type Current, type ExerciseSnapshot, type OrchestratorDeps, type PreflightEntry, type PreflightStep } from './types';
+import { recordVerification } from './verification-record';
 import { createCurrent } from './start';
 import { runPreflightSteps } from './preflight';
 import { buildSubject, withChanges } from './subject';
@@ -151,13 +150,7 @@ export class Orchestrator {
       return null;
     }
     if (this.current !== c) return null;
-    attempt.lastVerification = report;
-    // 長い演習でも保存容量を増やし続けないよう、直近 100 件を保持する。
-    const { groups, undetermined } = summarizeVerification(report);
-    attempt.history = [...attempt.history, {
-      runId: report.runId, at: this.now().toISOString(), defenseId: attempt.appliedDefense,
-      passed: report.passed, groups, undetermined,
-    }].slice(-MAX_HISTORY);
+    recordVerification(attempt, report, this.now().toISOString());
     if (report.passed) {
       attempt.badges.defense = { achieved: true, runId: report.runId, configHash: report.configHash, at: this.now().toISOString() };
     }
