@@ -19,6 +19,7 @@
     "verify:packs": "node scripts/build.mjs --test && playwright test tests/e2e/pack-verification.spec.ts --project chrome",
     "package": "node scripts/package.mjs",
     "test:dist": "node scripts/test-dist.mjs",
+    "metrics": "node scripts/evaluation-metrics.mjs",
     "check:duplication": "jscpd --baseline-from-ref origin/main --fail-on-new-clones",
     "audit:duplication": "jscpd --blame --reporters console-full,html",
     "check:unused": "knip",
