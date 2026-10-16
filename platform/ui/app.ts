@@ -113,7 +113,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     h(
       'header',
       { class: 'site-header' },
-      h('p', { class: 'brand' }, h('span', { class: 'brand-mark', 'aria-hidden': true }, '◆'), 'PatchQuest'),
+      h('p', { class: 'brand' }, h('img', { class: 'brand-mark', src: './assets/brand/mark.svg', alt: '' }), 'PatchQuest'),
     ),
     effectWarning,
     main,
