@@ -70,5 +70,9 @@ export const VERDICT_SUCCESS = '攻撃を防ぎ、普段の使い方も通りま
 /** 構成変更後の検証結果を現在の合格と誤認させないための警告。 */
 export const STALE_VERIFICATION = '対策を変えたため、この結果はいまの構成のものではありません。もう一度検証してください。';
 
+/** 習熟度の段階の名前。★の数だけに頼らず文字でも示す（0〜5） */
+export const MASTERY_LEVEL_LABEL: readonly string[] = ['未着手', '再現まで', '防御まで', '理解まで', '別の条件でも達成', '別の条件で繰り返し達成'];
+export const MASTERY_NOTE = '習熟度は達成印と、別の条件（seed）での達成から計算します。XP とは別で、同じ条件の繰り返しでは上がりません';
+
 export const XP_NOTE = 'XP は取り組みへの報酬です。理解度や達成印の判定は変わりません';
 export const PROFILE_RECOMPUTED = '取り込んだファイルの XP または実績は、そのファイルの記録と合わなかったため、記録から計算し直しました';

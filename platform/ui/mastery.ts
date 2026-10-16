@@ -1,0 +1,54 @@
+// 分類ごとの習熟度の表示。★だけでなく段階の名前でも示し、判定の根拠を開いて確かめられるようにする（spec §9, §10）
+import type { VulnerabilityCategory } from '../contract';
+import { MASTERY_MAX, type CategoryMastery, type MasterySummary } from '../progress/mastery';
+import { h } from './dom';
+import { MASTERY_LEVEL_LABEL, MASTERY_NOTE, VULNERABILITY_CATEGORY_LABEL } from './labels';
+
+function stars(mastery: CategoryMastery): HTMLElement {
+  return h('span', { class: 'mastery-stars', 'aria-hidden': true }, '★'.repeat(mastery.stars) + '☆'.repeat(MASTERY_MAX - mastery.stars));
+}
+
+/** 1 行の表示。課題のカードと演習票で使う */
+export function masteryLine(mastery: CategoryMastery): HTMLElement {
+  return h(
+    'p',
+    { class: 'mastery-line', 'data-category': mastery.category, 'data-stars': String(mastery.stars) },
+    h('span', { class: 'mastery-label' }, `${VULNERABILITY_CATEGORY_LABEL[mastery.category]}の習熟度`),
+    stars(mastery),
+    h('span', { class: 'mastery-level' }, `Lv${mastery.stars}：${MASTERY_LEVEL_LABEL[mastery.stars] ?? ''}`),
+  );
+}
+
+/** 判定の根拠。どの演習のどの達成が、どの★に効いたか */
+export function masteryEvidence(mastery: CategoryMastery): HTMLElement {
+  return h(
+    'details',
+    { class: 'mastery-evidence' },
+    h('summary', {}, '判定の根拠'),
+    mastery.evidence.length === 0
+      ? h('p', { class: 'note' }, 'まだ達成印がありません。再現で ★1、防御で ★2、理解までそろえて ★3、別の条件でもう一度そろえると ★4・★5 になります。')
+      : h(
+          'ol',
+          { class: 'mastery-evidence-list' },
+          ...mastery.evidence.map((item) =>
+            h('li', {}, `★${item.stars}：${item.reason}（課題 ${item.missionId}・seed ${item.seed}・演習票 ${item.attemptId.slice(0, 8)}）`),
+          ),
+        ),
+  );
+}
+
+/** 一覧の先頭に置く、分類ごとの習熟度。カタログにある分類だけを並べる */
+export function masteryList(summary: MasterySummary, categories: readonly VulnerabilityCategory[]): HTMLElement | null {
+  if (categories.length === 0) return null;
+  return h(
+    'section',
+    { class: 'mastery', 'aria-labelledby': 'mastery-title' },
+    h('h2', { id: 'mastery-title' }, '習熟度'),
+    h('p', { class: 'note' }, MASTERY_NOTE),
+    h(
+      'ul',
+      { class: 'mastery-grid' },
+      ...categories.map((category) => h('li', {}, masteryLine(summary[category]), masteryEvidence(summary[category]))),
+    ),
+  );
+}

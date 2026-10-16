@@ -6,6 +6,8 @@ import { STAGES, allBadgesAchieved, sealStates, stageStates } from '../progress/
 import { seals, status, type StatusKind } from './components';
 import { h } from './dom';
 import { VULNERABILITY_CATEGORY_LABEL } from './labels';
+import type { MasterySummary } from '../progress/mastery';
+import { masteryLine } from './mastery';
 
 export interface MissionEntry {
   pack: MissionPack;
@@ -39,7 +41,7 @@ function vulnerabilityLabel(vulnerability: VulnerabilityDef): HTMLElement {
   );
 }
 
-function card(entry: MissionEntry, actions: MissionActions): HTMLElement {
+function card(entry: MissionEntry, actions: MissionActions, mastery: MasterySummary): HTMLElement {
   const { manifest } = entry.pack;
   const titleId = `mission-${manifest.id}`;
   const { latest } = entry;
@@ -57,7 +59,7 @@ function card(entry: MissionEntry, actions: MissionActions): HTMLElement {
     h(
       'header',
       { class: 'mission-card-head' },
-      h('div', {}, manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null, h('h3', { id: titleId }, manifest.title), h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`)),
+      h('div', {}, manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null, h('h3', { id: titleId }, manifest.title), h('p', { class: 'meta' }, `目安 ${manifest.estimatedMinutes} 分`), manifest.vulnerability ? masteryLine(mastery[manifest.vulnerability.category]) : null),
       seals(sealStates(entry.latest, entry.defenseCurrent), 'small'),
     ),
     h('p', { class: 'mission-summary' }, manifest.summary),
@@ -82,7 +84,7 @@ function progressOf(entry: MissionEntry): { state: NodeProgress; done: number; t
   return { state: done === STAGES.length ? 'done' : 'doing', done, total: STAGES.length };
 }
 
-function node(entry: MissionEntry, marker: string, markerLabel: string, actions: MissionActions): HTMLElement {
+function node(entry: MissionEntry, marker: string, markerLabel: string, actions: MissionActions, mastery: MasterySummary): HTMLElement {
   const { manifest } = entry.pack;
   const progress = progressOf(entry);
   const label = PROGRESS_LABEL[progress.state];
@@ -94,7 +96,7 @@ function node(entry: MissionEntry, marker: string, markerLabel: string, actions:
       'div',
       { class: 'map-body' },
       h('p', { class: 'map-status' }, h('span', { class: 'visually-hidden' }, `${markerLabel}：`), status(label.kind, label.text), h('span', { class: 'meta' }, `ステージ ${progress.done} / ${progress.total}`)),
-      card(entry, actions),
+      card(entry, actions, mastery),
     ),
   );
 }
@@ -122,7 +124,8 @@ function goalNode(achievements: UnlockedAchievements): HTMLElement {
 }
 
 /** 練習課題を START に置き、課題をカタログの順に番号付きでつなぐ。順路はおすすめで、どこからでも始められる */
-export function missionMap(entries: MissionEntry[], achievements: UnlockedAchievements, actions: MissionActions): HTMLElement | null {
+/** mastery は分類ごとの習熟度。課題のカードに、その課題の分類の 1 行を添える */
+export function missionMap(entries: MissionEntry[], achievements: UnlockedAchievements, actions: MissionActions, mastery: MasterySummary): HTMLElement | null {
   if (entries.length === 0) return null;
   const tutorials = entries.filter((entry) => entry.pack.manifest.kind === 'tutorial');
   const missions = entries.filter((entry) => entry.pack.manifest.kind === 'mission');
@@ -134,8 +137,8 @@ export function missionMap(entries: MissionEntry[], achievements: UnlockedAchiev
     h(
       'ol',
       { class: 'mission-map', 'aria-label': 'おすすめの順路' },
-      ...tutorials.map((entry) => node(entry, 'START', '練習', actions)),
-      ...missions.map((entry, index) => node(entry, String(index + 1), `課題 ${index + 1}`, actions)),
+      ...tutorials.map((entry) => node(entry, 'START', '練習', actions, mastery)),
+      ...missions.map((entry, index) => node(entry, String(index + 1), `課題 ${index + 1}`, actions, mastery)),
       goalNode(achievements),
     ),
   );
