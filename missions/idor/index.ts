@@ -2,7 +2,7 @@
 // 別の利用者の非公開メモが読める事故を題材に、画面ではなく取り出す処理の側で認可することを学ぶ
 import type { MissionPack } from '../../platform/contract';
 import { IMPLEMENTATIONS } from './implementations';
-import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK } from './learning';
+import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './learning';
 import { CASES, PROBES, TARGET_CASES } from './tests';
 
 const HOOKS = [
@@ -26,7 +26,7 @@ export const idorPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'idor',
-    version: '1.2.0',
+    version: '1.3.0',
     kind: 'mission',
     title: '非公開メモを守る',
     summary:
@@ -39,6 +39,7 @@ export const idorPack: MissionPack = {
     estimatedMinutes: 15,
     vulnerability: { name: 'IDOR', fullName: '安全でない直接オブジェクト参照', cwe: 'CWE-639', category: 'authorization' },
     story: {
+      workedExample: WORKED_EXAMPLE,
       requester: {
         name: 'bob さん', role: 'メモアプリの利用者',
         reactions: {
