@@ -1,6 +1,6 @@
 // XP の段階報酬・再挑戦・改変した進捗の照合をブラウザで確かめる。
 import type { Page } from '@playwright/test';
-import { answerTransferCheck, expect, enterWorkbench, reproduceNoteLeak, launchButton, openMission, test, ticketSeals, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
+import { TEST_PACK_ANSWERS, answerTransferCheck, expect, enterWorkbench, reproduceNoteLeak, launchButton, openMission, test, ticketSeals, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
 
 const badge = (page: Page) => page.locator('.xp-badge');
 const gain = (page: Page, amount: number) => expect(badge(page).locator('.xp-gain')).toHaveText(`+${amount} XP`);
@@ -20,7 +20,7 @@ async function repair(page: Page): Promise<void> {
 async function finish(page: Page): Promise<void> {
   await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
   await expect(ticketSeals(page)).toContainText('防御：達成');
-  await answerTransferCheck(page);
+  await answerTransferCheck(page, TEST_PACK_ANSWERS);
 }
 
 test('各段階で報酬を受け取り、再挑戦は20 XPだけ加算し、再開時は演出しない', async ({ page }) => {

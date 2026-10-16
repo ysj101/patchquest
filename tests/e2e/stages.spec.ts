@@ -43,6 +43,8 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await page.getByRole('tab', { name: '振り返り' }).click();
   await page.getByRole('radio', { name: /^請求書を取り出す処理が/ }).check();
   await page.getByRole('radio', { name: /^編集する処理で、セッション/ }).check();
+  await page.getByRole('radio', { name: /^写真を取り出す処理が/ }).check();
+  await page.getByRole('radio', { name: /^どの利用者の注文を返すかはトークンから決め/ }).check();
   await page.getByRole('button', { name: '回答する' }).click();
   await count(page, 5);
 });

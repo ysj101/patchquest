@@ -2,7 +2,15 @@
 // 検証済みの固定ペイロードを保存し、別の利用者が開くと実行マーカーで再現する（A08）。
 // script タグの削除では不合格、コメントの非表示は正常系が壊れ、文字としての表示で合格する（A09）。
 // ペイロードは隔離 iframe の外の Host では要素にならない（A17）
-import { expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from './fixtures';
+import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from './fixtures';
+
+/** 理解確認の正解の選択肢（設問 ID → ラベル） */
+const CORRECT_CHOICES: Record<string, string> = {
+  'guestbook-cause': '保存したニックネームを、開いた人の画面で HTML として解釈している',
+  'status-defense': '表示するときに textContent で文字として出す',
+  'support-ticket-cause': '管理画面が、保存した本文を HTML として解釈して描いている',
+  'markdown-diary-defense': '表示するたびに、Markdown から作った HTML を許可したタグ・属性だけ残す処理（サニタイズ）に通す',
+};
 
 const CAROL_COMMENT = '来週は演習問題を解いてみます';
 const ATTACK = '<img src="x" onerror="pqMarker()">';
@@ -61,9 +69,6 @@ test('保存した攻撃コメントが別の利用者の画面で実行され�
   await expect(app.getByText(CAROL_COMMENT)).toBeVisible();
   await expect(app.locator('.comment-body img')).toHaveCount(0);
 
-  await page.getByRole('tab', { name: '振り返り' }).click();
-  await page.getByRole('radio', { name: '保存したニックネームを、開いた人の画面で HTML として解釈している' }).check();
-  await page.getByRole('radio', { name: '表示するときに textContent で文字として出す' }).check();
-  await page.getByRole('button', { name: '回答する' }).click();
-  await expect(seals(page)).toContainText('理解：達成');
+  // 通常の演習は理解確認を全問出す
+  expect(await answerTransferCheck(page, CORRECT_CHOICES)).toHaveLength(4);
 });
