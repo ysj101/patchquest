@@ -38,3 +38,8 @@ export function sealStates(attempt: AttemptRecord | undefined, defenseCurrent: b
     understanding: badges?.understanding.achieved ? 'done' : 'todo',
   };
 }
+
+/** 再現・防御・理解の達成印が記録上すべて揃っているか。現在の対策の合否とは独立。 */
+export function allBadgesAchieved(attempt: AttemptRecord): boolean {
+  return Object.values(attempt.badges).every((badge) => badge.achieved);
+}

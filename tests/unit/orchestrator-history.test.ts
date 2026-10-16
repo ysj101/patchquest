@@ -82,4 +82,67 @@ it('判定不能の報告を履歴に記録し、その件数を合否の分母�
   });
   await orchestrator.verify();
   expect(snapshot.attempt.history[0]).toMatchObject({ passed: false, undetermined: 1, groups: { normal: { passed: 0, total: 0 } } });
+  await orchestrator.verify();
+  expect(snapshot.attempt.firstPass).toMatchObject({ verifications: 2, normalBroken: false });
+});
+
+it('初回合格の事実は後のヒント・解法閲覧や正常系の失敗、リセット・再開で変わらない', async () => {
+  const { orchestrator } = setup();
+  const snapshot = await orchestrator.start('test-pack');
+  await orchestrator.applyDefense('owner-only');
+  await orchestrator.verify();
+  const first = structuredClone(snapshot.attempt.firstPass);
+  expect(first).toMatchObject({ verifications: 1, normalBroken: false, hintsUsed: false });
+  expect(first?.at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  orchestrator.openHint(1);
+  orchestrator.viewSolution();
+  await orchestrator.applyDefense('deny-all');
+  await orchestrator.verify();
+  await orchestrator.resetToInitial();
+  const resumed = await orchestrator.start('test-pack', { resume: snapshot.attempt });
+  expect(resumed.attempt.firstPass).toEqual(first);
+  expect(resumed.attempt.firstPass).not.toBe(snapshot.attempt.firstPass);
+  expect(resumed.attempt.verifications).toBe(2);
+  expect(resumed.attempt.normalBroken).toBe(true);
+});
+
+it('101回目の初回合格は切れた正常系の失敗も数え、後の検証でも日時を保つ', async () => {
+  const { evaluator, orchestrator } = setup();
+  const snapshot = await orchestrator.start('test-pack');
+  await orchestrator.applyDefense('deny-all');
+  await orchestrator.verify();
+  await orchestrator.applyDefense('display-only');
+  const failed = await orchestrator.verify();
+  if (!failed) throw new Error('検証報告がありません');
+  const run = vi.spyOn(evaluator, 'runSuite').mockResolvedValue(failed);
+  for (let index = 2; index < 100; index++) await orchestrator.verify();
+  run.mockRestore();
+  orchestrator.openHint(1);
+  await orchestrator.applyDefense('owner-only');
+  await orchestrator.verify();
+  const first = structuredClone(snapshot.attempt.firstPass);
+  expect(first).toMatchObject({ verifications: 101, normalBroken: true, hintsUsed: true });
+  expect(first?.at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  expect(snapshot.attempt.history).toHaveLength(100);
+  expect(snapshot.attempt.history.every(({ groups }) => groups.normal.passed === groups.normal.total)).toBe(true);
+  await orchestrator.verify();
+  expect(snapshot.attempt.firstPass).toEqual(first);
+  expect(snapshot.attempt.verifications).toBe(102);
+});
+
+it('最初の検証で合格した事実も101件後に残り、報告のない基盤エラーは回数に数えない', async () => {
+  const { evaluator, orchestrator } = setup();
+  const snapshot = await orchestrator.start('test-pack');
+  await orchestrator.applyDefense('owner-only');
+  vi.spyOn(evaluator, 'runSuite').mockRejectedValueOnce(new Error('基盤停止'));
+  await orchestrator.verify();
+  expect(snapshot.attempt.verifications).toBe(0);
+  const passed = await orchestrator.verify();
+  if (!passed) throw new Error('検証報告がありません');
+  const first = structuredClone(snapshot.attempt.firstPass);
+  vi.spyOn(evaluator, 'runSuite').mockResolvedValue(passed);
+  for (let index = 0; index < 101; index++) await orchestrator.verify();
+  expect(snapshot.attempt.firstPass).toEqual(first);
+  expect(first).toMatchObject({ verifications: 1, normalBroken: false });
+  expect(snapshot.attempt.verifications).toBe(102);
 });

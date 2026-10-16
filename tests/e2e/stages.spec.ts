@@ -25,7 +25,8 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await count(page, 2);
   const investigation = stages(page).locator('li').nth(1);
   await expect(investigation).toHaveClass('stage-arrived');
-  await expect(page.locator('[aria-live="polite"]')).toHaveText('20 XP を獲得（合計 30）');
+  await expect(page.locator('[aria-live="polite"]')).toContainText('20 XP を獲得（合計 30）');
+  await expect(page.locator('[aria-live="polite"]')).toContainText('ステージ 2「手がかりを探す」に到達しました');
   await page.getByRole('radio', { name: /^bob/ }).check();
   await preview(page).getByRole('button', { name: '非公開のメモ' }).click();
   await preview(page).getByRole('button', { name: '← 前のメモ' }).click();
@@ -65,7 +66,7 @@ test('到達記録は再開・再読み込み・別環境への取り込みで�
     const restored = await other.newPage();
     await restored.goto('/test/progress.html');
     await expect(restored.locator('body[data-ready="true"]')).toBeAttached();
-    expect(await restored.evaluate((text) => window.progressTest.importJson(text), json)).toEqual({ ok: true, imported: 1, xpRecomputed: false });
+    expect(await restored.evaluate((text) => window.progressTest.importJson(text), json)).toEqual({ ok: true, imported: 1, profileRecomputed: false });
     await restored.goto('/');
     await openMission(restored, 'idor', { resume: true });
     await expect(stages(restored)).toHaveText(before);
@@ -86,6 +87,7 @@ test('動きを減らしても到達と現在地を文字で示し、導入の�
   await expect(first).toHaveCSS('animation-name', 'none');
   await expect(stages(page).locator('li').nth(1)).toHaveAttribute('aria-current', 'step');
   await expect(stages(page).locator('li').nth(1)).toContainText('いま');
+  await expect(page.locator('[aria-live="polite"]')).toContainText('ステージ 1「事件を確認」に到達しました');
   await page.locator('[aria-live="polite"]').evaluate((region) => { region.textContent = ''; });
   await page.getByRole('button', { name: '導入をもう一度見る' }).click();
   await launchButton(page).click();

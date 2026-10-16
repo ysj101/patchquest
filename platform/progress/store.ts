@@ -1,9 +1,10 @@
 // 進捗の保存・復元・削除・JSON 入出力（spec §13）。ブラウザ内（IndexedDB）にだけ保存し、外部へは送らない。
 // 保存できない環境ではメモリで続け、その理由と書き出しの必要を呼び出し側へ伝える
-import { initialAttemptProgress, type AttemptRecord } from '../contract';
+import { completeAttempt, canonicalJson, type AttemptRecord } from '../contract';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile, type ProgressProfile } from './schema';
 
-import { xpFromAttempts, type XpSummary } from './xp';
+import { profileFromAttempts, storedProfile, type ProfileSummary } from './profile';
+import type { AchievementOptions } from './achievements';
 
 export interface ProgressBackend {
   getAll(): Promise<AttemptRecord[]>;
@@ -111,26 +112,27 @@ export class IndexedDbBackend implements ProgressBackend {
   }
 }
 
-export type ImportResult = { ok: true; imported: number; xpRecomputed: boolean } | { ok: false; error: string };
+export type ImportResult = { ok: true; imported: number; profileRecomputed: boolean } | { ok: false; error: string };
 
 export class ProgressStore {
   private constructor(
     private backend: ProgressBackend,
     /** 保存できない理由。null なら保存できている */
     private reason: string | null,
+    private readonly options: AchievementOptions,
   ) {}
 
   /** IndexedDB を開く。開けなければメモリで続ける */
-  static async open(): Promise<ProgressStore> {
+  static async open(options: AchievementOptions = { missionIds: [] }): Promise<ProgressStore> {
     try {
-      return new ProgressStore(await IndexedDbBackend.open(), null);
+      return new ProgressStore(await IndexedDbBackend.open(), null, options);
     } catch (e) {
-      return new ProgressStore(new MemoryBackend(), `ブラウザに保存できません（${e instanceof Error ? e.message : String(e)}）`);
+      return new ProgressStore(new MemoryBackend(), `ブラウザに保存できません（${e instanceof Error ? e.message : String(e)}）`, options);
     }
   }
 
-  static inMemory(reason: string | null = null): ProgressStore {
-    return new ProgressStore(new MemoryBackend(), reason);
+  static inMemory(options: AchievementOptions = { missionIds: [] }, reason: string | null = null): ProgressStore {
+    return new ProgressStore(new MemoryBackend(), reason, options);
   }
 
   /** 保存できない理由。null なら保存できている */
@@ -145,22 +147,20 @@ export class ProgressStore {
   async list(): Promise<AttemptRecord[]> {
     const records = await this.withBackend((b) => b.getAll());
     // 旧版の IndexedDB に保存された記録も、JSON 取り込みと同じ未到達の形にそろえる。
-    return records.map((record) => ({
-      ...initialAttemptProgress(), ...record,
-    })).sort((first, second) => first.createdAt.localeCompare(second.createdAt));
+    return records.map(completeAttempt).sort((first, second) => first.createdAt.localeCompare(second.createdAt));
   }
 
   clear(): Promise<void> {
     return this.withBackend((b) => b.clear());
   }
 
-  /** 保存済みの XP を記録から再計算し、違いがあれば黙って更新する。取得済みの一覧も利用できる。 */
-  async xp(records?: AttemptRecord[]): Promise<XpSummary> {
-    const summary = xpFromAttempts(records ?? await this.list());
-    const profile = await this.withBackend((backend) => backend.getProfile());
-    const saved = profile.xp?.total;
-    if (saved !== summary.total) {
-      await this.withBackend((backend) => backend.putProfile({ ...profile, xp: { total: summary.total } }));
+  /** XP と実績を記録から照合し、差分を一度の保存で黙って補正する。 */
+  async profile(records: readonly AttemptRecord[]): Promise<ProfileSummary> {
+    const summary = profileFromAttempts(records, this.options);
+    const saved = await this.withBackend((backend) => backend.getProfile());
+    const profile = storedProfile(summary);
+    if (canonicalJson(saved) !== canonicalJson(profile)) {
+      await this.withBackend((backend) => backend.putProfile(profile));
     }
     return summary;
   }
@@ -184,16 +184,19 @@ export class ProgressStore {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
-    const expected = xpFromAttempts(file.attempts).total;
-    const xpRecomputed = file.profile.xp !== undefined && file.profile.xp.total !== expected;
+    const expected = profileFromAttempts(file.attempts, this.options);
+    const xpDiffers = file.profile.xp !== undefined && file.profile.xp.total !== expected.xp.total;
+    const achievementsDiffer = file.profile.achievements !== undefined
+      && JSON.stringify(Object.keys(file.profile.achievements).sort()) !== JSON.stringify(Object.keys(expected.achievements).sort());
+    const profileRecomputed = xpDiffers || achievementsDiffer;
     const merged = new Map((await this.list()).map((record) => [record.attemptId, record]));
     for (const record of file.attempts) merged.set(record.attemptId, record);
-    const total = xpFromAttempts([...merged.values()]).total;
+    const profile = storedProfile(profileFromAttempts([...merged.values()], this.options));
     await this.withBackend(async (backend) => {
       await backend.put(file.attempts);
-      await backend.putProfile({ ...file.profile, xp: { total } });
+      await backend.putProfile(profile);
     });
-    return { ok: true, imported: file.attempts.length, xpRecomputed };
+    return { ok: true, imported: file.attempts.length, profileRecomputed };
   }
 
   /** 保存先が失敗したら、読めた記録を引き継いでメモリへ切り替え、同じ操作をやり直す */
