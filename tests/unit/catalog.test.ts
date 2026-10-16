@@ -37,7 +37,7 @@ describe('実装の登録簿', () => {
 
 describe('操作ガイドの案内先', () => {
   it('どの案内先も学習UIのどこかに置かれている', () => {
-    const sources = readdirSync('platform/ui').map((name) => readFileSync(`platform/ui/${name}`, 'utf8')).join('\n');
+    const sources = readdirSync('platform/ui').filter((name) => name.endsWith('.ts')).map((name) => readFileSync(`platform/ui/${name}`, 'utf8')).join('\n');
     expect(GUIDE_ANCHORS.filter((anchor) => !sources.includes(`'data-anchor': '${anchor}'`))).toEqual([]);
   });
 });

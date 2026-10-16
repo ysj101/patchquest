@@ -151,6 +151,31 @@ describe('validatePack', () => {
     expect(errors.some((e) => message.test(e)), errors.join('\n')).toBe(true);
   });
 
+  it('依頼人は省略でき、名前・役割・各反応が非空なら受け付ける', () => {
+    const pack = samplePack();
+    expect(validatePack(pack, { app })).toEqual([]);
+    Object.assign(pack.manifest.story, {
+      requester: { name: '依頼人', role: '利用者', reactions: { reproduced: '心配です', secured: 'ありがとう', closing: '安心しました' } },
+    });
+    expect(validatePack(pack, { app })).toEqual([]);
+  });
+
+  it.each(['name', 'role', 'reproduced', 'secured', 'closing'])('依頼人の%sが空なら拒否する', (field) => {
+    const requester = { name: '依頼人', role: '利用者', reactions: { reproduced: '心配です', secured: 'ありがとう', closing: '安心しました' } };
+    const target = field === 'name' || field === 'role' ? requester : requester.reactions;
+    Reflect.set(target, field, '  ');
+    const pack = samplePack();
+    Object.assign(pack.manifest.story, { requester });
+    const path = field === 'name' || field === 'role' ? field : `reactions.${field}`;
+    expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`story.requester.${path}:`)]);
+  });
+
+  it.each([null, '依頼人', { name: '依頼人', role: '利用者' }])('依頼人や反応がオブジェクトでなければ拒否する', (requester) => {
+    const pack = samplePack();
+    Object.assign(pack.manifest.story, { requester });
+    expect(validatePack(pack, { app }).some((error) => error.startsWith('story.requester'))).toBe(true);
+  });
+
   it('アプリとの非互換（版・フック契約・機能）を拒否する', () => {
     const errors = validatePack(samplePack(), {
       app: { ...app, version: '2.0.0', features: [], hooks: [{ ...app.hooks[0]!, contract: 2 }] },

@@ -26,7 +26,7 @@ export const idorPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'idor',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'mission',
     title: '非公開メモを守る',
     summary:
@@ -38,6 +38,14 @@ export const idorPack: MissionPack = {
     ],
     estimatedMinutes: 15,
     story: {
+      requester: {
+        name: 'bob さん', role: 'メモアプリの利用者',
+        reactions: {
+          reproduced: 'ほかの人のメモまで読めてしまうんだね。自分のメモも心配だよ。',
+          secured: '守ってくれてありがとう。自分のメモはこれまでどおり読めるね。',
+          closing: '誰のメモかを確かめることが大切なんだね。',
+        },
+      },
       incident:
         '利用者の bob さんから問い合わせがありました。「自分のメモを開いて『前のメモ』を押したら、知らない人の非公開メモが表示されました。私のメモもほかの人に見られていないか心配です」',
       goal: '非公開メモは、書いた本人（所有者）だけが読めるようにします。所有者はこれまでどおり、自分のメモを作成・閲覧・更新・削除できるようにします。',

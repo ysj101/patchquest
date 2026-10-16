@@ -50,6 +50,8 @@ export interface MissionManifest {
 }
 
 export interface StoryDef {
+  /** 依頼人。導入と結果の場面で短い反応を添える（任意。無ければキャラクターなしで表示） */
+  requester?: { name: string; role: string; reactions: { reproduced: string; secured: string; closing: string } };
   incident: string;
   goal: string;
   protectedAssets: string[];
