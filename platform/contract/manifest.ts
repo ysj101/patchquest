@@ -19,6 +19,8 @@ export type VulnerabilityCategory = (typeof VULNERABILITY_CATEGORIES)[number];
 export interface VulnerabilityDef {
   /** 短い通称。例: 'IDOR'、'保存型 XSS' */
   name: string;
+  /** 用語を使わない「一言でいうと」の 1 文。例: 'メモの番号を変えるだけで、他人の非公開メモが読めてしまう問題' */
+  plain: string;
   /** 正式な名前。例: '安全でない直接オブジェクト参照' */
   fullName: string;
   /** CWE の ID。例: 'CWE-639' */

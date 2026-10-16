@@ -45,6 +45,16 @@ export const VULNERABILITY_CATEGORY_LABEL: Record<VulnerabilityCategory, string>
   'data-access': 'データアクセス',
 };
 
+/** 分類の一言説明。初めての人が分類名だけで意味を取れないときの手がかり */
+export const VULNERABILITY_CATEGORY_NOTE: Record<VulnerabilityCategory, string> = {
+  authorization: '「このデータは誰のものか」を確かめる仕組みの問題',
+  'output-encoding': '受け取った文字を画面に出すときの扱いの問題',
+  'data-access': 'データベースへの問い合わせの組み立て方の問題',
+};
+
+/** CWE が何かの説明。略語を初回の説明なしに出さないために、CWE の番号には必ず添える */
+export const CWE_NOTE = 'ソフトウェアの弱点に共通の番号をつけた一覧（Common Weakness Enumeration）。あとで調べるときの手がかりになります';
+
 export const HINT_LABEL = { 1: '着眼点', 2: '調査方法', 3: '修正方針' } as const;
 
 export const BLOCKED_LABEL = {

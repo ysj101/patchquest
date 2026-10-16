@@ -4,9 +4,11 @@ import { DIFFICULTIES, type AttemptRecord, type MissionPack, type VulnerabilityD
 import { STAGES, allBadgesAchieved, sealStates, stageStates } from '../progress/stages';
 import { seals, status, type StatusKind } from './components';
 import { h } from './dom';
-import { DIFFICULTY_LABEL, VULNERABILITY_CATEGORY_LABEL } from './labels';
+import { DIFFICULTY_LABEL } from './labels';
 import type { MasterySummary } from '../progress/mastery';
 import { masteryLine } from './mastery';
+import { infoPopover } from './info-popover';
+import { vulnerabilityTerms } from './vulnerability-terms';
 
 export interface MissionEntry {
   pack: MissionPack;
@@ -47,13 +49,27 @@ export function tableOrder(entries: MissionEntry[]): MissionEntry[] {
 /** 次に進むおすすめ。表の順で、まだ完了していない最初の課題 */
 export const nextEntry = (entries: MissionEntry[]): MissionEntry | undefined => tableOrder(entries).find((entry) => !entry.completed);
 
-/** 脆弱性の通称を主役にし、正式名・CWE・分類を添える。課題の題名より先に目に入る位置に置く */
-function vulnerabilityLabel(vulnerability: VulnerabilityDef): HTMLElement {
+/** 脆弱性の通称と「一言でいうと」だけを行に出し、正式名・分類・CWE は ⓘ の説明に畳む */
+function vulnerabilityLabel(manifest: MissionPack['manifest'], vulnerability: VulnerabilityDef): HTMLElement {
   return h(
     'p',
     { class: 'vulnerability' },
     h('strong', { class: 'vulnerability-name' }, vulnerability.name),
-    h('span', { class: 'vulnerability-detail' }, `${vulnerability.fullName} ・ ${vulnerability.cwe} ・ ${VULNERABILITY_CATEGORY_LABEL[vulnerability.category]}`),
+    infoFor(manifest, vulnerability),
+    h('span', { class: 'vulnerability-plain' }, vulnerability.plain),
+  );
+}
+
+/** ⓘ の説明。初めての人の順に、一言でいうと → できるようになること → 用語 */
+function infoFor(manifest: MissionPack['manifest'], vulnerability: VulnerabilityDef): HTMLElement {
+  return infoPopover(
+    `${vulnerability.name} の説明`,
+    h('p', { class: 'eyebrow' }, '一言でいうと'),
+    h('p', {}, vulnerability.plain),
+    h('p', { class: 'eyebrow' }, 'この課題でできるようになること'),
+    h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((objective) => h('li', {}, objective))),
+    h('p', { class: 'eyebrow' }, '用語'),
+    vulnerabilityTerms(vulnerability),
   );
 }
 
@@ -86,15 +102,14 @@ function buttons(entry: MissionEntry, actions: MissionActions): HTMLElement[] {
   return list;
 }
 
-/** 概要・学習目標は畳んでおき、行は名前と状態だけで読めるようにする。習熟度は完了した課題にだけ添える */
+/** 概要は畳んでおき、行は名前と一言だけで読めるようにする（学習目標は ⓘ にある）。習熟度は完了した課題にだけ添える */
 function details(entry: MissionEntry, mastery: MasterySummary): HTMLElement {
   const { manifest } = entry.pack;
   return h(
     'details',
-    { class: 'objectives-fold' },
-    h('summary', {}, 'この課題でできるようになること'),
+    { class: 'summary-fold' },
+    h('summary', {}, '課題の概要'),
     h('p', { class: 'mission-summary' }, manifest.summary),
-    h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((objective) => h('li', {}, objective))),
     entry.completed && manifest.vulnerability ? masteryLine(mastery[manifest.vulnerability.category]) : null,
   );
 }
@@ -119,7 +134,7 @@ function row(entry: MissionEntry, actions: MissionActions, mastery: MasterySumma
       h(
         'div',
         { class: 'mission-main' },
-        manifest.vulnerability ? vulnerabilityLabel(manifest.vulnerability) : null,
+        manifest.vulnerability ? vulnerabilityLabel(manifest, manifest.vulnerability) : null,
         h('h3', { id: titleId }, manifest.title),
         details(entry, mastery),
         entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が更新されたため、前回の続きからは始められません。') : null,

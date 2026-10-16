@@ -245,6 +245,7 @@ const CWE_ID = /^CWE-\d+$/;
 function checkVulnerability(checker: Checker, value: unknown): void {
   const vulnerability = checker.obj('vulnerability', value);
   checker.text('vulnerability.name', vulnerability.name);
+  checker.text('vulnerability.plain', vulnerability.plain);
   checker.text('vulnerability.fullName', vulnerability.fullName);
   if (!CWE_ID.test(checker.text('vulnerability.cwe', vulnerability.cwe))) checker.fail('vulnerability.cwe', "'CWE-数字' の形式が必要です");
   checker.oneOf('vulnerability.category', vulnerability.category, VULNERABILITY_CATEGORIES);
