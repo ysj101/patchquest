@@ -36,6 +36,16 @@ export const ticketSeals = (page: Page) => page.locator('.ticket').getByRole('li
 /** 導入を閉じてミッションを始めるボタン */
 export const launchButton = (page: Page) => page.getByRole('button', { name: 'ミッション開始', exact: true });
 
+/**
+ * トップページ（課題一覧）を開き、描画の完了まで待つ。
+ * 課題一覧は保存領域（IndexedDB）を開いてから描画されるため、負荷の高い環境では最初の表示が expect の既定の 5 秒を超えることがある。
+ * 見出し（描画後にフォーカスが移る）を長めの上限で待ち、以降の操作や expect を既定の上限で行えるようにする
+ */
+export async function openHome(page: Page): Promise<void> {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'わざと壊したアプリで、こわして、なおして、たしかめる。' })).toBeVisible({ timeout: 15_000 });
+}
+
 /** 課題一覧のカードから新規・再挑戦・再開を選び、開始前チェックを終えて演習画面を開く */
 export async function openMission(page: Page, missionId: string, options: { resume?: boolean } = {}): Promise<void> {
   const name = options.resume ? '続きから始める' : /この課題を始める|最初から始める/;
@@ -45,7 +55,7 @@ export async function openMission(page: Page, missionId: string, options: { resu
 
 /** 課題一覧から課題を始め、導入を閉じて作業台に入る */
 export async function startMission(page: Page, missionId: string): Promise<void> {
-  await page.goto('/');
+  await openHome(page);
   await openMission(page, missionId);
   await finishBriefing(page);
 }

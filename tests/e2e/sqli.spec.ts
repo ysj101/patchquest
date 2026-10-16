@@ -2,7 +2,7 @@
 // 登録済みの検索語で他人のメモが返り（A10）、値としてバインドすると日本語・引用符・該当なしも守れる（A11）。
 // UNION という語だけを止めても不合格、検索を止めると正常系が壊れる
 import type { Page } from '@playwright/test';
-import { expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith } from './fixtures';
+import { expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from './fixtures';
 
 const OR_TITLE = "') OR title LIKE '%' --";
 
@@ -22,7 +22,7 @@ async function leakedPrivates(page: Page): Promise<void> {
 
 test('登録済みの検索語で他人のメモが返り、値としてのバインドだけが合格する', async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto('/');
+  await openHome(page);
   await expect(page.locator('[data-mission="sqli"]').getByRole('heading', { name: '検索条件からの情報漏えいを防ぐ' })).toBeVisible();
   await expect(page.locator('[data-mission="sqli"]')).toContainText('目安 15 分');
   await startMission(page, 'sqli');
