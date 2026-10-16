@@ -1,6 +1,18 @@
 // SQL インジェクションパックのヒント・解法・理解確認・振り返り。
 // この演習が扱うのは SQLite のクエリであり、別のデータベース製品の構文や権限モデルではない
-import type { DebriefDef, HintDef, TransferQuestion } from '../../platform/contract';
+import type { DebriefDef, HintDef, TransferQuestion, WorkedExample } from '../../platform/contract';
+
+/** 仕組みだけを示す例。対策には触れない（防御は学習者が選ぶ） */
+export const WORKED_EXAMPLE: WorkedExample = {
+  title: '検索語が、条件式の一部になってしまう',
+  steps: [
+    "入力：alice（利用者 ID 1）が「週報」で検索する。処理は検索語を文字列としてつなぎ、SQL を組み立てる：… WHERE owner_id = 1 AND (title LIKE '%週報%' OR body LIKE '%週報%')",
+    "入力を変える：検索語を ') OR 2=2 -- にする。",
+    "処理：同じようにつなぐと … WHERE owner_id = 1 AND (title LIKE '%') OR 2=2 --%' OR body LIKE … となる。検索語の中の ') が括弧と文字列を閉じ、-- から後ろはコメントとして無視される。",
+    "結果：残る条件は (owner_id = 1 AND title LIKE '%') OR 2=2。2=2 は常に真なので、所有者の条件は効かず、bob や carol のメモまで結果に含まれる。",
+  ],
+  takeaway: '検索語を値ではなく SQL の文字列として扱うと、利用者の入力が条件式そのものを書き換えられる。',
+};
 
 export const HINTS: HintDef[] = [
   {

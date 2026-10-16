@@ -48,6 +48,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   c.texts('story.protectedAssets', story.protectedAssets, true);
   c.texts('story.normalUse', story.normalUse, true);
   if (story.requester !== undefined) checkRequester(c, story.requester);
+  if (story.workedExample !== undefined) checkWorkedExample(c, story.workedExample);
 
   const compat = c.obj('appCompatibility', m.appCompatibility);
   c.text('appCompatibility.appId', compat.appId);
@@ -220,6 +221,13 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   }
 
   return c.errors;
+}
+
+function checkWorkedExample(checker: Checker, value: unknown): void {
+  const example = checker.obj('story.workedExample', value);
+  checker.text('story.workedExample.title', example.title);
+  checker.texts('story.workedExample.steps', example.steps, true);
+  checker.text('story.workedExample.takeaway', example.takeaway);
 }
 
 function checkRequester(checker: Checker, value: unknown): void {

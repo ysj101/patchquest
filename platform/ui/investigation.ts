@@ -1,6 +1,6 @@
 // 調査パネル（spec §10）。定型の操作とリクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, type ActionDef, type AppRequest, type Exchange, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent } from '../contract';
+import { HTTP_METHODS, type ActionDef, type AppRequest, type Exchange, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
 import { expandRequest, type Scope } from '../evaluator/scenario';
 import { status } from './components';
 import { fill, h } from './dom';
@@ -178,8 +178,21 @@ export class InvestigationPanel {
   }
 }
 
-/** 状況パネル：問い合わせ・目標・守るもの・普段の使い方 */
-export function storyPanel(story: { incident: string; goal: string; protectedAssets: string[]; normalUse: string[] }): HTMLElement {
+/** 仕組みの例。閉じた状態で置き、読みたいときだけ開く（演習の流れを妨げない） */
+function workedExample(example: WorkedExample): HTMLElement {
+  return h(
+    'details',
+    { class: 'worked-example tool-section' },
+    h('summary', {}, h('h3', {}, '仕組みの例'), h('span', { class: 'note' }, '攻撃を試す前に、何が起きるかを読んで確かめたいときに開きます')),
+    h('p', { class: 'eyebrow' }, example.title),
+    h('ol', { class: 'worked-example-steps' }, ...example.steps.map((step) => h('li', {}, step))),
+    h('p', {}, h('strong', {}, 'ここから分かること：'), example.takeaway),
+    h('p', { class: 'note' }, '対策は書いていません。どう守るかは、対策パネルで自分で選びます。'),
+  );
+}
+
+/** 状況パネル：問い合わせ・目標・守るもの・普段の使い方・仕組みの例（あれば） */
+export function storyPanel(story: StoryDef): HTMLElement {
   return h(
     'div',
     { class: 'story', 'data-anchor': 'story' },
@@ -187,5 +200,6 @@ export function storyPanel(story: { incident: string; goal: string; protectedAss
     h('section', { class: 'tool-section' }, h('h3', {}, '目標'), h('p', {}, story.goal)),
     h('section', { class: 'tool-section' }, h('h3', {}, '守るもの'), h('ul', {}, ...story.protectedAssets.map((a) => h('li', {}, a)))),
     h('section', { class: 'tool-section' }, h('h3', {}, '壊してはいけない普段の使い方'), h('ul', {}, ...story.normalUse.map((a) => h('li', {}, a)))),
+    story.workedExample ? workedExample(story.workedExample) : null,
   );
 }
