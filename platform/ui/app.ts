@@ -4,6 +4,7 @@ import { ANONYMOUS, RuntimeError, isInExercise, satisfies, type ActorKey, type A
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { profileFromAttempts } from '../progress/profile';
+import { profileOptions } from './profile-options';
 import { importBanner, importMessage } from './progress-feedback';
 import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
@@ -24,7 +25,6 @@ import { serialLatest } from './serial';
 
 type Screen = 'list' | 'preflight' | 'exercise';
 
-const achievementOptions = { missionIds: catalog.packs.filter((pack) => pack.manifest.kind === 'mission').map((pack) => pack.manifest.id) };
 
 const appVersionOf = (appId: string) => catalog.apps.find((a) => a.descriptor.id === appId)?.descriptor.version ?? '';
 
@@ -32,7 +32,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const effectWarning = h('p', { class: 'banner banner-warn', role: 'status' });
   const effects = browserEffects(document.documentElement, effectWarning);
   const openSettings = () => openEffectSettings(effects);
-  const store = await ProgressStore.open(achievementOptions);
+  const store = await ProgressStore.open(profileOptions);
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const resultEffects = new ResultEffects(effects, (message) => announce(live, message));
   const listView = h('section', { class: 'list-view' }), main = h('main', { id: 'main' });
@@ -199,13 +199,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   function updateExercise(snapshot: ExerciseSnapshot): void {
     exerciseView.update(snapshot);
-    const profile = profileFromAttempts([...others, snapshot.attempt], achievementOptions);
+    const profile = profileFromAttempts([...others, snapshot.attempt], profileOptions);
     exerciseView.xp.update(profile.xp);
     exerciseView.achievements.update(profile.achievements);
     resultEffects.update(snapshot);
     repair.update(snapshot);
     hints.update(snapshot);
-    debrief.update(snapshot);
+    debrief.update(snapshot, profile.mastery);
   }
 
   async function applyDefense(defenseId: string | null): Promise<void> {
