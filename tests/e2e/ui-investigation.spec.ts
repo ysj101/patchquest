@@ -79,12 +79,10 @@ test('教材由来の文字列は観測ログでも文字のまま表示され�
   await editor.getByLabel('パス').fill('/notes');
   await editor.getByLabel('本文（JSON）').fill(JSON.stringify({ body: payload }));
   await editor.getByRole('button', { name: 'このリクエストを送る' }).click();
-  await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
 
-  // 開き直した画面の一覧取得が記録されるのを待ってから開く
-  const listings = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' });
-  await expect(listings).toHaveCount(2);
-  const listing = listings.first();
+  // 送信後にプレビューが描き直され、保存した本文が一覧へ出る。ログもその一覧取得を開く
+  await expect(preview(page).getByText(payload)).toBeVisible();
+  const listing = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();
   await listing.locator('summary').click();
   await expect(listing).toContainText(payload.replaceAll('"', '\\"'));
   await expect(page.locator('.log img, .log b')).toHaveCount(0);

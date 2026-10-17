@@ -83,6 +83,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
       },
       switchUser: (actor) => {
         guide.reach('user-switched');
+        // 描画開始前に閲覧者を確定する。送信後の描き直しは、この時点の閲覧者で行う
+        viewer = actor;
         void showViewer(actor);
       },
       reloadView: () => void showViewer(viewer),
@@ -315,7 +317,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     return sessions.get(actor)!;
   }
 
-  /** 現在の利用者として、ブラウザ内の呼び出しを送る。基盤エラーは理由を返し、不合格には数えない */
+  /** 現在の利用者として、ブラウザ内の呼び出しを送る。基盤エラーは理由を返し、不合格には数えない。
+   * 送り終わったら、実行環境のエラーで送れなかったときも含めて、今の閲覧者で最初の画面を描き直す */
   async function send(request: AppRequest): Promise<string | null> {
     const runId = orchestrator.newRunId();
     try {
@@ -328,6 +331,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
       if (e instanceof RuntimeError && e.code === 'input-too-large') return '入力が大きすぎます（1 件 4KB まで）。内容を短くしてください。';
       if (e instanceof RuntimeError) return `実行環境のエラーで送れませんでした（不合格には数えません）：${e.message}`;
       throw e;
+    } finally {
+      await showViewer(viewer);
     }
   }
 
