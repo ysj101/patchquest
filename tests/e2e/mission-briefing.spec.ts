@@ -1,6 +1,6 @@
 // ミッション導入の初回表示・読み直し・保存済み記録によるスキップを確かめる
 import type { Page } from '@playwright/test';
-import { expect, expectWorkbench, launchButton, openMission, test, openHome } from './fixtures';
+import { backToList, expect, expectWorkbench, launchButton, openMission, test, openHome } from './fixtures';
 
 const briefing = (page: Page) => page.locator('[data-anchor="briefing"]');
 
@@ -12,7 +12,7 @@ test('初回の事件と依頼、注意書きと演習票を表示し、Escで�
   await expect(briefing(page)).toContainText('知らない人の非公開メモが表示されました');
   await expect(briefing(page)).toContainText('非公開メモは、書いた本人（所有者）だけが読めるようにします。');
   await expect(page.locator('.fictional-label')).toBeVisible();
-  await expect(page.getByRole('button', { name: '課題一覧へ戻る' })).toBeVisible();
+  await expect(backToList(page)).toBeVisible();
   await expect(page.locator('.ticket')).toContainText('非公開メモを守る');
   await expect(page.locator('.workbench')).toBeHidden();
   // 導入中にも教材アプリを読み込み、読み直しても同じDOMを保つ
@@ -39,11 +39,11 @@ test('同じ課題の再挑戦と続きからの開始では導入を飛ばし�
   await openMission(page, 'idor');
   await launchButton(page).click();
   for (const resume of [false, true]) {
-    await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+    await backToList(page).click();
     await openMission(page, 'idor', { resume });
     await expectWorkbench(page);
   }
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   await openMission(page, 'sqli');
   await expect(briefing(page)).toBeVisible();
 });
@@ -65,7 +65,7 @@ test('練習課題の既定スキップでは導入のステップも済みに�
   await openHome(page);
   await openMission(page, 'onboarding');
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   await openMission(page, 'onboarding');
   await expectWorkbench(page);
   const guide = page.getByRole('complementary', { name: '操作ガイド' });
@@ -84,6 +84,6 @@ test('ブラウザに保存できない場合は同じ課題でも毎回導入�
     await openMission(page, 'onboarding');
     await expect(briefing(page)).toBeVisible();
     await launchButton(page).click();
-    await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+    await backToList(page).click();
   }
 });

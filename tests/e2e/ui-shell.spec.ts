@@ -1,6 +1,6 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { enterWorkbench, expect, tabTo, test, openHome, openMissions, openRecords } from './fixtures';
+import { backToList, enterWorkbench, expect, tabTo, test, openHome, openMissions, openRecords } from './fixtures';
 
 const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
@@ -118,7 +118,7 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
   await expect(page.locator('.check').filter({ hasText: '脆弱性の注入' }).locator('.status')).toHaveText(/不合格/);
   await page.getByRole('button', { name: 'もう一度チェックする' }).click();
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   await expect(page.getByRole('heading', { level: 1, name: '課題', exact: true })).toBeVisible();
 });
 
@@ -126,7 +126,7 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   await card(page, 'test-pack').getByRole('button', { name: 'この課題を始める' }).click();
   await enterWorkbench(page);
   const ticket = await page.locator('.ticket-id').textContent();
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   // 表の行は、導入を読んだ分だけステージが進み「途中」になる
   await expect(card(page, 'test-pack')).toHaveAttribute('data-progress', 'doing');
   await expect(card(page, 'test-pack').locator('.mission-progress')).toContainText('途中');
@@ -135,7 +135,7 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   await card(page, 'test-pack').getByRole('button', { name: '続きから始める' }).click();
   await enterWorkbench(page);
   await expect(page.locator('.ticket-id')).toHaveText(ticket!);
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
 
   // 進捗の道具は記録ページにある
   await openRecords(page);
