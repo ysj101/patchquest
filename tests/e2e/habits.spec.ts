@@ -1,6 +1,6 @@
 // 記録ページの復習クエストと週間目標（Issue #76）。課題を解決すると一覧に復習の案内が出て、記録ページで解くと解説と XP が示され、週間目標は未達でも警告を出さない
 import type { Page } from '@playwright/test';
-import { TEST_PACK_ANSWERS, answerTransferCheck, expect, openHome, openMission, openMissions, openRecords, reproduceNoteLeak, test, ticketSeals, verifyWith } from './fixtures';
+import { TEST_PACK_ANSWERS, answerTransferCheck, backToList, expect, openHome, openMission, openMissions, openRecords, reproduceNoteLeak, test, ticketSeals, verifyWith } from './fixtures';
 
 const review = (page: Page) => page.getByRole('region', { name: '復習クエスト', exact: true });
 const weekly = (page: Page) => page.getByRole('region', { name: '週間目標', exact: true });
@@ -16,7 +16,7 @@ async function completeTestPack(page: Page): Promise<void> {
   await verifyWith(page, '所有者を照合する');
   await expect(ticketSeals(page)).toContainText('防御：達成');
   await answerTransferCheck(page, TEST_PACK_ANSWERS);
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
 }
 
 test('課題を解決すると復習の問題が出て、正解すると解説と 5 XP が示され、同じ日の 2 回目は XP が増えない', async ({ page }) => {

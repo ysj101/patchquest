@@ -109,13 +109,18 @@ export async function startApp(root: HTMLElement): Promise<void> {
     exercise,
   });
 
+  let screen: Screen = 'list';
   fill(
     root,
     h('a', { href: '#main', class: 'skip-link' }, '本文へ移動'),
     h(
       'header',
       { class: 'site-header' },
-      h('p', { class: 'brand' }, h('img', { class: 'brand-mark', src: './assets/brand/mark.svg', alt: '' }), 'PatchQuest'),
+      // どの画面からでも課題一覧へ戻す。一覧のときは描き直さない。検証中も「課題一覧へ戻る」と同じ showList を使う
+      h('button', {
+        type: 'button', class: 'brand', 'aria-label': 'PatchQuest（課題一覧へ戻る）',
+        on: { click: () => { if (screen !== 'list') void showList(); } },
+      }, h('img', { class: 'brand-mark', src: './assets/brand/mark.svg', alt: '' }), 'PatchQuest'),
       nav.element,
     ),
     effectWarning,
@@ -124,7 +129,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
   );
   fill(main, guide.element, listView, recordsView, preflightView.element, exerciseView.element);
 
-  let screen: Screen = 'list';
   let others: AttemptRecord[] = [];
   function show(next: Screen): void {
     screen = next;

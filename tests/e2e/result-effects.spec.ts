@@ -1,5 +1,5 @@
 // 観測・検証結果とコールアウト、達成印、音の一致を確かめる。
-import { expect, openMission, settingsButton, startMission, test, ticketSeals, verifyResults, verifyWith } from './fixtures';
+import { backToList, expect, openMission, settingsButton, startMission, test, ticketSeals, verifyResults, verifyWith } from './fixtures';
 
 const ownerDefense = '取り出す処理で、ログイン中の利用者と所有者を照合する';
 
@@ -37,7 +37,7 @@ test('調査で再現し、不十分な対策から防御成功へ進むと結�
   await page.getByRole('button', { name: '初期状態へ戻す', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: '初期状態へ戻す', exact: true }).click();
   await expect(callout).toBeHidden();
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   await openMission(page, 'idor');
   await expect(callout).toBeHidden();
 });
