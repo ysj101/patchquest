@@ -377,6 +377,11 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .defense-text { display: grid; gap: 2px; }
 .diff { display: grid; gap: 8px; }
 .diff:empty { display: none; }
+/* 参考コードは閉じて始める。開いた差分の下に検証を置かない（パネル内をスクロールさせない） */
+.reference-code { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; }
+.reference-code summary { cursor: pointer; font-weight: 700; color: var(--link); width: fit-content; }
+.reference-code[open] { display: grid; gap: 8px; }
+.repair > .tool-section + .tool-section { border-top: 1px solid var(--line); padding-top: 12px; }
 .diff h4 { font-size: 0.85rem; color: var(--muted); }
 .diff-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .diff-pair figure { margin: 0; display: grid; gap: 4px; }

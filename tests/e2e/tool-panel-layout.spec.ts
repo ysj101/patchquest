@@ -28,12 +28,19 @@ async function box(page: Page, selector: string): Promise<{ x: number; y: number
   return value;
 }
 
-/** 対策タブの適用と検証が、パネル内スクロールなしに画面へ入っている */
+/** 対策タブの適用と検証が、参考コードを閉じたままパネル内スクロールなしに画面へ入っている */
 async function expectRepairActionsInView(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
+  await expect(page.locator('.reference-code')).not.toHaveAttribute('open');
   await expectNoPanelScroll(page);
   await expect(page.getByRole('button', { name: 'この対策を適用する' })).toBeInViewport();
   await expect(page.getByRole('button', { name: '攻撃と普段の使い方を検証する' })).toBeInViewport();
+}
+
+/** 閉じている参考コードを開く。差分の列数は開いたあとに測る */
+async function openReference(page: Page): Promise<void> {
+  await page.locator('.reference-code summary').click();
+  await expect(page.locator('.reference-code')).toHaveAttribute('open', '');
 }
 
 test('1280×800 では調査と対策の主要な操作が、パネル内をスクロールせずに見える', async ({ page }) => {
@@ -53,6 +60,7 @@ test('1280×800 では調査と対策の主要な操作が、パネル内をス�
   expect(editor.width).toBeGreaterThan(tools.width * 0.8);
 
   await expectRepairActionsInView(page);
+  await openReference(page);
   const columns = await page.locator('.diff-pair').first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
   expect(columns).toBe(2);
   const codeWidth = await page.locator('.diff-pair pre').first().evaluate((el) => el.getBoundingClientRect().width);
@@ -104,7 +112,9 @@ test('960px 以下は教材アプリの下に道具が並び、横にはみ出�
   expect(Math.abs(app.x - tools.x)).toBeLessThan(2);
 
   await page.getByRole('tab', { name: '対策' }).click();
+  await expect(page.locator('.reference-code')).not.toHaveAttribute('open');
   await expectNoPanelScroll(page);
+  await openReference(page);
   const diffTracks = await page.locator('.diff-pair').first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
   expect(diffTracks).toBe(1);
   await expect(page.getByRole('button', { name: 'この対策を適用する' })).toBeVisible();
