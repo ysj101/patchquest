@@ -274,7 +274,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
   }
 
   // 初期表示と利用者切り替えが同時に走ると描画要求がフレームへ逆順に届き、古い画面が後から上書きしうる。直列化して要求順に描画する
-  const showViewer = serialLatest(async (actor: ActorKey): Promise<void> => {
+  // 送信後の描き直しでは閲覧者は変わらないので読み上げない。読み上げると、送信で届いた XP や到達の通知を上書きしてしまう
+  const renderView = serialLatest(async ({ actor, announceViewer }: { actor: ActorKey; announceViewer: boolean }): Promise<void> => {
     const app = currentApp();
     if (!app) return;
     viewer = actor;
@@ -283,13 +284,14 @@ export async function startApp(root: HTMLElement): Promise<void> {
     openingViews.add(runId);
     try {
       await exercise.showView(actor, app.descriptor.entryRoute, runId);
-      announce(live, `${exerciseView.label(actor)} として表示しています`);
+      if (announceViewer) announce(live, `${exerciseView.label(actor)} として表示しています`);
     } catch (e) {
       announce(live, `画面を表示できませんでした：${e instanceof Error ? e.message : String(e)}`);
     } finally {
       openingViews.delete(runId);
     }
   });
+  const showViewer = (actor: ActorKey): Promise<void> => renderView({ actor, announceViewer: true });
 
   async function beginExercise(): Promise<void> {
     const snapshot = orchestrator.snapshot;
@@ -332,7 +334,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       if (e instanceof RuntimeError) return `実行環境のエラーで送れませんでした（不合格には数えません）：${e.message}`;
       throw e;
     } finally {
-      await showViewer(viewer);
+      await renderView({ actor: viewer, announceViewer: false });
     }
   }
 
