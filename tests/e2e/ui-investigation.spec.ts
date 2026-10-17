@@ -9,7 +9,7 @@ async function startExercise(page: Page): Promise<void> {
 
 /** 観測ログに記録された、alice の一覧取得の応答からノート ID を読む */
 async function aliceNoteId(page: Page): Promise<number> {
-  const entry = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();
+  const entry = page.locator('.log-entry').filter({ hasText: /alice → GET \/notes(?!\/)/ }).first();
   await entry.locator('summary').click();
   const body = await entry.locator('.log-block').nth(1).locator('pre').textContent();
   return (JSON.parse(body!) as { notes: { id: number }[] }).notes[0]!.id;
@@ -40,7 +40,8 @@ test('キーボードで利用者を切り替え、定型の操作で事故を�
 
   await page.getByLabel('ノート ID').fill(String(id));
   await page.getByLabel('ノート ID').press('Enter');
-  const entry = page.locator('.log-entry').first();
+  // 送信のあとプレビューの一覧取得がログの先頭に足される。送ったリクエスト自体を読む
+  const entry = page.locator('.log-entry').filter({ hasText: `bob → GET /notes/${id}` });
   await expect(entry.locator('summary')).toContainText(`bob → GET /notes/${id}`);
   await expect(entry.locator('.status')).toHaveText(/200/);
   await expect(page.getByRole('list', { name: '達成印' })).toContainText('再現：達成');
@@ -82,7 +83,7 @@ test('教材由来の文字列は観測ログでも文字のまま表示され�
 
   // 送信後にプレビューが描き直され、保存した本文が一覧へ出る。ログもその一覧取得を開く
   await expect(preview(page).getByText(payload)).toBeVisible();
-  const listing = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();
+  const listing = page.locator('.log-entry').filter({ hasText: /alice → GET \/notes(?!\/)/ }).first();
   await listing.locator('summary').click();
   await expect(listing).toContainText(payload.replaceAll('"', '\\"'));
   await expect(page.locator('.log img, .log b')).toHaveCount(0);
