@@ -275,14 +275,6 @@
       "count": 2
     }
   },
-  "platform/ui/repair.ts": {
-    "id-length": {
-      "count": 10
-    },
-    "sonarjs/no-nested-conditional": {
-      "count": 2
-    }
-  },
   "runtimes/browser/adapter.ts": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 2

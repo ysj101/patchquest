@@ -51,6 +51,8 @@ test('キーボードで対策を選び、適用して検証できる', async ({
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('radio', { name: /すべて拒否する/ })).toBeChecked();
   await page.keyboard.press('Tab');
+  await expect(page.locator('.reference-code summary')).toBeFocused();
+  await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
   await expect(page.getByText('適用中の対策：すべて拒否する')).toBeVisible();
   await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).focus();
@@ -97,6 +99,38 @@ test('初期状態へ戻すと対策とデータが戻り、新しいデータ�
   await enterWorkbench(page);
   await expect(page.locator('.ticket-id')).not.toHaveText(ticket!);
   await expect(seals(page)).toContainText('再現：未達成');
+});
+
+test('不合格のあと①に戻って、別の対策を選び直せる', async ({ page }) => {
+  await page.getByRole('tab', { name: '対策' }).click();
+  await expect(page.getByRole('heading', { name: '① 対策を選んで適用する' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '② 検証する' })).toBeVisible();
+  await expect(page.locator('.reference-code')).not.toHaveAttribute('open');
+  await expect(page.getByRole('button', { name: '① に戻って対策を選び直す' })).toBeHidden();
+
+  await verifyWith(page, 'すべて拒否する');
+  const results = page.locator('[data-anchor="results"]');
+  await expect(results).toContainText('まだ合格ではありません', { timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: '検証結果' })).toBeFocused();
+  const back = page.getByRole('button', { name: '① に戻って対策を選び直す' });
+  await expect(back).toBeVisible();
+  const verdictBox = await results.locator('.banner-error').boundingBox();
+  const backBox = await back.boundingBox();
+  const verifyBox = await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).boundingBox();
+  const appliedBox = await page.locator('.applied').boundingBox();
+  if (!verdictBox || !backBox || !verifyBox || !appliedBox) throw new Error('対策タブの配置を測れません');
+  expect(appliedBox.y).toBeLessThan(verifyBox.y);
+  expect(verifyBox.y).toBeLessThan(verdictBox.y);
+  expect(verdictBox.y).toBeLessThan(backBox.y);
+
+  await back.click();
+  await expect(page.getByRole('radio', { name: /すべて拒否する/ })).toBeFocused();
+  await page.getByRole('radio', { name: /所有者を照合する/ }).check();
+  await page.getByRole('button', { name: 'この対策を適用する' }).click();
+  await expect(page.getByText('適用中の対策：所有者を照合する')).toBeVisible();
+  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+  await expect(results).toContainText('防御できました', { timeout: 15_000 });
+  await expect(back).toBeHidden();
 });
 
 test('対策を適用した演習を続きから始めると、開始前チェックの後に前回の対策を適用し直して演習を始められる', async ({ page }) => {
