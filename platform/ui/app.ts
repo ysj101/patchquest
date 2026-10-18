@@ -17,10 +17,9 @@ import { GuidePanel } from './guide';
 import { missionList } from './mission-list';
 import { missionEntries } from './mission-entries';
 import { hasCompleted } from './mission-table';
-import { habitSections } from './habits';
+import { engagementSection } from './habits';
 import { recordsPage } from './records';
 import { siteNav } from './site-nav';
-import { reviewCandidates } from '../progress/review';
 import { planChallenge, type ChallengePlan } from '../progress/challenge';
 import { progressActions } from './progress-actions';
 import { PreflightView } from './preflight';
@@ -169,15 +168,15 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   async function showList(message?: string): Promise<void> {
     const { records, profile } = await loadRecords();
+    const engagement = engagementSection({ packs: catalog.packs, records, profile, store, refresh: (text) => void showList(text) });
     fill(
       listView,
       missionList(missionEntries(records, orchestrator.snapshot), {
         openSettings,
-        openRecords: () => void showRecords(),
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
         challenge: (packId) => void challenge(packId),
-      }, { mastery: profile.mastery, reviewAvailable: reviewCandidates(catalog.packs, records).length > 0, storageWarning: store.unavailableReason }),
+      }, { mastery: profile.mastery, engagement, storageWarning: store.unavailableReason }),
     );
     show('list');
     if (message) announce(live, message);
@@ -185,9 +184,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
   }
 
   async function showRecords(message?: string): Promise<void> {
-    const { records, profile } = await loadRecords();
-    const habits = habitSections({ packs: catalog.packs, records, profile, store, refresh: (text) => void showRecords(text) });
-    fill(recordsView, recordsPage(profile, catalog.packs, habits, store.unavailableReason, progress));
+    const { profile } = await loadRecords();
+    fill(recordsView, recordsPage(profile, catalog.packs, store.unavailableReason, progress));
     show('records');
     if (message) announce(live, message);
     recordsView.querySelector<HTMLElement>('h1')?.focus();

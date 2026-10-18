@@ -1,6 +1,6 @@
 // XP の段階報酬・再挑戦・改変した進捗の照合をブラウザで確かめる。
 import type { Page } from '@playwright/test';
-import { TEST_PACK_ANSWERS, answerTransferCheck, expect, enterWorkbench, reproduceNoteLeak, launchButton, openMission, openRecords, test, ticketSeals, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
+import { TEST_PACK_ANSWERS, answerTransferCheck, expect, enterWorkbench, reproduceNoteLeak, launchButton, openMission, openMissions, openRecords, test, ticketSeals, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
 
 const badge = (page: Page) => page.locator('.xp-badge');
 const gain = (page: Page, amount: number) => expect(badge(page).locator('.xp-gain')).toHaveText(`+${amount} XP`);
@@ -39,8 +39,7 @@ test('各段階で報酬を受け取り、再挑戦は20 XPだけ加算し、再
   await gain(page, 50);
   await expect(badge(page)).toContainText('Lv.2 ・ 140 XP');
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
-  await openRecords(page);
-  await expect(page.locator('.xp-summary')).toHaveText('Lv.2 ・ 140 XP ・ 次のレベルまで 110 XP');
+  await expect(page.getByRole('region', { name: '取り組み', exact: true }).locator('.xp-summary')).toHaveText('Lv.2 ・ 140 XP ・ 次のレベルまで 110 XP');
   await openMission(page, 'test-pack', { resume: true });
   await expect(badge(page)).toContainText('140 XP');
   await expect(badge(page).locator('.xp-gain')).toHaveCount(0);
@@ -58,8 +57,7 @@ test('各段階で報酬を受け取り、再挑戦は20 XPだけ加算し、再
   await expect(badge(page)).toContainText('Lv.2 ・ 160 XP');
   await expect(badge(page).locator('.xp-gain')).toHaveCount(0);
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
-  await openRecords(page);
-  await expect(page.locator('.xp-summary')).toContainText('160 XP');
+  await expect(page.getByRole('region', { name: '取り組み', exact: true }).locator('.xp-summary')).toContainText('160 XP');
 });
 
 test('改変したXPは取り込み時に注記し、記録から計算した値を表示する', async ({ page }) => {
@@ -71,7 +69,8 @@ test('改変したXPは取り込み時に注記し、記録から計算した値
   await openRecords(page);
   await page.locator('input[type="file"]').setInputFiles({ name: '進捗.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)) });
   await expect(page.locator('.banner-warn').filter({ hasText: '取り込んだファイルの XP または実績は、そのファイルの記録と合わなかったため、記録から計算し直しました' })).toBeVisible();
-  await expect(page.locator('.xp-summary')).toContainText('Lv.1 ・ 0 XP');
+  await openMissions(page);
+  await expect(page.getByRole('region', { name: '取り組み', exact: true }).locator('.xp-summary')).toContainText('Lv.1 ・ 0 XP');
   await expect(page.locator('[aria-live="polite"]')).toContainText('記録から計算し直しました');
 });
 

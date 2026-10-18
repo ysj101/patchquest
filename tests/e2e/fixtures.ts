@@ -49,7 +49,7 @@ export async function openHome(page: Page): Promise<void> {
 const pageHeading = (page: Page, name: string) => page.getByRole('heading', { level: 1, name, exact: true });
 const siteNav = (page: Page) => page.getByRole('navigation', { name: 'ページ' });
 
-/** 見出しの「記録」から記録ページ（XP・習熟度・実績・復習・週間目標・進捗の道具）を開く */
+/** 見出しの「記録」から記録ページ（習熟度・実績・進捗の道具）を開く */
 export async function openRecords(page: Page): Promise<void> {
   await siteNav(page).getByRole('button', { name: '記録' }).click();
   await expect(pageHeading(page, '記録')).toBeVisible();

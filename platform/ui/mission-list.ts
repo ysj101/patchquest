@@ -1,5 +1,5 @@
-// ミッション一覧（spec §10）。「見出しと 1 行の説明と次の一歩 → 難易度順の課題の表」だけを置く。
-// XP・習熟度・実績・復習・週間目標と進捗の道具は記録ページ（records.ts）にあり、ここでは復習があるときの 1 行の案内だけを出す
+// ミッション一覧（spec §10）。「見出しと 1 行の説明と次の一歩 → 取り組み（XP・復習・週間目標）→ 難易度順の課題の表」を置く。
+// 習熟度・実績と進捗の道具は記録ページ（records.ts）にある
 import type { AttemptRecord } from '../contract';
 import { settingsButton } from './components';
 import { missionTable, nextEntry, type MissionEntry } from './mission-table';
@@ -10,7 +10,6 @@ export type { MissionEntry } from './mission-table';
 
 export interface MissionListActions {
   openSettings(): void;
-  openRecords(): void;
   start(packId: string): void;
   resume(record: AttemptRecord): void;
   challenge(packId: string): void;
@@ -42,26 +41,16 @@ function hero(entries: MissionEntry[], actions: MissionListActions): HTMLElement
   );
 }
 
-/** 復習を出せるときだけ、記録ページへの 1 行の案内を置く（通知やメールは送らない。起動時に画面で知らせるだけ） */
-function reviewNotice(actions: MissionListActions): HTMLElement {
-  return h(
-    'p',
-    { class: 'review-notice', role: 'status' },
-    '今日の復習が 1 問あります。',
-    h('button', { type: 'button', class: 'link-button', on: { click: () => actions.openRecords() } }, '記録ページで解く'),
-  );
-}
-
 export interface MissionListOptions {
   /** 分類ごとの習熟度。完了した課題の行に 1 行添える */
   mastery: MasterySummary;
-  /** 復習クエストに出せる問題があるか */
-  reviewAvailable: boolean;
+  /** 次の一歩の直下に置く「取り組み」（XP・復習クエスト・週間目標） */
+  engagement: HTMLElement;
   /** 保存できない理由。あれば先頭に出す */
   storageWarning: string | null;
 }
 
-export function missionList(entries: MissionEntry[], actions: MissionListActions, { mastery, reviewAvailable, storageWarning }: MissionListOptions): HTMLElement {
+export function missionList(entries: MissionEntry[], actions: MissionListActions, { mastery, engagement, storageWarning }: MissionListOptions): HTMLElement {
   return h(
     'div',
     { class: 'mission-list', 'data-anchor': 'mission-list' },
@@ -69,7 +58,7 @@ export function missionList(entries: MissionEntry[], actions: MissionListActions
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、記録ページの「進捗を書き出す」で保存してください。`)
       : null,
-    reviewAvailable ? reviewNotice(actions) : null,
+    engagement,
     missionTable(entries, actions, mastery),
     entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
   );

@@ -161,9 +161,6 @@ main > section > * + * { margin-top: 16px; }
 
 /* 課題一覧と記録ページ */
 .mission-list, .records-page { display: grid; gap: 32px; min-width: 0; }
-.review-notice { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; color: var(--ink); }
-.link-button { border: 0; background: transparent; color: var(--link); text-decoration: underline; cursor: pointer; font: inherit; padding: 0; min-height: 40px; }
-.link-button:hover { color: var(--primary); }
 
 /* 日本語は文節で区切って折り返す */
 .hero { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; word-break: auto-phrase; }
@@ -220,8 +217,9 @@ main > section > * + * { margin-top: 16px; }
   .mission-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
-/* あなたの記録 */
+/* 取り組み（課題一覧）と記録ページの区画。格子の組み方は変えない */
 .xp-summary { font-family: var(--font-mono); font-size: 0.87rem; color: var(--muted); }
+.engagement { display: grid; gap: 12px; }
 .records-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
 .records-grid > section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 0; }
 @media (max-width: 900px) { .records-grid { grid-template-columns: 1fr; } }

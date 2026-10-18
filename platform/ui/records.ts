@@ -1,12 +1,10 @@
-// 記録ページ（spec §10）。XP・分類ごとの習熟度・復習クエスト・週間目標・実績と、進捗の書き出し・読み込み・削除を課題一覧から分けて置く。
-// 冒頭で「達成印 → 習熟度の★ → 復習で定着」という伸び方を 1 段落で説明する
+// 記録ページ（spec §10）。分類ごとの習熟度・実績と、進捗の書き出し・読み込み・削除を課題一覧から分けて置く。
+// 冒頭で「達成印 → 習熟度の★ → 復習で定着」という伸び方を 1 段落で説明する。XP・復習・週間目標は課題一覧の「取り組み」
 import type { MissionPack } from '../contract';
 import type { ProfileSummary } from '../progress/profile';
 import { achievementList } from './achievement-list';
 import { h } from './dom';
-import { XP_NOTE } from './labels';
 import { masteryList } from './mastery';
-import { xpLabel } from './xp-badge';
 
 export interface ProgressToolActions {
   exportProgress(): void;
@@ -55,13 +53,12 @@ function progressTools(actions: ProgressToolActions): HTMLElement {
 const categoriesOf = (packs: readonly MissionPack[]) => [...new Set(packs.flatMap((pack) => pack.manifest.vulnerability?.category ?? []))];
 
 /**
- * 記録ページ。habits は復習クエストと週間目標の区画。
+ * 記録ページ。保存済みの記録から導いた習熟度と実績だけを置く。
  * storageWarning があれば、保存できない旨と書き出しの案内を先頭に出す
  */
 export function recordsPage(
-  { xp, achievements, mastery }: ProfileSummary,
+  { achievements, mastery }: ProfileSummary,
   packs: readonly MissionPack[],
-  habits: HTMLElement[],
   storageWarning: string | null,
   actions: ProgressToolActions,
 ): HTMLElement {
@@ -81,9 +78,7 @@ export function recordsPage(
     storageWarning
       ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、「進捗を書き出す」で保存してください。`)
       : null,
-    h('p', { class: 'xp-summary' }, xpLabel(xp), xp.nextLevelAt === null ? '' : ` ・ 次のレベルまで ${xp.nextLevelAt - xp.total} XP`),
-    h('p', { class: 'note' }, XP_NOTE),
-    h('div', { class: 'records-grid' }, masteryList(mastery, categoriesOf(packs)), ...habits, achievementList(achievements)),
+    h('div', { class: 'records-grid' }, masteryList(mastery, categoriesOf(packs)), achievementList(achievements)),
     progressTools(actions),
   );
 }

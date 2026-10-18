@@ -1,11 +1,19 @@
-// 記録ページの復習クエストと週間目標（Issue #76）。課題を解決すると一覧に復習の案内が出て、記録ページで解くと解説と XP が示され、週間目標は未達でも警告を出さない
-import type { Page } from '@playwright/test';
-import { TEST_PACK_ANSWERS, answerTransferCheck, expect, openHome, openMission, openMissions, openRecords, reproduceNoteLeak, test, ticketSeals, verifyWith } from './fixtures';
+// 課題一覧の「取り組み」（復習クエスト・週間目標・XP）と、記録ページに残る習熟度・実績（Issue #76, #127）。
+// 取り組みは次の一歩の直下、課題の表の上にあり、記録ページには保存済みの記録から導いた表示だけがある
+import type { Locator, Page } from '@playwright/test';
+import { TEST_PACK_ANSWERS, answerTransferCheck, expect, openHome, openMission, openRecords, reproduceNoteLeak, test, ticketSeals, verifyWith } from './fixtures';
 
-const review = (page: Page) => page.getByRole('region', { name: '復習クエスト', exact: true });
-const weekly = (page: Page) => page.getByRole('region', { name: '週間目標', exact: true });
+const engagement = (page: Page) => page.getByRole('region', { name: '取り組み', exact: true });
+const review = (page: Page) => engagement(page).getByRole('region', { name: '復習クエスト', exact: true });
+const weekly = (page: Page) => engagement(page).getByRole('region', { name: '週間目標', exact: true });
 const weeklyStatus = (page: Page) => weekly(page).locator('.weekly-status');
-const xpSummary = (page: Page) => page.locator('.xp-summary');
+const xpSummary = (page: Page) => engagement(page).locator('.xp-summary');
+
+async function topOf(locator: Locator): Promise<number> {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error('要素の位置が取れません');
+  return box.y;
+}
 
 /** test-pack を最後まで解き、課題一覧へ戻る */
 async function completeTestPack(page: Page): Promise<void> {
@@ -19,19 +27,34 @@ async function completeTestPack(page: Page): Promise<void> {
   await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
 }
 
+test('取り組みは次の一歩の下・課題の表の上にあり、記録ページには習熟度と実績だけがある', async ({ page }) => {
+  await openHome(page);
+  await expect(engagement(page)).toBeVisible();
+  await expect(review(page)).toContainText('課題を 1 つ解決すると、ここに復習の問題が出ます');
+  await expect(weekly(page)).toBeVisible();
+  await expect(xpSummary(page)).toContainText('Lv.1 ・ 0 XP');
+  const list = page.locator('.mission-list');
+  expect(await topOf(list.locator('.hero'))).toBeLessThan(await topOf(engagement(page)));
+  expect(await topOf(engagement(page))).toBeLessThan(await topOf(list.locator('.mission-section')));
+
+  await openRecords(page);
+  await expect(page.getByRole('heading', { level: 1, name: '記録', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '取り組み', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '復習クエスト', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '週間目標', exact: true })).toHaveCount(0);
+  await expect(page.locator('.records-page .xp-summary')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '習熟度', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '実績', exact: true })).toBeVisible();
+  await expect(page.locator('[data-anchor="progress-export"]')).toBeVisible();
+});
+
 test('課題を解決すると復習の問題が出て、正解すると解説と 5 XP が示され、同じ日の 2 回目は XP が増えない', async ({ page }) => {
   await openHome(page);
-  // 解決前は一覧に復習の案内を出さず、記録ページには案内だけがある
-  await expect(page.locator('.review-notice')).toHaveCount(0);
-  await openRecords(page);
   await expect(review(page)).toContainText('課題を 1 つ解決すると、ここに復習の問題が出ます');
   await expect(review(page).getByRole('radio')).toHaveCount(0);
 
   await completeTestPack(page);
-  // 一覧の 1 行の案内から記録ページへ
-  await expect(page.locator('.review-notice')).toContainText('今日の復習が 1 問あります');
-  await page.locator('.review-notice').getByRole('button', { name: '記録ページで解く' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: '記録', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: '課題', exact: true })).toBeVisible();
   await expect(xpSummary(page)).toContainText('140 XP');
   await expect(review(page)).toContainText('検証用パック：有効な対策はどれか');
   await expect(review(page)).toContainText('状況：carol が自分の ID を書き換えて要求した');
@@ -55,21 +78,19 @@ test('課題を解決すると復習の問題が出て、正解すると解説�
   await expect(xpSummary(page)).toContainText('145 XP');
 
   // 復習だけでは達成印も習熟度の★も変わらない
-  await openMissions(page);
   await expect(page.locator('[data-mission="test-pack"] .mastery-line')).toHaveAttribute('data-stars', '3');
-  await openRecords(page);
   await review(page).getByRole('radio', { name: '取得時に所有者を照合する' }).check();
   await review(page).getByRole('button', { name: '回答する' }).click();
   await expect(result).toContainText('今日の復習 XP は獲得済みです');
   await review(page).getByRole('button', { name: '次の復習へ' }).click();
   await expect(xpSummary(page)).toContainText('145 XP');
+  await openRecords(page);
   await page.locator('.mastery .mastery-evidence summary').first().click();
   await expect(page.locator('.mastery .mastery-review').first()).toContainText('復習の正答：1 問');
 });
 
 test('週間目標は任意で選べ、今週の回数を文字で示し、未達でも警告を出さない', async ({ page }) => {
   await openHome(page);
-  await openRecords(page);
   await expect(weekly(page)).toContainText('月曜始まりで、この端末の時刻で区切ります');
   await expect(weekly(page).getByRole('radio', { name: '設定しない' })).toBeChecked();
   await expect(weeklyStatus(page)).toHaveText(/の週はまだ 0 回です。$/);
@@ -81,7 +102,6 @@ test('週間目標は任意で選べ、今週の回数を文字で示し、未�
   await expect(weekly(page)).not.toContainText('⚠');
 
   await completeTestPack(page);
-  await openRecords(page);
   await expect(weekly(page).getByRole('radio', { name: '週 2〜3 回' })).toBeChecked();
   await expect(weeklyStatus(page)).toHaveText(/の週は 1 回取り組みました（目標：週 2〜3 回）。$/);
   await expect(weeklyStatus(page)).not.toContainText('届きました');
@@ -91,7 +111,7 @@ test('週間目標は任意で選べ、今週の回数を文字で示し、未�
   await expect(weeklyStatus(page)).toHaveText(/の週は 1 回取り組みました（目標：週 1 回）。目標に届きました。$/);
 
   await page.reload();
-  await openRecords(page);
+  await expect(page.getByRole('heading', { level: 1, name: '課題', exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(weekly(page).getByRole('radio', { name: '週 1 回' })).toBeChecked();
   await weekly(page).getByRole('radio', { name: '設定しない' }).check();
   await expect(weeklyStatus(page)).toHaveText(/の週は 1 回取り組みました。$/);
