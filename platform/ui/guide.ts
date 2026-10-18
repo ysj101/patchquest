@@ -1,11 +1,13 @@
 // 操作ガイド（練習用パック）。マニフェストの guide を 1 ステップずつ示し、各ステップの until の出来事が起きたら、
 // 短い言葉（praise）をかけて次へ進む。うまくいかなかったとき（retry.when）は次の手を示す。
-// 画面上の位置は data-anchor で探す。コアUIに課題ごとの分岐は入れず、ガイドの中身はすべてパックのデータで決まる
+// 画面上の位置は data-anchor で探し、案内先のまわりを残して画面を暗くするスポットライトと、そばに置く吹き出しで示す。
+// コアUIに課題ごとの分岐は入れず、ガイドの中身はすべてパックのデータで決まる
 import type { AttemptRecord, GuideMilestone, GuideStep } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { REVEALABLE_ATTR, REVEAL_EVENT, SHOWN_EVENT } from './components';
 import { characterFace, GUIDE } from './characters';
 import { fill, h } from './dom';
+import { GuideSpotlight } from './guide-spotlight';
 
 /** 案内している場所に付ける印（CSS で枠を描く） */
 const TARGET_ATTR = 'data-guide-target';
@@ -39,6 +41,9 @@ export interface GuideActions {
 
 export class GuidePanel {
   readonly element = h('aside', { class: 'guide', 'aria-label': '操作ガイド', hidden: true });
+  /** 吹き出し。描き直すのはこの中だけにし、暗幕の動きを途切れさせない */
+  private readonly card = h('div', { class: 'guide-card' });
+  private readonly spotlight = new GuideSpotlight(this.element, this.card);
   /** ガイドしている演習。別の演習が始まったら、そのパックのガイドで始め直す */
   private attemptId: string | null = null;
   private steps: GuideStep[] = [];
@@ -49,6 +54,7 @@ export class GuidePanel {
   private marked: Element | null = null;
 
   constructor(private readonly actions: GuideActions) {
+    this.element.append(this.spotlight.element, this.card);
     // タブを開くと案内先が見えるようになるので、印を付け直す
     document.addEventListener(SHOWN_EVENT, () => this.refresh());
   }
@@ -83,6 +89,7 @@ export class GuidePanel {
     const closed = target?.closest(`[hidden][${REVEALABLE_ATTR}]`);
     this.marked = (closed ? document.getElementById(closed.getAttribute(REVEALABLE_ATTR) ?? '') : target) ?? null;
     this.marked?.setAttribute(TARGET_ATTR, '');
+    this.spotlight.follow(this.element.hidden ? null : this.marked);
   }
 
   private current(): GuideStep | undefined {
@@ -147,7 +154,8 @@ export class GuidePanel {
     };
     const retry = this.retryText(step);
     fill(
-      this.element,
+      this.card,
+      h('span', { class: 'guide-arrow', 'aria-hidden': true }),
       h(
         'div',
         { class: 'guide-bar' },
