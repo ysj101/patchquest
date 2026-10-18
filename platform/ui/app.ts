@@ -147,8 +147,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   }
 
   // 状態が変わるたびに画面を更新し、まとまった変更ごとに保存する
-  let saveScheduled = false;
-  let saved = Promise.resolve();
+  let saveScheduled = false, saved = Promise.resolve();
   orchestrator.subscribe((snapshot: ExerciseSnapshot) => {
     const { attempt } = snapshot;
     if (screen === 'preflight') preflightView.update(snapshot);
