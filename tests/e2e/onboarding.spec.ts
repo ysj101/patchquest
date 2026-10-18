@@ -75,6 +75,21 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(page.locator('[data-mission="onboarding"]').getByRole('list', { name: '達成印' })).toContainText('理解：達成');
 });
 
+test('調査で送ったメモが、プレビューの最初の画面に出る', async ({ page }) => {
+  await startMission(page, 'onboarding');
+  const frame = preview(page);
+  await page.getByRole('tab', { name: '調査' }).click();
+  const title = await page.getByLabel('タイトル（49 文字）').inputValue();
+  await expect(frame.getByRole('button', { name: title })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '送る', exact: true }).click();
+
+  const posted = page.locator('.log-entry').filter({ hasText: 'POST /api/memos' }).first();
+  await expect(posted.locator('.status')).toHaveText(/201/);
+  await expect(frame.getByRole('heading', { name: 'メモ帳' })).toBeVisible();
+  await expect(frame.getByRole('button', { name: title })).toBeVisible();
+});
+
 test('「入力欄で 41 文字目を打てなくする」を適用すると、画面のタイトル入力欄に上限が付く', async ({ page }) => {
   await startMission(page, 'onboarding');
   const frame = preview(page);

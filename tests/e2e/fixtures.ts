@@ -169,9 +169,10 @@ export async function answerTransferCheck(page: Page, correct: Record<string, st
   return asked;
 }
 
-/** alice の一覧応答からノート ID を取得し、bob で読んで再現の検印を得る。 */
+/** alice の一覧応答からノート ID を取得し、bob で読んで再現の検印を得る。
+ * 一覧は観測ログの古い方を読む。送信の直後はプレビューの描き直しが新しい一覧を上に足すため、先頭は開く途中で入れ替わる */
 export async function reproduceNoteLeak(page: Page): Promise<void> {
-  const entry = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();
+  const entry = page.locator('.log-entry').filter({ hasText: /alice → GET \/notes(?!\/)/ }).last();
   await entry.locator('summary').click();
   const text = await entry.locator('.log-block').nth(1).locator('pre').textContent();
   if (!text) throw new Error('調査ログがありません');
