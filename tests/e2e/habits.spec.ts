@@ -1,7 +1,7 @@
 // 課題一覧の「取り組み」（復習クエスト・週間目標・XP）と、記録ページに残る習熟度・実績（Issue #76, #127）。
 // 取り組みは次の一歩の直下、課題の表の上にあり、記録ページには保存済みの記録から導いた表示だけがある
 import type { Locator, Page } from '@playwright/test';
-import { TEST_PACK_ANSWERS, answerTransferCheck, expect, openHome, openMission, openRecords, reproduceNoteLeak, test, ticketSeals, verifyWith } from './fixtures';
+import { TEST_PACK_ANSWERS, answerTransferCheck, backToList, expect, openHome, openMission, openRecords, reproduceNoteLeak, test, ticketSeals, verifyWith } from './fixtures';
 
 const engagement = (page: Page) => page.getByRole('region', { name: '取り組み', exact: true });
 const review = (page: Page) => engagement(page).getByRole('region', { name: '復習クエスト', exact: true });
@@ -24,7 +24,7 @@ async function completeTestPack(page: Page): Promise<void> {
   await verifyWith(page, '所有者を照合する');
   await expect(ticketSeals(page)).toContainText('防御：達成');
   await answerTransferCheck(page, TEST_PACK_ANSWERS);
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
 }
 
 test('取り組みは次の一歩の下・課題の表の上にあり、記録ページには習熟度と実績だけがある', async ({ page }) => {

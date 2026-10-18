@@ -1,6 +1,6 @@
 // ステージの到達・取り消し・再開・別環境への復元を確かめる。
 import type { Page } from '@playwright/test';
-import { expect, launchButton, openMission, preview, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
+import { backToList, expect, launchButton, openMission, preview, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
 
 const stages = (page: Page) => page.getByRole('list', { name: 'ステージ', exact: true });
 const count = (page: Page, total: number) => expect(page.getByRole('heading', { name: `ステージ ${total} / 5`, exact: true })).toBeVisible();
@@ -54,7 +54,7 @@ test('到達記録は再開・再読み込み・別環境への取り込みで�
   await startMission(page, 'idor');
   await apply(page);
   const before = await stages(page).allTextContents();
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   await openMission(page, 'idor', { resume: true });
   await expect(stages(page)).toHaveText(before);
   await expect(stages(page).locator('.stage-arrived')).toHaveCount(0);

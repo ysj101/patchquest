@@ -26,6 +26,13 @@ export { expect };
 /** 演出設定を開くボタン */
 export const settingsButton = (page: Page) => page.getByRole('button', { name: '設定', exact: true });
 
+/**
+ * 演習票と開始前チェックの「課題一覧へ戻る」。
+ * ヘッダーのロゴ（読み上げ名は「PatchQuest（課題一覧へ戻る）」）は含めない。
+ * 演習票のボタンは、CSS の矢印が読み上げ名の先頭に入る
+ */
+export const backToList = (page: Page) => page.getByRole('button', { name: /^(?:← )?課題一覧へ戻る$/ });
+
 /** 演習画面の教材アプリ（隔離 iframe） */
 export const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
 /** 検証結果のパネル */
@@ -169,9 +176,10 @@ export async function answerTransferCheck(page: Page, correct: Record<string, st
   return asked;
 }
 
-/** alice の一覧応答からノート ID を取得し、bob で読んで再現の検印を得る。 */
+/** alice の一覧応答からノート ID を取得し、bob で読んで再現の検印を得る。
+ * 一覧は観測ログの古い方を読む。送信の直後はプレビューの描き直しが新しい一覧を上に足すため、先頭は開く途中で入れ替わる */
 export async function reproduceNoteLeak(page: Page): Promise<void> {
-  const entry = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();
+  const entry = page.locator('.log-entry').filter({ hasText: /alice → GET \/notes(?!\/)/ }).last();
   await entry.locator('summary').click();
   const text = await entry.locator('.log-block').nth(1).locator('pre').textContent();
   if (!text) throw new Error('調査ログがありません');

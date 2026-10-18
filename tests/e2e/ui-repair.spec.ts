@@ -1,5 +1,5 @@
 // 学習UI：対策パネル・検証結果・ヒント・振り返り（Issue #13）
-import { enterWorkbench, expect, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
+import { backToList, enterWorkbench, expect, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await startMission(page, 'test-pack');
@@ -136,7 +136,7 @@ test('不合格のあと①に戻って、別の対策を選び直せる', async
 test('対策を適用した演習を続きから始めると、開始前チェックの後に前回の対策を適用し直して演習を始められる', async ({ page }) => {
   await verifyWith(page, '所有者を照合する');
   await expect(page.locator('[data-anchor="results"]')).toContainText('防御できました', { timeout: 15_000 });
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
 
   await page.locator('[data-mission="test-pack"]').getByRole('button', { name: '続きから始める' }).click();
   await expect(page.getByText('前回の対策「所有者を照合する」を適用し直しました')).toBeVisible({ timeout: 15_000 });

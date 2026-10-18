@@ -1,7 +1,7 @@
 // IDOR を完走したあと「別条件で挑戦」すると、使っていない seed の新しい演習票になり、ヒントは閉じ、
 // 理解確認は 1 問だけ（2 回目の挑戦では前回と違う設問）になる。達成印の判定は通常の演習と同じ（A21）
 import type { Page } from '@playwright/test';
-import { expect, launchButton, openHome, startMission, test, ticketSeals as seals } from '../../../tests/e2e/fixtures';
+import { backToList, expect, launchButton, openHome, startMission, test, ticketSeals as seals } from '../../../tests/e2e/fixtures';
 import { answerTransferCheck, reproduceByPreviousMemo, secureByOwnerCheck } from './idor-flow';
 
 const mastery = (page: Page) => page.locator('.debrief .mastery-line[data-category="authorization"]');
@@ -75,7 +75,7 @@ test('完走した課題を別条件で挑戦すると、新しい seed・閉じ
   await expectEvidence(page, 5, thirdSeed);
 
   // 一覧のカードからも挑戦でき、同じ脆弱性の課題として 1 つのまま並ぶ
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   await openHome(page);
   const card = page.locator('[data-mission="idor"]');
   await expect(card).toHaveCount(1);
