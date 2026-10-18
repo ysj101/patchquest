@@ -26,6 +26,13 @@ export { expect };
 /** 演出設定を開くボタン */
 export const settingsButton = (page: Page) => page.getByRole('button', { name: '設定', exact: true });
 
+/**
+ * 演習票と開始前チェックの「課題一覧へ戻る」。
+ * ヘッダーのロゴ（読み上げ名は「PatchQuest（課題一覧へ戻る）」）は含めない。
+ * 演習票のボタンは、CSS の矢印が読み上げ名の先頭に入る
+ */
+export const backToList = (page: Page) => page.getByRole('button', { name: /^(?:← )?課題一覧へ戻る$/ });
+
 /** 演習画面の教材アプリ（隔離 iframe） */
 export const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
 /** 検証結果のパネル */

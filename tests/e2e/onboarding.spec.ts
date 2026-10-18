@@ -1,7 +1,7 @@
 // オンボーディング（練習用パック）。一覧の「まずは練習」から、操作ガイドに沿って
 // こわす → なおす → たしかめる → ふりかえる を最後まで進められる
 import type { Page } from '@playwright/test';
-import { expect, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from './fixtures';
+import { backToList, expect, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from './fixtures';
 
 const guide = (page: Page) => page.getByRole('complementary', { name: '操作ガイド' });
 const target = (page: Page) => page.locator('[data-guide-target]');
@@ -112,7 +112,7 @@ test('ガイドのステップは飛ばせる。練習用でない課題を始�
   await expect(guide(page).locator('.guide-praise')).toHaveCount(0);
   await expect(guide(page).getByRole('list', { name: '練習の手順' })).toContainText('こわしてみよう：飛ばした');
 
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   await expect(guide(page)).toBeVisible();
   await page.locator('[data-mission="test-pack"]').getByRole('button', { name: 'この課題を始める' }).click();
   await expect(guide(page)).toBeHidden();
