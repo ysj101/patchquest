@@ -77,7 +77,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 8px clamp(16px, 2vw, 24px);
   background: var(--surface-2); border-bottom: 1px solid var(--line);
 }
-.brand { font-weight: 700; font-size: 1rem; letter-spacing: 0.02em; display: flex; gap: 10px; align-items: center; }
+.brand {
+  font-weight: 700; font-size: 1rem; letter-spacing: 0.02em;
+  display: flex; gap: 10px; align-items: center;
+  margin: 0; padding: 4px 8px; border: 0; border-radius: 8px;
+  background: transparent; color: inherit; cursor: pointer;
+}
+.brand:hover { background: var(--raised); }
 .brand-mark { width: 20px; height: 20px; display: block; }
 
 main { padding: 24px clamp(16px, 3vw, 40px) 64px; max-width: 1440px; margin: 0 auto; }

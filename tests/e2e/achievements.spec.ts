@@ -1,6 +1,6 @@
 // 実績の解除通知・称号・履歴による条件と進捗の照合をブラウザで確かめる。
 import type { Page } from '@playwright/test';
-import { expect, openMission, openRecords, reproduceNoteLeak, startMission, test, ticketSeals, verifyWith, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
+import { backToList, expect, openMission, openRecords, reproduceNoteLeak, startMission, test, ticketSeals, verifyWith, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
 
 const section = (page: Page) => page.getByRole('region', { name: '実績', exact: true });
 const item = (page: Page, id: string) => section(page).locator(`[data-achievement="${id}"]`);
@@ -13,7 +13,7 @@ async function defended(page: Page): Promise<void> {
 
 /** 課題一覧へ戻り、実績のある記録ページを開く */
 async function back(page: Page): Promise<void> {
-  await page.getByRole('button', { name: '課題一覧へ戻る' }).click();
+  await backToList(page).click();
   await openRecords(page);
   await expect(section(page)).toBeVisible();
 }
