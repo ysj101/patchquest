@@ -583,13 +583,20 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 /* 発言と話者は動きを付けず、文字と同梱の顔で示す。 */
 .character-voice { margin: 12px 0; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 12px; align-items: start; }
 .character-face { width: 48px; height: 48px; flex: none; }
-.character-voice .character-face { grid-row: 1 / 3; }
+.character-live { position: relative; display: inline-block; line-height: 0; }
+.character-voice .character-face, .character-voice .character-live { grid-row: 1 / 3; }
+.character-cursor {
+  position: absolute; left: 38.5417%; top: 67.7083%; width: 22.9167%; height: 7.0833%;
+  border-radius: 1px; background: #f2b84b; animation: character-blink 1.6s steps(1) infinite;
+}
+@keyframes character-blink { 50% { opacity: 0.25; } }
 .character-voice blockquote { margin: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); color: var(--ink); }
 .character-voice figcaption { grid-column: 2; color: var(--muted); font-size: 0.85rem; }
 
 .guide-coach .character-face { width: 32px; height: 32px; align-self: start; }
+.guide-coach .character-live { align-self: start; }
 
 .character-voice-compact { margin: 0; grid-template-columns: 24px auto minmax(0, 1fr); align-items: center; gap: 8px; }
-.character-voice-compact .character-face { width: 24px; height: 24px; grid-row: 1; }
+.character-voice-compact .character-face, .character-voice-compact .character-live { width: 24px; height: 24px; grid-row: 1; }
 .character-voice-compact blockquote { grid-column: 3; grid-row: 1; padding: 0; border: 0; background: transparent; }
 .character-voice-compact figcaption { grid-column: 2; grid-row: 1; }
