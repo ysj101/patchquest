@@ -1,7 +1,7 @@
-<!-- 依頼人に共通の幾何学的な顔。 -->
+<!-- 依頼人に共通の顔。パッチと同じ暗い画面の作りで、青い丸い目にして案内役と見分けやすくする -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-  <circle cx="24" cy="24" r="22" fill="#fff3d6" stroke="#7c5200" stroke-width="2"/>
-  <path d="M8 19Q12 3 24 7q13-2 16 12q-12-1-16-8q-4 8-16 8" fill="#7c5200"/>
-  <g fill="#1b2430"><circle cx="17" cy="24" r="2.5"/><circle cx="31" cy="24" r="2.5"/></g>
-  <path d="M18 33q6 4 12 0" fill="none" stroke="#1b2430" stroke-width="2" stroke-linecap="round"/>
+  <rect x="4" y="6" width="40" height="36" rx="18" fill="#1c222b" stroke="#4a5361" stroke-width="2"/>
+  <circle cx="17" cy="23" r="3.4" fill="#79b8ff"/>
+  <circle cx="31" cy="23" r="3.4" fill="#79b8ff"/>
+  <path d="M19 31.5 Q24 35 29 31.5" fill="none" stroke="#79b8ff" stroke-width="2.6" stroke-linecap="round"/>
 </svg>

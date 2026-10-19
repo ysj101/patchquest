@@ -1,0 +1,7 @@
+<!-- 案内役パッチの「できた」顔。再現や対策がうまくいった場面で、目と口を緑の笑顔にする -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <rect x="4" y="6" width="40" height="36" rx="9" fill="#0b0e12" stroke="#2f7a52" stroke-width="2"/>
+  <path d="M13.5 26 L17 21 L20.5 26" fill="none" stroke="#7ee2a8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M27.5 26 L31 21 L34.5 26" fill="none" stroke="#7ee2a8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M19 32 Q24 37 29 32" fill="none" stroke="#7ee2a8" stroke-width="2.8" stroke-linecap="round"/>
+</svg>
