@@ -22,14 +22,23 @@ function sceneVoice<Scene extends string>(character: { name: string; role: strin
 /** うまくいった場面では、案内役を「できた」顔にする。 */
 const DONE_SCENES: ReadonlySet<keyof typeof GUIDE.reactions> = new Set(['reproduced', 'secured']);
 
+function stillFace(file: string, label: string): HTMLImageElement {
+  return h('img', { class: 'character-face', src: `./assets/avatars/${file}.svg`, alt: label, width: 48, height: 48 });
+}
+
+/** ふだんのパッチ。口は画像の外に置き、data-motion と prefers-reduced-motion が点滅を止められるようにする */
+function livePatch(label: string): HTMLElement {
+  return h('span', { class: 'character-live' },
+    stillFace('patch', label),
+    h('span', { class: 'character-cursor', 'aria-hidden': true }),
+  );
+}
+
 /** 同梱の顔を名前入りの代替テキストで表示する。done は案内役の「できた」顔。 */
-export function characterFace(name: string, guide = false, done = false): HTMLImageElement {
-  let file = 'requester';
-  if (guide) file = done ? 'patch-done' : 'patch';
-  return h('img', {
-    class: 'character-face', src: `./assets/avatars/${file}.svg`,
-    alt: `${guide ? '案内役' : '依頼人'} ${name}`, width: 48, height: 48,
-  });
+export function characterFace(name: string, guide = false, done = false): HTMLElement {
+  const label = `${guide ? '案内役' : '依頼人'} ${name}`;
+  if (guide && !done) return livePatch(label);
+  return stillFace(guide ? 'patch-done' : 'requester', label);
 }
 
 /** 発言と話者を結び付ける。画像がなくても名前・役割・本文が読める。 */
