@@ -19,18 +19,23 @@ function sceneVoice<Scene extends string>(character: { name: string; role: strin
   return { name: character.name, role: character.role, text: character.reactions[scene] };
 }
 
-/** 同梱の顔を名前入りの代替テキストで表示する。 */
-export function characterFace(name: string, guide = false): HTMLImageElement {
+/** うまくいった場面では、案内役を「できた」顔にする。 */
+const DONE_SCENES: ReadonlySet<keyof typeof GUIDE.reactions> = new Set(['reproduced', 'secured']);
+
+/** 同梱の顔を名前入りの代替テキストで表示する。done は案内役の「できた」顔。 */
+export function characterFace(name: string, guide = false, done = false): HTMLImageElement {
+  let file = 'requester';
+  if (guide) file = done ? 'patch-done' : 'patch';
   return h('img', {
-    class: 'character-face', src: `./assets/avatars/${guide ? 'patch' : 'requester'}.svg`,
+    class: 'character-face', src: `./assets/avatars/${file}.svg`,
     alt: `${guide ? '案内役' : '依頼人'} ${name}`, width: 48, height: 48,
   });
 }
 
 /** 発言と話者を結び付ける。画像がなくても名前・役割・本文が読める。 */
-export function characterVoice(voice: Voice, { guide = false, bodyClass = '', compact = false }: { guide?: boolean; bodyClass?: string; compact?: boolean } = {}): HTMLElement {
+export function characterVoice(voice: Voice, { guide = false, done = false, bodyClass = '', compact = false }: { guide?: boolean; done?: boolean; bodyClass?: string; compact?: boolean } = {}): HTMLElement {
   return h('figure', { class: compact ? 'character-voice character-voice-compact' : 'character-voice', 'data-character': guide ? 'guide' : 'requester' },
-    characterFace(voice.name, guide),
+    characterFace(voice.name, guide, done),
     h('blockquote', {}, h('p', { class: bodyClass }, voice.text)),
     h('figcaption', {}, h('strong', {}, voice.name), ` · ${voice.role}`),
   );
@@ -38,7 +43,7 @@ export function characterVoice(voice: Voice, { guide = false, bodyClass = '', co
 
 /** 説明を増やさず、場面に合う案内役の一言を表示する。 */
 export function guideVoice(scene: keyof typeof GUIDE.reactions, compact = false): HTMLElement {
-  return characterVoice(sceneVoice(GUIDE, scene), { guide: true, compact });
+  return characterVoice(sceneVoice(GUIDE, scene), { guide: true, done: DONE_SCENES.has(scene), compact });
 }
 
 /** 依頼人がいるパックでだけ、その場面の名前・役割・発言を返す。 */

@@ -1,7 +1,8 @@
-<!-- 案内役パッチの幾何学的な顔。 -->
+<!-- 案内役パッチの顔。暗い画面に琥珀色のカーソルの目を描き、口のカーソルだけゆっくり点滅する（動きを減らす設定では止まる） -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-  <rect x="2" y="2" width="44" height="44" rx="14" fill="#e9ecf8" stroke="#2c3e9c" stroke-width="2"/>
-  <path d="M12 17L24 9l12 8" fill="none" stroke="#2c3e9c" stroke-width="4" stroke-linejoin="round"/>
-  <g fill="#1b2430"><circle cx="17" cy="24" r="3"/><circle cx="31" cy="24" r="3"/></g>
-  <path d="M17 33q7 6 14 0" fill="none" stroke="#1b2430" stroke-width="2" stroke-linecap="round"/>
+  <style>.cursor{animation:blink 1.6s steps(1) infinite}@keyframes blink{50%{opacity:.25}}@media (prefers-reduced-motion:reduce){.cursor{animation:none}}</style>
+  <rect x="4" y="6" width="40" height="36" rx="9" fill="#0b0e12" stroke="#4a5361" stroke-width="2"/>
+  <rect x="14.5" y="18" width="5" height="10" rx="1" fill="#f2b84b"/>
+  <rect x="28.5" y="18" width="5" height="10" rx="1" fill="#f2b84b"/>
+  <rect class="cursor" x="18.5" y="32.5" width="11" height="3.4" rx="1" fill="#f2b84b"/>
 </svg>
