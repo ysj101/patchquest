@@ -5,7 +5,8 @@
     "runtimes/browser/worker.ts",
     "runtimes/browser/preview/preview.inline.ts",
     "tests/pages/*.ts",
-    "tests/support/catalog.ts"
+    "tests/support/catalog.ts",
+    ".cursor/skills/verify-patchquest/drive.ts"
   ],
   "playwright": {
     "config": ["playwright.config.ts", "playwright.dist.config.ts"]

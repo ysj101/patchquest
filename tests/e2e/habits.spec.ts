@@ -45,7 +45,7 @@ test('取り組みは次の一歩の下・課題の表の上にあり、記録�
   await expect(page.locator('.records-page .xp-summary')).toHaveCount(0);
   await expect(page.getByRole('region', { name: '習熟度', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: '実績', exact: true })).toBeVisible();
-  await expect(page.locator('[data-anchor="progress-export"]')).toBeVisible();
+  await expect(page.locator('[data-anchor="progress-export"]')).toHaveCount(0);
 });
 
 test('課題を解決すると復習の問題が出て、正解すると解説と 5 XP が示され、同じ日の 2 回目は XP が増えない', async ({ page }) => {

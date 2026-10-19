@@ -53,10 +53,24 @@ export async function openHome(page: Page): Promise<void> {
   await expect(pageHeading(page, '課題')).toBeVisible({ timeout: 15_000 });
 }
 
+/** 課題一覧の設定から進捗ファイルを読み込み、注記を確かめて閉じる */
+export async function importProgressFile(page: Page, json: unknown, note: string): Promise<void> {
+  await openHome(page);
+  await settingsButton(page).click();
+  const dialog = page.getByRole('dialog', { name: '設定' });
+  await dialog.locator('input[type="file"]').setInputFiles({
+    name: '進捗.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(json)),
+  });
+  await expect(dialog.locator('.banner-warn').filter({ hasText: note })).toBeVisible();
+  await dialog.getByRole('button', { name: '閉じる', exact: true }).click();
+}
+
 const pageHeading = (page: Page, name: string) => page.getByRole('heading', { level: 1, name, exact: true });
 const siteNav = (page: Page) => page.getByRole('navigation', { name: 'ページ' });
 
-/** 見出しの「記録」から記録ページ（習熟度・実績・進捗の道具）を開く */
+/** 見出しの「記録」から記録ページ（習熟度・実績）を開く */
 export async function openRecords(page: Page): Promise<void> {
   await siteNav(page).getByRole('button', { name: '記録' }).click();
   await expect(pageHeading(page, '記録')).toBeVisible();
