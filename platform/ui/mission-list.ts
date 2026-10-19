@@ -1,10 +1,11 @@
 // ミッション一覧（spec §10）。「見出しと 1 行の説明と次の一歩 → 取り組み（XP・復習・週間目標）→ 難易度順の課題の表」を置く。
-// 習熟度・実績と進捗の道具は記録ページ（records.ts）にある
+// 習熟度と実績は記録ページ（records.ts）、進捗の書き出し・読み込み・削除は設定にある
 import type { AttemptRecord } from '../contract';
 import { settingsButton } from './components';
 import { missionTable, nextEntry, type MissionEntry } from './mission-table';
 import type { MasterySummary } from '../progress/mastery';
 import { h } from './dom';
+import { storageWarningBanner } from './progress-feedback';
 
 export type { MissionEntry } from './mission-table';
 
@@ -55,9 +56,7 @@ export function missionList(entries: MissionEntry[], actions: MissionListActions
     'div',
     { class: 'mission-list', 'data-anchor': 'mission-list' },
     hero(entries, actions),
-    storageWarning
-      ? h('p', { class: 'banner banner-warn', role: 'status' }, `${storageWarning}。進捗はこの画面を閉じると消えるため、記録ページの「進捗を書き出す」で保存してください。`)
-      : null,
+    storageWarning ? storageWarningBanner(storageWarning, () => actions.openSettings()) : null,
     engagement,
     missionTable(entries, actions, mastery),
     entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,

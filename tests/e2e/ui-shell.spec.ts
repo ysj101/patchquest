@@ -1,14 +1,13 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { backToList, enterWorkbench, expect, tabTo, test, openHome, openMissions, openRecords } from './fixtures';
+import { backToList, enterWorkbench, expect, settingsButton, tabTo, test, openHome, openMissions } from './fixtures';
 
 const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
-/** 課題一覧で test-pack の開始ボタンの文言（進捗の有無）を確かめ、進捗の道具のある記録ページへ戻る */
+/** 課題一覧で test-pack の開始ボタンの文言（進捗の有無）を確かめる */
 async function expectTestPackButton(page: Page, name: string): Promise<void> {
   await openMissions(page);
   await expect(card(page, 'test-pack').getByRole('button', { name })).toBeVisible();
-  await openRecords(page);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -137,31 +136,36 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   await expect(page.locator('.ticket-id')).toHaveText(ticket!);
   await backToList(page).click();
 
-  // 進捗の道具は記録ページにある
-  await openRecords(page);
+  // 課題一覧に進捗の区画はなく、見出しの移動にも「進捗」はない
+  await expect(page.getByRole('region', { name: '進捗', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'ページ' }).getByRole('button')).toHaveText(['課題', '記録']);
+
+  // 進捗の道具は設定にある。戻った直後は見出しへスクロールしているので、ボタンを中央に寄せてから押す
+  await settingsButton(page).evaluate((button) => button.scrollIntoView({ block: 'center' }));
+  await settingsButton(page).click();
+  const dialog = page.getByRole('dialog', { name: '設定' });
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: '進捗を書き出す' }).click();
+  await dialog.getByRole('button', { name: '進捗を書き出す' }).click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^patchquest-progress-\d{4}-\d{2}-\d{2}\.json$/);
   const exported = JSON.parse(await (await file.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8')));
   expect(exported).toMatchObject({ format: 'patchquest-progress', attempts: [expect.objectContaining({ missionId: 'test-pack' })] });
 
   // 不正なファイルは拒否し、今の進捗を残す
-  await page.locator('input[type=file]').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"format":"other"}') });
-  await expect(page.getByRole('alert')).toContainText('今の進捗はそのままです');
+  await dialog.locator('input[type=file]').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"format":"other"}') });
+  await expect(dialog.getByRole('alert')).toContainText('今の進捗はそのままです');
   await expectTestPackButton(page, '続きから始める');
 
   // 削除は確認してから行う。やめるを選べば何も消えない
-  await page.getByRole('button', { name: '進捗をすべて削除' }).click();
+  await dialog.getByRole('button', { name: '進捗をすべて削除' }).click();
   await page.keyboard.press('Escape');
   await expectTestPackButton(page, '続きから始める');
-  await page.getByRole('button', { name: '進捗をすべて削除' }).click();
+  await dialog.getByRole('button', { name: '進捗をすべて削除' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: '記録', exact: true })).toBeFocused();
   await expectTestPackButton(page, 'この課題を始める');
 
   // 書き出したファイルを読み込めば元に戻る
-  await page.locator('input[type=file]').setInputFiles({ name: 'progress.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(exported)) });
+  await dialog.locator('input[type=file]').setInputFiles({ name: 'progress.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(exported)) });
   await expectTestPackButton(page, '続きから始める');
 });
 
@@ -174,5 +178,7 @@ test('ブラウザに保存できないときは、書き出しを促す', async
     });
   });
   await page.reload();
-  await expect(page.getByText(/ブラウザに保存できません.*「進捗を書き出す」で保存してください/)).toBeVisible();
+  await expect(page.getByText(/ブラウザに保存できません.*設定の「進捗を書き出す」で保存してください/)).toBeVisible();
+  await page.getByRole('button', { name: '設定を開く' }).click();
+  await expect(page.getByRole('dialog', { name: '設定' }).getByRole('button', { name: '進捗を書き出す' })).toBeVisible();
 });
