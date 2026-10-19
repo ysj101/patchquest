@@ -79,6 +79,19 @@ export function settingsButton(open: () => void): HTMLButtonElement {
   return h('button', { type: 'button', class: 'button button-quiet', on: { click: open } }, '設定');
 }
 
+/**
+ * 区画の注記。1 文を本文の後に置き、残りの文は同じ区画で開ける。
+ * 開くまでは注記が本文より長くならないようにする。more がなければ 1 文だけ出す
+ */
+export function sectionNote(sentence: string, more?: { summary: string; text: string }): HTMLDivElement {
+  return h(
+    'div',
+    { class: 'section-note' },
+    h('p', { class: 'note' }, sentence),
+    more ? h('details', { class: 'summary-fold' }, h('summary', {}, more.summary), h('p', { class: 'note' }, more.text)) : null,
+  );
+}
+
 /** 確認ダイアログ。Escape で閉じ、閉じたらフォーカスを元へ戻す */
 export function confirmDialog(options: { title: string; body: string; confirm: string; cancel?: string; danger?: boolean }): Promise<boolean> {
   return new Promise((resolve) => {

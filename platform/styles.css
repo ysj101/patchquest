@@ -223,12 +223,12 @@ main > section > * + * { margin-top: 16px; }
   .mission-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
-/* 取り組み（課題一覧）と記録ページの区画。格子の組み方は変えない */
+/* 取り組み（課題一覧）と記録ページの区画。高さの違う 2 列にすると横に空白が開くので、読み順の 1 列に積む。幅 900px 以下も同じ順 */
 .xp-summary { font-family: var(--font-mono); font-size: 0.87rem; color: var(--muted); }
 .engagement { display: grid; gap: 12px; }
-.records-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.records-grid { display: grid; gap: 12px; }
 .records-grid > section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 0; }
-@media (max-width: 900px) { .records-grid { grid-template-columns: 1fr; } }
+.section-note { display: grid; gap: 4px; }
 .progress-tools { padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
 
 /* 開始前チェック */

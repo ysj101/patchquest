@@ -1,7 +1,7 @@
 // 取り組みの復習クエスト。解決済みの課題の理解確認から 1 問を出し、答えると解説と XP の増減を文字で示す。達成印は変えない
 import type { ReviewEntry, ReviewQuestion } from '../progress/review';
 import { REVIEW_XP } from '../progress/review';
-import { radioOption, status } from './components';
+import { radioOption, sectionNote, status } from './components';
 import { fill, h } from './dom';
 
 export interface ReviewActions {
@@ -11,7 +11,8 @@ export interface ReviewActions {
   next(): void;
 }
 
-const NOTE = `解決した課題から 1 問だけ出します。正解すると 1 日 1 回まで ${REVIEW_XP} XP。達成印や習熟度の判定は、復習では変わりません。`;
+const NOTE = '解決した課題から 1 問だけ出します。';
+const NOTE_MORE = `正解すると 1 日 1 回まで ${REVIEW_XP} XP。達成印や習熟度の判定は、復習では変わりません。`;
 
 function empty(): HTMLElement {
   return h('p', { class: 'muted' }, '課題を 1 つ解決すると、ここに復習の問題が出ます。');
@@ -69,7 +70,7 @@ export function reviewQuest(question: ReviewQuestion | null, actions: ReviewActi
     'section',
     { class: 'review-quest', 'aria-labelledby': 'review-title' },
     h('h2', { id: 'review-title' }, '復習クエスト'),
-    h('p', { class: 'note' }, NOTE),
     question ? form(question, actions, now) : empty(),
+    sectionNote(NOTE, { summary: 'XP と判定', text: NOTE_MORE }),
   );
 }
