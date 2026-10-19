@@ -38,6 +38,6 @@ export function weeklyGoal(activity: WeeklyActivity, actions: WeeklyGoalActions)
       ),
     ),
     h('p', { class: 'weekly-status', role: 'status' }, weeklyStatusText(activity)),
-    sectionNote(NOTE, { summary: '週の数え方', text: NOTE_MORE }),
+    sectionNote(NOTE, { summary: '補足', text: NOTE_MORE }),
   );
 }

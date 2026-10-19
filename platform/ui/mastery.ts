@@ -61,6 +61,6 @@ export function masteryList(summary: MasterySummary, categories: readonly Vulner
       { class: 'mastery-grid' },
       ...categories.map((category) => h('li', {}, masteryLine(summary[category]), masteryEvidence(summary[category]))),
     ),
-    sectionNote(MASTERY_NOTE, { summary: 'XP との違い', text: MASTERY_NOTE_MORE }),
+    sectionNote(MASTERY_NOTE, { summary: '補足', text: MASTERY_NOTE_MORE }),
   );
 }

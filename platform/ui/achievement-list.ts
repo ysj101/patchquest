@@ -24,6 +24,6 @@ export function achievementList(unlocked: UnlockedAchievements): HTMLElement {
     h('h2', { id: 'achievements-title' }, '実績'),
     h('h3', {}, `称号：${titleFor(count)}（実績 ${count} / ${ACHIEVEMENTS.length}）`),
     h('ul', {}, ...ACHIEVEMENTS.map(({ id, name, description }) => achievementItem(id, name, description, unlocked[id]))),
-    sectionNote(NOTE, { summary: 'ヒントと減点', text: NOTE_MORE }),
+    sectionNote(NOTE, { summary: '補足', text: NOTE_MORE }),
   );
 }

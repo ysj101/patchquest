@@ -71,6 +71,6 @@ export function reviewQuest(question: ReviewQuestion | null, actions: ReviewActi
     { class: 'review-quest', 'aria-labelledby': 'review-title' },
     h('h2', { id: 'review-title' }, '復習クエスト'),
     question ? form(question, actions, now) : empty(),
-    sectionNote(NOTE, { summary: 'XP と判定', text: NOTE_MORE }),
+    sectionNote(NOTE, { summary: '補足', text: NOTE_MORE }),
   );
 }

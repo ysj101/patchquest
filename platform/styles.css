@@ -228,7 +228,8 @@ main > section > * + * { margin-top: 16px; }
 .engagement { display: grid; gap: 12px; }
 .records-grid { display: grid; gap: 12px; }
 .records-grid > section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 0; }
-.section-note { display: grid; gap: 4px; }
+.section-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.section-note > .summary-fold[open] { flex-basis: 100%; }
 .progress-tools { padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
 
 /* 開始前チェック */
