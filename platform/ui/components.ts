@@ -42,7 +42,7 @@ export function seals(states: Record<BadgeKind, SealState>, size: 'large' | 'sma
 
 /** ラジオボタンの選択肢。ラベル全体を押せる */
 export function radioOption(
-  options: { name: string; value: string; checked: boolean; className: string; onChange?: () => void; required?: boolean },
+  options: { name: string; value: string; checked: boolean; className: string; onChange?: () => void; required?: boolean; autoFocus?: boolean },
   ...content: (Node | string | null)[]
 ): HTMLLabelElement {
   return h(
@@ -54,6 +54,7 @@ export function radioOption(
       value: options.value,
       checked: options.checked,
       required: options.required,
+      autofocus: options.autoFocus,
       on: options.onChange ? { change: options.onChange } : undefined,
     }),
     ...content,

@@ -8,7 +8,7 @@ import { profileOptions } from './profile-options';
 import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
 import { browserEffects } from './browser-effects';
-import { openEffectSettings } from './effect-settings-panel';
+import { openSettings as openSettingsDialog } from './effect-settings-panel';
 import { confirmDialog } from './components';
 import { announce, fill, h } from './dom';
 import { DebriefPanel, HintsPanel } from './debrief';
@@ -34,7 +34,7 @@ type Screen = 'list' | 'records' | 'preflight' | 'exercise';
 export async function startApp(root: HTMLElement): Promise<void> {
   const effectWarning = h('p', { class: 'banner banner-warn', role: 'status' });
   const effects = browserEffects(document.documentElement, effectWarning);
-  const openSettings = () => openEffectSettings(effects);
+  const openSettings = () => openSettingsDialog(effects, progress);
   const store = await ProgressStore.open(profileOptions);
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const resultEffects = new ResultEffects(effects, (message) => announce(live, message));
@@ -185,15 +185,16 @@ export async function startApp(root: HTMLElement): Promise<void> {
     );
     show('list');
     if (message) announce(live, message);
-    listView.querySelector<HTMLElement>('h1')?.focus();
+    // 設定を開いたまま描き直すときは、見出しへフォーカスを移さない
+    if (!document.querySelector('dialog[open]')) listView.querySelector<HTMLElement>('h1')?.focus();
   }
 
   async function showRecords(message?: string): Promise<void> {
     const { profile } = await loadRecords();
-    fill(recordsView, recordsPage(profile, catalog.packs, store.unavailableReason, progress));
+    fill(recordsView, recordsPage(profile, catalog.packs, store.unavailableReason, openSettings));
     show('records');
     if (message) announce(live, message);
-    recordsView.querySelector<HTMLElement>('h1')?.focus();
+    if (!document.querySelector('dialog[open]')) recordsView.querySelector<HTMLElement>('h1')?.focus();
   }
 
   /** 導入を見せる演習の ID。同じ課題の記録（今回の演習を除く）が保存済みなら見せない */
@@ -339,7 +340,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     }
   }
 
-  const progress = progressActions({ store, view: recordsView, guide, refresh: showRecords, announce: (message) => announce(live, message) });
+  const progress = progressActions({ store, view: document.body, guide, refresh: (message) => screen === 'records' ? showRecords(message) : showList(message), announce: (message) => announce(live, message) });
 
   await showList();
 }
