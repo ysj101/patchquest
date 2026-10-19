@@ -65,10 +65,10 @@ test('不正な保存データは理由を示して既定値に戻し、設定�
   await openHome(page);
   await expect(page.getByText(/演出設定を既定値に戻しました/)).toBeVisible();
   await settingsButton(page).click();
-  const dialog = page.getByRole('dialog', { name: '演出の設定' });
+  const dialog = page.getByRole('dialog', { name: '設定' });
   await expect(dialog.getByRole('radio', { name: 'OS の設定に従う' })).toBeChecked();
   await dialog.getByRole('radio', { name: 'オフ', exact: true }).check();
-  await expect(dialog.locator('.note')).toBeHidden();
+  await expect(dialog.locator('[role="status"]')).toBeHidden();
   await page.keyboard.press('Escape');
   await expect(page.getByText(/演出設定を既定値に戻しました/)).toHaveCount(0);
 });

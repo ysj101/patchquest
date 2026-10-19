@@ -1,16 +1,22 @@
-// 記録ページの進捗の道具（書き出し・読み込み・削除）。保存先と画面の更新・読み上げ・ガイドの出来事をつなぐ
+// 設定の進捗の道具（書き出し・読み込み・削除）。保存先と画面の更新・読み上げ・ガイドの出来事をつなぐ
 import type { ProgressStore } from '../progress/store';
 import { confirmDialog } from './components';
 import type { GuidePanel } from './guide';
 import { downloadProgress } from './progress-download';
 import { importBanner, importMessage } from './progress-feedback';
 
+export interface ProgressToolActions {
+  exportProgress(): void;
+  importProgress(file: File): void;
+  clearProgress(): void;
+}
+
 export interface ProgressActionDeps {
   store: ProgressStore;
-  /** 進捗の道具がある画面（記録ページ）。読み込みの注記はその中の進捗の区画に添える */
-  view: HTMLElement;
+  /** 進捗の道具を含む要素。読み込みの注記は、その中の .progress-tools に添える */
+  view: ParentNode;
   guide: GuidePanel;
-  /** 記録ページを描き直す */
+  /** 開いている一覧を描き直す。設定を開いたままならフォーカスは動かさない */
   refresh: (message?: string) => Promise<void>;
   announce: (message: string) => void;
 }
