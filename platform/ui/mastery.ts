@@ -1,8 +1,9 @@
 // 分類ごとの習熟度の表示。★だけでなく段階の名前でも示し、判定の根拠を開いて確かめられるようにする（spec §9, §10）
 import type { VulnerabilityCategory } from '../contract';
 import { MASTERY_MAX, REVIEW_CONSOLIDATION, type CategoryMastery, type MasterySummary } from '../progress/mastery';
+import { sectionNote } from './components';
 import { h } from './dom';
-import { MASTERY_LEVEL_LABEL, MASTERY_NOTE, VULNERABILITY_CATEGORY_LABEL } from './labels';
+import { MASTERY_LEVEL_LABEL, MASTERY_NOTE, MASTERY_NOTE_MORE, VULNERABILITY_CATEGORY_LABEL } from './labels';
 
 function stars(mastery: CategoryMastery): HTMLElement {
   return h('span', { class: 'mastery-stars', 'aria-hidden': true }, '★'.repeat(mastery.stars) + '☆'.repeat(MASTERY_MAX - mastery.stars));
@@ -55,11 +56,11 @@ export function masteryList(summary: MasterySummary, categories: readonly Vulner
     'section',
     { class: 'mastery', 'aria-labelledby': 'mastery-title' },
     h('h2', { id: 'mastery-title' }, '習熟度'),
-    h('p', { class: 'note' }, MASTERY_NOTE),
     h(
       'ul',
       { class: 'mastery-grid' },
       ...categories.map((category) => h('li', {}, masteryLine(summary[category]), masteryEvidence(summary[category]))),
     ),
+    sectionNote(MASTERY_NOTE, { summary: '補足', text: MASTERY_NOTE_MORE }),
   );
 }
