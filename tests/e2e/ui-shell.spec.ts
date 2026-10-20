@@ -85,10 +85,9 @@ test('課題は練習を先頭に難易度順に並び、難易度と進捗を�
   await expect(card(page, 'sqli').locator('.difficulty-label')).toHaveText('応用');
   // 順路の飾り（START・番号・GOAL・次の行の強調）は置かない
   await expect(page.locator('.map-marker, .map-goal, [data-next]')).toHaveCount(0);
-  // 進捗は文字と達成印で示す。並びは見せ方だけで、どの課題も開始ボタンが押せる
   for (const id of ['onboarding', 'idor', 'stored-xss', 'sqli']) {
     await expect(card(page, id).locator('.mission-progress')).toContainText('未着手');
-    await expect(card(page, id).getByRole('list', { name: '達成印' })).toContainText('再現：未達成');
+    await expect(card(page, id).getByRole('list', { name: '達成印' })).toHaveCount(0);
     await expect(card(page, id).getByRole('button', { name: 'この課題を始める' })).toBeEnabled();
   }
   // Tab 順は表の順。練習の開始ボタンの次に入門の開始ボタンが来る
@@ -133,9 +132,10 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   await enterWorkbench(page);
   const ticket = await page.locator('.ticket-id').textContent();
   await backToList(page).click();
-  // 表の行は、導入を読んだ分だけステージが進み「途中」になる
   await expect(card(page, 'test-pack')).toHaveAttribute('data-progress', 'doing');
   await expect(card(page, 'test-pack').locator('.mission-progress')).toContainText('途中');
+  await expect(card(page, 'test-pack').getByRole('list', { name: '達成印' })).toContainText('再現：未達成');
+  await expect(card(page, 'idor').getByRole('list', { name: '達成印' })).toHaveCount(0);
 
   // 続きから始めると、同じ演習票（同じ seed）で環境を作り直す
   await card(page, 'test-pack').getByRole('button', { name: '続きから始める' }).click();

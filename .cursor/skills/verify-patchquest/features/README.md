@@ -37,9 +37,9 @@ Each feature file starts with an H1 and one paragraph, then four H2 sections in 
 
 ## Features
 
-- [Mission list](./mission-list.md) covers the PatchQuest intro, the next step, the mission table, the settings button, and the absence of the engagement block and progress tools.
+- [Mission list](./mission-list.md) covers the PatchQuest intro, the next step, the mission table (unread rows show only `未着手`; started rows keep `達成印`), the settings button, and the absence of the engagement block and progress tools.
 - [Settings](./settings.md) covers effect controls and progress export, import, and delete.
-- [Records](./records.md) covers mastery and achievements, the absence of progress tools, and the absence of copy that points at 復習クエスト, 週間目標, 別条件で挑戦, or the mission-page XP display.
+- [Records](./records.md) covers mastery and achievements, Japan-time unlock dates, the absence of progress tools, and the absence of copy that points at 復習クエスト, 週間目標, 別条件で挑戦, or the mission-page XP display.
 - [Start an exercise](./start-exercise.md) covers starting `test-pack` and returning to the list with the same ticket.
 - [Situation screen](./situation.md) covers one request sentence, the `今やること` line, and the practice guide bar that does not cover the work.
 - [Investigation](./investigation.md) covers the investigate tab, where the raw request editor starts closed.
