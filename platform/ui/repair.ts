@@ -60,18 +60,23 @@ function outcomeItem(outcome: TestOutcome): HTMLElement {
   );
 }
 
-function resultNodes(report: VerificationReport, stale: boolean, before: VerificationReport | null): HTMLElement[] {
-  return [
-    stale ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null,
-    verdict(report),
-    securityComparison(before, report),
-    ...RESULT_GROUPS.map((group) => {
-      const items = report.outcomes.filter((outcome) => outcome.group === group);
-      if (items.length === 0) return null;
-      const passed = items.filter((outcome) => outcome.passed).length;
-      return h('section', { class: 'result-group', 'data-reveal': report.passed && !stale }, h('h4', {}, `${GROUP_LABEL[group]}（${passed}/${items.length} 件合格）`), h('ul', { class: 'outcomes' }, ...items.map(outcomeItem)));
-    }),
-  ].filter((node): node is HTMLElement => node !== null);
+function outcomeGroups(report: VerificationReport, stale: boolean): HTMLElement[] {
+  return RESULT_GROUPS.flatMap((group) => {
+    const items = report.outcomes.filter((outcome) => outcome.group === group);
+    if (items.length === 0) return [];
+    const passed = items.filter((outcome) => outcome.passed).length;
+    const heading = `${GROUP_LABEL[group]}（${passed}/${items.length} 件合格）`;
+    return [h('section', { class: 'result-group', 'data-reveal': report.passed && !stale }, h('h4', {}, heading), h('ul', { class: 'outcomes' }, ...items.map(outcomeItem)))];
+  });
+}
+
+/** 各テストの期待と実測。初めは閉じ、結論の行だけを先に見せる */
+function resultDetails(report: VerificationReport, stale: boolean): HTMLElement {
+  return h('details', { class: 'verify-details' }, h('summary', { role: 'button' }, '詳しく見る'), ...outcomeGroups(report, stale));
+}
+
+function resultNodes(report: VerificationReport, stale: boolean): HTMLElement[] {
+  return [stale ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null, verdict(report), securityComparison(report), resultDetails(report, stale)].filter((node): node is HTMLElement => node !== null);
 }
 
 type DiffPane = 'diff-before' | 'diff-after';
@@ -213,7 +218,7 @@ export class RepairPanel {
       fill(this.results, h('p', { class: 'muted' }, 'まだ検証していません。'));
       return;
     }
-    const nodes = resultNodes(report, !isCurrent(report, attempt.configHash), snapshot.vulnerableVerification);
+    const nodes = resultNodes(report, !isCurrent(report, attempt.configHash));
     fill(this.results, ...(verdictKind(report) === 'insufficient' ? withRechoose(nodes, this.rechooseButton) : nodes));
   }
 
