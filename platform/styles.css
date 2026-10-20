@@ -621,3 +621,8 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .code-token-keyword { color: #9ecbff; }
 .code-token-string { color: #f0c674; }
 .code-token-comment { color: var(--muted); }
+
+/* ux-verify-summary */
+.verify-details summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }
+.verify-conclusions { display: grid; gap: 4px; }
+.verify-conclusions .conclusion { margin: 0; }
