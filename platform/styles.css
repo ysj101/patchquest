@@ -604,3 +604,6 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .character-voice-compact .character-face, .character-voice-compact .character-live { width: 24px; height: 24px; grid-row: 1; }
 .character-voice-compact blockquote { grid-column: 3; grid-row: 1; padding: 0; border: 0; background: transparent; }
 .character-voice-compact figcaption { grid-column: 2; grid-row: 1; }
+
+/* ux-collapse-raw-request */
+.raw-request summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }
