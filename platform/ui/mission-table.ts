@@ -18,15 +18,13 @@ export interface MissionEntry {
   defenseCurrent: boolean;
   /** 続きから始められるか（教材の版が記録と同じ） */
   resumable: boolean;
-  /** 再現・防御・理解がそろった記録があるか（別条件での挑戦を出す条件） */
+  /** 再現・防御・理解がそろった記録があるか。完了した行の習熟度に使う */
   completed: boolean;
 }
 
 export interface MissionActions {
   start(packId: string): void;
   resume(record: AttemptRecord): void;
-  /** 完了済みの課題を、新しい seed・variant と別の設問で解き直す */
-  challenge(packId: string): void;
 }
 
 /** 完了済みの記録があるか。防御の現在性や対策の取り消しでは変わらない */
@@ -98,7 +96,6 @@ function buttons(entry: MissionEntry, actions: MissionActions): HTMLElement[] {
           h('button', { type: 'button', class: 'button button-quiet', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
         ]
       : [h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
-  if (entry.completed) list.push(h('button', { type: 'button', class: 'button button-quiet', on: { click: () => actions.challenge(manifest.id) } }, '別条件で挑戦する'));
   return list;
 }
 

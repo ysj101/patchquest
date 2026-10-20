@@ -1,6 +1,6 @@
 # Mission list
 
-The mission list is the home screen. It shows the next step, the engagement block, and the mission table. Progress export, import, and delete are not on this page.
+The mission list is the home screen. It shows the next step and the mission table. It does not show the engagement block (復習クエスト, 週間目標, XP) or a 「別条件で挑戦する」 button. Progress export, import, and delete are not on this page.
 
 ## Sub-features
 
@@ -23,7 +23,7 @@ Preconditions:
 - **See the list.** Step `goto` with path `/`, then `expectVisible` for heading `課題`.
 - **Check the tools are gone.** Step `expectCount` with text `進捗を書き出す` and count `0`. Step `expectText` for navigation `ページ` buttons with text `["課題", "記録"]`.
 - **Open settings.** Step `scroll` then `click` on button `設定` with `exact: true`. The dialog `設定` is visible.
-- **Proof.** Step `screenshot` with file `mission-list.png` before opening settings. The shot shows the table and no progress tools section.
+- **Proof.** Step `screenshot` with file `mission-list.png` before opening settings. The shot shows the next step and the table. It does not show `取り組み`, `復習クエスト`, `週間目標`, or `別条件で挑戦する`.
 
 ## Gotchas
 
