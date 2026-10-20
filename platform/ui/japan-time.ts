@@ -1,4 +1,4 @@
-// 保存された時刻を、記録に出す日本時間の読み方にする。保存値は変えない。
+// 保存された時刻を、記録に出す日本時間の読み方にする。
 const ZONE = 'Asia/Tokyo';
 
 function part(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string | undefined {
