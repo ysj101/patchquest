@@ -29,6 +29,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await guide(page).getByRole('button', { name: '場所を表示' }).click();
   await expect(page.locator('[data-anchor="briefing"]')).toBeFocused();
   await page.getByRole('button', { name: 'ミッション開始', exact: true }).click();
+  await expect(page.locator('.now-doing')).toHaveText('今やること：調査を開いて、手がかりを集めます。');
 
   // 案内先が閉じたタブの中にあるときは、そのタブを指す。開くと中の案内先を指す
   await expectStep(page, '3 / 6', 'こわしてみよう');
@@ -39,6 +40,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(target(page)).toHaveAttribute('data-anchor', 'actions');
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await expect(seals(page)).toContainText('再現：達成');
+  await expect(page.locator('.now-doing')).toHaveText('今やること：対策を選んで、適用します。');
 
   // 「場所を表示」は、案内先のタブを開いてフォーカスを移す
   await expectStep(page, '4 / 6', 'なおし方を選ぼう');
@@ -58,6 +60,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
 
   await expectStep(page, '6 / 6', 'ふりかえろう');
   await expect(guide(page)).toContainText('合格！ 攻撃を防げました');
+  await expect(page.locator('.now-doing')).toHaveText('今やること：振り返りで、原因と対策を確認します。');
   await page.getByRole('tab', { name: '振り返り' }).click();
   await page.getByRole('radio', { name: 'コメントを保存するときに文字数を確かめる' }).check();
   await page.getByRole('button', { name: '回答する' }).click();

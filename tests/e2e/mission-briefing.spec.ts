@@ -24,8 +24,9 @@ test('初回の事件と依頼、注意書きと演習票を表示し、Escで�
   await expect(briefing(page)).not.toContainText('守るもの');
   await page.keyboard.press('Escape');
   await expectWorkbench(page);
-  await expect(page.getByRole('tabpanel', { name: '状況' })).toContainText(incident);
-  await expect(page.getByRole('tabpanel', { name: '状況' })).toContainText(goal);
+  await expect(page.locator('.desk-request')).toContainText(incident);
+  await expect(page.getByRole('tabpanel', { name: '状況' })).not.toContainText(incident);
+  await expect(page.getByRole('tabpanel', { name: '状況' })).not.toContainText(goal);
   await page.getByRole('button', { name: '導入をもう一度見る' }).click();
   await expect(briefing(page)).toBeVisible();
   await expect(launchButton(page)).toBeFocused();

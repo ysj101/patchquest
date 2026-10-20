@@ -37,6 +37,6 @@ for (const [missionId, forbidden] of Object.entries(SOLUTION_WORDS)) {
 
 test('例を持たない練習課題では、状況タブに仕組みの例を出さない', async ({ page }) => {
   await startMission(page, 'onboarding');
-  await expect(page.getByRole('tabpanel', { name: '状況' })).toContainText('目標');
+  await expect(page.getByRole('tabpanel', { name: '状況' })).toContainText('守るもの');
   await expect(example(page)).toHaveCount(0);
 });
