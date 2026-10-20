@@ -19,8 +19,10 @@ test.beforeEach(async ({ page }) => {
   await startExercise(page);
 });
 
-test('状況タブに問い合わせと目標が出て、矢印キーでタブを切り替えられる', async ({ page }) => {
-  await expect(page.getByRole('tabpanel', { name: '状況' })).toContainText('他人のノートが見える');
+test('依頼の文は左に一度だけ出て、矢印キーでタブを切り替えられる', async ({ page }) => {
+  await expect(page.locator('.desk-request')).toContainText('他人のノートが見える');
+  await expect(page.getByRole('tabpanel', { name: '状況' })).not.toContainText('他人のノートが見える');
+  await expect(page.locator('.now-doing')).toContainText('今やること：');
   await page.getByRole('tab', { name: '状況' }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: '調査' })).toBeFocused();

@@ -621,3 +621,25 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .code-token-keyword { color: #9ecbff; }
 .code-token-string { color: #f0c674; }
 .code-token-comment { color: var(--muted); }
+
+/* ux-brief-and-guide
+   操作ガイドはサイト見出しの直下の一行に固定し、暗幕でログ・ボタン・アプリを覆わない。
+   見出しのボタンはガイドより手前に残す。ガイドの文字はクリックを通す。
+   「今やること」は演習票の下の一行。ガイドが見えているときだけ、その一行分を空ける。 */
+main:has(.exercise:not([hidden])) { padding-top: 4px; padding-bottom: 8px; }
+main:has(.guide:not([hidden])) { padding-top: 3.5rem; }
+.now-doing { margin: 0; padding: 0 16px; font-size: 0.85rem; line-height: 1.4; font-weight: 700; }
+.site-header { position: relative; z-index: 40; }
+.guide {
+  position: fixed; top: 53px; right: 0; bottom: auto; left: 0; width: auto; height: 3.25rem;
+  overflow: hidden; z-index: 30; pointer-events: none;
+}
+.guide-spot { display: none; }
+.guide-card {
+  display: flex; align-items: center; gap: 12px; height: 3.25rem; max-height: 3.25rem;
+  overflow: hidden; border-radius: 0; padding: 6px 12px; pointer-events: none;
+}
+.guide-card :is(button, a) { pointer-events: auto; }
+.guide-coach { align-items: center; }
+.guide-bubble h3, .guide-bubble p { display: inline; margin-right: 8px; }
+.guide-actions { width: auto; }
