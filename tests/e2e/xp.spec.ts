@@ -1,12 +1,13 @@
 // XP の段階報酬・再挑戦・改変した進捗の照合をブラウザで確かめる。
 import type { Page } from '@playwright/test';
-import { TEST_PACK_ANSWERS, answerTransferCheck, backToList, expect, enterWorkbench, importProgressFile, reproduceNoteLeak, launchButton, openMission, openMissions, test, ticketSeals, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
+import { TEST_PACK_ANSWERS, answerTransferCheck, backToList, expect, enterWorkbench, importProgressFile, reproduceNoteLeak, launchButton, openMission, openMissions, openRawRequest, test, ticketSeals, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
 
 const badge = (page: Page) => page.locator('.xp-badge');
 const gain = (page: Page, amount: number) => expect(badge(page).locator('.xp-gain')).toHaveText(`+${amount} XP`);
 
 async function investigate(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '調査' }).click();
+  await openRawRequest(page);
   await page.locator('[data-anchor="request-editor"]').getByRole('button', { name: 'このリクエストを送る' }).click();
 }
 
