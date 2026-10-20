@@ -10,7 +10,7 @@ async function expectNoRemovedGuide(page: Page): Promise<void> {
 
 test('課題一覧には次の一歩と課題の表があり、取り組みと別条件の挑戦は出ない', async ({ page }) => {
   await openHome(page);
-  await expect(page.getByRole('heading', { level: 1, name: '課題', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
   await expect(page.locator('.mission-section')).toBeVisible();
   await expect(page.getByRole('region', { name: '取り組み', exact: true })).toHaveCount(0);
