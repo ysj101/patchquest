@@ -15,8 +15,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('一覧の行は通称と一言だけで、正式名・CWE・分類は ⓘ を開くまで出さない', async ({ page }) => {
-  await expect(page.locator('.hero-lead')).not.toContainText('IDOR');
-  await expect(page.locator('.hero-lead')).not.toContainText('3 つ');
+  await expect(page.locator('.hero-catch')).not.toContainText('IDOR');
+  await expect(page.locator('.hero-catch')).not.toContainText('3 つ');
+  await expect(page.locator('.hero')).not.toContainText('わざと壊した');
   const idor = card(page, 'idor');
   await expect(idor.locator('.vulnerability-name')).toHaveText('IDOR');
   await expect(idor.locator('.vulnerability-plain')).toHaveText('メモの番号を変えるだけで、他人の非公開メモが読めてしまう問題');
@@ -35,6 +36,12 @@ test('一覧の行は通称と一言だけで、正式名・CWE・分類は ⓘ 
   // 練習課題は操作の練習なので、脆弱性名も ⓘ も出さない
   await expect(card(page, 'onboarding').locator('.vulnerability')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true })).toBeVisible();
+  await expect(page.locator('.hero-catch')).toContainText('セキュリティホールのあるアプリ');
+  await expect(page.locator('.hero-catch')).toContainText('体験して');
+  await expect(page.getByRole('list', { name: '練習の流れ' }).getByRole('listitem')).toHaveText(['体験する', '直す', 'テストで確かめる']);
+  await expect(page.locator('.hero-safe')).toContainText('本物のサービスには触れません');
+  await expect(page).toHaveTitle('PatchQuest');
 });
 
 test('ⓘ はクリックとキーボード（Enter・Space・Esc）で開閉し、一言 → できるようになること → 用語の順で CWE の説明を添える', async ({ page }) => {
@@ -118,7 +125,7 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
   await page.getByRole('button', { name: 'もう一度チェックする' }).click();
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
   await backToList(page).click();
-  await expect(page.getByRole('heading', { level: 1, name: '課題', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true })).toBeVisible();
 });
 
 test('進捗を保存し、続きから始め、書き出し・読み込み・削除ができる', async ({ page }) => {

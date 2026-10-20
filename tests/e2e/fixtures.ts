@@ -50,7 +50,7 @@ export const launchButton = (page: Page) => page.getByRole('button', { name: '�
  */
 export async function openHome(page: Page): Promise<void> {
   await page.goto('/');
-  await expect(pageHeading(page, '課題')).toBeVisible({ timeout: 15_000 });
+  await expect(pageHeading(page, 'PatchQuest')).toBeVisible({ timeout: 15_000 });
 }
 
 /** 課題一覧の設定から進捗ファイルを読み込み、注記を確かめて閉じる */
@@ -76,11 +76,11 @@ export async function openRecords(page: Page): Promise<void> {
   await expect(pageHeading(page, '記録')).toBeVisible();
 }
 
-/** 見出しの「課題」から課題一覧を開く。すでに一覧ならそのまま */
+/** ページ移動の「課題」から課題一覧を開く。すでに一覧（見出しは PatchQuest）ならそのまま */
 export async function openMissions(page: Page): Promise<void> {
-  if (await pageHeading(page, '課題').isVisible()) return;
+  if (await pageHeading(page, 'PatchQuest').isVisible()) return;
   await siteNav(page).getByRole('button', { name: '課題' }).click();
-  await expect(pageHeading(page, '課題')).toBeVisible();
+  await expect(pageHeading(page, 'PatchQuest')).toBeVisible();
 }
 
 /** 課題一覧のカードから新規・再挑戦・再開を選び、開始前チェックを終えて演習画面を開く。記録ページにいれば一覧へ戻ってから選ぶ */
