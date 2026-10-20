@@ -1,6 +1,6 @@
 # Debrief
 
-The 振り返り tab is the lesson after a defense passes. The first view shows 原因 and 持ち帰ること. この対策が効く理由 is the next section. The 安全化状況 panel stays on the 対策 tab. 理解の確認 and 新しいデータで再挑戦する stay below the lesson.
+The 振り返り tab is the lesson after a defense passes. The first view shows 原因 and 持ち帰ること. この対策が効く理由 is the next section. 理解の確認 and 新しいデータで再挑戦する stay below the lesson.
 
 ## Sub-features
 
@@ -30,5 +30,5 @@ Preconditions:
 ## Gotchas
 
 - At 1280×720 the tools column starts near the bottom of the first screen. 原因 and 持ち帰ること share that first row. この対策が効く理由 is the next row, just below that screen.
-- `安全化状況` is still on the `対策` tab after verification. A count of zero applies only inside `.debrief`.
+- `安全化状況` is not on the 対策 tab. That tab shows the verify conclusions. A count of zero applies inside `.debrief`.
 - The second attempt skips `ミッション開始` because this mission was already briefed.

@@ -1,30 +1,36 @@
 // 修正前後の実測と、再開後も残る改善履歴を確認する。
 import { expect, openMission, startMission, test, verifyResults, verifyWith } from './fixtures';
 
-test('不十分・全面停止・正しい対策の数値と改善履歴を保存して再開できる', async ({ page }) => {
+function passedCount(heading: string): number {
+  const open = heading.indexOf('（');
+  const slash = heading.indexOf('/', open + 1);
+  const count = Number(heading.slice(open + 1, slash));
+  if (open < 0 || slash < 0 || !Number.isInteger(count)) throw new Error(`合格数を読めません: ${heading}`);
+  return count;
+}
+
+test('不十分な対策・全面停止・正しい対策の結論と、改善履歴を保存して再開できる', async ({ page }) => {
   await startMission(page, 'test-pack');
   await verifyWith(page, '表示だけ変える');
-  const comparison = verifyResults(page).locator('.security-status');
-  const before = comparison.locator('[data-phase="before"]');
-  const after = comparison.locator('[data-phase="after"]');
-  await expect(comparison.getByRole('heading', { name: '安全化状況' })).toBeVisible();
-  await expect(comparison).toContainText('通ったテスト数 ÷ この課題の検証で実行したテスト数');
-  await expect(comparison).toContainText('セキュリティ全般の保証や、本番で使える安全性を意味しません');
-  await expect(before.locator('[data-group="attack"]')).toHaveText('攻撃を防げたか 0/1 件合格');
-  await expect(after.locator('[data-group="attack"]')).toHaveText('攻撃を防げたか 0/1 件合格');
-  await expect(after).not.toContainText('100%');
-  const normalBefore = await before.locator('[data-group="normal"]').innerText();
-  const original = Number(normalBefore.split(' ')[1]?.split('/')[0]);
+  const results = verifyResults(page);
+  const conclusions = results.locator('.verify-conclusions');
+  await expect(conclusions.locator('[data-group="attack"]')).toContainText('攻撃が通ってしまう');
+  await expect(conclusions).not.toContainText('%');
+  await expect(results.locator('.security-status')).toHaveCount(0);
+  await expect(results.locator('.outcome').first()).toBeHidden();
+  const normalHeading = results.locator('.result-group h4', { hasText: '正常な利用ができるか' });
+  const original = passedCount((await normalHeading.textContent()) ?? '');
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(page.locator('.security-history > ol > li')).toHaveCount(1);
 
   await verifyWith(page, 'すべて拒否する');
-  await expect(after.locator('[data-group="normal"]')).not.toHaveText(normalBefore);
-  const normalAfter = await after.locator('[data-group="normal"]').innerText();
-  expect(Number(normalAfter.split(' ')[1]?.split('/')[0]), '全面停止では正常系の合格数が減る').toBeLessThan(original);
+  await expect(conclusions.locator('[data-group="normal"]')).toContainText('不合格');
+  const stopped = passedCount((await normalHeading.textContent()) ?? '');
+  expect(stopped, '全面停止では正常系の合格数が減る').toBeLessThan(original);
 
   await verifyWith(page, '所有者を照合する');
-  await expect(after).toContainText('100%');
+  await expect(conclusions.locator('[data-group="attack"]')).toContainText('合格');
+  await expect(conclusions).not.toContainText('%');
   await page.getByRole('tab', { name: '振り返り' }).click();
   const history = page.locator('.security-history');
   const entries = history.locator(':scope > ol > li');
@@ -43,13 +49,14 @@ test('不十分・全面停止・正しい対策の数値と改善履歴を保�
   await expect(history).toHaveText(saved, { useInnerText: true });
   await expect(page.locator('.debrief .security-status')).toHaveCount(0);
   await page.getByRole('tab', { name: '対策' }).click();
-  await expect(verifyResults(page).locator('.security-status')).toContainText('修正前');
+  await expect(verifyResults(page).locator('.verify-conclusions')).toContainText('合格');
+  await expect(verifyResults(page)).not.toContainText('%');
 });
 
 test('振り返りは対策取り消し・リセット・再開後の古い検証結果を警告する', async ({ page }) => {
   await startMission(page, 'test-pack');
   await verifyWith(page, '所有者を照合する');
-  await expect(verifyResults(page).locator('[data-phase="after"]')).toContainText('100%');
+  await expect(verifyResults(page).locator('.verify-conclusions')).not.toContainText('%');
   const warning = page.locator('.debrief > .banner-warn');
   await page.getByRole('button', { name: '対策を取り消す', exact: true }).click();
   await page.getByRole('tab', { name: '振り返り' }).click();
@@ -64,7 +71,7 @@ test('振り返りは対策取り消し・リセット・再開後の古い検�
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(warning).toBeVisible();
   await verifyWith(page, '所有者を照合する');
-  await expect(verifyResults(page).locator('[data-phase="after"]')).toContainText('100%');
+  await expect(verifyResults(page).locator('[data-group="attack"]')).toContainText('合格');
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(warning).toHaveCount(0);
 });

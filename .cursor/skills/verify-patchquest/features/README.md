@@ -45,3 +45,4 @@ Each feature file starts with an H1 and one paragraph, then four H2 sections in 
 - [Investigation](./investigation.md) covers the investigate tab, where the raw request editor starts closed.
 - [Debrief](./debrief.md) covers the lesson at the top of 振り返り, the absence of 安全化状況 there, the understanding check, and retry.
 - [Reference code](./reference-code.md) covers opening `参考コードを見る` and the colored keywords, strings, and comments on the before and after panes.
+- [Verify results](./verify-results.md) covers the conclusion lines after 検証する, and the per-test cards behind 詳しく見る.

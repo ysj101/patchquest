@@ -1,25 +1,24 @@
-// 対策と振り返りで共用する、実測に基づく安全化状況の比較表示。
-import { RESULT_GROUPS, summarizeVerification, type VerificationReport } from '../contract';
+// 検証結果の結論。グループごとに合否を1行で示し、割合は出さない。
+import { RESULT_GROUPS, type ResultGroup, type TestOutcome, type VerificationReport } from '../contract';
+import { status, type StatusKind } from './components';
 import { h } from './dom';
-import { groupLine, securityLine, SECURITY_COPY } from './security-status';
+import { GROUP_LABEL } from './labels';
 
-function row(label: string, phase: string, report: VerificationReport): HTMLElement {
-  const summary = summarizeVerification(report);
-  const filled = summary.percent === null ? 0 : Math.floor(summary.percent / 20);
-  return h('div', { class: 'result-group security-row', 'data-phase': phase, 'data-complete': summary.total > 0 && summary.passed === summary.total },
-    h('p', { class: 'security-count' }, securityLine(label, summary), ' ', h('span', { 'aria-hidden': true }, '●'.repeat(filled) + '○'.repeat(5 - filled))),
-    h('ul', {}, ...RESULT_GROUPS.map((group) => h('li', { 'data-group': group }, groupLine(group, summary.groups)))),
-    summary.undetermined > 0 ? h('p', { class: 'note' }, SECURITY_COPY.undetermined(summary.undetermined)) : null,
-  );
+function conclusionMark(group: ResultGroup, outcomes: TestOutcome[]): { kind: StatusKind; text: string } {
+  if (outcomes.some((outcome) => outcome.error)) return { kind: 'error', text: '判定できませんでした' };
+  if (outcomes.every((outcome) => outcome.passed)) return { kind: 'passed', text: '合格' };
+  if (group === 'attack') return { kind: 'failed', text: '攻撃が通ってしまう' };
+  return { kind: 'failed', text: '不合格' };
 }
 
-/** 修正前は事前検証の実測、修正後は表示中の検証。未実測なら数値を推定しない。 */
-export function securityComparison(before: VerificationReport | null, after: VerificationReport): HTMLElement {
-  return h('section', { class: 'security-status tool-section' },
-    h('p', { class: 'eyebrow', 'aria-hidden': true }, 'SECURITY STATUS'),
-    h('h3', {}, SECURITY_COPY.heading),
-    h('p', { class: 'note' }, SECURITY_COPY.formula),
-    h('div', { class: 'security-pair' }, before ? row('修正前', 'before', before) : h('p', {}, '修正前の検証結果がありません'), row('修正後', 'after', after)),
-    h('p', { class: 'note' }, SECURITY_COPY.scope),
-  );
+function conclusionLine(group: ResultGroup, outcomes: TestOutcome[]): HTMLElement | null {
+  if (outcomes.length === 0) return null;
+  const mark = conclusionMark(group, outcomes);
+  return h('p', { class: 'conclusion', 'data-group': group }, `${GROUP_LABEL[group]}：`, status(mark.kind, mark.text));
+}
+
+/** いまの検証について、テストがあるグループだけ合否を1行ずつ示す。 */
+export function securityComparison(report: VerificationReport): HTMLElement {
+  const lines = RESULT_GROUPS.map((group) => conclusionLine(group, report.outcomes.filter((outcome) => outcome.group === group)));
+  return h('div', { class: 'verify-conclusions' }, ...lines);
 }

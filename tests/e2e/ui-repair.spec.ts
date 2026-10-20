@@ -10,11 +10,15 @@ test('正常系を壊す対策は、検証結果に理由と期待・実測が�
   await verifyWith(page, 'すべて拒否する');
   const results = page.locator('[data-anchor="results"]');
   await expect(results).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 15_000 });
-  const normal = results.locator('.result-group').filter({ hasText: '正常な利用ができるか' });
-  await expect(normal.locator('.outcome')).toContainText('不合格');
-  await expect(normal.locator('.outcome')).toContainText('status が 200 ではない（実測 403）');
+  await expect(results.locator('.conclusion[data-group="normal"]')).toContainText('不合格');
+  await expect(results.locator('.outcome').first()).toBeHidden();
   await expect(seals(page)).toContainText('防御：未達成');
   await expect(page.getByRole('heading', { name: '検証結果' })).toBeFocused();
+  await results.getByRole('button', { name: '詳しく見る', exact: true }).click();
+  const normal = results.locator('.result-group').filter({ hasText: '正常な利用ができるか' });
+  await expect(normal.locator('.outcome')).toContainText('不合格');
+  await expect(normal.locator('.outcome')).toContainText('期待');
+  await expect(normal.locator('.outcome')).toContainText('status が 200 ではない（実測 403）');
 });
 
 test('再現・正しい対策・理解確認をそろえると解決になり、対策を変えると防御は再検証待ちになる', async ({ page }) => {

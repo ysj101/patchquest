@@ -643,3 +643,8 @@ main:has(.guide:not([hidden])) { padding-top: 3.5rem; }
 .guide-coach { align-items: center; }
 .guide-bubble h3, .guide-bubble p { display: inline; margin-right: 8px; }
 .guide-actions { width: auto; }
+
+/* ux-verify-summary */
+.verify-details summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }
+.verify-conclusions { display: grid; gap: 4px; }
+.verify-conclusions .conclusion { margin: 0; }
