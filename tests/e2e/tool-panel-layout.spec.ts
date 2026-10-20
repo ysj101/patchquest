@@ -1,6 +1,6 @@
 // 学習UI：演習の道具パネルの幅とスクロール（Issue #58）
 import type { Page } from '@playwright/test';
-import { expect, startMission, test, verifyWith } from './fixtures';
+import { expect, openRawRequest, startMission, test, verifyWith } from './fixtures';
 
 /** 開いているタブの中身が、パネル自身のスクロールや切り取りに隠れていない */
 async function expectNoPanelScroll(page: Page): Promise<void> {
@@ -56,6 +56,7 @@ test('1280×800 では調査と対策の主要な操作が、パネル内をス�
   await page.getByRole('tab', { name: '調査' }).click();
   await expectNoPanelScroll(page);
   await expect(page.getByRole('button', { name: '送る', exact: true }).first()).toBeInViewport();
+  await openRawRequest(page);
   const editor = await box(page, '[data-anchor="request-editor"] textarea');
   expect(editor.width).toBeGreaterThan(tools.width * 0.8);
 

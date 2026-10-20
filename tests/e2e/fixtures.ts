@@ -91,6 +91,13 @@ export async function openMission(page: Page, missionId: string, options: { resu
   await beginExercise(page);
 }
 
+/** 調査タブの生リクエスト編集欄を開く。初期状態では「上級者向け」として畳んである */
+export async function openRawRequest(page: Page): Promise<void> {
+  const editor = page.locator('[data-anchor="request-editor"]');
+  if ((await editor.getAttribute('open')) === null) await editor.locator('summary').click();
+  await expect(editor).toHaveAttribute('open', '');
+}
+
 /** 課題一覧から課題を始め、導入を閉じて作業台に入る */
 export async function startMission(page: Page, missionId: string): Promise<void> {
   await openHome(page);

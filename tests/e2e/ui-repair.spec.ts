@@ -1,5 +1,5 @@
 // 学習UI：対策パネル・検証結果・ヒント・振り返り（Issue #13）
-import { backToList, enterWorkbench, expect, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
+import { backToList, enterWorkbench, expect, openRawRequest, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await startMission(page, 'test-pack');
@@ -76,6 +76,7 @@ test('ヒントは段階的に開け、解法は確認してから表示する',
 test('初期状態へ戻すと対策とデータが戻り、新しいデータで再挑戦すると新しい演習票になる', async ({ page }) => {
   const editor = page.locator('[data-anchor="request-editor"]');
   await page.getByRole('tab', { name: '調査' }).click();
+  await openRawRequest(page);
   await editor.getByLabel('メソッド').selectOption('POST');
   await editor.getByLabel('パス').fill('/notes');
   await editor.getByLabel('本文（JSON）').fill('{"body":"あとで消えるノート"}');
