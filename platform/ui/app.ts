@@ -16,11 +16,8 @@ import { ExerciseView } from './exercise';
 import { GuidePanel } from './guide';
 import { missionList } from './mission-list';
 import { missionEntries } from './mission-entries';
-import { hasCompleted } from './mission-table';
-import { engagementSection } from './habits';
 import { recordsPage } from './records';
 import { siteNav } from './site-nav';
-import { planChallenge, type ChallengePlan } from '../progress/challenge';
 import { progressActions } from './progress-actions';
 import { PreflightView } from './preflight';
 import { RepairPanel } from './repair';
@@ -66,7 +63,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
       announce(live, correct ? '理解の検印を押しました' : 'まだ正解でない設問があります');
     },
     retry: () => withCurrentPack((packId) => begin(packId)),
-    challenge: () => withCurrentPack((packId) => challenge(packId)),
   });
   function withCurrentPack(run: (packId: string) => Promise<void>): void {
     const packId = orchestrator.snapshot?.pack.manifest.id;
@@ -173,15 +169,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   async function showList(message?: string): Promise<void> {
     const { records, profile } = await loadRecords();
-    const engagement = engagementSection({ packs: catalog.packs, records, profile, store, refresh: (text) => void showList(text) });
     fill(
       listView,
       missionList(missionEntries(records, orchestrator.snapshot), {
         openSettings,
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
-        challenge: (packId) => void challenge(packId),
-      }, { mastery: profile.mastery, engagement, storageWarning: store.unavailableReason }),
+      }, { mastery: profile.mastery, storageWarning: store.unavailableReason }),
     );
     show('list');
     if (message) announce(live, message);
@@ -199,10 +193,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   /** 導入を見せる演習の ID。同じ課題の記録（今回の演習を除く）が保存済みなら見せない */
   let briefingAttemptId: string | null = null;
-  async function begin(packId: string, resume?: AttemptRecord, plan?: ChallengePlan): Promise<void> {
+  async function begin(packId: string, resume?: AttemptRecord): Promise<void> {
     others = [];
     // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の「演習を始める」を残さない）
-    const started = orchestrator.start(packId, { resume, ...plan });
+    const started = orchestrator.start(packId, { resume });
     show('preflight');
     announce(live, '開始前チェックを始めました');
     const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
@@ -210,14 +204,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
     const seen = records.some((record) => record.missionId === packId && record.attemptId !== snapshot.attempt.attemptId);
     briefingAttemptId = !resume && (!!store.unavailableReason || !seen) ? snapshot.attempt.attemptId : null;
     announce(live, isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
-  }
-
-  /** 完了済みの課題を別条件で解き直す。条件は保存済みの記録から決め、同じ seed は使わない */
-  async function challenge(packId: string): Promise<void> {
-    const pack = catalog.packs.find((candidate) => candidate.manifest.id === packId);
-    if (!pack) throw new Error(`課題 ${packId} は登録されていません`);
-    await saved;
-    await begin(packId, undefined, planChallenge(pack, await store.list()));
   }
 
   function updateExercise(snapshot: ExerciseSnapshot): void {
@@ -228,7 +214,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     resultEffects.update(snapshot);
     repair.update(snapshot);
     hints.update(snapshot);
-    debrief.update(snapshot, profile.mastery, hasCompleted([...others, snapshot.attempt].filter((record) => record.missionId === snapshot.attempt.missionId)));
+    debrief.update(snapshot, profile.mastery);
   }
 
   async function applyDefense(defenseId: string | null): Promise<void> {

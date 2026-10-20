@@ -37,7 +37,7 @@ Each feature file starts with an H1 and one paragraph, then four H2 sections in 
 
 ## Features
 
-- [Mission list](./mission-list.md) covers the list order, the settings button, and the absence of the progress tools section.
+- [Mission list](./mission-list.md) covers the next step, the mission table, the settings button, and the absence of the engagement block and progress tools.
 - [Settings](./settings.md) covers effect controls and progress export, import, and delete.
-- [Records](./records.md) covers mastery and achievements, and the absence of progress tools.
+- [Records](./records.md) covers mastery and achievements, the absence of progress tools, and the absence of copy that points at 復習クエスト, 週間目標, 別条件で挑戦, or the mission-page XP display.
 - [Start an exercise](./start-exercise.md) covers starting `test-pack` and returning to the list with the same ticket.

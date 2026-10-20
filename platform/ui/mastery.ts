@@ -1,6 +1,6 @@
 // 分類ごとの習熟度の表示。★だけでなく段階の名前でも示し、判定の根拠を開いて確かめられるようにする（spec §9, §10）
 import type { VulnerabilityCategory } from '../contract';
-import { MASTERY_MAX, REVIEW_CONSOLIDATION, type CategoryMastery, type MasterySummary } from '../progress/mastery';
+import { MASTERY_MAX, type CategoryMastery, type MasterySummary } from '../progress/mastery';
 import { sectionNote } from './components';
 import { h } from './dom';
 import { MASTERY_LEVEL_LABEL, MASTERY_NOTE, MASTERY_NOTE_MORE, VULNERABILITY_CATEGORY_LABEL } from './labels';
@@ -26,7 +26,7 @@ function reviewNote(mastery: CategoryMastery): HTMLElement | null {
   if (mastery.reviewed === 0) return null;
   const text = mastery.consolidated
     ? `復習で定着：別の設問 ${mastery.reviewed} 問に正解しました（★は変わりません）`
-    : `復習の正答：${mastery.reviewed} 問（Lv3 以上で ${REVIEW_CONSOLIDATION} 問に正解すると「復習で定着」。★は変わりません）`;
+    : `復習の正答：${mastery.reviewed} 問（★は変わりません）`;
   return h('p', { class: 'note mastery-review' }, text);
 }
 
@@ -37,7 +37,7 @@ export function masteryEvidence(mastery: CategoryMastery): HTMLElement {
     { class: 'mastery-evidence' },
     h('summary', {}, '判定の根拠'),
     mastery.evidence.length === 0
-      ? h('p', { class: 'note' }, 'まだ達成印がありません。再現で ★1、防御で ★2、理解までそろえて ★3、別の条件でもう一度そろえると ★4・★5 になります。')
+      ? h('p', { class: 'note' }, 'まだ達成印がありません。再現で ★1、防御で ★2、理解までそろえて ★3 になります。')
       : h(
           'ol',
           { class: 'mastery-evidence-list' },
