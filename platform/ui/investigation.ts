@@ -55,6 +55,19 @@ export class InvestigationPanel {
   private readonly body = h('textarea', { class: 'mono', rows: 4, 'aria-label': '本文（JSON）', spellcheck: false, placeholder: '{ }（GET では空のまま）' });
   private readonly editorMessage = h('p', { class: 'form-message', role: 'alert' });
   private readonly viewer = h('span', { class: 'viewer' });
+  /** 初期状態では閉じる。ふつうの操作を先に見せ、編集は開いたときだけ使う */
+  private readonly editor: HTMLDetailsElement = h(
+    'details',
+    { class: 'tool-section raw-request', 'data-anchor': 'request-editor' },
+    // 閉じた summary はボタンとして辿れないことがある。開く操作をボタン名で届ける
+    h('summary', { role: 'button' }, '上級者向け'),
+    h('h3', { id: 'editor-title' }, 'リクエストを編集して送る'),
+    h('p', { class: 'note' }, '送信者：', this.viewer, '（画面の上で切り替えた利用者として送ります）。ブラウザの中の教材アプリへの呼び出しで、実際のネットワーク通信ではありません。'),
+    h('div', { class: 'request-line' }, this.method, this.path),
+    this.body,
+    h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary', on: { click: () => void this.sendEditor() } }, 'このリクエストを送る')),
+    this.editorMessage,
+  );
   private readonly actionList = h('div', { class: 'action-list' });
   private count = 0;
   private refs: Scope = {};
@@ -65,16 +78,7 @@ export class InvestigationPanel {
       'div',
       { class: 'investigation' },
       h('section', { class: 'tool-section', 'aria-labelledby': 'actions-title', 'data-anchor': 'actions' }, h('h3', { id: 'actions-title' }, '操作'), this.actionList),
-      h(
-        'section',
-        { class: 'tool-section', 'aria-labelledby': 'editor-title', 'data-anchor': 'request-editor' },
-        h('h3', { id: 'editor-title' }, 'リクエストを編集して送る'),
-        h('p', { class: 'note' }, '送信者：', this.viewer, '（画面の上で切り替えた利用者として送ります）。ブラウザの中の教材アプリへの呼び出しで、実際のネットワーク通信ではありません。'),
-        h('div', { class: 'request-line' }, this.method, this.path),
-        this.body,
-        h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary', on: { click: () => void this.sendEditor() } }, 'このリクエストを送る')),
-        this.editorMessage,
-      ),
+      this.editor,
     );
     this.logSection = h(
       'section',
@@ -135,6 +139,7 @@ export class InvestigationPanel {
       this.method.value = request.method;
       this.path.value = request.path;
       this.body.value = request.body === undefined ? '' : JSON.stringify(request.body, null, 2);
+      this.editor.open = true;
       this.path.focus();
     };
     return h(

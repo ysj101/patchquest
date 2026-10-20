@@ -1,6 +1,6 @@
 // 学習UI：演習画面と調査パネル（Issue #12）
 import type { Page } from '@playwright/test';
-import { expect, preview, startMission, test } from './fixtures';
+import { expect, openRawRequest, preview, startMission, test } from './fixtures';
 
 async function startExercise(page: Page): Promise<void> {
   await startMission(page, 'test-pack');
@@ -48,8 +48,36 @@ test('キーボードで利用者を切り替え、定型の操作で事故を�
   await expect(page.locator('.state-stamp')).toHaveText('調査中');
 });
 
+test('調査タブでは生の編集欄が畳まれ、上級者向けを開くと編集して送れ、コピーも入る', async ({ page }) => {
+  await page.getByRole('tab', { name: '調査' }).click();
+  const editor = page.locator('[data-anchor="request-editor"]');
+  await expect(editor).not.toHaveAttribute('open');
+  await expect(editor.getByRole('button', { name: 'このリクエストを送る' })).toBeHidden();
+  await expect(page.getByRole('button', { name: '送る', exact: true })).toBeVisible();
+
+  await page.getByLabel('ノート ID').fill('7');
+  await page.getByRole('button', { name: '編集欄にコピー' }).click();
+  await expect(editor).toHaveAttribute('open', '');
+  await expect(editor.getByLabel('メソッド')).toHaveValue('GET');
+  await expect(editor.getByLabel('パス')).toHaveValue('/notes/7');
+  await editor.getByRole('button', { name: 'このリクエストを送る' }).click();
+  await expect(page.locator('.log-entry').filter({ hasText: 'alice → GET /notes/7' }).locator('summary')).toBeVisible();
+});
+
+test('どの課題の調査タブでも、生の編集欄は畳まれたまま操作が見える', async ({ page }) => {
+  for (const missionId of ['test-pack', 'idor', 'onboarding', 'sqli', 'stored-xss']) {
+    await startMission(page, missionId);
+    await page.getByRole('tab', { name: '調査' }).click();
+    const editor = page.locator('[data-anchor="request-editor"]');
+    await expect(editor, missionId).not.toHaveAttribute('open');
+    await expect(editor.locator('summary'), missionId).toHaveText('上級者向け');
+    await expect(page.locator('[data-anchor="actions"]'), missionId).toBeVisible();
+  }
+});
+
 test('リクエスト編集欄は入力の誤りと大きすぎる入力を理由付きで知らせる', async ({ page }) => {
   await page.getByRole('tab', { name: '調査' }).click();
+  await openRawRequest(page);
   const editor = page.locator('[data-anchor="request-editor"]');
   const send = editor.getByRole('button', { name: 'このリクエストを送る' });
 
@@ -74,6 +102,7 @@ test('教材由来の文字列は観測ログでも文字のまま表示され�
   const dialogs: string[] = [];
   page.on('dialog', (d) => (dialogs.push(d.message()), void d.dismiss()));
   await page.getByRole('tab', { name: '調査' }).click();
+  await openRawRequest(page);
   const editor = page.locator('[data-anchor="request-editor"]');
   const payload = '<img src="x" onerror="alert(1)"><b>太字</b>';
   await editor.getByLabel('メソッド').selectOption('POST');
