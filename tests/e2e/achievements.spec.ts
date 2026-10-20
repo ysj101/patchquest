@@ -1,5 +1,6 @@
 // 実績の解除通知・称号・履歴による条件と進捗の照合をブラウザで確かめる。
 import type { Page } from '@playwright/test';
+import { makeAttempt } from '../support/attempt';
 import { backToList, expect, importProgressFile, openMission, openRecords, reproduceNoteLeak, startMission, test, ticketSeals, verifyWith, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
 
 const section = (page: Page) => page.getByRole('region', { name: '実績', exact: true });
@@ -35,7 +36,10 @@ test('ヒントなしで完走すると五つの実績を日時付きで表示�
   await expect(section(page)).toContainText('称号：修理担当（実績 5 / 6）');
   for (const id of ['first-reproduction', 'first-defense', 'no-hint-defense', 'clean-repair', 'first-try']) {
     await expect(item(page, id)).toContainText('解除済み');
-    await expect(item(page, id).locator('time')).toHaveAttribute('datetime', /\d{4}-\d{2}-\d{2}T/);
+    const time = item(page, id).locator('time');
+    await expect(time).toHaveAttribute('datetime', /\d{4}-\d{2}-\d{2}T/);
+    await expect(time).toHaveText(/^\d{1,2}月\d{1,2}日 \d{1,2}:\d{2}$/);
+    await expect(time).not.toHaveText(/[TZ]/);
   }
   await expect(item(page, 'all-missions')).toContainText('未解除');
   const at = await item(page, 'clean-repair').locator('time').textContent();
@@ -106,4 +110,27 @@ test('防御後にヒントと解法を開いてもヒントなし実績と解�
   await back(page);
   await expect(item(page, 'no-hint-defense')).toContainText('解除済み');
   await expect(item(page, 'no-hint-defense').locator('time')).toHaveText(at);
+});
+
+test('取り込んだ記録の解除日時を日本時間で表示し、解釈できない時刻は日時不明にする', async ({ page }) => {
+  const attempt = makeAttempt('existing-1', {
+    state: 'Passed',
+    badges: {
+      reproduction: { achieved: true, at: '2026-10-20T21:05:00.000Z' },
+      defense: { achieved: true, at: '未定' },
+      understanding: { achieved: false },
+    },
+  });
+  await importProgressFile(page, {
+    format: 'patchquest-progress',
+    schemaVersion: 9,
+    exportedAt: '2026-10-20T21:05:00.000Z',
+    attempts: [attempt],
+    profile: { achievements: { 'all-missions': '2026-01-01T00:00:00.000Z' } },
+  }, '記録から計算し直しました');
+  await openRecords(page);
+  await expect(item(page, 'first-reproduction').locator('time')).toHaveText('10月21日 6:05');
+  await expect(item(page, 'first-defense').locator('time')).toHaveText('日時不明');
+  await expect(page.locator('.records-page').getByText('2026-10-20T')).toHaveCount(0);
+  await expect(page.locator('.achievements').getByText('Z', { exact: true })).toHaveCount(0);
 });
