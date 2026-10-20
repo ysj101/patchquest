@@ -137,7 +137,7 @@ function row(entry: MissionEntry, actions: MissionActions, mastery: MasterySumma
         entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が更新されたため、前回の続きからは始められません。') : null,
       ),
       h('p', { class: 'mission-difficulty' }, difficultyLabel(entry)),
-      h('div', { class: 'mission-progress' }, status(label.kind, label.text), seals(sealStates(entry.latest, entry.defenseCurrent), 'small')),
+      h('div', { class: 'mission-progress' }, status(label.kind, label.text), progress === 'todo' ? null : seals(sealStates(entry.latest, entry.defenseCurrent), 'small')),
       h('p', { class: 'meta mission-time' }, `目安 ${manifest.estimatedMinutes} 分`),
       h('div', { class: 'actions mission-actions' }, ...buttons(entry, actions)),
     ),
