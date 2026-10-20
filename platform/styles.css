@@ -170,9 +170,13 @@ main > section > * + * { margin-top: 16px; }
 
 /* 日本語は文節で区切って折り返す */
 .hero { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; word-break: auto-phrase; }
-.hero-text { flex: 1 1 420px; display: grid; gap: 4px; }
+.mission-list .hero { align-items: flex-start; }
+.hero-text { flex: 1 1 280px; display: grid; gap: 4px; min-width: 0; }
 .hero h1 { font-size: 1.7rem; }
+.hero-catch { font-size: 1.05rem; font-weight: 700; max-width: 46em; }
 .hero-lead { color: var(--muted); max-width: 46em; }
+.hero-steps { margin: 8px 0 0; padding-left: 1.4em; display: grid; gap: 2px; max-width: 46em; }
+.hero-safe { font-weight: 700; max-width: 46em; }
 
 .mission-section { display: grid; gap: 8px; }
 /* 課題の表。見出し行と各行は同じ列幅で並べ、狭い幅では縦に積む */

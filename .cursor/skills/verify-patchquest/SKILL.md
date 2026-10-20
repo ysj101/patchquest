@@ -25,7 +25,7 @@ curl -sf -o /dev/null "http://127.0.0.1:${PORT}/"
 node --experimental-strip-types .cursor/skills/verify-patchquest/drive.ts doctor "http://127.0.0.1:${PORT}"
 ```
 
-`doctor` exits 0 only after the heading `課題` is visible. A bare HTTP 200 is not ready. IndexedDB is created in the browser profile for that origin, so a fresh Playwright context starts with an empty progress store. Two ports do not share progress. Do not drive a server this run did not start.
+`doctor` exits 0 only after the heading `PatchQuest` is visible. A bare HTTP 200 is not ready. IndexedDB is created in the browser profile for that origin, so a fresh Playwright context starts with an empty progress store. Two ports do not share progress. Do not drive a server this run did not start.
 
 ## Doctor
 
@@ -46,14 +46,15 @@ Run one recipe in one browser session. The recipe is JSON. Selectors are roles a
 node --experimental-strip-types .cursor/skills/verify-patchquest/drive.ts run path/to/recipe.json
 ```
 
-Recipe fields are `baseURL`, `evidenceDir`, and `steps`. Each step is an object with `action`.
+Recipe fields are `baseURL`, `evidenceDir`, and `steps`. Optional `viewport` is `{ width, height }` in pixels. Each step is an object with `action`.
 
 - `goto` with `path`. Optional `blockIndexedDB: true` installs the block before that navigation.
 - `click` with `role` and `name`. Optional `exact: true`, `namePattern` (a regular expression source), and `within` (a CSS selector that scopes the search).
 - `press` with `key`.
 - `upload` with `within` and `file` (`name`, `mimeType`, and either `text` or `savedAs`). `savedAs` reads a file this recipe already wrote under `evidenceDir`.
 - `expectVisible` or `expectHidden` with `role` and `name`. Optional `exact` and `within`.
-- `expectCount` with `text` and `count`.
+- `expectCount` with `text` and `count`. Optional `within` limits the search to a CSS selector.
+- `expectTitle` with `text`. The document title must match exactly.
 - `expectText` with `role`, `name`, and `text` (array or string). Optional `childRole` checks those descendants instead of the element itself.
 - `download` clicks `role`/`name` and writes the file into `evidenceDir` as `saveAs`.
 - `screenshot` with `file` (a name only, written under `evidenceDir`).

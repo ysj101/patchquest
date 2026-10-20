@@ -1,4 +1,4 @@
-// ミッション一覧（spec §10）。「見出しと 1 行の説明と次の一歩 → 難易度順の課題の表」を置く。
+// ミッション一覧（spec §10）。「PatchQuest の紹介と次の一歩 → 難易度順の課題の表」を置く。
 // 習熟度と実績は記録ページ（records.ts）、進捗の書き出し・読み込み・削除は設定にある。
 // XP・復習・週間目標の保存値は残すが、このページには出さない。
 import type { AttemptRecord } from '../contract';
@@ -16,8 +16,13 @@ export interface MissionListActions {
   resume(record: AttemptRecord): void;
 }
 
-/** 何をする場所かの 1 行。脆弱性の数や名前は表の各行が示すので、ここでは列挙しない */
-const HERO_LEAD = 'わざと壊したアプリで、セキュリティの不具合を自分の手で再現し、直し方を選んで、自動テストで確かめる練習場です。すべてこのブラウザの中で動き、本物のサービスには触れません。';
+/** トップの紹介。脆弱性の名前は表の各行が示すので、ここでは列挙しない */
+const HOME_INTRO = {
+  title: 'PatchQuest',
+  catchphrase: 'セキュリティホールのあるアプリで、自分で体験して、直そう。',
+  steps: ['体験する', '直す', 'テストで確かめる'],
+  safety: 'すべてこのブラウザの中で動き、本物のサービスには触れません。',
+} as const;
 
 /** 次の一歩。練習が終わっていなければ練習、途中の課題があればその続き。どちらもなければ置かない */
 function nextAction(entries: MissionEntry[], actions: MissionListActions): HTMLElement | null {
@@ -37,7 +42,14 @@ function hero(entries: MissionEntry[], actions: MissionListActions): HTMLElement
   return h(
     'header',
     { class: 'hero' },
-    h('div', { class: 'hero-text' }, h('h1', { id: 'hero-title', tabIndex: -1 }, '課題'), h('p', { class: 'hero-lead' }, HERO_LEAD)),
+    h(
+      'div',
+      { class: 'hero-text' },
+      h('h1', { id: 'hero-title', tabIndex: -1 }, HOME_INTRO.title),
+      h('p', { class: 'hero-catch' }, HOME_INTRO.catchphrase),
+      h('ol', { class: 'hero-steps', 'aria-label': '練習の流れ' }, ...HOME_INTRO.steps.map((step) => h('li', {}, step))),
+      h('p', { class: 'hero-safe' }, HOME_INTRO.safety),
+    ),
     h('div', { class: 'actions' }, nextAction(entries, actions), settingsButton(() => actions.openSettings())),
   );
 }
