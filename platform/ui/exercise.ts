@@ -1,7 +1,7 @@
 // 演習画面（spec §10）。調査デスクの形で、上に演習票（課題・状態・達成印・架空サービスの表示）、
 // 左に依頼とステージ、中央に動く教材アプリと観測ログ、右に状況・調査・対策・振り返りの道具、下に演習票番号を並べる
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
-import { sealStates } from '../progress/stages';
+import { sealStates, stageStates } from '../progress/stages';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, seals, settingsButton, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
@@ -30,6 +30,26 @@ export function actorLabel(actor: ActorKey): string {
   return actor === ANONYMOUS ? '未ログイン' : actor;
 }
 
+/** いまのステージに対応する、画面上部の一行。課題ごとの文は置かない */
+const NOW_DOING = {
+  briefed: '依頼を読んで、ミッションを始めます。',
+  investigated: '調査を開いて、手がかりを集めます。',
+  reproduced: '同じ操作で、不具合を再現します。',
+  repaired: '対策を選んで、適用します。',
+  verified: '攻撃と普段の使い方を検証します。',
+} as const;
+
+const NOW_DONE = '振り返りで、原因と対策を確認します。';
+
+/** 状況タブから、左の依頼と重なる問い合わせと目標を外す。依頼の文は左に 1 か所だけ残す */
+function withoutRepeatedRequest(panel: HTMLElement): HTMLElement {
+  for (const section of [...panel.querySelectorAll(':scope > section.tool-section')]) {
+    const title = section.querySelector('h3')?.textContent;
+    if (title === '問い合わせ' || title === '目標') section.remove();
+  }
+  return panel;
+}
+
 export class ExerciseView {
   readonly element = h('section', { class: 'exercise', 'aria-labelledby': 'exercise-title', hidden: true });
   /** 教材アプリのプレビュー（隔離 iframe）を置く場所。iframe を作り直さないよう、この要素は使い回す */
@@ -40,6 +60,7 @@ export class ExerciseView {
   private readonly title = h('h1', { id: 'exercise-title', tabIndex: -1 });
   private readonly ticket = h('p', { class: 'ticket-id' });
   private readonly request = h('div', { class: 'desk-request' });
+  private readonly nowDoing = h('p', { class: 'now-doing' });
   private readonly state = h('p', { class: 'state-stamp' });
   private readonly stages: StageProgress;
   readonly xp: XpBadge;
@@ -86,6 +107,7 @@ export class ExerciseView {
         this.sealSlot,
         settingsButton(() => actions.openSettings()),
       ),
+      this.nowDoing,
       extras.callout,
       this.briefing,
       this.workbench,
@@ -120,7 +142,7 @@ export class ExerciseView {
     this.achievements.reset();
     const story = snapshot.pack.manifest.story;
     fill(this.request, h('h2', {}, '依頼'), h('p', {}, story.incident));
-    fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
+    fill(this.storySlot, withoutRepeatedRequest(storyPanel(story)), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
     fill(
       this.briefing,
       h('h2', { id: 'briefing-title' }, h('span', { class: 'eyebrow', 'aria-hidden': true }, 'SECURITY ALERT'), 'セキュリティ警報'),
@@ -132,6 +154,7 @@ export class ExerciseView {
       h('p', { class: 'note' }, 'Esc キーでも導入を飛ばして始められます。'),
     );
     this.setBriefingVisible(showBriefing);
+    this.showNow(snapshot.attempt, snapshot.defenseCurrent);
     this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describeEvent);
     this.investigation.setViewer(actorLabel(viewer));
     this.toolTabs.select('story');
@@ -166,6 +189,14 @@ export class ExerciseView {
     this.actions.briefed();
   }
 
+  private showNow(attempt: ExerciseSnapshot['attempt'], defenseCurrent: boolean): void {
+    const current = stageStates(attempt, defenseCurrent).find((stage) => stage.current);
+    // 最終検証のステージは、防御が済んだあとの残りが振り返り
+    const reflecting = current?.id === 'verified' && attempt.badges.defense.achieved && defenseCurrent;
+    const sentence = reflecting || !current ? NOW_DONE : NOW_DOING[current.id];
+    this.nowDoing.textContent = `今やること：${sentence}`;
+  }
+
   setViewer(actor: ActorKey): void {
     this.investigation.setViewer(actorLabel(actor));
   }
@@ -177,6 +208,7 @@ export class ExerciseView {
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack, defenseCurrent } = snapshot;
     this.stages.update(attempt, defenseCurrent);
+    this.showNow(attempt, defenseCurrent);
     this.title.textContent = pack.manifest.title;
     this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}`;
     this.state.textContent = STATE_LABEL[attempt.state];

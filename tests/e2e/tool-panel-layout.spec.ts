@@ -76,6 +76,15 @@ test('1512×900 の練習では、操作ガイドがあっても送る・適用�
   await page.getByRole('tab', { name: '調査' }).click();
   await expectNoPanelScroll(page);
   await expect(page.getByRole('button', { name: '送る', exact: true })).toBeInViewport();
+  await expect(page.locator('.guide-spot')).toBeHidden();
+  const guideBox = await box(page, '.guide');
+  const send = await page.getByRole('button', { name: '送る', exact: true }).boundingBox();
+  if (!send) throw new Error('送る が画面にありません');
+  const covered = [await box(page, '.preview-slot'), await box(page, '.log-section'), send];
+  for (const target of covered) {
+    const hits = guideBox.x < target.x + target.width && guideBox.x + guideBox.width > target.x && guideBox.y < target.y + target.height && guideBox.y + guideBox.height > target.y;
+    expect(hits, '操作ガイドがログ・ボタン・アプリにかぶっています').toBe(false);
+  }
 
   await expectRepairActionsInView(page);
 });
