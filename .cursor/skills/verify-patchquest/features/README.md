@@ -42,3 +42,5 @@ Each feature file starts with an H1 and one paragraph, then four H2 sections in 
 - [Records](./records.md) covers mastery and achievements, the absence of progress tools, and the absence of copy that points at 復習クエスト, 週間目標, 別条件で挑戦, or the mission-page XP display.
 - [Start an exercise](./start-exercise.md) covers starting `test-pack` and returning to the list with the same ticket.
 - [Situation screen](./situation.md) covers one request sentence, the `今やること` line, and the practice guide bar that does not cover the work.
+- [Investigation](./investigation.md) covers the investigate tab, where the raw request editor starts closed.
+- [Debrief](./debrief.md) covers the lesson at the top of 振り返り, the absence of 安全化状況 there, the understanding check, and retry.
