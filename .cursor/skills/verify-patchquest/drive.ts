@@ -27,12 +27,15 @@ type Step =
   | { action: 'goto'; path: string; blockIndexedDB?: boolean }
   | { action: 'press'; key: string }
   | { action: 'upload'; within?: string; file: { name: string; mimeType: string; text?: string; savedAs?: string } }
-  | { action: 'expectCount'; text: string; count: number; exact?: boolean }
+  | { action: 'expectCount'; text: string; count: number; exact?: boolean; within?: string }
+  | { action: 'expectTitle'; text: string }
   | { action: 'screenshot'; file: string; fullPage?: boolean };
 
 interface Recipe {
   baseURL: string;
   evidenceDir: string;
+  /** 省略時はブラウザの既定幅。狭い画面の確認だけ width と height を渡す */
+  viewport?: { width: number; height: number };
   steps: readonly Step[];
 }
 
@@ -74,7 +77,8 @@ async function expectHidden(page: Page, step: Extract<Step, { action: 'expectHid
 }
 
 async function expectCount(page: Page, step: Extract<Step, { action: 'expectCount' }>): Promise<void> {
-  const found = await page.getByText(step.text, { exact: step.exact === true }).count();
+  const root = step.within ? page.locator(step.within) : page;
+  const found = await root.getByText(step.text, { exact: step.exact === true }).count();
   if (found !== step.count) throw new Error(`「${step.text}」は ${found} 件でした。期待は ${step.count} 件です。`);
 }
 
@@ -94,6 +98,11 @@ async function download(page: Page, step: Extract<Step, { action: 'download' }>,
   await writeFile(join(evidenceDir, `${step.saveAs}.name.txt`), file.suggestedFilename());
 }
 
+async function expectTitle(page: Page, step: Extract<Step, { action: 'expectTitle' }>): Promise<void> {
+  const title = await page.title();
+  if (title !== step.text) throw new Error(`タブ名は ${JSON.stringify(title)} でした。期待は ${JSON.stringify(step.text)} です。`);
+}
+
 async function screenshot(page: Page, step: Extract<Step, { action: 'screenshot' }>, evidenceDir: string): Promise<void> {
   await page.screenshot({ path: join(evidenceDir, step.file), fullPage: step.fullPage === true });
 }
@@ -111,6 +120,7 @@ async function apply(page: Page, step: Step, evidenceDir: string): Promise<void>
     case 'expectVisible': return expectVisible(page, step);
     case 'expectHidden': return expectHidden(page, step);
     case 'expectCount': return expectCount(page, step);
+    case 'expectTitle': return expectTitle(page, step);
     case 'expectText': return expectText(page, step);
     case 'download': return download(page, step, evidenceDir);
     case 'screenshot': return screenshot(page, step, evidenceDir);
@@ -134,7 +144,7 @@ async function run(recipePath: string): Promise<void> {
   const recipe = readRecipe(recipePath);
   await mkdir(recipe.evidenceDir, { recursive: true });
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
-  const context = await browser.newContext({ baseURL: recipe.baseURL, acceptDownloads: true });
+  const context = await browser.newContext({ baseURL: recipe.baseURL, acceptDownloads: true, viewport: recipe.viewport });
   const page = await context.newPage();
   try {
     for (const step of recipe.steps) await apply(page, step, recipe.evidenceDir);
@@ -148,7 +158,7 @@ async function doctor(baseURL: string): Promise<void> {
   const page = await browser.newPage();
   try {
     await page.goto(baseURL, { waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { level: 1, name: '課題', exact: true }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true }).waitFor({ state: 'visible', timeout: 15_000 });
     console.log('ready');
   } finally {
     await browser.close();

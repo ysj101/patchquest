@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { enterWorkbench, expect, openHome, openRecords, tabTo, test } from './fixtures';
 
 const logo = (page: Page) => page.getByRole('button', { name: 'PatchQuest（課題一覧へ戻る）' });
-const missionHeading = (page: Page) => page.getByRole('heading', { level: 1, name: '課題', exact: true });
+const missionHeading = (page: Page) => page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true });
 const testPack = (page: Page) => page.locator('[data-mission="test-pack"]');
 
 /** 一覧の見出しに印を付ける。showList は子を描き直すので、印が残っていれば描き直していない */
