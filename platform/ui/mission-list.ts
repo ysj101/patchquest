@@ -1,5 +1,6 @@
-// ミッション一覧（spec §10）。「見出しと 1 行の説明と次の一歩 → 取り組み（XP・復習・週間目標）→ 難易度順の課題の表」を置く。
-// 習熟度と実績は記録ページ（records.ts）、進捗の書き出し・読み込み・削除は設定にある
+// ミッション一覧（spec §10）。「見出しと 1 行の説明と次の一歩 → 難易度順の課題の表」を置く。
+// 習熟度と実績は記録ページ（records.ts）、進捗の書き出し・読み込み・削除は設定にある。
+// XP・復習・週間目標の保存値は残すが、このページには出さない。
 import type { AttemptRecord } from '../contract';
 import { settingsButton } from './components';
 import { missionTable, nextEntry, type MissionEntry } from './mission-table';
@@ -13,7 +14,6 @@ export interface MissionListActions {
   openSettings(): void;
   start(packId: string): void;
   resume(record: AttemptRecord): void;
-  challenge(packId: string): void;
 }
 
 /** 何をする場所かの 1 行。脆弱性の数や名前は表の各行が示すので、ここでは列挙しない */
@@ -45,19 +45,16 @@ function hero(entries: MissionEntry[], actions: MissionListActions): HTMLElement
 export interface MissionListOptions {
   /** 分類ごとの習熟度。完了した課題の行に 1 行添える */
   mastery: MasterySummary;
-  /** 次の一歩の直下に置く「取り組み」（XP・復習クエスト・週間目標） */
-  engagement: HTMLElement;
   /** 保存できない理由。あれば先頭に出す */
   storageWarning: string | null;
 }
 
-export function missionList(entries: MissionEntry[], actions: MissionListActions, { mastery, engagement, storageWarning }: MissionListOptions): HTMLElement {
+export function missionList(entries: MissionEntry[], actions: MissionListActions, { mastery, storageWarning }: MissionListOptions): HTMLElement {
   return h(
     'div',
     { class: 'mission-list', 'data-anchor': 'mission-list' },
     hero(entries, actions),
     storageWarning ? storageWarningBanner(storageWarning, () => actions.openSettings()) : null,
-    engagement,
     missionTable(entries, actions, mastery),
     entries.length === 0 ? h('p', { class: 'empty' }, '同梱されている課題はありません。') : null,
   );

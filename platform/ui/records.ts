@@ -1,5 +1,5 @@
 // 記録ページ（spec §10）。分類ごとの習熟度と実績を置く。進捗の書き出し・読み込み・削除は設定にある。
-// 冒頭で「達成印 → 習熟度の★ → 復習で定着」という伸び方を 1 段落で説明する。XP・復習・週間目標は課題一覧の「取り組み」
+// 冒頭で「達成印 → 習熟度の★ → 復習で定着」という伸び方を 1 段落で説明する。XP・復習・週間目標は保存済みの記録に残る。
 import type { MissionPack } from '../contract';
 import type { ProfileSummary } from '../progress/profile';
 import { achievementList } from './achievement-list';

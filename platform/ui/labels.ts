@@ -85,7 +85,6 @@ export const MASTERY_LEVEL_LABEL: readonly string[] = ['未着手', '再現ま�
 export const MASTERY_NOTE = '習熟度は達成印と、別の条件（seed）での達成から計算します。';
 export const MASTERY_NOTE_MORE = 'XP とは別で、同じ条件の繰り返しでは上がりません。';
 
-export const XP_NOTE = 'XP は取り組みへの報酬です。理解度や達成印の判定は変わりません';
 export const PROFILE_RECOMPUTED = '取り込んだファイルの XP または実績は、そのファイルの記録と合わなかったため、記録から計算し直しました';
 
 /** 難易度の表示名。一覧はこの順に並べる */

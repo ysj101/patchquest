@@ -71,8 +71,6 @@ function masterySection(category: VulnerabilityCategory | undefined, mastery: Ma
 export interface DebriefActions {
   answer(answers: Record<string, string>): void;
   retry(): void;
-  /** 完了済みの課題を、新しい seed・variant と別の設問で解き直す */
-  challenge(): void;
 }
 
 /** 理解確認の出題の種類。チャレンジでは設問を選んで出していることを文字でも知らせる */
@@ -93,17 +91,14 @@ export class DebriefPanel {
 
   constructor(private readonly actions: DebriefActions) {}
 
-  /**
-   * mastery はこの演習を含めて計算した分類ごとの習熟度。課題の分類がないパック（練習）では出さない。
-   * challengeAvailable は、この課題に完了済みの記録（今回の演習を含む）があるか
-   */
-  update(snapshot: ExerciseSnapshot, mastery: MasterySummary, challengeAvailable: boolean): void {
+  /** mastery はこの演習を含めて計算した分類ごとの習熟度。課題の分類がないパック（練習）では出さない。 */
+  update(snapshot: ExerciseSnapshot, mastery: MasterySummary): void {
     const { attempt, pack } = snapshot;
     const { answers } = attempt;
-    const key = `${attempt.attemptId}|${attempt.badges.reproduction.achieved}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}|${challengeAvailable}`;
+    const key = `${attempt.attemptId}|${attempt.badges.reproduction.achieved}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}`;
     if (!this.guard.changed(key)) return;
     const { debrief, fixtures } = pack.manifest;
-    const retry = this.retrySection(fixtures.variants.length, challengeAvailable);
+    const retry = this.retrySection(fixtures.variants.length);
     if (!attempt.badges.defense.achieved) {
       fill(
         this.element,
@@ -174,7 +169,7 @@ export class DebriefPanel {
     this.actions.answer(Object.fromEntries(askedQuestions(snapshot.pack.manifest, snapshot.attempt).map((q) => [q.id, String(data.get(q.id) ?? '')])));
   }
 
-  private retrySection(variantCount: number, challengeAvailable: boolean): HTMLElement {
+  private retrySection(variantCount: number): HTMLElement {
     return h(
       'section',
       { class: 'tool-section', 'aria-labelledby': 'retry-title' },
@@ -187,19 +182,6 @@ export class DebriefPanel {
           : '新しい演習票で始めます。利用者やメモなどのデータが変わります（脆弱性の種類は同じです）。',
       ),
       h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button', on: { click: this.actions.retry } }, '新しいデータで再挑戦する')),
-      challengeAvailable
-        ? h(
-            'div',
-            { class: 'challenge' },
-            h('h4', { class: 'eyebrow' }, '別条件で挑戦'),
-            h(
-              'p',
-              { class: 'note' },
-              '同じ脆弱性を、使ったことのない seed（と別のバリエーション）で解き直します。新しい脆弱性ではありません。ヒントは閉じた状態から始まり、理解確認は前回と違う設問を出します。',
-            ),
-            h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary', on: { click: () => this.actions.challenge() } }, '別条件で挑戦する')),
-          )
-        : null,
     );
   }
 }
