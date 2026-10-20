@@ -1,6 +1,6 @@
 # Records
 
-Records shows mastery by category and achievements. It does not offer progress export, import, or delete.
+Records shows mastery by category and achievements. The lead explains badges and stars through ★3. It does not mention 復習クエスト, 週間目標, 別条件で挑戦, or the mission-page XP display. It does not offer progress export, import, or delete. Past challenge, review, and weekly-goal data still renders here.
 
 ## Sub-features
 
@@ -23,7 +23,8 @@ Preconditions:
 - **Open records.** Step `click` with role `button`, name `記録`, and `exact: true`. Heading `記録` is visible.
 - **See mastery and achievements.** Step `expectVisible` for region `習熟度` and region `実績`.
 - **Confirm tools are absent.** Step `expectCount` with text `進捗を書き出す` and count `0`.
-- **Proof.** Step `screenshot` with file `records.png`.
+- **Confirm removed features are not advertised.** Step `expectCount` with count `0` for each of `復習クエスト`, `週間目標`, `別条件で挑戦`, and `XP は取り組み`.
+- **Proof.** Step `screenshot` with file `records.png`. The shot shows mastery and achievements. It does not invite the learner to use a removed feature.
 
 ## Gotchas
 

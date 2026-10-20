@@ -82,8 +82,8 @@ export const STALE_VERIFICATION = '対策を変えたため、この結果はい
 
 /** 習熟度の段階の名前。★の数だけに頼らず文字でも示す（0〜5） */
 export const MASTERY_LEVEL_LABEL: readonly string[] = ['未着手', '再現まで', '防御まで', '理解まで', '別の条件でも達成', '別の条件で繰り返し達成'];
-export const MASTERY_NOTE = '習熟度は達成印と、別の条件（seed）での達成から計算します。';
-export const MASTERY_NOTE_MORE = 'XP とは別で、同じ条件の繰り返しでは上がりません。';
+export const MASTERY_NOTE = '習熟度は、保存された達成印から計算します。';
+export const MASTERY_NOTE_MORE = '同じ条件の繰り返しでは上がりません。';
 
 export const PROFILE_RECOMPUTED = '取り込んだファイルの XP または実績は、そのファイルの記録と合わなかったため、記録から計算し直しました';
 

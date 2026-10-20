@@ -73,12 +73,12 @@ export interface DebriefActions {
   retry(): void;
 }
 
-/** 理解確認の出題の種類。チャレンジでは設問を選んで出していることを文字でも知らせる */
+/** 理解確認の出題の種類。通常の演習と、出題を絞った演習で説明が分かれる */
 type TransferKind = 'normal' | 'fresh' | 'repeated';
 const TRANSFER_NOTE: Record<TransferKind, string> = {
   normal: '演習とは違う状況で、原因と有効な対策を選びます。',
-  fresh: '別条件での挑戦です。前回と違う設問を 1 問出します。',
-  repeated: '別条件での挑戦です。この課題の設問はすべて出し終えているため、前回と同じ設問を 1 問出し直します。',
+  fresh: '前回と違う設問を 1 問出します。',
+  repeated: 'この課題の設問はすべて出し終えているため、前回と同じ設問を 1 問出し直します。',
 };
 function transferKind(challenge: ExerciseSnapshot['attempt']['challenge']): TransferKind {
   if (challenge === null) return 'normal';
