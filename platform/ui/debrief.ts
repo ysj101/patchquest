@@ -7,7 +7,6 @@ import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { confirmDialog, radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
-import { securityComparison } from './security-comparison';
 import { securityHistory } from './security-history';
 import { HINT_LABEL, STALE_VERIFICATION } from './labels';
 import type { MasterySummary } from '../progress/mastery';
@@ -112,16 +111,19 @@ export class DebriefPanel {
     const form = this.transferForm(snapshot);
     const kind = transferKind(attempt.challenge);
     const closing = requesterVoice(pack.manifest.story.requester, 'closing');
+    const lesson = [
+      h('section', { class: 'tool-section debrief-cause' }, h('h3', {}, '原因'), h('p', {}, debrief.cause)),
+      h('section', { class: 'tool-section debrief-takeaway' }, h('h3', {}, '持ち帰ること'), h('ul', {}, ...debrief.takeaways.map((takeaway) => h('li', {}, takeaway)))),
+      h('section', { class: 'tool-section debrief-reason' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
+    ];
     fill(
       this.element,
       attempt.lastVerification && !isCurrent(attempt.lastVerification, attempt.configHash) ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null,
-      attempt.lastVerification ? securityComparison(snapshot.vulnerableVerification, attempt.lastVerification) : null,
-      securityHistory(snapshot),
+      ...lesson,
+      pack.manifest.vulnerability ? termsNote(pack.manifest.vulnerability) : null,
       guideVoice('closing'),
       closing ? characterVoice(closing) : null,
-      h('section', { class: 'tool-section' }, h('h3', {}, '原因'), h('p', {}, debrief.cause), pack.manifest.vulnerability ? termsNote(pack.manifest.vulnerability) : null),
-      h('section', { class: 'tool-section' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
-      h('section', { class: 'tool-section' }, h('h3', {}, '持ち帰ること'), h('ul', {}, ...debrief.takeaways.map((t) => h('li', {}, t)))),
+      securityHistory(snapshot),
       masterySection(pack.manifest.vulnerability?.category, mastery),
       h(
         'section',
