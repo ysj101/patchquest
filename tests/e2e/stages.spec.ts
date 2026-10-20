@@ -1,6 +1,6 @@
 // ステージの到達・取り消し・再開・別環境への復元を確かめる。
 import type { Page } from '@playwright/test';
-import { backToList, expect, launchButton, openMission, preview, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
+import { backToList, expect, launchButton, openMission, openRawRequest, preview, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
 
 const stages = (page: Page) => page.getByRole('list', { name: 'ステージ', exact: true });
 const count = (page: Page, total: number) => expect(page.getByRole('heading', { name: `ステージ ${total} / 5`, exact: true })).toBeVisible();
@@ -22,6 +22,7 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await count(page, 1);
   await expect(stages(page).locator('li').first()).toContainText('事件を確認済');
   await page.getByRole('tab', { name: '調査' }).click();
+  await openRawRequest(page);
   await page.locator('[data-anchor="request-editor"]').getByRole('button', { name: 'このリクエストを送る' }).click();
   await count(page, 2);
   const investigation = stages(page).locator('li').nth(1);

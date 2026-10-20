@@ -605,6 +605,9 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .character-voice-compact blockquote { grid-column: 3; grid-row: 1; padding: 0; border: 0; background: transparent; }
 .character-voice-compact figcaption { grid-column: 2; grid-row: 1; }
 
+/* ux-collapse-raw-request */
+.raw-request summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }
+
 /* ux-reflect-first。広い道具パネルでは既存の2列の先頭を「原因」と「持ち帰ること」にし、理由は次の行に置く。検証画面と同じ安全化状況は振り返りに出さない。 */
 @container tools (min-width: 40rem) {
   .debrief:has(.transfer) > .banner { grid-column: 1 / -1; }
