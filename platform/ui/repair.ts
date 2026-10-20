@@ -1,6 +1,7 @@
 // 対策パネルと検証結果（spec §10）。修正方針を選んで適用・取り消しし、参考コード差分を閲覧し、
 // 攻撃阻止・正常系・回帰を検証する。合否は実際の実行結果だけで決まり、選んだ対策の ID では決まらない
-import { RESULT_GROUPS, type DefenseDef, type TestOutcome, type VerificationReport } from '../contract';
+import { RESULT_GROUPS, type DefenseDef, type ReferenceDiff, type TestOutcome, type VerificationReport } from '../contract';
+import { highlightSource } from '../syntax/highlight';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
@@ -73,6 +74,15 @@ function resultNodes(report: VerificationReport, stale: boolean, before: Verific
   ].filter((node): node is HTMLElement => node !== null);
 }
 
+type DiffPane = 'diff-before' | 'diff-after';
+
+function codePane(pane: DiffPane, caption: string, source: string, language: ReferenceDiff['language']): HTMLElement {
+  const body = highlightSource(language, source).map((token) =>
+    token.kind === 'text' ? token.text : h('span', { class: `code-token code-token-${token.kind}` }, token.text),
+  );
+  return h('figure', {}, h('figcaption', {}, caption), h('pre', { class: `mono ${pane}` }, h('code', {}, ...body)));
+}
+
 /** 不合格の総評の直後に、対策の選び直しへ戻るボタンを差し込む */
 function withRechoose(nodes: HTMLElement[], rechoose: HTMLButtonElement): HTMLElement[] {
   const index = nodes.findIndex((node) => node.classList.contains('banner-error'));
@@ -86,7 +96,7 @@ export class RepairPanel {
   private readonly applied = h('p', { class: 'applied' });
   private readonly diff = h('div', { class: 'diff' });
   /** 初めは閉じる。開いた参考コードの下に検証を置くと、パネル内をスクロールしないと押せない */
-  private readonly reference = h('details', { class: 'reference-code' }, h('summary', {}, '参考コードを見る'), this.diff);
+  private readonly reference = h('details', { class: 'reference-code' }, h('summary', { role: 'button' }, '参考コードを見る'), this.diff);
   private readonly verifyButton = h(
     'button',
     { type: 'button', class: 'button button-primary', 'data-anchor': 'verify', on: { click: () => void this.actions.verify() } },
@@ -217,11 +227,16 @@ export class RepairPanel {
     const defense = this.defenses.find((item) => item.id === this.selected);
     this.reference.hidden = !defense;
     if (!defense) return void this.diff.replaceChildren();
-    const { file, before, after } = defense.referenceDiff;
+    const { file, before, after, language } = defense.referenceDiff;
     fill(
       this.diff,
       h('h4', {}, `参考コード（閲覧専用）：${file}`),
-      h('div', { class: 'diff-pair' }, h('figure', {}, h('figcaption', {}, '変更前（いまの状態）'), h('pre', { class: 'mono diff-before' }, before)), h('figure', {}, h('figcaption', {}, `変更後（${defense.label}）`), h('pre', { class: 'mono diff-after' }, after))),
+      h(
+        'div',
+        { class: 'diff-pair' },
+        codePane('diff-before', '変更前（いまの状態）', before, language),
+        codePane('diff-after', `変更後（${defense.label}）`, after, language),
+      ),
     );
   }
 

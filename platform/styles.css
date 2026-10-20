@@ -604,3 +604,9 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .character-voice-compact .character-face, .character-voice-compact .character-live { width: 24px; height: 24px; grid-row: 1; }
 .character-voice-compact blockquote { grid-column: 3; grid-row: 1; padding: 0; border: 0; background: transparent; }
 .character-voice-compact figcaption { grid-column: 2; grid-row: 1; }
+
+/* ux-syntax-highlight */
+.diff-pair code { font: inherit; color: inherit; }
+.code-token-keyword { color: #9ecbff; }
+.code-token-string { color: #f0c674; }
+.code-token-comment { color: var(--muted); }
