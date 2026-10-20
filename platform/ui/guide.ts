@@ -1,6 +1,6 @@
 // 操作ガイド（練習用パック）。マニフェストの guide を 1 ステップずつ示し、各ステップの until の出来事が起きたら、
 // 短い言葉（praise）をかけて次へ進む。うまくいかなかったとき（retry.when）は次の手を示す。
-// 画面上の位置は data-anchor で探し、案内先のまわりを残して画面を暗くするスポットライトと、そばに置く吹き出しで示す。
+// 画面上の位置は data-anchor で探し、案内先だけを光らせる。吹き出しはサイト見出しの直下の一行に置き、暗幕では覆わない。
 // コアUIに課題ごとの分岐は入れず、ガイドの中身はすべてパックのデータで決まる
 import type { AttemptRecord, GuideMilestone, GuideStep } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
@@ -89,7 +89,8 @@ export class GuidePanel {
     const closed = target?.closest(`[hidden][${REVEALABLE_ATTR}]`);
     this.marked = (closed ? document.getElementById(closed.getAttribute(REVEALABLE_ATTR) ?? '') : target) ?? null;
     this.marked?.setAttribute(TARGET_ATTR, '');
-    this.spotlight.follow(this.element.hidden ? null : this.marked);
+    // 暗幕はログ・ボタン・アプリにかぶる。案内先の光だけ残し、吹き出しは見出しの直下の一行に固定する。
+    this.spotlight.follow(null);
   }
 
   private current(): GuideStep | undefined {
