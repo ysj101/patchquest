@@ -41,3 +41,4 @@ Each feature file starts with an H1 and one paragraph, then four H2 sections in 
 - [Settings](./settings.md) covers effect controls and progress export, import, and delete.
 - [Records](./records.md) covers mastery and achievements, the absence of progress tools, and the absence of copy that points at 復習クエスト, 週間目標, 別条件で挑戦, or the mission-page XP display.
 - [Start an exercise](./start-exercise.md) covers starting `test-pack` and returning to the list with the same ticket.
+- [Debrief](./debrief.md) covers the lesson at the top of 振り返り, the absence of 安全化状況 there, the understanding check, and retry.
