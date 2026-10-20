@@ -30,3 +30,4 @@ Preconditions:
 
 - There is no `設定` button on this page. Open settings from the mission list or from the storage warning's `設定を開く` button when that banner is shown.
 - The name `記録` matches mastery and achievements. A progress tools section on this page means the map is stale.
+- `判定の根拠` is a `group` inside the category row. Its accessible name is empty, so click that group with `within` set to `.records-page li:has(.mastery-line[data-category=authorization])` and no name.
