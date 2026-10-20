@@ -44,3 +44,4 @@ Each feature file starts with an H1 and one paragraph, then four H2 sections in 
 - [Situation screen](./situation.md) covers one request sentence, the `今やること` line, and the practice guide bar that does not cover the work.
 - [Investigation](./investigation.md) covers the investigate tab, where the raw request editor starts closed.
 - [Debrief](./debrief.md) covers the lesson at the top of 振り返り, the absence of 安全化状況 there, the understanding check, and retry.
+- [Reference code](./reference-code.md) covers opening `参考コードを見る` and the colored keywords, strings, and comments on the before and after panes.

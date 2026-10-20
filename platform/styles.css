@@ -616,6 +616,12 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
   .debrief:has(.transfer) > .debrief-reason { grid-column: 1 / -1; }
 }
 
+/* ux-syntax-highlight */
+.diff-pair code { font: inherit; color: inherit; }
+.code-token-keyword { color: #9ecbff; }
+.code-token-string { color: #f0c674; }
+.code-token-comment { color: var(--muted); }
+
 /* ux-brief-and-guide
    操作ガイドはサイト見出しの直下の一行に固定し、暗幕でログ・ボタン・アプリを覆わない。
    見出しのボタンはガイドより手前に残す。ガイドの文字はクリックを通す。
