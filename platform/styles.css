@@ -615,3 +615,9 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
   .debrief:has(.transfer) > .debrief-takeaway { grid-column: auto; }
   .debrief:has(.transfer) > .debrief-reason { grid-column: 1 / -1; }
 }
+
+/* ux-syntax-highlight */
+.diff-pair code { font: inherit; color: inherit; }
+.code-token-keyword { color: #9ecbff; }
+.code-token-string { color: #f0c674; }
+.code-token-comment { color: var(--muted); }

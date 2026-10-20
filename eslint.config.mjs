@@ -29,6 +29,7 @@ const LAYERS = [
   { target: 'platform/evaluator', allow: ['platform/contract'], role: '採点' },
   { target: 'platform/orchestrator', allow: ['platform/contract', 'platform/evaluator'], role: '実行制御' },
   { target: 'platform/progress', allow: ['platform/contract'], role: '進捗の保存' },
+  { target: 'platform/syntax', allow: ['platform/contract'], role: '参考コードの色分け' },
   {
     target: 'platform/ui',
     // app.ts が全体を組み立てる。ブラウザ用アダプター以外の実行環境の中身には触れない
