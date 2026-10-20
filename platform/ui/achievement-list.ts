@@ -2,6 +2,7 @@
 import { ACHIEVEMENTS, titleFor, type AchievementId, type UnlockedAchievements } from '../progress/achievements';
 import { sectionNote } from './components';
 import { h } from './dom';
+import { japanDateLabel } from './japan-time';
 
 const NOTE = '実績は保存された記録から判定します。';
 const NOTE_MORE = 'ヒントや解法を見ても減点はありません。';
@@ -11,7 +12,7 @@ function achievementItem(id: AchievementId, name: string, description: string, a
     'li',
     { 'data-achievement': id },
     h('strong', {}, name),
-    at === undefined ? h('p', {}, '未解除') : h('p', {}, '解除済み：', h('time', { dateTime: at }, at)),
+    at === undefined ? h('p', {}, '未解除') : h('p', {}, '解除済み：', h('time', { dateTime: at }, japanDateLabel(at))),
     h('details', { class: 'summary-fold' }, h('summary', {}, '条件'), h('p', {}, description)),
   );
 }
