@@ -41,7 +41,9 @@ test('不十分・全面停止・正しい対策の数値と改善履歴を保�
   await openMission(page, 'test-pack', { resume: true });
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(history).toHaveText(saved, { useInnerText: true });
-  await expect(page.locator('.debrief .security-status')).toContainText('修正前');
+  await expect(page.locator('.debrief .security-status')).toHaveCount(0);
+  await page.getByRole('tab', { name: '対策' }).click();
+  await expect(verifyResults(page).locator('.security-status')).toContainText('修正前');
 });
 
 test('振り返りは対策取り消し・リセット・再開後の古い検証結果を警告する', async ({ page }) => {
