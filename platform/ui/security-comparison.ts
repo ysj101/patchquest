@@ -1,4 +1,4 @@
-// 検証結果の結論。グループごとに合否を1行で示し、割合は出さない。
+// 検証結果の結論。グループごとに合否を1行で示し、不合格の対策があればその一文を最後に足す。
 import { RESULT_GROUPS, type ResultGroup, type TestOutcome, type VerificationReport } from '../contract';
 import { status, type StatusKind } from './components';
 import { h } from './dom';
@@ -17,8 +17,9 @@ function conclusionLine(group: ResultGroup, outcomes: TestOutcome[]): HTMLElemen
   return h('p', { class: 'conclusion', 'data-group': group }, `${GROUP_LABEL[group]}：`, status(mark.kind, mark.text));
 }
 
-/** いまの検証について、テストがあるグループだけ合否を1行ずつ示す。 */
-export function securityComparison(report: VerificationReport): HTMLElement {
+/** いまの検証について、テストがあるグループだけ合否を1行ずつ示し、一文があれば最後に足す。 */
+export function securityComparison(report: VerificationReport, whyItFailed: string | null): HTMLElement {
   const lines = RESULT_GROUPS.map((group) => conclusionLine(group, report.outcomes.filter((outcome) => outcome.group === group)));
-  return h('div', { class: 'verify-conclusions' }, ...lines);
+  const why = whyItFailed === null ? null : h('p', { class: 'conclusion-why' }, whyItFailed);
+  return h('div', { class: 'verify-conclusions' }, ...lines, why);
 }
