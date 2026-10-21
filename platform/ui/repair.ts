@@ -5,6 +5,7 @@ import { highlightSource } from '../syntax/highlight';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
+import { failedOutcomes, verdictKind, whyDefenseFailed } from './verdict';
 import { radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
 import { GROUP_LABEL, STALE_VERIFICATION, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
@@ -13,20 +14,6 @@ export interface RepairActions {
   apply(defenseId: string | null): Promise<void>;
   verify(): Promise<void>;
   reset(): Promise<void>;
-}
-
-type VerdictKind = 'secured' | 'undetermined' | 'insufficient';
-
-function failedOutcomes(report: VerificationReport): TestOutcome[] {
-  return report.outcomes.filter((outcome) => !outcome.passed);
-}
-
-/** 総評の種類。実行環境のエラーは不合格に数えない */
-function verdictKind(report: VerificationReport): VerdictKind {
-  const failed = failedOutcomes(report);
-  if (failed.length === 0) return 'secured';
-  if (failed.some((outcome) => outcome.error)) return 'undetermined';
-  return 'insufficient';
 }
 
 /** 検証結果の総評。記号と言葉で示す */
@@ -75,8 +62,8 @@ function resultDetails(report: VerificationReport, stale: boolean): HTMLElement 
   return h('details', { class: 'verify-details' }, h('summary', { role: 'button' }, '詳しく見る'), ...outcomeGroups(report, stale));
 }
 
-function resultNodes(report: VerificationReport, stale: boolean): HTMLElement[] {
-  return [stale ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null, verdict(report), securityComparison(report), resultDetails(report, stale)].filter((node): node is HTMLElement => node !== null);
+function resultNodes(report: VerificationReport, stale: boolean, whyItFailed: string | null): HTMLElement[] {
+  return [stale ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null, verdict(report), securityComparison(report, whyItFailed), resultDetails(report, stale)].filter((node): node is HTMLElement => node !== null);
 }
 
 type DiffPane = 'diff-before' | 'diff-after';
@@ -218,7 +205,7 @@ export class RepairPanel {
       fill(this.results, h('p', { class: 'muted' }, 'まだ検証していません。'));
       return;
     }
-    const nodes = resultNodes(report, !isCurrent(report, attempt.configHash));
+    const nodes = resultNodes(report, !isCurrent(report, attempt.configHash), whyDefenseFailed(snapshot));
     fill(this.results, ...(verdictKind(report) === 'insufficient' ? withRechoose(nodes, this.rechooseButton) : nodes));
   }
 
