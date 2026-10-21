@@ -169,16 +169,31 @@ export interface ReferenceDiff {
 
 /** secure: 攻撃を防ぎ正常系も通る / insufficient: 攻撃が成立したまま / breaks-normal: 正常系が壊れる */
 export const DEFENSE_EXPECTATIONS = ['secure', 'insufficient', 'breaks-normal'] as const;
+export type DefenseExpectation = (typeof DEFENSE_EXPECTATIONS)[number];
 
-export interface DefenseDef {
+interface DefenseFields {
   id: string;
   label: string;
   description: string;
   apply: ImplementationChange[];
   referenceDiff: ReferenceDiff;
-  /** パック出荷前検証で確かめる期待結果。演習の採点には使わない（spec §11.2） */
-  expected: (typeof DEFENSE_EXPECTATIONS)[number];
 }
+
+interface SecureDefense extends DefenseFields {
+  /** パック出荷前検証で確かめる期待結果。演習の採点には使わない（spec §11.2） */
+  expected: 'secure';
+  whyItFails?: never;
+}
+
+interface WrongDefense extends DefenseFields {
+  /** パック出荷前検証で確かめる期待結果。演習の採点には使わない（spec §11.2） */
+  expected: Exclude<DefenseExpectation, 'secure'>;
+  /** この対策の検証が不合格のとき、結論の下に出す一文。正しい対策の名前や手がかりは書かない */
+  whyItFails: string;
+}
+
+/** secure は whyItFails を持たない。それ以外は、不合格のときに結論の下へ出す一文を持つ */
+export type DefenseDef = SecureDefense | WrongDefense;
 
 /** 1: 着眼点、2: 調査方法、3: 修正方針（spec §9） */
 export interface HintDef {
