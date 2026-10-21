@@ -192,7 +192,6 @@ interface WrongDefense extends DefenseFields {
   whyItFails: string;
 }
 
-/** secure は whyItFails を持たない。それ以外は、不合格のときに結論の下へ出す一文を持つ */
 export type DefenseDef = SecureDefense | WrongDefense;
 
 /** 1: 着眼点、2: 調査方法、3: 修正方針（spec §9） */
