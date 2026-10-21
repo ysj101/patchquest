@@ -5,6 +5,7 @@ import { highlightSource } from '../syntax/highlight';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
+import { failedOutcomes, verdictKind } from './verdict';
 import { radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
 import { GROUP_LABEL, STALE_VERIFICATION, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
@@ -13,20 +14,6 @@ export interface RepairActions {
   apply(defenseId: string | null): Promise<void>;
   verify(): Promise<void>;
   reset(): Promise<void>;
-}
-
-type VerdictKind = 'secured' | 'undetermined' | 'insufficient';
-
-function failedOutcomes(report: VerificationReport): TestOutcome[] {
-  return report.outcomes.filter((outcome) => !outcome.passed);
-}
-
-/** 総評の種類。実行環境のエラーは不合格に数えない */
-function verdictKind(report: VerificationReport): VerdictKind {
-  const failed = failedOutcomes(report);
-  if (failed.length === 0) return 'secured';
-  if (failed.some((outcome) => outcome.error)) return 'undetermined';
-  return 'insufficient';
 }
 
 /** 検証結果の総評。記号と言葉で示す */
