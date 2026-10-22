@@ -1,6 +1,6 @@
-// ミッション導入の初回表示・読み直し・保存済み記録によるスキップを確かめる
+// ミッション導入の表示・読み直しと、続きから始めるときのスキップを確かめる
 import type { Page } from '@playwright/test';
-import { backToList, expect, expectWorkbench, launchButton, openMission, test, openHome } from './fixtures';
+import { backToList, expect, expectWorkbench, launchButton, openMission, test, ticketSeals, openHome } from './fixtures';
 
 const briefing = (page: Page) => page.locator('[data-anchor="briefing"]');
 
@@ -35,15 +35,16 @@ test('初回の事件と依頼、注意書きと演習票を表示し、Escで�
   expect(await frame.evaluate((element, previous) => element === previous, original)).toBe(true);
 });
 
-test('同じ課題の再挑戦と続きからの開始では導入を飛ばし、別の課題では表示する', async ({ page }) => {
+test('同じ課題の再挑戦では導入を再び表示し、続きからは飛ばし、別の課題でも表示する', async ({ page }) => {
   await openHome(page);
   await openMission(page, 'idor');
   await launchButton(page).click();
-  for (const resume of [false, true]) {
-    await backToList(page).click();
-    await openMission(page, 'idor', { resume });
-    await expectWorkbench(page);
-  }
+  await backToList(page).click();
+  await openMission(page, 'idor');
+  await expect(briefing(page)).toBeVisible();
+  await backToList(page).click();
+  await openMission(page, 'idor', { resume: true });
+  await expectWorkbench(page);
   await backToList(page).click();
   await openMission(page, 'sqli');
   await expect(briefing(page)).toBeVisible();
@@ -62,20 +63,42 @@ for (const missionId of ['idor', 'sqli', 'stored-xss', 'onboarding']) {
   });
 }
 
-test('練習課題の既定スキップでは導入のステップも済みになり、読み直してもガイドは進まない', async ({ page }) => {
+test('練習課題を始め直しても導入を表示し、閉じると導入は済みのまま読み直してもガイドは進まない', async ({ page }) => {
   await openHome(page);
   await openMission(page, 'onboarding');
   await page.keyboard.press('Escape');
   await backToList(page).click();
   await openMission(page, 'onboarding');
+  await expect(briefing(page)).toBeVisible();
+  await page.keyboard.press('Escape');
   await expectWorkbench(page);
   const guide = page.getByRole('complementary', { name: '操作ガイド' });
-  await expect(guide.locator('.guide-count')).toHaveText('3 / 6');
+  await expect(guide.locator('.guide-count')).toHaveText('1 / 6');
+  await expect(guide.getByRole('heading', { level: 3 })).toHaveText('こわしてみよう');
   await expect(guide.getByRole('list', { name: '練習の手順' })).toContainText('何が起きたか読んでみよう：済み');
   await page.getByRole('button', { name: '導入をもう一度見る' }).click();
   await page.keyboard.press('Escape');
   await expectWorkbench(page);
-  await expect(guide.locator('.guide-count')).toHaveText('3 / 6');
+  await expect(guide.locator('.guide-count')).toHaveText('1 / 6');
+  await expect(guide.getByRole('heading', { level: 3 })).toHaveText('こわしてみよう');
+});
+
+test('再現を達成した練習を再読み込みして続きから始めると、導入を飛ばしてなおし方を選ぼうを開く', async ({ page }) => {
+  await openHome(page);
+  await openMission(page, 'onboarding');
+  await launchButton(page).click();
+  await page.getByRole('tab', { name: '調査' }).click();
+  await page.getByRole('button', { name: '送る', exact: true }).click();
+  await expect(ticketSeals(page)).toContainText('再現：達成');
+  await backToList(page).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true })).toBeVisible();
+  await page.reload();
+  await openHome(page);
+  await openMission(page, 'onboarding', { resume: true });
+  await expectWorkbench(page);
+  const guide = page.getByRole('complementary', { name: '操作ガイド' });
+  await expect(guide.locator('.guide-count')).toHaveText('2 / 6');
+  await expect(guide.getByRole('heading', { level: 3 })).toHaveText('なおし方を選ぼう');
 });
 
 test('ブラウザに保存できない場合は同じ課題でも毎回導入を表示する', async ({ page }) => {
