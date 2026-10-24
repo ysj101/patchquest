@@ -16,7 +16,7 @@ export const storedXssPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'stored-xss',
-    version: '1.6.0',
+    version: '1.7.0',
     kind: 'mission',
     title: 'コメントからのスクリプト実行を防ぐ',
     summary:
@@ -112,6 +112,7 @@ export const storedXssPack: MissionPack = {
   el.innerHTML = withoutScript;
 };`,
         },
+        whyItFails: 'script タグ以外の書き方は残り、画像の onerror が共有ページで実行されました。',
         expected: 'insufficient',
       },
       {
@@ -127,6 +128,7 @@ export const storedXssPack: MissionPack = {
   el.textContent = '';
 };`,
         },
+        whyItFails: 'コメントを出さないようにしたため、普通のコメントが読めなくなり、攻撃に使った文字列も画面に残りませんでした。',
         expected: 'breaks-normal',
       },
     ],

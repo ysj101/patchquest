@@ -13,7 +13,7 @@ import {
 } from './manifest';
 import { ANONYMOUS, CAPABILITIES, HTTP_METHODS, type AppDescriptor, type ImplementationRegistry } from './runtime';
 import { STEP_KINDS, TEST_CATEGORIES } from './scenario';
-import { Checker, isObj } from './checker';
+import { Checker, isObj, type Obj } from './checker';
 import { isVersion, isVersionRange, satisfies } from './version';
 
 export interface ValidationContext {
@@ -167,6 +167,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     c.text(`${at}.referenceDiff.before`, diff.before);
     c.text(`${at}.referenceDiff.after`, diff.after);
     c.oneOf(`${at}.expected`, d.expected, DEFENSE_EXPECTATIONS);
+    checkWhyItFails(c, at, d);
     expectations.push(d.expected);
   });
   if (!expectations.includes('secure')) c.fail('defenses', "expected が 'secure' の対策が1つ以上必要です");
@@ -224,6 +225,17 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   }
 
   return c.errors;
+}
+
+function checkWhyItFails(checker: Checker, at: string, defense: Obj): void {
+  const expected = defense.expected;
+  if (expected === 'insufficient' || expected === 'breaks-normal') {
+    checker.text(`${at}.whyItFails`, defense.whyItFails);
+    return;
+  }
+  if (expected === 'secure' && defense.whyItFails !== undefined) {
+    checker.fail(`${at}.whyItFails`, "expected が 'secure' の対策に whyItFails は書けません");
+  }
 }
 
 function checkWorkedExample(checker: Checker, value: unknown): void {

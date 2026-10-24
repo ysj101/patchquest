@@ -16,6 +16,8 @@ test('不十分な対策・全面停止・正しい対策の結論と、改善�
   const conclusions = results.locator('.verify-conclusions');
   await expect(conclusions.locator('[data-group="attack"]')).toContainText('攻撃が通ってしまう');
   await expect(conclusions).not.toContainText('%');
+  await expect(conclusions.locator('> :last-child')).toHaveClass('conclusion-why');
+  await expect(conclusions.locator('> :last-child')).toHaveText('表示を変えただけでは、ID を直接指定した取得が通り、他人のノートが読めました。');
   await expect(results.locator('.security-status')).toHaveCount(0);
   await expect(results.locator('.outcome').first()).toBeHidden();
   const normalHeading = results.locator('.result-group h4', { hasText: '正常な利用ができるか' });
@@ -30,6 +32,7 @@ test('不十分な対策・全面停止・正しい対策の結論と、改善�
 
   await verifyWith(page, '所有者を照合する');
   await expect(conclusions.locator('[data-group="attack"]')).toContainText('合格');
+  await expect(conclusions.locator('.conclusion-why')).toHaveCount(0);
   await expect(conclusions).not.toContainText('%');
   await page.getByRole('tab', { name: '振り返り' }).click();
   const history = page.locator('.security-history');
