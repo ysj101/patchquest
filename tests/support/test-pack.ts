@@ -65,6 +65,7 @@ export const testPack: MissionPack = {
         description: 'ノートの取得をすべて拒否する',
         apply: [{ hook: 'note.read', implementation: 'test-pack/deny-all' }],
         referenceDiff: { file: 'notes.ts', language: 'ts', before: 'return note;', after: "return 'forbidden';" },
+        whyItFails: '他人のノートは読めなくなりましたが、自分のノートも読めなくなりました。',
         expected: 'breaks-normal',
       },
       {
@@ -73,6 +74,7 @@ export const testPack: MissionPack = {
         description: '表示を変えるだけでは直接の要求を防げない',
         apply: [{ hook: 'note.read', implementation: 'test-pack/any-owner' }],
         referenceDiff: { file: 'notes.ts', language: 'ts', before: 'return note;', after: 'return note; // 表示だけ変更' },
+        whyItFails: '表示を変えただけでは、ID を直接指定した取得が通り、他人のノートが読めました。',
         expected: 'insufficient',
       },
     ],

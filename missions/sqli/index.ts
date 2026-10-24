@@ -22,7 +22,7 @@ export const sqliPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sqli',
-    version: '1.6.0',
+    version: '1.7.0',
     kind: 'mission',
     title: '検索条件からの情報漏えいを防ぐ',
     estimatedMinutes: 15,
@@ -130,6 +130,7 @@ export const sqliPack: MissionPack = {
   return concatenated(userId, term);
 };`,
         },
+        whyItFails: 'UNION という語を含まない検索語では、条件を広げる書き方がこれまでどおり通り、他人のメモが返ってきました。',
         expected: 'insufficient',
       },
       {
@@ -146,6 +147,7 @@ export const sqliPack: MissionPack = {
   bind: [userId],
 });`,
         },
+        whyItFails: '他人のメモは出なくなりましたが、自分のメモも検索では見つからなくなりました。',
         expected: 'breaks-normal',
       },
     ],

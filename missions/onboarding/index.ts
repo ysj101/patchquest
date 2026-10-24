@@ -20,7 +20,7 @@ export const onboardingPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'onboarding',
-    version: '1.3.0',
+    version: '1.4.0',
     kind: 'tutorial',
     title: '練習：はじめての修正',
     summary: 'わざと壊したメモアプリで「こわす → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
@@ -84,6 +84,7 @@ export const onboardingPack: MissionPack = {
           before: 'const prepareTitleInput = (input) => {};',
           after: 'const prepareTitleInput = (input) => {\n  input.maxLength = 40;\n};',
         },
+        whyItFails: '入力欄の上限は画面にしか効かず、画面を通さずに送ると長いタイトルのまま保存できました。',
         expected: 'insufficient',
       },
       {
@@ -97,6 +98,7 @@ export const onboardingPack: MissionPack = {
           before: NO_TITLE_CHECK,
           after: "const validateTitle = (title) => ({ ok: false, message: 'メモは保存できません' });",
         },
+        whyItFails: '長いタイトルは止まりましたが、普通のメモも保存できなくなりました。',
         expected: 'breaks-normal',
       },
       {

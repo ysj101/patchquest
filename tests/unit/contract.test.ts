@@ -144,6 +144,29 @@ describe('validatePack', () => {
     ['レシピが宣言していないフックを変更', (m) => (m.mutationRecipes[0]!.apply[0]!.hook = 'comment.render'), /未定義のフック「comment.render」/],
     ['登録されていない実装を参照', (m) => (m.defenses[0]!.apply[0]!.implementation = 'sample/missing'), /実装「sample\/missing」が登録されていません/],
     ['正解の対策がない', (m) => (m.defenses[0]!.expected = 'insufficient'), /^defenses: /],
+    [
+      '不十分な対策に whyItFails がない',
+      (manifest) => {
+        manifest.defenses.push({
+          id: 'hide',
+          label: '画面だけ変える',
+          description: 'リンクを隠す',
+          apply: [{ hook: 'memo.read.authorize', implementation: 'sample/owner-check' }],
+          referenceDiff: { file: 'memos.ts', language: 'ts', before: 'a', after: 'b' },
+          expected: 'insufficient',
+        } as MissionManifest['defenses'][number]);
+      },
+      /^defenses\[1\]\.whyItFails: /,
+    ],
+    [
+      '安全な対策に whyItFails がある',
+      (manifest) => {
+        const defense = manifest.defenses[0];
+        if (defense === undefined) throw new Error('対策がありません');
+        Object.assign(defense, { whyItFails: '画面のリンクを隠しても、ID を直接指定した取得はそのまま通りました。' });
+      },
+      /^defenses\[0\]\.whyItFails: /,
+    ],
     ['ヒントの段階が欠けている', (m) => m.hints.pop(), /^hints: /],
     ['正解のない理解確認', (m) => (m.transferCheck[0]!.choices[0]!.correct = false), /正解の選択肢が必要です/],
     ['ID の重複', (m) => m.probes.push({ ...m.probes[0]! }), /「read-other」が重複しています/],

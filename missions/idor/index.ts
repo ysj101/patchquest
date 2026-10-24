@@ -26,7 +26,7 @@ export const idorPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'idor',
-    version: '1.6.0',
+    version: '1.7.0',
     kind: 'mission',
     title: '非公開メモを守る',
     summary:
@@ -105,6 +105,7 @@ export const idorPack: MissionPack = {
           after:
             'const pickNeighbors = ({ id, ownIds }) => {\n  const before = ownIds.filter((own) => own < id);\n  const after = ownIds.filter((own) => own > id);\n  return {\n    prev: before.length > 0 ? Math.max(...before) : null,\n    next: after.length > 0 ? Math.min(...after) : null,\n  };\n};',
         },
+        whyItFails: '画面の前後のリンクを隠しても、ID を直接指定した取得はそのまま通り、他人のメモが読めました。',
         expected: 'insufficient',
       },
       {
@@ -131,6 +132,7 @@ export const idorPack: MissionPack = {
           before: READ_WITHOUT_OWNER_CHECK,
           after: readMemoSource("  return { status: 'forbidden' };"),
         },
+        whyItFails: '他人のメモは読めなくなりましたが、自分のメモも ID を指定して読めなくなりました。',
         expected: 'breaks-normal',
       },
     ],
