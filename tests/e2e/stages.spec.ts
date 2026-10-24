@@ -51,7 +51,7 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await count(page, 5);
 });
 
-test('到達記録は再開・再読み込み・別環境への取り込みで保ち、再挑戦は導入を既定で飛ばす', async ({ page, browser }) => {
+test('到達記録は再開・再読み込み・別環境への取り込みで保ち、最初から始めると導入を表示して段階は最初に戻る', async ({ page, browser }) => {
   await startMission(page, 'idor');
   await apply(page);
   const before = await stages(page).allTextContents();
@@ -80,8 +80,9 @@ test('到達記録は再開・再読み込み・別環境への取り込みで�
   }
   await openHome(page);
   await openMission(page, 'idor');
+  await expect(launchButton(page)).toBeVisible();
+  await launchButton(page).click();
   await count(page, 1);
-  await expect(launchButton(page)).toBeHidden();
 });
 
 test('動きを減らしても到達と現在地を文字で示し、導入の読み直しでは再通知しない', async ({ page }) => {
