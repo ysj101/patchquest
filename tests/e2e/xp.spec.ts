@@ -47,6 +47,7 @@ test('各段階で報酬を受け取り、再挑戦は20 XPだけ加算し、再
   await expect(badge(page).locator('.xp-gain')).toHaveCount(0);
   await backToList(page).click();
   await openMission(page, 'test-pack');
+  await launchButton(page).click();
   await investigate(page);
   await reproduceNoteLeak(page);
   await repair(page);

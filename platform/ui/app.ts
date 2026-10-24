@@ -191,7 +191,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (!document.querySelector('dialog[open]')) recordsView.querySelector<HTMLElement>('h1')?.focus();
   }
 
-  /** 導入を見せる演習の ID。同じ課題の記録（今回の演習を除く）が保存済みなら見せない */
   let briefingAttemptId: string | null = null;
   async function begin(packId: string, resume?: AttemptRecord): Promise<void> {
     others = [];
@@ -201,8 +200,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     announce(live, '開始前チェックを始めました');
     const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
     others = records.filter((record) => record.attemptId !== snapshot.attempt.attemptId);
-    const seen = records.some((record) => record.missionId === packId && record.attemptId !== snapshot.attempt.attemptId);
-    briefingAttemptId = !resume && (!!store.unavailableReason || !seen) ? snapshot.attempt.attemptId : null;
+    briefingAttemptId = resume ? null : snapshot.attempt.attemptId;
     announce(live, isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
   }
 
