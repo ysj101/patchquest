@@ -77,7 +77,6 @@ test('1512×900 の練習では、操作ガイドがあっても送る・適用�
   await page.getByRole('tab', { name: '調査' }).click();
   await expectNoPanelScroll(page);
   await expect(page.getByRole('button', { name: '送る', exact: true })).toBeInViewport();
-  await expect(page.locator('.guide-spot')).toBeHidden();
   const guideBox = await box(page, '.guide');
   const send = await page.getByRole('button', { name: '送る', exact: true }).boundingBox();
   if (!send) throw new Error('送る が画面にありません');

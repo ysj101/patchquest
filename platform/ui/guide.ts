@@ -1,13 +1,12 @@
 // 操作ガイド（練習用パック）。マニフェストの guide を 1 ステップずつ示し、各ステップの until の出来事が起きたら、
 // 短い言葉（praise）をかけて次へ進む。うまくいかなかったとき（retry.when）は次の手を示す。
-// 画面上の位置は data-anchor で探し、案内先だけを光らせる。吹き出しはサイト見出しの直下の一行に置き、暗幕では覆わない。
+// 画面上の位置は data-anchor で探し、案内先だけを光らせる。吹き出しは画面上部に留まる一行の帯に置き、暗幕では覆わない。
 // コアUIに課題ごとの分岐は入れず、ガイドの中身はすべてパックのデータで決まる
 import type { AttemptRecord, GuideMilestone, GuideStep } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { REVEALABLE_ATTR, REVEAL_EVENT, SHOWN_EVENT } from './components';
 import { characterFace, GUIDE } from './characters';
 import { fill, h } from './dom';
-import { GuideSpotlight } from './guide-spotlight';
 
 /** 案内している場所に付ける印（CSS で枠を描く） */
 const TARGET_ATTR = 'data-guide-target';
@@ -59,9 +58,6 @@ export interface GuideActions {
 
 export class GuidePanel {
   readonly element = h('aside', { class: 'guide', 'aria-label': '操作ガイド', hidden: true });
-  /** 吹き出し。描き直すのはこの中だけにし、暗幕の動きを途切れさせない */
-  private readonly card = h('div', { class: 'guide-card' });
-  private readonly spotlight = new GuideSpotlight(this.element, this.card);
   /** ガイドしている演習。別の演習が始まったら、そのパックのガイドで始め直す */
   private attemptId: string | null = null;
   private steps: GuideStep[] = [];
@@ -72,7 +68,6 @@ export class GuidePanel {
   private marked: Element | null = null;
 
   constructor(private readonly actions: GuideActions) {
-    this.element.append(this.spotlight.element, this.card);
     // タブを開くと案内先が見えるようになるので、印を付け直す
     document.addEventListener(SHOWN_EVENT, () => this.refresh());
   }
@@ -107,8 +102,6 @@ export class GuidePanel {
     const closed = target?.closest(`[hidden][${REVEALABLE_ATTR}]`);
     this.marked = (closed ? document.getElementById(closed.getAttribute(REVEALABLE_ATTR) ?? '') : target) ?? null;
     this.marked?.setAttribute(TARGET_ATTR, '');
-    // 暗幕はログ・ボタン・アプリにかぶる。案内先の光だけ残し、吹き出しは見出しの直下の一行に固定する。
-    this.spotlight.follow(null);
   }
 
   private current(): GuideStep | undefined {
@@ -174,13 +167,11 @@ export class GuidePanel {
     };
     const retry = this.retryText(step);
     fill(
-      this.card,
-      h('span', { class: 'guide-arrow', 'aria-hidden': true }),
+      this.element,
       h(
         'div',
         { class: 'guide-bar' },
         h('h2', {}, `${GUIDE.name}の操作ガイド`),
-        h('button', { type: 'button', class: 'guide-close', 'aria-label': 'ガイドを閉じる', title: 'ガイドを閉じる', on: { click: () => this.close() } }, '✕'),
         h('ol', { class: 'guide-track', 'aria-label': '練習の手順' }, ...this.steps.map(trackItem)),
         h('p', { class: 'guide-count' }, place ? `${place.current} / ${place.total}` : '完了'),
       ),
@@ -208,6 +199,7 @@ export class GuidePanel {
             : [h('button', { type: 'button', class: 'button button-primary button-chunky', on: { click: () => this.finish() } }, '課題一覧へ')]),
         ),
       ),
+      h('button', { type: 'button', class: 'guide-close', 'aria-label': 'ガイドを閉じる', title: 'ガイドを閉じる', on: { click: () => this.close() } }, '✕'),
     );
     this.refresh();
   }
