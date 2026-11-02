@@ -55,6 +55,7 @@ Recipe fields are `baseURL`, `evidenceDir`, and `steps`. Optional `viewport` is 
 - `expectVisible` or `expectHidden` with `role` and `name`. Optional `exact` and `within`.
 - `expectCount` with `text` and `count`. Optional `within` limits the search to a CSS selector.
 - `expectTitle` with `text`. The document title must match exactly.
+- `expectGuide` with `title`. Waits for the guide's entry animation, then checks that its heading, body, praise, and retry text fit inside the viewport and guide band, avoid the site header, and receive a hit at their centers. Optional `target: true` also checks that the highlighted target is in view and pulses when motion is on. Use it after clicking `場所を表示`.
 - `expectText` with `role`, `name`, and `text` (array or string). Optional `childRole` checks those descendants instead of the element itself.
 - `download` clicks `role`/`name` and writes the file into `evidenceDir` as `saveAs`.
 - `screenshot` with `file` (a name only, written under `evidenceDir`).
@@ -79,6 +80,6 @@ Confirm the evidence files are still in `evidenceDir` after the process is gone.
 
 ## Helpers
 
-`drive.ts` is the only helper. Invoke it as shown under Drive and Doctor. Node 22 runs it with `--experimental-strip-types`. The file is executable.
+`drive.ts` is the command entry point. Invoke it as shown under Drive and Doctor. Node 22 runs it with `--experimental-strip-types`. The file is executable. `guide-visibility.mjs` shares the guide checks with the E2E regression test.
 
 Keep the map honest with `/maintain-verification-skill` when the UI changes.
