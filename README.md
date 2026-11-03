@@ -37,8 +37,7 @@ python3 -m http.server 8000 --bind 127.0.0.1   # Windows は py -m http.server 8
 必要なもの：Node.js 22、pnpm 11（`corepack enable pnpm` で package.json の `packageManager` の版が使われます）、Python 3、PC版 Chrome。
 
 ```sh
-pnpm install            # 依存のインストール（依存のインストールスクリプトは実行しない。pnpm-workspace.yaml の allowBuilds）
-pnpm run hooks:install  # コミット前の品質ゲート（.githooks/pre-commit）を有効にする。最初に一度だけ
+pnpm install            # 依存のインストールと Git フックの有効化（依存のビルドは pnpm-workspace.yaml の allowBuilds で制御）
 pnpm run build          # dist/ に静的成果物を生成する（DOM 安全性・依存の境界・外部参照も検査）
 pnpm run serve          # http://127.0.0.1:8000/ で dist/ を配信
 pnpm run typecheck      # 型検査
@@ -51,6 +50,10 @@ node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API 
 ```
 
 ### 品質ゲート
+
+`pnpm install` の `prepare` は `hooks:install` を呼び、`.githooks` を有効にします。既存の pre-commit 品質ゲートも動きます。Git 管理外や Git 設定を書けない環境でもインストールは続行します。
+
+commit-msg は `@gmail.com` を含む行を大文字小文字を区別せず削除し、削除した行を標準エラーに表示します。作者またはコミッターのメールに同じ文字列があればコミットを止めます。GitHub Actions はコミットの作者・コミッター・本文と PR のタイトル・本文を検査します。ローカルでは `scripts/check-no-gmail.sh origin/main..HEAD` を実行できます。PR の検査には `PR_TITLE` と `PR_BODY` を環境変数で渡します。ファイルの内容は検査しません。
 
 `pnpm run check` で次をまとめて実行します。作業の約束事は [AGENTS.md](AGENTS.md) を参照してください。
 

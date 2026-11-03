@@ -24,7 +24,8 @@
     "audit:duplication": "jscpd --blame --reporters console-full,html",
     "check:unused": "knip",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run check:boundaries && pnpm run check:duplication && pnpm run check:unused && pnpm run test:coverage",
-    "hooks:install": "git config core.hooksPath .githooks"
+    "hooks:install": "if [ -e .git ]; then git config core.hooksPath .githooks || true; fi",
+    "prepare": "pnpm run hooks:install"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
