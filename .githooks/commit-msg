@@ -1,25 +1,4 @@
 #!/bin/sh
-# コミット本文から禁止ドメインの行を除き、作者とコミッターのメールを検査する。
-set -eu
-
-message=$1
-filtered=$(mktemp "${TMPDIR:-/tmp}/patchquest-message.XXXXXX")
-trap 'rm -f "$filtered"' 0
-trap 'exit 1' HUP INT TERM
-awk '
-  index(tolower($0), "@gmail.com") {
-    print "commit-msg: removed line " NR ": " $0 > "/dev/stderr"
-    next
-  }
-  { print }
-' "$message" > "$filtered"
-cat "$filtered" > "$message"
-
-for role in AUTHOR COMMITTER; do
-  ident=$(git var "GIT_${role}_IDENT")
-  email=$(printf '%s\n' "$ident" | sed 's/.*<\([^>]*\)>.*/\1/')
-  if printf '%s\n' "$email" | grep -Fiq '@gmail.com'; then
-    printf 'commit-msg: blocked %s email. Use a non-Gmail address.\n' "$role" >&2
-    exit 1
-  fi
-done
+# 作成中のコミットのメッセージと author / committer のメール欄を調べ、
+# 許可していないアドレスがあればコミットを止める（黙って書き換えはしない）。
+exec "$(git rev-parse --show-toplevel)/scripts/check-email-privacy.sh" --commit-msg "$1"
