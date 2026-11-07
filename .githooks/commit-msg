@@ -1,0 +1,4 @@
+#!/bin/sh
+# 作成中のコミットのメッセージと author / committer のメール欄を調べ、
+# 許可していないアドレスがあればコミットを止める（黙って書き換えはしない）。
+exec "$(git rev-parse --show-toplevel)/scripts/check-email-privacy.sh" --commit-msg "$1"
