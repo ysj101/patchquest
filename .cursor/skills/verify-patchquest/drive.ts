@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { chromium, type Locator, type Page } from '@playwright/test';
+import { expectGuide } from './guide-visibility.mjs';
 
 type Role = Parameters<Page['getByRole']>[0];
 
@@ -29,6 +30,7 @@ type Step =
   | { action: 'upload'; within?: string; file: { name: string; mimeType: string; text?: string; savedAs?: string } }
   | { action: 'expectCount'; text: string; count: number; exact?: boolean; within?: string }
   | { action: 'expectTitle'; text: string }
+  | { action: 'expectGuide'; title: string; target?: boolean }
   | { action: 'screenshot'; file: string; fullPage?: boolean };
 
 interface Recipe {
@@ -121,6 +123,7 @@ async function apply(page: Page, step: Step, evidenceDir: string): Promise<void>
     case 'expectHidden': return expectHidden(page, step);
     case 'expectCount': return expectCount(page, step);
     case 'expectTitle': return expectTitle(page, step);
+    case 'expectGuide': return expectGuide(page, step.title, step.target);
     case 'expectText': return expectText(page, step);
     case 'download': return download(page, step, evidenceDir);
     case 'screenshot': return screenshot(page, step, evidenceDir);
