@@ -27,7 +27,7 @@ export class StageProgress {
     if (!this.guard.changed(key)) return;
     const states = stageStates(attempt, defenseCurrent);
     const arrived = states.flatMap((stage, index) => stage.state === 'done' && this.previous?.[index]?.state === 'todo' ? [index] : []);
-    this.heading.textContent = `ステージ ${states.filter((stage) => stage.state === 'done').length} / ${states.length}`;
+    this.heading.textContent = `完了 ${states.filter((stage) => stage.state === 'done').length} / ${states.length} ステージ`;
     fill(this.list, ...states.map((stage, index) => {
       const pending = stage.current ? 'current' : 'todo';
       const visualState = stage.state === 'done' ? 'done' : pending;
