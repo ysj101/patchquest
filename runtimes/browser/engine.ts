@@ -46,7 +46,8 @@ export class AppEngine {
 
     const db = await openMemoryDatabase();
     db.exec(app.schema);
-    const refs = generate(db, options.fixture.seed);
+    // 生成器には server のフックの現在の実装を渡す。レシピが注入した実装なら、初期データに問題が仕込まれる
+    const refs = generate(db, options.fixture.seed, (id) => resolveHook(app, server, id));
     const hash = await snapshotHash(db);
     this.state?.db.close();
     this.state = { app, db, options, selection: server, sessions: new Map() };

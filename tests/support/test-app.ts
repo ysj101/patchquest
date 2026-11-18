@@ -8,6 +8,8 @@ import type { AppModule, ServerContext, ViewContext } from '../../runtimes/brows
 type Note = { id: number; owner: string; body: string };
 export type ReadNote = (ctx: ServerContext, note: Note | null) => Note | 'forbidden' | null;
 export type RenderNote = (el: HTMLElement, body: string) => void;
+/** 配備時の公開範囲を決める処理。初期データ生成器が呼び、注入された実装なら初期データに問題が仕込まれる */
+export type ProvisionAccess = () => 'owner' | 'everyone';
 
 function handle(ctx: ServerContext, req: AppRequest): AppResponse {
   const [, resource, id] = req.path.split('/');
@@ -73,9 +75,10 @@ export const testApp: AppModule = {
     hooks: [
       { id: 'note.read', realm: 'server', contract: 1, baseline: 'test-app/owner-only', description: 'ID 指定でノートを読む' },
       { id: 'note.render', realm: 'view', contract: 1, baseline: 'test-app/text', description: 'ノート本文を描画する' },
+      { id: 'note.provision', realm: 'server', contract: 1, baseline: 'test-app/provision-owner', description: '配備時のノートの公開範囲を決める' },
     ],
   },
-  schema: 'CREATE TABLE notes (id INTEGER PRIMARY KEY, owner TEXT NOT NULL, body TEXT NOT NULL);',
+  schema: 'CREATE TABLE notes (id INTEGER PRIMARY KEY, owner TEXT NOT NULL, body TEXT NOT NULL);\nCREATE TABLE config (key TEXT PRIMARY KEY, value TEXT NOT NULL);',
   fixtures: {
     'test.default': (db, seed) => {
       const next = random(seed);
@@ -84,10 +87,18 @@ export const testApp: AppModule = {
       db.exec({ sql: 'INSERT INTO notes (id, owner, body) VALUES (?, ?, ?), (?, ?, ?)', bind: [offset, 'alice', secret, offset + 1, 'bob', 'bob-note'] });
       return { 'notes.alice.id': offset, 'notes.alice.body': secret, 'notes.bob.id': offset + 1 };
     },
+    // 配備時の公開範囲を provision フックに決めさせ、初期データ（config）へ書く。注入された実装なら everyone になる
+    'test.provisioned': (db, seed, hook) => {
+      const access = hook<ProvisionAccess>('note.provision')();
+      db.exec({ sql: 'INSERT INTO config (key, value) VALUES (?, ?)', bind: ['access', access] });
+      return { 'config.access': access };
+    },
   },
   implementations: {
     'test-app/owner-only': { hook: 'note.read', run: ((ctx, note) => (note && note.owner !== ctx.principal ? 'forbidden' : note)) satisfies ReadNote },
     'test-app/text': { hook: 'note.render', run: ((el, body) => void (el.textContent = body)) satisfies RenderNote },
+    'test-app/provision-owner': { hook: 'note.provision', run: (() => 'owner') satisfies ProvisionAccess },
+    'test-app/provision-everyone': { hook: 'note.provision', run: (() => 'everyone') satisfies ProvisionAccess },
   },
   tests: [],
   handle,
