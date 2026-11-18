@@ -244,7 +244,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     await orchestrator.resetToInitial();
     guide.reach('reset');
     sessions.clear();
-    await showViewer(viewer);
+    await showViewer(viewer, { fresh: true });
     announce(live, '初期状態へ戻しました');
   }
 
@@ -259,25 +259,36 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (reproduced) resultEffects.show({ kind: 'reproduced', detail: '再現の検印を押しました。事故を自分の操作で再現できました。' });
   }
 
-  // 初期表示と利用者切り替えが同時に走ると描画要求がフレームへ逆順に届き、古い画面が後から上書きしうる。直列化して要求順に描画する
-  // 送信後の描き直しでは閲覧者は変わらないので読み上げない。読み上げると、送信で届いた XP や到達の通知を上書きしてしまう
-  const renderView = serialLatest(async ({ actor, announceViewer }: { actor: ActorKey; announceViewer: boolean }): Promise<void> => {
-    const app = currentApp();
-    if (!app) return;
-    viewer = actor;
-    exerciseView.setViewer(actor);
-    const runId = orchestrator.newRunId();
-    openingViews.add(runId);
-    try {
-      await exercise.showView(actor, app.descriptor.entryRoute, runId);
-      if (announceViewer) announce(live, `${exerciseView.label(actor)} として表示しています`);
-    } catch (e) {
-      announce(live, `画面を表示できませんでした：${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      openingViews.delete(runId);
-    }
-  });
-  const showViewer = (actor: ActorKey): Promise<void> => renderView({ actor, announceViewer: true });
+  // 初期表示と利用者切り替えが同時に走ると描画要求がフレームへ逆順に届き、古い画面が後から上書きしうる。直列化して要求順に描画する。
+  // 同じ閲覧者の描き直しが実行中なら合流して 1 回にし、送った直後に「開き直す」を押しても画面が二度戻らないようにする。
+  // fresh は状態を変えた直後（開始・初期化）の描き直しで、実行中の古い描画で代用できないので合流しない
+  type ViewRequest = { actor: ActorKey; fresh?: boolean };
+  const renderView = serialLatest(
+    async ({ actor }: ViewRequest): Promise<boolean> => {
+      const app = currentApp();
+      if (!app) return false;
+      viewer = actor;
+      exerciseView.setViewer(actor);
+      const runId = orchestrator.newRunId();
+      openingViews.add(runId);
+      try {
+        await exercise.showView(actor, app.descriptor.entryRoute, runId);
+        return true;
+      } catch (e) {
+        announce(live, `画面を表示できませんでした：${e instanceof Error ? e.message : String(e)}`);
+        return false;
+      } finally {
+        openingViews.delete(runId);
+      }
+    },
+    ({ actor, fresh }) => (fresh ? null : actor),
+  );
+  /** 閲覧者を切り替えて最初の画面を描き、描けたら読み上げる。送信後の描き直し（send）は閲覧者が変わらないので読み上げない。
+   * 読み上げると、送信で届いた XP や到達の通知を上書きしてしまう */
+  async function showViewer(actor: ActorKey, options: { fresh?: boolean } = {}): Promise<void> {
+    const shown = await renderView({ actor, ...options });
+    if (shown) announce(live, `${exerciseView.label(actor)} として表示しています`);
+  }
 
   async function beginExercise(): Promise<void> {
     const snapshot = orchestrator.snapshot;
@@ -295,7 +306,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     // 既定で飛ばすときは 2 つの出来事をまとめて知らせ、読み上げを 1 回にする
     if (!showBriefing) guide.reach('started', 'briefed');
     else guide.reach('started');
-    await showViewer(viewer);
+    await showViewer(viewer, { fresh: true });
   }
 
   /** 利用者ごとのセッション。演習を始めるたびに発行し直す */
@@ -306,21 +317,27 @@ export async function startApp(root: HTMLElement): Promise<void> {
   }
 
   /** 現在の利用者として、ブラウザ内の呼び出しを送る。基盤エラーは理由を返し、不合格には数えない。
-   * 送り終わったら、実行環境のエラーで送れなかったときも含めて、今の閲覧者で最初の画面を描き直す */
+   * 送り終わったら、実行環境のエラーで送れなかったときも含めて、今の閲覧者で最初の画面を描き直す。
+   * 達成印やコールアウトは描き直しが終わってから出す。印が付いた時点で画面は落ち着いていて、直後の操作が描き直しで消えない */
   async function send(request: AppRequest): Promise<string | null> {
     const runId = orchestrator.newRunId();
+    const actor = viewer;
+    const outcome = await invokeRequest(actor, request, runId).finally(() => renderView({ actor: viewer }));
+    if ('failure' in outcome) return outcome.failure;
+    observe(outcome.exchange);
+    guide.reach('request-sent');
+    return null;
+  }
+
+  async function invokeRequest(actor: ActorKey, request: AppRequest, runId: string): Promise<{ exchange: Exchange } | { failure: string }> {
     try {
-      const session = await sessionFor(viewer, runId);
+      const session = await sessionFor(actor, runId);
       const { response, events } = await exercise.invoke({ kind: 'request', session, request }, { runId });
-      observe({ runId, actor: viewer, kind: 'request', request, response, events });
-      guide.reach('request-sent');
-      return null;
+      return { exchange: { runId, actor, kind: 'request', request, response, events } };
     } catch (e) {
-      if (e instanceof RuntimeError && e.code === 'input-too-large') return '入力が大きすぎます（1 件 4KB まで）。内容を短くしてください。';
-      if (e instanceof RuntimeError) return `実行環境のエラーで送れませんでした（不合格には数えません）：${e.message}`;
+      if (e instanceof RuntimeError && e.code === 'input-too-large') return { failure: '入力が大きすぎます（1 件 4KB まで）。内容を短くしてください。' };
+      if (e instanceof RuntimeError) return { failure: `実行環境のエラーで送れませんでした（不合格には数えません）：${e.message}` };
       throw e;
-    } finally {
-      await renderView({ actor: viewer, announceViewer: false });
     }
   }
 
