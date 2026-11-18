@@ -61,5 +61,5 @@ test('キーボードだけで導入を飛ばし、動きをオフにして演�
   await tabTo(page, '回答する');
   await page.keyboard.press('Enter');
   for (const seal of ['再現：達成', '防御：達成', '理解：達成']) await expect(ticketSeals(page)).toContainText(seal);
-  await expect(page.getByRole('heading', { name: 'ステージ 5 / 5', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '完了 5 / 5 ステージ', exact: true })).toBeVisible();
 });
