@@ -5,6 +5,7 @@ import {
   hashJson,
   type Exchange,
   type ImplementationSelection,
+  type JsonValue,
   type ProbeDef,
   type ReplayEntry,
   type ResultGroup,
@@ -52,7 +53,7 @@ export function configHash(config: {
   /** 再生するやり取り。空なら渡さない（渡さないときのハッシュは、この項目を足す前と同じ） */
   replay?: ReplayEntry[];
 }): Promise<string> {
-  return hashJson(config);
+  return hashJson(config as unknown as JsonValue);
 }
 
 export function isCurrent(report: VerificationReport, currentConfigHash: string): boolean {

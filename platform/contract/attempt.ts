@@ -1,4 +1,5 @@
 // 演習の状態と記録（spec §5.3, §13）
+import type { ReplayEntry } from './runtime';
 
 /**
  * Selected: 課題を選んだ / Preflight: 互換性確認・注入・事前検証中 / Prepared: 脆弱な初期状態で開始できる /
@@ -104,6 +105,9 @@ export interface AttemptRecord {
   /** 現在の対策構成のハッシュ */
   configHash: string;
   appliedDefense: string | null;
+  /** 操作で直す課題で、プレイヤーが加えた「状態を変える操作」の記録。検証の前に再生する（spec §5.3）。
+   * 対策パネルで直す課題では常に空。構成ハッシュに含め、変えたら過去の合格を現在の合格として扱わない */
+  repairLog: ReplayEntry[];
   /** 初回の到達時刻。対策の取り消しやリセットでも保持する */
   milestones: { briefedAt: string | null; firstRequestAt: string | null; firstDefenseAt: string | null };
   badges: Record<BadgeKind, Badge>;
@@ -136,6 +140,7 @@ export function emptyMilestones(): AttemptRecord['milestones'] {
 export function initialAttemptProgress() {
   return {
     appliedDefense: null,
+    repairLog: [] as ReplayEntry[],
     milestones: emptyMilestones(),
     badges: { reproduction: { achieved: false }, defense: { achieved: false }, understanding: { achieved: false } },
     lastVerification: null,
@@ -147,5 +152,5 @@ export function initialAttemptProgress() {
     solutionViewed: false,
     answers: {},
     challenge: null as ChallengeInfo | null,
-  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'milestones' | 'badges' | 'lastVerification' | 'history' | 'firstPass' | 'verifications' | 'normalBroken' | 'hintsOpened' | 'solutionViewed' | 'answers' | 'challenge'>;
+  } satisfies Pick<AttemptRecord, 'appliedDefense' | 'repairLog' | 'milestones' | 'badges' | 'lastVerification' | 'history' | 'firstPass' | 'verifications' | 'normalBroken' | 'hintsOpened' | 'solutionViewed' | 'answers' | 'challenge'>;
 }

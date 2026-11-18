@@ -1,10 +1,14 @@
 // 進捗の保存・復元（Issue #10、A15・A16）
 import type { Page } from '@playwright/test';
-import { emptyMilestones } from '../../platform/contract';
+import { emptyMilestones, type AttemptRecord } from '../../platform/contract';
 import { makeAttempt } from '../support/attempt';
 import { expect, test } from './fixtures';
 
 const attempt = (id: string) => makeAttempt(id);
+
+/** 記録を JSON 文字列で渡して保存する。AttemptRecord を直接渡すと Playwright の型が深くなりすぎるため文字列境界を挟む */
+const save = (target: Page, record: AttemptRecord) =>
+  target.evaluate((text: string) => window.progressTest.save(JSON.parse(text) as AttemptRecord), JSON.stringify(record));
 
 async function open(page: Page) {
   await page.goto('/test/progress.html');
@@ -14,7 +18,7 @@ async function open(page: Page) {
 test('IndexedDB に保存した進捗は再読み込み後も残り、削除できる', async ({ page }) => {
   await open(page);
   expect(await page.evaluate(() => window.progressTest.reason())).toBeNull();
-  await page.evaluate((a) => window.progressTest.save(a), attempt('persisted'));
+  await save(page, attempt('persisted'));
   await page.reload();
   await expect(page.locator('body[data-ready="true"]')).toBeAttached();
   expect(await page.evaluate(() => window.progressTest.ids())).toEqual(['persisted']);
@@ -27,14 +31,14 @@ test('IndexedDB に保存した進捗は再読み込み後も残り、削除で�
 
 test('書き出した JSON を別のブラウザ環境へ復元でき、不正な JSON では既存の進捗を失わない', async ({ page, browser }) => {
   await open(page);
-  await page.evaluate((a) => window.progressTest.save(a), attempt('exported'));
+  await save(page, attempt('exported'));
   const json = await page.evaluate(() => window.progressTest.exportJson());
-  expect(JSON.parse(json)).toMatchObject({ schemaVersion: 9, profile: {} });
+  expect(JSON.parse(json)).toMatchObject({ schemaVersion: 10, profile: {} });
 
   const other = await browser.newContext();
   const otherPage = await other.newPage();
   await open(otherPage);
-  await otherPage.evaluate((a) => window.progressTest.save(a), attempt('existing'));
+  await save(otherPage, attempt('existing'));
   expect(await otherPage.evaluate(() => window.progressTest.importJson('{"format":"x"}'))).toMatchObject({ ok: false });
   expect(await otherPage.evaluate((text) => window.progressTest.importJson(text), json)).toEqual({ ok: true, imported: 1, profileRecomputed: false });
   expect((await otherPage.evaluate(() => window.progressTest.ids())).sort()).toEqual(['existing', 'exported']);
@@ -51,16 +55,17 @@ test('IndexedDB を使えない環境では理由を返し、メモリで続け�
   });
   await open(page);
   expect(await page.evaluate(() => window.progressTest.reason())).toMatch(/ブラウザに保存できません/);
-  await page.evaluate((a) => window.progressTest.save(a), attempt('memory'));
+  await save(page, attempt('memory'));
   expect(await page.evaluate(() => window.progressTest.ids())).toEqual(['memory']);
   expect(JSON.parse(await page.evaluate(() => window.progressTest.exportJson())).attempts).toHaveLength(1);
 });
 
 test('v1 の既存 DB を v2 へ更新し、達成印を持つ記録を保つ', async ({ page }) => {
   await page.goto('/test/');
-  const { milestones, history, firstPass, verifications, normalBroken, ...legacy } = makeAttempt('旧DB', { badges: { reproduction: { achieved: true }, defense: { achieved: false }, understanding: { achieved: false } } });
+  const { milestones, history, firstPass, verifications, normalBroken, repairLog, ...legacy } = makeAttempt('旧DB', { badges: { reproduction: { achieved: true }, defense: { achieved: false }, understanding: { achieved: false } } });
   expect(milestones).toEqual(emptyMilestones());
   expect(history).toEqual([]);
+  expect(repairLog).toEqual([]);
   expect([firstPass, verifications, normalBroken]).toEqual([null, 0, false]);
   await page.evaluate((record) => new Promise<void>((resolve, reject) => {
     const request = indexedDB.open('patchquest', 1);
@@ -76,7 +81,7 @@ test('v1 の既存 DB を v2 へ更新し、達成印を持つ記録を保つ', 
   await open(page);
   expect(await page.evaluate(() => window.progressTest.reason())).toBeNull();
   const exported = JSON.parse(await page.evaluate(() => window.progressTest.exportJson())) as unknown;
-  expect(exported).toMatchObject({ schemaVersion: 9, profile: {}, attempts: [{ ...legacy, milestones: emptyMilestones(), history: [], firstPass: null, verifications: 0, normalBroken: false }] });
+  expect(exported).toMatchObject({ schemaVersion: 10, profile: {}, attempts: [{ ...legacy, milestones: emptyMilestones(), history: [], firstPass: null, verifications: 0, normalBroken: false }] });
   await page.reload();
   await expect(page.locator('body[data-ready="true"]')).toBeAttached();
   expect(await page.evaluate(() => window.progressTest.ids())).toEqual(['旧DB']);
@@ -99,6 +104,6 @@ test('別タブが旧DBを開いていても起動し、保存領域を更新で
   expect(await otherPage.evaluate(() => window.progressTest.reason())).toBe(
     'ブラウザに保存できません（ほかのタブで PatchQuest が開いているため、保存領域を更新できません。ほかのタブを閉じてから再読み込みしてください）',
   );
-  await otherPage.evaluate((record) => window.progressTest.save(record), attempt('メモリ継続'));
+  await save(otherPage, attempt('メモリ継続'));
   expect(await otherPage.evaluate(() => window.progressTest.ids())).toEqual(['メモリ継続']);
 });

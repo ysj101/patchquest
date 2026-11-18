@@ -3,6 +3,7 @@
 import {
   BADGE_KINDS,
   Checker,
+  HTTP_METHODS,
   emptyMilestones,
   completeAttempt,
   RESULT_GROUPS,
@@ -11,6 +12,8 @@ import {
   type Badge,
   type BadgeKind,
   type ExerciseState,
+  type JsonValue,
+  type ReplayEntry,
   type TestOutcome,
   type VerificationReport,
 } from '../contract';
@@ -22,13 +25,19 @@ import { WEEKLY_GOAL_IDS, type WeeklyGoalId } from './weekly-goal';
 
 export const PROGRESS_FORMAT = 'patchquest-progress';
 
-export const PROGRESS_SCHEMA_VERSION = 9;
+export const PROGRESS_SCHEMA_VERSION = 10;
 // 読み込める最も古い版。spec §13 に従い、版を上げても旧版の読み込みを維持する。
 const OLDEST_READABLE_SCHEMA_VERSION = 1;
 // 演習をまたぐ記録の入れ物 profile が加わった版。
 const PROFILE_SINCE_SCHEMA_VERSION = 2;
 // 別条件での挑戦（challenge）が加わった版。これより前の記録は通常の演習として読む。
 const CHALLENGE_SINCE_SCHEMA_VERSION = 8;
+// 操作で直す課題の修正の記録（repairLog）が加わった版。これより前の記録は空として読む。
+const REPAIR_LOG_SINCE_SCHEMA_VERSION = 10;
+/** 修正の記録 1 件分の本文の上限（入力 1 件 4KB、spec §14）。 */
+const MAX_REPLAY_BODY_BYTES = 4096;
+/** 保持する修正の記録の上限。操作履歴 1000 件（spec §14）に合わせる。 */
+const MAX_REPAIR_LOG = 1000;
 /** 進捗 JSON の上限（初期案 1MB、spec §14） */
 export const MAX_PROGRESS_BYTES = 1024 * 1024;
 const MAX_ATTEMPTS = 1000;
@@ -139,6 +148,24 @@ function verificationFacts(checker: Checker, path: string, record: Record<string
   };
 }
 
+/** 修正の記録を読む。本文は 4KB 以内の JSON に限り、超えた記録や上限超過分は捨てる（spec §13・§14） */
+function repairLog(checker: Checker, path: string, value: unknown, version: number): ReplayEntry[] {
+  if (value === undefined && version < REPAIR_LOG_SINCE_SCHEMA_VERSION) return [];
+  const records = checker.list(path, value);
+  const start = Math.max(0, records.length - MAX_REPAIR_LOG);
+  return records.slice(start).map((raw, index) => {
+    const at = `${path}[${start + index}]`;
+    const entry = checker.obj(at, raw);
+    const request = checker.obj(`${at}.request`, entry.request);
+    const body = request.body as JsonValue | undefined;
+    if (body !== undefined && JSON.stringify(body).length > MAX_REPLAY_BODY_BYTES) checker.fail(`${at}.request.body`, `${MAX_REPLAY_BODY_BYTES} バイト以内が必要です`);
+    return {
+      as: checker.str(`${at}.as`, entry.as, MAX_TEXT),
+      request: { method: checker.oneOf(`${at}.request.method`, request.method, HTTP_METHODS), path: checker.str(`${at}.request.path`, request.path, MAX_TEXT), ...(body !== undefined && { body }) },
+    };
+  });
+}
+
 function attempt(c: Checker, path: string, v: unknown, version: number): AttemptRecord {
   const a = c.obj(path, v);
   const text = (key: string) => c.str(`${path}.${key}`, a[key], MAX_TEXT);
@@ -160,6 +187,7 @@ function attempt(c: Checker, path: string, v: unknown, version: number): Attempt
     configHash: text('configHash'),
     milestones: milestones(c, `${path}.milestones`, a.milestones),
     appliedDefense: a.appliedDefense === null ? null : text('appliedDefense'),
+    repairLog: repairLog(c, `${path}.repairLog`, a.repairLog, version),
     badges: Object.fromEntries(BADGE_KINDS.map((k) => [k, badge(c, `${path}.badges.${k}`, badges[k])])) as Record<BadgeKind, Badge>,
     history: readHistory(c, `${path}.history`, a.history),
     ...verificationFacts(c, path, a, version),

@@ -1,7 +1,7 @@
 // 旧記録にない進捗項目を、残っている検証履歴と閲覧記録から一度だけ補う。
 import { initialAttemptProgress, type AttemptRecord } from './attempt';
 
-type AddedFields = 'firstPass' | 'verifications' | 'normalBroken' | 'history' | 'milestones';
+type AddedFields = 'firstPass' | 'verifications' | 'normalBroken' | 'history' | 'milestones' | 'repairLog';
 type LegacyAttempt = Omit<AttemptRecord, AddedFields> & Partial<Pick<AttemptRecord, AddedFields>>;
 
 function firstPassFromHistory(record: AttemptRecord): AttemptRecord['firstPass'] {

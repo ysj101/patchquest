@@ -160,8 +160,17 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     }, 'name');
   });
 
+  // 修正の方式。record（操作で直す）の課題は、学習画面に出す対策候補を持たず、解ける対策は出荷前検証で確かめる
+  const isRecord = isObj(m.repair) && m.repair.kind === 'record';
+  if (m.repair !== undefined) {
+    const repair = c.obj('repair', m.repair);
+    c.oneOf('repair.kind', repair.kind, ['record']);
+    c.obj('repair.record', repair.record);
+    c.text('repair.noun', repair.noun);
+  }
+
   const expectations: unknown[] = [];
-  c.records('defenses', m.defenses, true, (d, at) => {
+  c.records('defenses', m.defenses, !isRecord, (d, at) => {
     c.text(`${at}.label`, d.label);
     c.text(`${at}.description`, d.description);
     const replay = d.replay === undefined ? [] : c.list(`${at}.replay`, d.replay, true);
@@ -180,7 +189,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     checkWhyItFails(c, at, d);
     expectations.push(d.expected);
   });
-  if (!expectations.includes('secure')) c.fail('defenses', "expected が 'secure' の対策が1つ以上必要です");
+  if (!isRecord && !expectations.includes('secure')) c.fail('defenses', "expected が 'secure' の対策が1つ以上必要です");
 
   const tests = c.obj('tests', m.tests);
   const cases = c.records('tests.cases', tests.cases, false, (t, at) => {
