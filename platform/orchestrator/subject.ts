@@ -1,5 +1,5 @@
 // 実装の選択と検証対象を組み立てる。Orchestrator とパック出荷前検証で共有する
-import type { ImplementationChange, ImplementationSelection, MissionPack } from '../contract';
+import type { ImplementationChange, ImplementationSelection, MissionPack, ReplayEntry } from '../contract';
 import type { EvaluationSubject } from '../evaluator/evaluator';
 import type { CatalogApp } from './orchestrator';
 
@@ -14,11 +14,13 @@ export function buildSubject(
   attemptId: string,
   seed: number,
   implementations: ImplementationSelection,
+  replay: readonly ReplayEntry[] = [],
 ): EvaluationSubject {
   return {
     attemptId,
     app: { id: app.descriptor.id, version: app.descriptor.version },
     fixture: { generator: pack.manifest.fixtures.generator, seed },
     implementations,
+    ...(replay.length > 0 ? { replay: [...replay] } : {}),
   };
 }

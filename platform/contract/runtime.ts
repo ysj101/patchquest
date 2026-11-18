@@ -62,6 +62,15 @@ export interface AppRequest {
   body?: JsonValue;
 }
 
+/**
+ * 検証の前に再生する 1 件のやり取り。操作で直す課題で、プレイヤーが演習中に加えた変更や、対策の手順を表す。
+ * {{キー}} は展開せず、書いたとおりに送る
+ */
+export interface ReplayEntry {
+  as: ActorKey;
+  request: AppRequest;
+}
+
 export interface AppResponse {
   status: number;
   body: JsonValue;

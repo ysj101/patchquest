@@ -5,7 +5,9 @@ import {
   hashJson,
   type Exchange,
   type ImplementationSelection,
+  type JsonValue,
   type ProbeDef,
+  type ReplayEntry,
   type ResultGroup,
   type RuntimeAdapter,
   type Step,
@@ -13,7 +15,7 @@ import {
   type TestOutcome,
   type VerificationReport,
 } from '../contract';
-import { matchesExchange, runSteps, type ScenarioInvoker, type ScenarioResult, type Scope } from './scenario';
+import { matchesExchange, replay, runSteps, type ScenarioInvoker, type ScenarioResult, type Scope } from './scenario';
 
 /** 検証する構成。演習開始時に固定した版・seed と、現在の実装の選択 */
 export interface EvaluationSubject {
@@ -21,6 +23,8 @@ export interface EvaluationSubject {
   app: { id: string; version: string };
   fixture: { generator: string; seed: number };
   implementations: ImplementationSelection;
+  /** 各テストの前、初期データへ戻した直後に再生するやり取り（操作で直す課題の修正の記録） */
+  replay?: ReplayEntry[];
 }
 
 export interface EvaluatorLimits {
@@ -46,8 +50,10 @@ export function configHash(config: {
   recipeVersion: string;
   app: { id: string; version: string };
   implementations: ImplementationSelection;
+  /** 再生するやり取り。空なら渡さない（渡さないときのハッシュは、この項目を足す前と同じ） */
+  replay?: ReplayEntry[];
 }): Promise<string> {
-  return hashJson(config);
+  return hashJson(config as unknown as JsonValue);
 }
 
 export function isCurrent(report: VerificationReport, currentConfigHash: string): boolean {
@@ -168,8 +174,10 @@ export class Evaluator {
     try {
       const runtime = await this.ensureRuntime(subject);
       const { refs } = await runtime.reset();
-      // 呼び出しごとの上限もテスト全体の上限と同じにし、テスト全体はさらに withTimeout で抑える
-      return await this.withTimeout(runSteps(steps, refs, invokerFor(runtime, runId, this.limits.testTimeoutMs)), runtime);
+      // 呼び出しごとの上限もテスト全体の上限と同じにし、テスト全体（再生を含む）はさらに withTimeout で抑える
+      const invoker = invokerFor(runtime, runId, this.limits.testTimeoutMs);
+      const work = replay(subject.replay ?? [], invoker).then(() => runSteps(steps, refs, invoker));
+      return await this.withTimeout(work, runtime);
     } catch (e) {
       if (!(e instanceof RuntimeError)) throw e;
       // 実行環境が止まったので、次のテストの前に準備し直す

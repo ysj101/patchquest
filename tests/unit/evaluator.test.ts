@@ -70,6 +70,30 @@ describe('Evaluator', () => {
     expect((await evaluator.runSuite(memoSubject(12), deleteThenRead, [], 'run-i', 'h')).passed).toBe(true);
   });
 
+  it('再生したやり取りは各テストの前に初期データへ戻したあと送られ、テストの状態に反映される', async () => {
+    const evaluator = new Evaluator(() => new EngineRuntime());
+    // 再生で bob のノートを 2 件作る。各テストの前に初期化しても、毎回この 2 件が作り直される
+    const subject: EvaluationSubject = {
+      ...packSubject({}),
+      replay: [
+        { as: 'bob', request: { method: 'POST', path: '/notes', body: { body: 'bob-replay-1' } } },
+        { as: 'bob', request: { method: 'POST', path: '/notes', body: { body: 'bob-replay-2' } } },
+      ],
+    };
+    const countBobNotes: TestCase[] = [
+      { id: 't.count', category: 'normal', title: 'bob のノートが再生で 3 件になる', steps: [{ kind: 'request', as: 'bob', request: { method: 'GET', path: '/notes' }, expect: { status: 200, body: [{ path: 'notes', is: { minLength: 3 } }] } }] },
+      { id: 't.count2', category: 'normal', title: '次のテストでも初期化され、再生だけで 3 件になる', steps: [{ kind: 'request', as: 'bob', request: { method: 'GET', path: '/notes' }, expect: { status: 200, body: [{ path: 'notes', is: { minLength: 3 } }, { path: 'notes', is: { maxLength: 3 } }] } }] },
+    ];
+    expect((await evaluator.runSuite(subject, countBobNotes, [], 'run-replay', 'h')).passed).toBe(true);
+  });
+
+  it('再生を含む構成は、含まない構成と構成ハッシュが変わる', async () => {
+    const base = { missionId: 'm', missionVersion: '1.0.0', recipeId: 'r', recipeVersion: '1.0.0', app: { id: 'test-app', version: '1.0.0' }, implementations: {} };
+    const without = await configHash(base);
+    const withReplay = await configHash({ ...base, replay: [{ as: 'bob', request: { method: 'POST', path: '/notes', body: { body: 'x' } } }] });
+    expect(without).not.toBe(withReplay);
+  });
+
   it('新しい検証が始まると古い検証は結果を返さずに stopped で終わる（A20 の基盤）', async () => {
     const evaluator = new Evaluator(() => new EngineRuntime());
     const first = evaluator.runSuite(memoSubject(13), memoTests, [], 'old', 'h');

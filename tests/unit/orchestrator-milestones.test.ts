@@ -22,15 +22,15 @@ async function setup() {
 
 async function reachMilestones(orchestrator: Orchestrator) {
   orchestrator.markBriefed();
-  orchestrator.onExchange(request(orchestrator.newRunId()));
+  await orchestrator.onExchange(request(orchestrator.newRunId()));
   await orchestrator.applyDefense('owner-only');
 }
 
 it('本人操作でだけ到達時刻を記録し、ステージ到達で防御の達成印は付かない', async () => {
   const { orchestrator, attempt } = await setup();
   expect(attempt.milestones).toEqual(emptyMilestones());
-  orchestrator.onExchange({ runId: orchestrator.newRunId(), kind: 'render', actor: 'alice', events: [] });
-  orchestrator.onExchange(request('古い実行'));
+  await orchestrator.onExchange({ runId: orchestrator.newRunId(), kind: 'render', actor: 'alice', events: [] });
+  await orchestrator.onExchange(request('古い実行'));
   await orchestrator.applyDefense(null);
   expect(attempt.milestones).toEqual(emptyMilestones());
   await reachMilestones(orchestrator);
@@ -80,7 +80,7 @@ it('旧版の対策を復元しても未記録の対策到達時刻を付けな�
 it('初期表示の要求は調査に数えず再現判定を保ち、読み込み後は同じ実行 ID の要求を数える', async () => {
   const { orchestrator, attempt, refs } = await setup();
   const runId = orchestrator.newRunId();
-  orchestrator.onExchange({
+  await orchestrator.onExchange({
     ...request(runId),
     actor: 'bob',
     request: { method: 'GET', path: `/notes/${refs['notes.alice.id']}` },
@@ -88,6 +88,6 @@ it('初期表示の要求は調査に数えず再現判定を保ち、読み込�
   }, { initialView: true });
   expect(attempt.badges.reproduction.achieved).toBe(true);
   expect(attempt.milestones.firstRequestAt).toBeNull();
-  orchestrator.onExchange(request(runId));
+  await orchestrator.onExchange(request(runId));
   expect(attempt.milestones.firstRequestAt).toBe(firstInstant.toISOString());
 });

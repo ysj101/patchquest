@@ -11,6 +11,7 @@ import type {
   JsonValue,
   Matcher,
   ObservedEvent,
+  ReplayEntry,
   RequestTemplate,
   ResponseExpectation,
   SessionToken,
@@ -175,14 +176,25 @@ function tryExpand<T>(value: T, scope: Scope): { value: T } | { error: string } 
   }
 }
 
-/** 手順を順に実行する。最初に期待と違った手順で止め、その差を返す */
-export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvoker): Promise<ScenarioResult> {
-  const scope: Scope = { ...refs };
+/** 利用者ごとのセッションを 1 回だけ発行し、同じ手順の中で使い回す */
+function sessionsOf(invoker: ScenarioInvoker): (actor: ActorKey) => Promise<SessionToken | null> {
   const sessions = new Map<ActorKey, SessionToken | null>();
-  const sessionFor = async (actor: ActorKey) => {
+  return async (actor) => {
     if (!sessions.has(actor)) sessions.set(actor, await invoker.session(actor));
     return sessions.get(actor)!;
   };
+}
+
+/** 記録したやり取りを順に送る。{{キー}} は展開せず、応答は判定に使わない（記録したときの状態を作り直すだけ） */
+export async function replay(entries: readonly ReplayEntry[], invoker: ScenarioInvoker): Promise<void> {
+  const sessionFor = sessionsOf(invoker);
+  for (const entry of entries) await invoker.request(await sessionFor(entry.as), entry.request);
+}
+
+/** 手順を順に実行する。最初に期待と違った手順で止め、その差を返す */
+export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvoker): Promise<ScenarioResult> {
+  const scope: Scope = { ...refs };
+  const sessionFor = sessionsOf(invoker);
   let last: ScenarioResult = { passed: true, expected: '手順なし', actual: '—' };
 
   for (const step of steps) {

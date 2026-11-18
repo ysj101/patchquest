@@ -1,6 +1,6 @@
 // 課題パックの定義（spec §11.1 MissionManifest）
-import type { Capability, HookId, ImplementationId, ImplementationRegistry } from './runtime';
-import type { ProbeDef, RequestTemplate, TestCase } from './scenario';
+import type { Capability, HookId, ImplementationId, ImplementationRegistry, ReplayEntry } from './runtime';
+import type { ExchangeMatcher, ProbeDef, RequestTemplate, TestCase } from './scenario';
 
 export const MANIFEST_SCHEMA_VERSION = 1;
 
@@ -75,6 +75,20 @@ export interface MissionManifest {
   debrief: DebriefDef;
   /** 操作ガイド。kind が tutorial のパックでは必須 */
   guide?: GuideStep[];
+  /** 修正の方式。省略すると対策パネルで直す（既存の課題）。record はターミナルなどの操作で直す */
+  repair?: RepairDef;
+}
+
+/**
+ * 操作で直す課題の修正方式（spec §5.3）。プレイヤーの操作のうち record に合うやり取り（状態を変える操作）を
+ * 修正の記録として残し、検証の前に初期データへ戻したあと順に再生する。合否は再生後の実測だけで決まる
+ */
+export interface RepairDef {
+  kind: 'record';
+  /** 修正の記録として残すやり取りの条件（例：状態を変えた POST /shell の応答） */
+  record: ExchangeMatcher;
+  /** 画面の「あなたが加えた変更」に出す、記録のまとまりの呼び名（例：'加えた変更'） */
+  noun: string;
 }
 
 export interface StoryDef {
@@ -175,7 +189,10 @@ interface DefenseFields {
   id: string;
   label: string;
   description: string;
+  /** 切り替える実装。replay だけで直す対策では空にできる */
   apply: ImplementationChange[];
+  /** 実装を切り替えたあと、各テストの前に再生するやり取り（操作で直す課題の対策の手順） */
+  replay?: ReplayEntry[];
   referenceDiff: ReferenceDiff;
 }
 

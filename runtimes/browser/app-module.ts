@@ -42,8 +42,14 @@ export interface ViewContext {
   emit(type: string, data: Record<string, JsonValue>): void;
 }
 
-/** seed から初期データを作り、テストが {{キー}} で参照する値を返す。同じ seed なら同じデータになる */
-export type FixtureGenerator = (db: Database, seed: number) => Record<string, JsonPrimitive>;
+/** フックの現在の実装を解決する。初期データ生成器が、注入され得る処理（例：配備時の設定）を呼ぶのに使う */
+export type HookAccessor = ServerContext['hook'];
+
+/**
+ * seed から初期データを作り、テストが {{キー}} で参照する値を返す。同じ seed なら同じデータになる。
+ * hook は server のフックの現在の実装。レシピが注入した実装をここで呼べば、初期データ自体に問題を仕込める
+ */
+export type FixtureGenerator = (db: Database, seed: number, hook: HookAccessor) => Record<string, JsonPrimitive>;
 
 export interface AppModule {
   descriptor: AppDescriptor;

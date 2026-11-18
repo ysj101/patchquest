@@ -7,121 +7,10 @@ import {
   type AppDescriptor,
   type ExerciseState,
   type MissionManifest,
-  type MissionPack,
 } from '../../platform/contract';
 
-const app: AppDescriptor = {
-  id: 'memo',
-  version: '1.2.0',
-  features: ['memo'],
-  users: ['alice', 'bob'],
-  entryRoute: '/memos',
-  hooks: [{ id: 'memo.read.authorize', realm: 'server', contract: 1, baseline: 'memo/owner-check', description: '' }],
-};
+import { noop, sampleApp as app, samplePack, withManifest } from '../support/sample-pack';
 
-const noop = () => undefined;
-
-function samplePack(): MissionPack {
-  const manifest: MissionManifest = {
-    schemaVersion: 1,
-    id: 'sample',
-    version: '1.0.0',
-    kind: 'mission',
-    title: 'サンプル',
-    summary: '契約の検証用',
-    learningObjectives: ['所有者の照合を説明できる'],
-    estimatedMinutes: 10,
-    vulnerability: { name: 'IDOR', plain: '番号を変えると他人のメモが読める問題', fullName: '安全でない直接オブジェクト参照', cwe: 'CWE-639', category: 'authorization' },
-    difficulty: 'beginner',
-    story: { incident: '問い合わせ', goal: '守る', protectedAssets: ['非公開メモ'], normalUse: ['本人が読める'] },
-    appCompatibility: { appId: 'memo', versions: '^1.0.0' },
-    runtime: { adapter: 'browser', capabilities: ['sqlite'] },
-    prerequisites: { features: ['memo'] },
-    hooks: [{ id: 'memo.read.authorize', contract: 1 }],
-    conflicts: [],
-    fixtures: { generator: 'memo.default', variants: [{ id: 'default', label: '標準', recipe: 'no-owner-check' }] },
-    mutationRecipes: [
-      {
-        id: 'no-owner-check',
-        version: '1.0.0',
-        appliesTo: { appId: 'memo', versions: '^1.0.0', hooks: [{ id: 'memo.read.authorize', contract: 1 }] },
-        apply: [{ hook: 'memo.read.authorize', implementation: 'sample/no-owner-check' }],
-        verify: { probes: ['read-other'] },
-        revert: 'baseline',
-      },
-    ],
-    actions: [
-      {
-        id: 'get-memo',
-        label: 'ID指定で取得',
-        description: 'メモをIDで取得する',
-        request: { method: 'GET', path: '/api/memos/{{field.id}}' },
-        fields: [{ name: 'id', label: 'メモID', input: 'number' }],
-        editable: true,
-      },
-    ],
-    defenses: [
-      {
-        id: 'owner-check',
-        label: '所有者を照合',
-        description: '取得時に所有者を照合する',
-        apply: [{ hook: 'memo.read.authorize', implementation: 'sample/owner-check' }],
-        referenceDiff: { file: 'memos.ts', language: 'ts', before: 'a', after: 'b' },
-        expected: 'secure',
-      },
-    ],
-    probes: [
-      {
-        id: 'read-other',
-        title: '他人のメモを読める',
-        steps: [{ kind: 'request', as: 'bob', request: { method: 'GET', path: '/api/memos/{{memos.alice.private.id}}' }, expect: { status: 200 } }],
-        detect: { actor: { not: 'alice' }, response: { status: 200 } },
-      },
-    ],
-    tests: {
-      target: ['sample.read-other-denied'],
-      cases: [
-        {
-          id: 'sample.read-other-denied',
-          category: 'security',
-          title: '他人のメモは読めない',
-          steps: [{ kind: 'request', as: 'bob', request: { method: 'GET', path: '/api/memos/{{memos.alice.private.id}}' }, expect: { status: [403, 404] } }],
-        },
-      ],
-    },
-    hints: [
-      { level: 1, text: '着眼点' },
-      { level: 2, text: '調査方法' },
-      { level: 3, text: '修正方針' },
-    ],
-    solution: '取得時に所有者を照合する',
-    transferCheck: [
-      {
-        id: 'q1',
-        situation: '別の利用者',
-        prompt: 'どれが有効か',
-        choices: [
-          { id: 'a', label: '所有者を照合', correct: true, explanation: '取得時に確認する' },
-          { id: 'b', label: 'リンクを隠す', correct: false, explanation: '直接取得できる' },
-        ],
-      },
-    ],
-    debrief: { cause: '所有者を照合していない', defenseRationale: '取得時に照合する', takeaways: ['画面ではなく処理で守る'] },
-  };
-  return {
-    manifest,
-    implementations: {
-      'sample/no-owner-check': { hook: 'memo.read.authorize', run: noop },
-      'sample/owner-check': { hook: 'memo.read.authorize', run: noop },
-    },
-  };
-}
-
-function withManifest(change: (m: MissionManifest) => void): MissionPack {
-  const pack = samplePack();
-  change(pack.manifest);
-  return pack;
-}
 
 describe('validatePack', () => {
   it('正しいパックはエラーなしで通る', () => {
@@ -167,6 +56,9 @@ describe('validatePack', () => {
       },
       /^defenses\[0\]\.whyItFails: /,
     ],
+    ['対策に apply も replay もない', (manifest) => { const [defense] = manifest.defenses; if (defense) defense.apply = []; }, /^defenses\[0\]\.apply: /],
+    ['再生の利用者が未定義', (manifest) => { const [defense] = manifest.defenses; if (defense) defense.replay = [{ as: 'carol', request: { method: 'POST', path: '/x' } }]; }, /^defenses\[0\]\.replay\[0\]\.as: /],
+    ['再生のメソッドが不正', (manifest) => { const [defense] = manifest.defenses; if (defense) defense.replay = [{ as: 'bob', request: { method: 'PATCH' as never, path: '/x' } }]; }, /^defenses\[0\]\.replay\[0\]\.request\.method: /],
     ['ヒントの段階が欠けている', (m) => m.hints.pop(), /^hints: /],
     ['正解のない理解確認', (m) => (m.transferCheck[0]!.choices[0]!.correct = false), /正解の選択肢が必要です/],
     ['ID の重複', (m) => m.probes.push({ ...m.probes[0]! }), /「read-other」が重複しています/],
@@ -180,6 +72,35 @@ describe('validatePack', () => {
   ])('%s場合は拒否する', (_, change, message) => {
     const errors = validatePack(withManifest(change), { app });
     expect(errors.some((e) => message.test(e)), errors.join('\n')).toBe(true);
+  });
+
+  it('対策は apply の代わりに replay だけでも受け付ける（操作で直す課題）', () => {
+    const pack = samplePack();
+    pack.manifest.defenses.push({
+      id: 'fix-by-ops',
+      label: '設定を直す',
+      description: '管理者の操作で直す',
+      apply: [],
+      replay: [{ as: 'bob', request: { method: 'POST', path: '/fix', body: { value: 'ok' } } }],
+      referenceDiff: { file: 'config', language: 'ts', before: 'a', after: 'b' },
+      expected: 'secure',
+    });
+    expect(validatePack(pack, { app })).toEqual([]);
+  });
+
+  it('record（操作で直す）課題は対策候補が空でも、secure 必須を課さない', () => {
+    const pack = samplePack();
+    pack.manifest.repair = { kind: 'record', record: { kind: 'request', request: { method: 'POST', path: '/shell' } }, noun: '加えた変更' };
+    pack.manifest.defenses = [];
+    expect(validatePack(pack, { app })).toEqual([]);
+  });
+
+  it.each<[string, (m: MissionManifest) => void, RegExp]>([
+    ['修正方式の種類が未知', (manifest) => (manifest.repair = { kind: 'patch' as never, record: {}, noun: 'n' }), /^repair\.kind: /],
+    ['修正の記録の条件がない', (manifest) => (manifest.repair = { kind: 'record', record: 'x' as never, noun: 'n' }), /^repair\.record: /],
+    ['記録の呼び名が空', (manifest) => (manifest.repair = { kind: 'record', record: {}, noun: '' }), /^repair\.noun: /],
+  ])('修正方式が壊れている（%s）場合は拒否する', (_, change, message) => {
+    expect(validatePack(withManifest(change), { app }).some((error) => message.test(error))).toBe(true);
   });
 
   it('依頼人は省略でき、名前・役割・各反応が非空なら受け付ける', () => {

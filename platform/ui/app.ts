@@ -97,7 +97,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   );
   const exercise = new BrowserRuntimeAdapter({
     container: exerciseView.previewSlot,
-    onExchange: (exchange) => observe(exchange),
+    onExchange: (exchange) => void observe(exchange),
   });
   orchestrator = new Orchestrator({
     apps: catalog.apps,
@@ -252,9 +252,9 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const openingViews = new Set<string>();
   const currentApp = () => catalog.apps.find((a) => a.descriptor.id === orchestrator.snapshot?.attempt.appId);
 
-  /** 観測したやり取りを進行（再現の判定）と観測ログへ渡す。画面の表示だけのやり取りは事象があるときだけ記録する */
-  function observe(exchange: Exchange): void {
-    const reproduced = orchestrator.onExchange(exchange, { initialView: openingViews.has(exchange.runId) });
+  /** 観測したやり取りを進行（再現の判定・修正の記録）と観測ログへ渡す。画面の表示だけのやり取りは事象があるときだけ記録する */
+  async function observe(exchange: Exchange): Promise<void> {
+    const reproduced = await orchestrator.onExchange(exchange, { initialView: openingViews.has(exchange.runId) });
     if (exchange.kind === 'request' || exchange.events.length > 0) exerciseView.investigation.record(exchange, exerciseView.label(exchange.actor));
     if (reproduced) resultEffects.show({ kind: 'reproduced', detail: '再現の検印を押しました。事故を自分の操作で再現できました。' });
   }
@@ -324,7 +324,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     const actor = viewer;
     const outcome = await invokeRequest(actor, request, runId).finally(() => renderView({ actor: viewer }));
     if ('failure' in outcome) return outcome.failure;
-    observe(outcome.exchange);
+    await observe(outcome.exchange);
     guide.reach('request-sent');
     return null;
   }

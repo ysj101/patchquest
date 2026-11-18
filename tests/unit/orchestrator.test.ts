@@ -52,7 +52,7 @@ const leak = (runId: string, refs: Record<string, unknown>): Exchange => ({
 async function startDefended() {
   const { orchestrator } = setup();
   const snapshot = await orchestrator.start('test-pack');
-  orchestrator.onExchange(leak(orchestrator.newRunId(), snapshot.refs));
+  await orchestrator.onExchange(leak(orchestrator.newRunId(), snapshot.refs));
   await orchestrator.applyDefense('owner-only');
   return { orchestrator, snapshot };
 }
@@ -135,11 +135,11 @@ describe('Orchestrator', () => {
     const snapshot = await orchestrator.start('test-pack');
     expect(snapshot.attempt.badges.reproduction.achieved).toBe(false);
 
-    orchestrator.onExchange(leak('attempt-999:player:1', snapshot.refs));
+    await orchestrator.onExchange(leak('attempt-999:player:1', snapshot.refs));
     expect(snapshot.attempt.badges.reproduction.achieved).toBe(false);
 
     const runId = orchestrator.newRunId();
-    orchestrator.onExchange(leak(runId, snapshot.refs));
+    await orchestrator.onExchange(leak(runId, snapshot.refs));
     expect(snapshot.attempt.badges.reproduction).toMatchObject({ achieved: true, runId });
     expect(snapshot.attempt.state).toBe('Explored');
   });
@@ -147,7 +147,7 @@ describe('Orchestrator', () => {
   it('正しい対策は再注入せずに検証して防御の達成印を付け、すべての印がそろうと Passed になる（A04）', async () => {
     const { orchestrator, exercise } = setup();
     const snapshot = await orchestrator.start('test-pack');
-    orchestrator.onExchange(leak(orchestrator.newRunId(), snapshot.refs));
+    await orchestrator.onExchange(leak(orchestrator.newRunId(), snapshot.refs));
 
     await orchestrator.applyDefense('owner-only');
     expect(snapshot.attempt).toMatchObject({ state: 'Repairing', appliedDefense: 'owner-only' });
@@ -233,7 +233,7 @@ describe('Orchestrator', () => {
     expect(second.attempt).toMatchObject({ state: 'Prepared', appliedDefense: null, seed: 7 });
     expect(second.implementations).toEqual({ 'note.read': 'test-pack/any-owner' });
     // 前の演習のやり取りは新しい演習では無視される
-    orchestrator.onExchange(leak(`${first.attempt.attemptId}:player:1`, second.refs));
+    await orchestrator.onExchange(leak(`${first.attempt.attemptId}:player:1`, second.refs));
     expect(second.attempt.badges.reproduction.achieved).toBe(false);
   });
 
@@ -253,7 +253,7 @@ describe('Orchestrator', () => {
   it('保存した記録から、同じ seed・対策構成で環境を作り直して続きを始める', async () => {
     const first = setup();
     const snapshot = await first.orchestrator.start('test-pack', { seed: 77 });
-    first.orchestrator.onExchange(leak(first.orchestrator.newRunId(), snapshot.refs));
+    await first.orchestrator.onExchange(leak(first.orchestrator.newRunId(), snapshot.refs));
     first.orchestrator.openHint(1);
     await first.orchestrator.applyDefense('deny-all');
     const record = structuredClone(snapshot.attempt);

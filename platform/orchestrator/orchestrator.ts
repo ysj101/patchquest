@@ -11,6 +11,7 @@ import {
   type VerificationReport,
 } from '../contract';
 import { configHash, detectReproduction } from '../evaluator/evaluator';
+import { matchesExchange } from '../evaluator/scenario';
 import { Blocked, type Current, type ExerciseSnapshot, type OrchestratorDeps, type PreflightEntry, type PreflightStep } from './types';
 import { recordVerification } from './verification-record';
 import { createCurrent, type StartOptions } from './start';
@@ -89,7 +90,7 @@ export class Orchestrator {
    * initialView は初期表示の読み込み中の要求。調査の初回記録からだけ除外する。
    * 現在の演習の実行 ID でないやり取り（古い演習の応答など）は無視する
    */
-  onExchange(exchange: Exchange, options: { initialView?: boolean } = {}): boolean {
+  async onExchange(exchange: Exchange, options: { initialView?: boolean } = {}): Promise<boolean> {
     const c = this.current;
     if (!c?.runIds.has(exchange.runId)) return false;
     const { attempt, pack, refs } = c.snapshot;
@@ -98,8 +99,25 @@ export class Orchestrator {
     if (attempt.state === 'Prepared') this.transition('Explored');
     const reproduced = !attempt.badges.reproduction.achieved && detectReproduction(exchange, pack.manifest.probes, refs) !== null;
     if (reproduced) attempt.badges.reproduction = { achieved: true, runId: exchange.runId, at: this.now().toISOString() };
+    await this.recordRepair(c, exchange);
     this.emit();
     return reproduced;
+  }
+
+  /**
+   * 操作で直す課題で、状態を変える操作を修正の記録として残す（spec §5.3）。記録は検証の前に再生する。
+   * 記録を加えたら構成が変わるので、過去の合格を現在の合格として扱わない（defenseCurrent を下げる）
+   */
+  private async recordRepair(current: Current, exchange: Exchange): Promise<void> {
+    const { snapshot } = current;
+    const repair = snapshot.pack.manifest.repair;
+    if (repair?.kind !== 'record' || !exchange.request || !matchesExchange(exchange, repair.record, snapshot.refs)) return;
+    const { attempt } = snapshot;
+    attempt.repairLog = [...attempt.repairLog, { as: exchange.actor, request: exchange.request }];
+    if (attempt.milestones.firstDefenseAt === null) attempt.milestones.firstDefenseAt = this.now().toISOString();
+    if (attempt.state !== 'Repairing') this.transition('Repairing');
+    snapshot.defenseCurrent = false;
+    attempt.configHash = await this.hashFor(snapshot.implementations);
   }
 
   /** 対策を適用する（null で取り消して脆弱な状態 V に戻す）。動作を切り替えるだけで合否は返さない */
@@ -193,6 +211,7 @@ export class Orchestrator {
     const { attempt } = c.snapshot;
     // 検証中は戻せない（検証が終わってから戻す）
     if (!isInExercise(attempt.state) || attempt.state === 'Prepared' || attempt.state === 'Verifying') return;
+    attempt.repairLog = [];
     await this.switchImplementations({ ...c.vulnerable });
     await this.deps.exercise.reset();
     attempt.appliedDefense = null;
@@ -263,7 +282,7 @@ export class Orchestrator {
   private subject(implementations: ImplementationSelection) {
     const c = this.require();
     const { attempt, pack } = c.snapshot;
-    return buildSubject(c.app!, pack, attempt.attemptId, attempt.seed, implementations);
+    return buildSubject(c.app!, pack, attempt.attemptId, attempt.seed, implementations, attempt.repairLog);
   }
 
   private hashFor(implementations: ImplementationSelection): Promise<string> {
@@ -275,6 +294,7 @@ export class Orchestrator {
       recipeVersion: attempt.recipeVersion,
       app: { id: attempt.appId, version: attempt.appVersion },
       implementations,
+      replay: attempt.repairLog,
     });
   }
 
