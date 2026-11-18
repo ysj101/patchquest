@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { backToList, expect, launchButton, openMission, openRawRequest, preview, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
 
 const stages = (page: Page) => page.getByRole('list', { name: 'ステージ', exact: true });
-const count = (page: Page, total: number) => expect(page.getByRole('heading', { name: `ステージ ${total} / 5`, exact: true })).toBeVisible();
+const count = (page: Page, total: number) => expect(page.getByRole('heading', { name: `完了 ${total} / 5 ステージ`, exact: true })).toBeVisible();
 
 async function apply(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
@@ -16,7 +16,7 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await openHome(page);
   await openMission(page, 'idor');
   // 導入の間は作業台（ステージを含む）を隠している。数だけを確かめる
-  await expect(page.getByRole('heading', { name: 'ステージ 0 / 5', exact: true, includeHidden: true })).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: '完了 0 / 5 ステージ', exact: true, includeHidden: true })).toHaveCount(1);
   await expect(ticketSeals(page)).toContainText('再現：未達成');
   await launchButton(page).click();
   await count(page, 1);
@@ -49,18 +49,23 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await page.getByRole('radio', { name: /^どの利用者の注文を返すかはトークンから決め/ }).check();
   await page.getByRole('button', { name: '回答する' }).click();
   await count(page, 5);
+  await expect(stages(page).locator('[aria-current="step"]')).toHaveCount(0);
 });
 
 test('到達記録は再開・再読み込み・別環境への取り込みで保ち、最初から始めると導入を表示して段階は最初に戻る', async ({ page, browser }) => {
   await startMission(page, 'idor');
   await apply(page);
+  await count(page, 2);
+  await expect(stages(page).locator('li').nth(1)).toHaveAttribute('aria-current', 'step');
   const before = await stages(page).allTextContents();
   await backToList(page).click();
   await openMission(page, 'idor', { resume: true });
+  await count(page, 2);
   await expect(stages(page)).toHaveText(before);
   await expect(stages(page).locator('.stage-arrived')).toHaveCount(0);
   await page.reload();
   await openMission(page, 'idor', { resume: true });
+  await count(page, 2);
   await expect(stages(page)).toHaveText(before);
   await page.goto('/test/progress.html');
   await expect(page.locator('body[data-ready="true"]')).toBeAttached();
@@ -73,6 +78,7 @@ test('到達記録は再開・再読み込み・別環境への取り込みで�
     expect(await restored.evaluate((text) => window.progressTest.importJson(text), json)).toEqual({ ok: true, imported: 1, profileRecomputed: false });
     await restored.goto('/');
     await openMission(restored, 'idor', { resume: true });
+    await count(restored, 2);
     await expect(stages(restored)).toHaveText(before);
     await expect(stages(restored).locator('.stage-arrived')).toHaveCount(0);
   } finally {
@@ -88,6 +94,7 @@ test('到達記録は再開・再読み込み・別環境への取り込みで�
 test('動きを減らしても到達と現在地を文字で示し、導入の読み直しでは再通知しない', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await startMission(page, 'idor');
+  await count(page, 1);
   const first = stages(page).locator('li').first();
   await expect(first).toHaveCSS('animation-name', 'none');
   await expect(stages(page).locator('li').nth(1)).toHaveAttribute('aria-current', 'step');
