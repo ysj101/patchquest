@@ -88,8 +88,8 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     if (!id.startsWith(`${String(m.id)}/`)) c.fail(`implementations.${id}`, `実装 ID は「${String(m.id)}/」で始めてください`);
   }
   const implementations = { ...ctx.sharedImplementations, ...pack.implementations };
-  const checkChanges = (path: string, v: unknown) =>
-    c.list(path, v, true).forEach((raw, i) => {
+  const checkChanges = (path: string, v: unknown, nonEmpty = true) =>
+    c.list(path, v, nonEmpty).forEach((raw, i) => {
       const change = c.obj(`${path}[${i}]`, raw);
       c.ref(`${path}[${i}].hook`, change.hook, hooks, 'フック');
       const impl = implementations[c.text(`${path}[${i}].implementation`, change.implementation)];
@@ -98,16 +98,22 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     });
 
   const actors = app ? new Set([...app.users, ANONYMOUS]) : null;
+  const checkActor = (path: string, value: unknown) => {
+    const actor = c.text(path, value);
+    if (actors && !actors.has(actor)) c.fail(path, `未定義の利用者「${actor}」です`);
+  };
+  const checkRequest = (path: string, value: unknown) => {
+    const req = c.obj(path, value);
+    c.oneOf(`${path}.method`, req.method, HTTP_METHODS);
+    c.text(`${path}.path`, req.path);
+  };
   const checkSteps = (path: string, v: unknown) =>
     c.list(path, v, true).forEach((raw, i) => {
       const step = c.obj(`${path}[${i}]`, raw);
       c.oneOf(`${path}[${i}].kind`, step.kind, STEP_KINDS);
-      const actor = c.text(`${path}[${i}].as`, step.as);
-      if (actors && !actors.has(actor)) c.fail(`${path}[${i}].as`, `未定義の利用者「${actor}」です`);
+      checkActor(`${path}[${i}].as`, step.as);
       if (step.kind === 'request') {
-        const req = c.obj(`${path}[${i}].request`, step.request);
-        c.oneOf(`${path}[${i}].request.method`, req.method, HTTP_METHODS);
-        c.text(`${path}[${i}].request.path`, req.path);
+        checkRequest(`${path}[${i}].request`, step.request);
       } else {
         c.text(`${path}[${i}].view.route`, c.obj(`${path}[${i}].view`, step.view).route);
       }
@@ -145,9 +151,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   c.records('actions', m.actions, false, (a, at) => {
     c.text(`${at}.label`, a.label);
     c.text(`${at}.description`, a.description);
-    const req = c.obj(`${at}.request`, a.request);
-    c.oneOf(`${at}.request.method`, req.method, HTTP_METHODS);
-    c.text(`${at}.request.path`, req.path);
+    checkRequest(`${at}.request`, a.request);
     if (typeof a.editable !== 'boolean') c.fail(`${at}.editable`, '真偽値が必要です');
     c.records(`${at}.fields`, a.fields, false, (f, fat) => {
       c.text(`${fat}.label`, f.label);
@@ -160,7 +164,13 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   c.records('defenses', m.defenses, true, (d, at) => {
     c.text(`${at}.label`, d.label);
     c.text(`${at}.description`, d.description);
-    checkChanges(`${at}.apply`, d.apply);
+    const replay = d.replay === undefined ? [] : c.list(`${at}.replay`, d.replay, true);
+    checkChanges(`${at}.apply`, d.apply, replay.length === 0);
+    replay.forEach((raw, i) => {
+      const entry = c.obj(`${at}.replay[${i}]`, raw);
+      checkActor(`${at}.replay[${i}].as`, entry.as);
+      checkRequest(`${at}.replay[${i}].request`, entry.request);
+    });
     const diff = c.obj(`${at}.referenceDiff`, d.referenceDiff);
     c.text(`${at}.referenceDiff.file`, diff.file);
     c.oneOf(`${at}.referenceDiff.language`, diff.language, DIFF_LANGUAGES);

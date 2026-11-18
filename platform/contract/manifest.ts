@@ -1,5 +1,5 @@
 // 課題パックの定義（spec §11.1 MissionManifest）
-import type { Capability, HookId, ImplementationId, ImplementationRegistry } from './runtime';
+import type { Capability, HookId, ImplementationId, ImplementationRegistry, ReplayEntry } from './runtime';
 import type { ProbeDef, RequestTemplate, TestCase } from './scenario';
 
 export const MANIFEST_SCHEMA_VERSION = 1;
@@ -175,7 +175,10 @@ interface DefenseFields {
   id: string;
   label: string;
   description: string;
+  /** 切り替える実装。replay だけで直す対策では空にできる */
   apply: ImplementationChange[];
+  /** 実装を切り替えたあと、各テストの前に再生するやり取り（操作で直す課題の対策の手順） */
+  replay?: ReplayEntry[];
   referenceDiff: ReferenceDiff;
 }
 

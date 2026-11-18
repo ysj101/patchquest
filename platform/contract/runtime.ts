@@ -56,11 +56,20 @@ export interface ImplementationEntry {
 export type ImplementationRegistry = Record<ImplementationId, ImplementationEntry>;
 
 /** ブラウザ内の「リクエスト相当の呼び出し」。本物のネットワーク通信ではない */
-export interface AppRequest {
+export type AppRequest = {
   method: HttpMethod;
   path: string;
   body?: JsonValue;
-}
+};
+
+/**
+ * 検証の前に再生する 1 件のやり取り。操作で直す課題で、プレイヤーが演習中に加えた変更や、対策の手順を表す。
+ * {{キー}} は展開せず、書いたとおりに送る
+ */
+export type ReplayEntry = {
+  as: ActorKey;
+  request: AppRequest;
+};
 
 export interface AppResponse {
   status: number;

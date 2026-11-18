@@ -167,6 +167,9 @@ describe('validatePack', () => {
       },
       /^defenses\[0\]\.whyItFails: /,
     ],
+    ['対策に apply も replay もない', (manifest) => { const [defense] = manifest.defenses; if (defense) defense.apply = []; }, /^defenses\[0\]\.apply: /],
+    ['再生の利用者が未定義', (manifest) => { const [defense] = manifest.defenses; if (defense) defense.replay = [{ as: 'carol', request: { method: 'POST', path: '/x' } }]; }, /^defenses\[0\]\.replay\[0\]\.as: /],
+    ['再生のメソッドが不正', (manifest) => { const [defense] = manifest.defenses; if (defense) defense.replay = [{ as: 'bob', request: { method: 'PATCH' as never, path: '/x' } }]; }, /^defenses\[0\]\.replay\[0\]\.request\.method: /],
     ['ヒントの段階が欠けている', (m) => m.hints.pop(), /^hints: /],
     ['正解のない理解確認', (m) => (m.transferCheck[0]!.choices[0]!.correct = false), /正解の選択肢が必要です/],
     ['ID の重複', (m) => m.probes.push({ ...m.probes[0]! }), /「read-other」が重複しています/],
@@ -180,6 +183,20 @@ describe('validatePack', () => {
   ])('%s場合は拒否する', (_, change, message) => {
     const errors = validatePack(withManifest(change), { app });
     expect(errors.some((e) => message.test(e)), errors.join('\n')).toBe(true);
+  });
+
+  it('対策は apply の代わりに replay だけでも受け付ける（操作で直す課題）', () => {
+    const pack = samplePack();
+    pack.manifest.defenses.push({
+      id: 'fix-by-ops',
+      label: '設定を直す',
+      description: '管理者の操作で直す',
+      apply: [],
+      replay: [{ as: 'bob', request: { method: 'POST', path: '/fix', body: { value: 'ok' } } }],
+      referenceDiff: { file: 'config', language: 'ts', before: 'a', after: 'b' },
+      expected: 'secure',
+    });
+    expect(validatePack(pack, { app })).toEqual([]);
   });
 
   it('依頼人は省略でき、名前・役割・各反応が非空なら受け付ける', () => {

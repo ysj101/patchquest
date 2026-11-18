@@ -1,6 +1,6 @@
 // パック出荷前検証（spec §15）。基準で全合格／レシピは対象テストだけが失敗し攻撃が成立／
 // 対策は expected どおり（secure は全合格、insufficient は攻撃阻止が失敗、breaks-normal は正常系が失敗）
-import type { DefenseDef, ImplementationSelection, MissionPack, VerificationReport } from '../contract';
+import type { DefenseDef, ImplementationSelection, MissionPack, ReplayEntry, VerificationReport } from '../contract';
 import type { Evaluator } from '../evaluator/evaluator';
 import type { CatalogApp } from './orchestrator';
 import { buildSubject, withChanges } from './subject';
@@ -9,7 +9,7 @@ import { buildSubject, withChanges } from './subject';
  * 出荷前検証だけで確かめる対策候補。学習画面には出さない。
  * 例：特定の利用者名やメモ ID をハードコードした誤った修正が、expected どおり（insufficient）に判定されること
  */
-export type VerificationCandidate = Pick<DefenseDef, 'id' | 'apply' | 'expected'>;
+export type VerificationCandidate = Pick<DefenseDef, 'id' | 'apply' | 'replay' | 'expected'>;
 
 export interface PackCheck {
   name: string;
@@ -64,9 +64,10 @@ export async function verifyPack(
   const tests = [...app.tests, ...manifest.tests.cases];
   const target = manifest.tests.target;
   const checks: PackCheck[] = [];
-  const subject = (implementations: ImplementationSelection) => buildSubject(app, pack, `verify-${manifest.id}`, seed, implementations);
-  const run = (implementations: ImplementationSelection, label: string) =>
-    evaluator.runSuite(subject(implementations), tests, target, `verify:${manifest.id}:${label}`, '');
+  const subject = (implementations: ImplementationSelection, replay: readonly ReplayEntry[] = []) =>
+    buildSubject(app, pack, `verify-${manifest.id}`, seed, implementations, replay);
+  const run = (implementations: ImplementationSelection, label: string, replay: readonly ReplayEntry[] = []) =>
+    evaluator.runSuite(subject(implementations, replay), tests, target, `verify:${manifest.id}:${label}`, '');
 
   const baseline = await run({}, 'baseline');
   checks.push({ name: '基準状態ですべてのテストが通る', ok: baseline.passed, detail: failedIds(baseline).join(', ') || '全件合格' });
@@ -88,7 +89,7 @@ export async function verifyPack(
 
     for (const defense of [...manifest.defenses, ...extraCandidates]) {
       const applied = withChanges(vulnerable, defense.apply);
-      const report = await run(applied, `${recipe.id}+${defense.id}`);
+      const report = await run(applied, `${recipe.id}+${defense.id}`, defense.replay);
       checks.push({ name: `レシピ ${recipe.id} ＋ 対策 ${defense.id}：${defense.expected}`, ...judgeDefense(defense.expected, report, partial) });
     }
   }
