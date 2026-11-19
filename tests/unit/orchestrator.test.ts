@@ -1,10 +1,9 @@
 // Orchestrator の進行（Issue #9）。Node では画面を描画しないため、描画を含まないテストだけのパックで確かめる
 import { describe, expect, it } from 'vitest';
 import type { Exchange, MissionPack } from '../../platform/contract';
-import { Evaluator } from '../../platform/evaluator/evaluator';
 import { Orchestrator, type CatalogApp } from '../../platform/orchestrator/orchestrator';
 import { verifyPack } from '../../platform/orchestrator/pack-verification';
-import { EngineRuntime } from '../support/engine-runtime';
+import { EngineRuntime, nodeEvaluator } from '../support/engine-runtime';
 import { nodePack } from '../support/node-pack';
 import { testApp } from '../support/test-app';
 import { testPack } from '../support/test-pack';
@@ -30,7 +29,7 @@ function setup(packs: MissionPack[] = [nodePack]) {
   const orchestrator = new Orchestrator({
     apps: [app],
     packs,
-    evaluator: new Evaluator(() => new EngineRuntime()),
+    evaluator: nodeEvaluator(),
     exercise,
     randomSeed: () => 4242,
     newId: () => `attempt-${++id}`,
@@ -293,40 +292,40 @@ describe('Orchestrator', () => {
 
 describe('パック出荷前検証', () => {
   it('基準・レシピ・対策の期待どおりかを確かめる', async () => {
-    const result = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()));
+    const result = await verifyPack(nodePack, testApp, nodeEvaluator());
     expect(result.checks.filter((c) => !c.ok)).toEqual([]);
     expect(result.ok).toBe(true);
   });
 
   it('期待と違う対策を検出する', async () => {
     const wrong = withManifest((m) => (m.defenses[1]!.expected = 'secure'));
-    const result = await verifyPack(wrong, testApp, new Evaluator(() => new EngineRuntime()));
+    const result = await verifyPack(wrong, testApp, nodeEvaluator());
     expect(result.ok).toBe(false);
     expect(result.checks.filter((c) => !c.ok).map((c) => c.name)).toEqual(['レシピ any-owner ＋ 対策 deny-all：secure']);
   });
 
   it('検証専用の対策候補も、パックの対策候補と同じく期待どおりかを確かめる', async () => {
     const extra = { id: 'extra-deny', apply: [{ hook: 'note.read', implementation: 'test-pack/deny-all' }] };
-    const asExpected = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [{ ...extra, expected: 'breaks-normal' }]);
+    const asExpected = await verifyPack(nodePack, testApp, nodeEvaluator(), 1, [{ ...extra, expected: 'breaks-normal' }]);
     expect(asExpected.checks.map((check) => check.name)).toContain('レシピ any-owner ＋ 対策 extra-deny：breaks-normal');
     expect(asExpected.ok).toBe(true);
 
-    const mistaken = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [{ ...extra, expected: 'secure' }]);
+    const mistaken = await verifyPack(nodePack, testApp, nodeEvaluator(), 1, [{ ...extra, expected: 'secure' }]);
     expect(mistaken.checks.filter((check) => !check.ok).map((check) => check.name)).toEqual(['レシピ any-owner ＋ 対策 extra-deny：secure']);
   });
 
   it('テストの一部だけで確かめるとき、失敗が出ない不十分・正常系を壊す対策は判定できないとして扱い、違う種類の失敗は検出する', async () => {
     // 全件合格する対策を insufficient と申告：一部のテストでは、除いたテストで攻撃が通るかもしれないので判定できない
     const owner = { id: 'extra-owner', apply: [{ hook: 'note.read', implementation: 'test-app/owner-only' }], expected: 'insufficient' as const };
-    const strict = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [owner]);
+    const strict = await verifyPack(nodePack, testApp, nodeEvaluator(), 1, [owner]);
     expect(strict.ok).toBe(false);
-    const partial = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [owner], { partial: true });
+    const partial = await verifyPack(nodePack, testApp, nodeEvaluator(), 1, [owner], { partial: true });
     expect(partial.ok).toBe(true);
     expect(partial.checks.find((check) => check.name.includes('extra-owner'))?.detail).toMatch(/判定できない/);
 
     // 正常系を壊す対策を insufficient と申告：失敗が出ているので、一部のテストでも違いを検出する
     const deny = { id: 'extra-deny', apply: [{ hook: 'note.read', implementation: 'test-pack/deny-all' }], expected: 'insufficient' as const };
-    const wrong = await verifyPack(nodePack, testApp, new Evaluator(() => new EngineRuntime()), 1, [deny], { partial: true });
+    const wrong = await verifyPack(nodePack, testApp, nodeEvaluator(), 1, [deny], { partial: true });
     expect(wrong.checks.filter((check) => !check.ok).map((check) => check.name)).toEqual(['レシピ any-owner ＋ 対策 extra-deny：insufficient']);
   });
 });

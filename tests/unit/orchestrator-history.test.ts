@@ -1,13 +1,12 @@
 // 修正前の再実測と、検証ごとに保持する改善履歴を確かめる。
 import { expect, it, vi } from 'vitest';
-import { Evaluator } from '../../platform/evaluator/evaluator';
 import { Orchestrator } from '../../platform/orchestrator/orchestrator';
-import { EngineRuntime } from '../support/engine-runtime';
+import { EngineRuntime, nodeEvaluator } from '../support/engine-runtime';
 import { nodePack } from '../support/node-pack';
 import { testApp } from '../support/test-app';
 
 function setup() {
-  const evaluator = new Evaluator(() => new EngineRuntime());
+  const evaluator = nodeEvaluator();
   const orchestrator = new Orchestrator({ evaluator, exercise: new EngineRuntime(), apps: [testApp], packs: [nodePack] });
   return { evaluator, orchestrator };
 }

@@ -1,6 +1,6 @@
 // 分類ごとの習熟度が一覧と振り返りに★と文字で出て、達成印に応じて変わり、根拠を開けることをブラウザで確かめる。
 import type { Page } from '@playwright/test';
-import { backToList, expect, openHome, openMission, openRecords, reproduceNoteLeak, test, ticketSeals, verifyWith } from './fixtures';
+import { backToList, expect, launchButton, openHome, openMission, openRecords, reproduceNoteLeak, test, ticketSeals, verifyWith } from './fixtures';
 
 const listSection = (page: Page) => page.getByRole('region', { name: '習熟度', exact: true });
 const authorization = (page: Page) => listSection(page).locator('.mastery-line[data-category="authorization"]');
@@ -14,7 +14,7 @@ test('達成印に応じて認可の習熟度が★と文字で上がり、根�
   await expect(authorization(page)).toHaveText('認可の習熟度☆☆☆☆☆Lv0：未着手');
 
   await openMission(page, 'test-pack');
-  await page.getByRole('button', { name: 'ミッション開始', exact: true }).click();
+  await launchButton(page).click();
   await page.getByRole('tab', { name: '調査' }).click();
   await reproduceNoteLeak(page);
   await page.getByRole('tab', { name: '振り返り' }).click();

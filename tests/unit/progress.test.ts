@@ -1,9 +1,10 @@
 // 進捗ファイルの互換性・検証・保存と復元を確かめる。
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { emptyMilestones, type AttemptRecord } from '../../platform/contract';
-import { MAX_PROGRESS_BYTES, PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, ProgressFormatError, parseProgress } from '../../platform/progress/schema';
+import { MAX_PROGRESS_BYTES, PROGRESS_FORMAT, ProgressFormatError, parseProgress } from '../../platform/progress/schema';
 import { IndexedDbBackend, ProgressStore } from '../../platform/progress/store';
 import { makeAttempt } from '../support/attempt';
+import { progressJson } from '../support/progress-json';
 
 
 /** 検証結果や達成印を持つ、取り込みの検証に使う記録 */
@@ -27,22 +28,6 @@ const attempt = (id: string, overrides: Partial<AttemptRecord> = {}): AttemptRec
     ...overrides,
   });
 
-/** 型が不正な項目も渡せる進捗 JSON。profile: undefined で旧版と同じく項目を省ける。 */
-function progressJson(options: {
-  format?: string;
-  schemaVersion?: unknown;
-  attempts?: unknown[];
-  profile?: unknown;
-} = {}): string {
-  return JSON.stringify({
-    format: PROGRESS_FORMAT,
-    schemaVersion: PROGRESS_SCHEMA_VERSION,
-    exportedAt: '',
-    attempts: [],
-    profile: {},
-    ...options,
-  });
-}
 
 describe('ProgressStore', () => {
   it('保存・一覧・削除ができ、書き出した JSON を別の環境へ復元できる（A15）', async () => {

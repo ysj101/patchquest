@@ -53,6 +53,28 @@ export async function openHome(page: Page): Promise<void> {
   await expect(pageHeading(page, 'PatchQuest')).toBeVisible({ timeout: 15_000 });
 }
 
+/** 検証ページ（tests/pages）の準備が終わるまで待つ。再読み込みの後にも使う */
+export async function testPageReady(page: Page): Promise<void> {
+  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+}
+
+/** 検証ページ（/test/<name>.html）を開き、準備が終わるまで待つ */
+export async function openTestPage(page: Page, name: string): Promise<void> {
+  await page.goto(`/test/${name}.html`);
+  await testPageReady(page);
+}
+
+/** 以降に開くページで IndexedDB を使えなくする（保存できない環境の再現） */
+export async function blockIndexedDb(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'indexedDB', {
+      get() {
+        throw new DOMException('blocked for test', 'SecurityError');
+      },
+    });
+  });
+}
+
 /** 課題一覧の設定から進捗ファイルを読み込み、注記を確かめて閉じる */
 export async function importProgressFile(page: Page, json: unknown, note: string): Promise<void> {
   await openHome(page);
@@ -129,12 +151,17 @@ async function finishBriefing(page: Page): Promise<void> {
   await expectWorkbench(page);
 }
 
-/** 対策パネルで対策を選んで適用し、検証を始める */
-export async function verifyWith(page: Page, defense: string): Promise<void> {
+/** 対策パネルで対策を選んで適用する */
+export async function applyDefense(page: Page, defense: string): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
   await page.getByRole('radio', { name: new RegExp(defense) }).check();
   await page.getByRole('button', { name: 'この対策を適用する' }).click();
   await expect(page.getByText(`適用中の対策：${defense}`)).toBeVisible();
+}
+
+/** 対策パネルで対策を選んで適用し、検証を始める */
+export async function verifyWith(page: Page, defense: string): Promise<void> {
+  await applyDefense(page, defense);
   await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
 }
 
@@ -175,6 +202,15 @@ export async function turnMotionOffWithKeyboard(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(settingsButton(page)).toBeFocused();
+}
+
+/** キーボードで動きをオフにしてから課題を始め、導入を閉じる */
+export async function startWithMotionOff(page: Page, missionId: string): Promise<void> {
+  await openHome(page);
+  await settingsButton(page).focus();
+  await turnMotionOffWithKeyboard(page);
+  await openMission(page, missionId);
+  await launchButton(page).click();
 }
 
 /** test-pack の理解確認の正解（設問 ID → 選択肢のラベル） */

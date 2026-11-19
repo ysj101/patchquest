@@ -1,7 +1,7 @@
 // ブラウザ用 RuntimeAdapter の契約テスト（Issue #5）
 import type { Page } from '@playwright/test';
 import type { FixtureData, InvokeResult, PrepareOptions } from '../../platform/contract';
-import { expect, test } from './fixtures';
+import { expect, openTestPage, test } from './fixtures';
 
 type Name = 'exercise' | 'verifier';
 type Settled<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
@@ -30,8 +30,7 @@ async function request(page: Page, name: Name, actor: string, method: string, pa
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/test/runtime.html');
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+  await openTestPage(page, 'runtime');
 });
 
 test('同じ seed なら同じ初期データ、違う seed なら違う初期データになる', async ({ page }) => {
