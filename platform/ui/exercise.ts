@@ -41,14 +41,6 @@ const NOW_DOING = {
 
 const NOW_DONE = '振り返りで、原因と対策を確認します。';
 
-/** 状況タブから、左の依頼と重なる問い合わせと目標を外す。依頼の文は左に 1 か所だけ残す */
-function withoutRepeatedRequest(panel: HTMLElement): HTMLElement {
-  for (const section of [...panel.querySelectorAll(':scope > section.tool-section')]) {
-    const title = section.querySelector('h3')?.textContent;
-    if (title === '問い合わせ' || title === '目標') section.remove();
-  }
-  return panel;
-}
 
 export class ExerciseView {
   readonly element = h('section', { class: 'exercise', 'aria-labelledby': 'exercise-title', hidden: true });
@@ -142,7 +134,7 @@ export class ExerciseView {
     this.achievements.reset();
     const story = snapshot.pack.manifest.story;
     fill(this.request, h('h2', {}, '依頼'), h('p', {}, story.incident));
-    fill(this.storySlot, withoutRepeatedRequest(storyPanel(story)), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
+    fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
     fill(
       this.briefing,
       h('h2', { id: 'briefing-title' }, h('span', { class: 'eyebrow', 'aria-hidden': true }, 'SECURITY ALERT'), 'セキュリティ警報'),
@@ -201,9 +193,6 @@ export class ExerciseView {
     this.investigation.setViewer(actorLabel(actor));
   }
 
-  label(actor: ActorKey): string {
-    return actorLabel(actor);
-  }
 
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack, defenseCurrent } = snapshot;

@@ -38,10 +38,7 @@ const difficultyRank = (entry: MissionEntry): number => {
 
 /** 表の並び：練習 → 入門 → 基本 → 応用。同じ難易度ではカタログの順 */
 export function tableOrder(entries: MissionEntry[]): MissionEntry[] {
-  return entries
-    .map((entry, index) => ({ entry, index }))
-    .sort((first, second) => difficultyRank(first.entry) - difficultyRank(second.entry) || first.index - second.index)
-    .map(({ entry }) => entry);
+  return [...entries].sort((first, second) => difficultyRank(first) - difficultyRank(second));
 }
 
 /** 次に進むおすすめ。表の順で、まだ完了していない最初の課題 */
@@ -89,14 +86,12 @@ function progressOf(entry: MissionEntry): RowProgress {
 function buttons(entry: MissionEntry, actions: MissionActions): HTMLElement[] {
   const { manifest } = entry.pack;
   const { latest } = entry;
-  const list =
-    latest && entry.resumable
-      ? [
-          h('button', { type: 'button', class: 'button', on: { click: () => actions.resume(latest) } }, '続きから始める'),
-          h('button', { type: 'button', class: 'button button-quiet', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
-        ]
-      : [h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
-  return list;
+  return latest && entry.resumable
+    ? [
+        h('button', { type: 'button', class: 'button', on: { click: () => actions.resume(latest) } }, '続きから始める'),
+        h('button', { type: 'button', class: 'button button-quiet', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
+      ]
+    : [h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
 }
 
 /** 概要は畳んでおき、行は名前と一言だけで読めるようにする（学習目標は ⓘ にある）。習熟度は完了した課題にだけ添える */

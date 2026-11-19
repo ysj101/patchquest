@@ -1,6 +1,6 @@
 // 脆弱性の分類ごとの習熟度（★0〜5）を、保存済みの演習記録から都度計算する。XP（取り組みへの報酬）とは分け、保存しない（spec §9, §13）
 import type { AttemptRecord, VulnerabilityCategory } from '../contract';
-import { VULNERABILITY_CATEGORIES } from '../contract';
+import { VULNERABILITY_CATEGORIES, byCreatedAt } from '../contract';
 import type { ReviewEntry } from './review';
 import { achievedAt, allBadgesAchieved } from './stages';
 
@@ -88,7 +88,7 @@ const conditionKey = (attempt: AttemptRecord) => `${attempt.missionId}\u0000${at
 export function masteryFromAttempts(attempts: readonly AttemptRecord[], categories: MissionCategories, reviews: readonly ReviewEntry[] = []): MasterySummary {
   const summary = Object.fromEntries(VULNERABILITY_CATEGORIES.map((category) => [category, emptyMastery(category)])) as MasterySummary;
   const completed = new Map<VulnerabilityCategory, Set<string>>();
-  const sorted = [...attempts].sort((first, second) => first.createdAt.localeCompare(second.createdAt));
+  const sorted = [...attempts].sort(byCreatedAt);
   for (const attempt of sorted) {
     const category = categoryOf(categories, attempt.missionId);
     if (category === undefined) continue;

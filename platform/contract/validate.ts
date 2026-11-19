@@ -63,7 +63,8 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
 
   const runtime = c.obj('runtime', m.runtime);
   c.oneOf('runtime.adapter', runtime.adapter, ['browser']);
-  c.list('runtime.capabilities', runtime.capabilities).forEach((cap, i) => c.oneOf(`runtime.capabilities[${i}]`, cap, CAPABILITIES));
+  const capabilities = c.list('runtime.capabilities', runtime.capabilities);
+  capabilities.forEach((cap, i) => c.oneOf(`runtime.capabilities[${i}]`, cap, CAPABILITIES));
 
   const features = c.texts('prerequisites.features', c.obj('prerequisites', m.prerequisites).features);
   if (app) features.forEach((f, i) => !app.features.includes(f) && c.fail(`prerequisites.features[${i}]`, `アプリに機能「${f}」がありません`));
@@ -71,7 +72,6 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
 
   // 交換するフック
   const hookContracts = new Map<string, unknown>();
-  const capabilities = Array.isArray(runtime.capabilities) ? runtime.capabilities : [];
   const hooks = c.records('hooks', m.hooks, true, (h, at) => {
     if (!Number.isInteger(h.contract) || (h.contract as number) < 1) c.fail(`${at}.contract`, '1 以上の整数が必要です');
     hookContracts.set(h.id as string, h.contract);
@@ -152,7 +152,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     c.text(`${at}.label`, a.label);
     c.text(`${at}.description`, a.description);
     checkRequest(`${at}.request`, a.request);
-    if (typeof a.editable !== 'boolean') c.fail(`${at}.editable`, '真偽値が必要です');
+    c.bool(`${at}.editable`, a.editable);
     c.records(`${at}.fields`, a.fields, false, (f, fat) => {
       c.text(`${fat}.label`, f.label);
       c.oneOf(`${fat}.input`, f.input, FIELD_INPUTS);
@@ -218,7 +218,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     c.records(`${at}.choices`, choices, false, (ch, cat) => {
       c.text(`${cat}.label`, ch.label);
       c.text(`${cat}.explanation`, ch.explanation);
-      if (typeof ch.correct !== 'boolean') c.fail(`${cat}.correct`, '真偽値が必要です');
+      c.bool(`${cat}.correct`, ch.correct);
     });
     if (!choices.some((ch) => isObj(ch) && ch.correct === true)) c.fail(`${at}.choices`, '正解の選択肢が必要です');
   });

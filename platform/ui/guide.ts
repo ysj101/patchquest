@@ -21,22 +21,15 @@ const FROM_RECORD = {
   understood: (a) => a.badges.understanding.achieved,
 } satisfies Partial<Record<GuideMilestone, (attempt: AttemptRecord) => boolean>>;
 
-type GuidePlace = { readonly current: number; readonly total: number };
-
 /**
- * 記録から復元できる until が最初に現れるステップを作業台の 1 とする。それより前は列の先頭から数える。
- * total はステップ列の長さにする。作業台の最初が「1 / 6」になるためで、作業台のステップだけを数えた長さにはしない。
+ * 表示中のステップの番号。記録から復元できる until が最初に現れるステップを作業台の 1 とし、それより前は列の先頭から数える。
+ * 分母はステップ列の長さのままにする。作業台の最初が「1 / 6」になるためで、作業台のステップだけを数えた長さにはしない。
  */
-function guidePlace(steps: readonly GuideStep[], step: GuideStep): GuidePlace {
+function guidePosition(steps: readonly GuideStep[], step: GuideStep): number {
   const index = steps.indexOf(step);
   if (index < 0) throw new Error('表示中のステップが一覧にありません');
-  let origin = 0;
-  for (const candidate of steps) {
-    if (candidate.until in FROM_RECORD) break;
-    origin += 1;
-  }
-  const current = index < origin ? index + 1 : index - origin + 1;
-  return { current, total: steps.length };
+  const origin = steps.findIndex((candidate) => candidate.until in FROM_RECORD);
+  return origin >= 0 && index >= origin ? index - origin + 1 : index + 1;
 }
 
 /** 記録に残らず、画面の操作でだけ分かる出来事。学習UIが reach で知らせる */
@@ -156,7 +149,6 @@ export class GuidePanel {
 
   private render(): void {
     const step = this.current();
-    const place = step ? guidePlace(this.steps, step) : null;
     const trackItem = (s: GuideStep) => {
       const state: StepState = s === step ? 'current' : this.reached.has(s.until) ? 'done' : this.skipped.has(s.id) ? 'skipped' : 'todo';
       return h(
@@ -173,7 +165,7 @@ export class GuidePanel {
         { class: 'guide-bar' },
         h('h2', {}, `${GUIDE.name}の操作ガイド`),
         h('ol', { class: 'guide-track', 'aria-label': '練習の手順' }, ...this.steps.map(trackItem)),
-        h('p', { class: 'guide-count' }, place ? `${place.current} / ${place.total}` : '完了'),
+        h('p', { class: 'guide-count' }, step ? `${guidePosition(this.steps, step)} / ${this.steps.length}` : '完了'),
       ),
       h(
         'div',

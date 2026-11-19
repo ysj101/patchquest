@@ -7,6 +7,7 @@ import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './lear
 import { CASES, OR_TITLE, OR_TRUE, PROBES, TARGET_CASES, UNION_TITLES } from './tests';
 
 const SEARCH = { id: 'memo.search.query', contract: 1 };
+const TARGET_APP = { appId: 'memo', versions: '^1.3.0' };
 const RECIPE = 'concat-search';
 
 /** 参考差分の変更前。検索語を SQL の文字列へつなぐ */
@@ -52,7 +53,7 @@ export const sqliPack: MissionPack = {
       normalUse: ['自分のメモを日本語で検索できる', '引用符を含む語で検索できる', '該当がなければ空の結果になる'],
     },
     runtime: { adapter: 'browser', capabilities: ['sqlite', 'dom-preview'] },
-    appCompatibility: { appId: 'memo', versions: '^1.3.0' },
+    appCompatibility: TARGET_APP,
     prerequisites: { features: ['search'] },
     conflicts: [],
     hooks: [SEARCH],
@@ -61,10 +62,10 @@ export const sqliPack: MissionPack = {
       {
         id: RECIPE,
         version: '1.0.0',
-        apply: [{ hook: 'memo.search.query', implementation: 'sqli/search-concat' }],
-        verify: { probes: ['search-as-alice', 'search-as-bob', 'search-as-carol'] },
+        apply: [{ hook: SEARCH.id, implementation: 'sqli/search-concat' }],
+        verify: { probes: PROBES.map((probe) => probe.id) },
         revert: 'baseline',
-        appliesTo: { appId: 'memo', versions: '^1.3.0', hooks: [SEARCH] },
+        appliesTo: { ...TARGET_APP, hooks: [SEARCH] },
       },
     ],
     probes: PROBES,

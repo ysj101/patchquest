@@ -52,9 +52,9 @@ export const storedXssPack: MissionPack = {
       {
         id: RECIPE,
         version: '1.0.0',
-        appliesTo: { appId: 'memo', versions: '^1.3.0', hooks: [{ id: 'comment.render', contract: 1 }] },
+        appliesTo: { ...TARGET_APP, hooks: HOOKS },
         apply: [{ hook: 'comment.render', implementation: 'stored-xss/render-html' }],
-        verify: { probes: ['view-as-alice', 'view-as-bob', 'view-as-carol'] },
+        verify: { probes: PROBES.map((probe) => probe.id) },
         revert: 'baseline',
       },
     ],

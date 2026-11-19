@@ -2,6 +2,7 @@
 import {
   ANONYMOUS,
   RuntimeError,
+  errorMessage,
   hashJson,
   type ActorKey,
   type FixtureData,
@@ -91,7 +92,7 @@ export class AppEngine {
       response = s.app.handle(ctx, call.request);
     } catch (e) {
       // 教材アプリ内の例外は基盤エラーではなく応答として返す
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       events.push({ type: 'app.error', data: { message } });
       response = { status: 500, body: { error: message } };
     }

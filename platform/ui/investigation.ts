@@ -1,6 +1,6 @@
 // 調査パネル（spec §10）。定型の操作とリクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, type ActionDef, type AppRequest, type Exchange, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
+import { HTTP_METHODS, errorMessage, type ActionDef, type AppRequest, type Exchange, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
 import { expandRequest, type Scope } from '../evaluator/scenario';
 import { status } from './components';
 import { fill, h } from './dom';
@@ -180,7 +180,7 @@ export class InvestigationPanel {
     try {
       message.textContent = (await this.actions.send(build())) ?? '';
     } catch (e) {
-      message.textContent = e instanceof Error ? e.message : String(e);
+      message.textContent = errorMessage(e);
     }
   }
 }
@@ -198,13 +198,11 @@ function workedExample(example: WorkedExample): HTMLElement {
   );
 }
 
-/** 状況パネル：問い合わせ・目標・守るもの・普段の使い方・仕組みの例（あれば） */
+/** 状況パネル：守るもの・普段の使い方・仕組みの例（あれば）。問い合わせの文は左の依頼に 1 か所だけ置くので、ここには出さない */
 export function storyPanel(story: StoryDef): HTMLElement {
   return h(
     'div',
     { class: 'story', 'data-anchor': 'story' },
-    h('section', { class: 'tool-section' }, h('h3', {}, '問い合わせ'), h('p', { class: 'incident' }, story.incident)),
-    h('section', { class: 'tool-section' }, h('h3', {}, '目標'), h('p', {}, story.goal)),
     h('section', { class: 'tool-section' }, h('h3', {}, '守るもの'), h('ul', {}, ...story.protectedAssets.map((a) => h('li', {}, a)))),
     h('section', { class: 'tool-section' }, h('h3', {}, '壊してはいけない普段の使い方'), h('ul', {}, ...story.normalUse.map((a) => h('li', {}, a)))),
     story.workedExample ? workedExample(story.workedExample) : null,
