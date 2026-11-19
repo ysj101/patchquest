@@ -1,5 +1,5 @@
 // 互換性、基準状態、注入後の実測、演習環境の準備を順に実行する。
-import { summarizeVerification, type ImplementationSelection, type VerificationReport } from '../contract';
+import { failedOutcomes, summarizeVerification, type ImplementationSelection, type VerificationReport } from '../contract';
 import type { EvaluationSubject } from '../evaluator/evaluator';
 import { Blocked, validateForApp, type BlockedReason, type Current, type OrchestratorDeps, type PreflightStep } from './types';
 
@@ -26,15 +26,14 @@ function compatibility({ current, deps }: Context): string {
 
 async function baseline({ current, deps, subject, newRunId }: Context): Promise<string> {
   const report = await deps.evaluator.runSuite(subject({}), current.tests, [], newRunId(), '');
-  const failed = report.outcomes.filter((outcome) => !outcome.passed);
+  const failed = failedOutcomes(report);
   if (failed.length) throw new Blocked({ kind: 'platform-error', message: `安全な基準状態で失敗したテストがあります: ${failed.map((outcome) => outcome.title).join('、')}` });
   return `基準状態で ${report.outcomes.length} 件のテストがすべて通過`;
 }
 
 async function inject({ current, deps, subject, newRunId }: Context): Promise<string> {
-  const { snapshot, vulnerable, tests } = current;
-  const { attempt, pack } = snapshot;
-  const recipe = pack.manifest.mutationRecipes.find((candidate) => candidate.id === attempt.recipeId);
+  const { snapshot, vulnerable, tests, recipe } = current;
+  const { pack } = snapshot;
   if (!recipe) throw new Error('開始条件に対応するレシピがありません');
   const hooks = recipe.apply.map((change) => change.hook);
   if (new Set(hooks).size !== hooks.length) throw new Blocked({ kind: 'injection-failed', message: '同じフックへ二重に注入しようとしています' });

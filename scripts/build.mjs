@@ -7,7 +7,7 @@ import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { assertNoExternalRefs } from './check-external-refs.mjs';
 import { assertBoundaries } from './check-boundaries.mjs';
-import { findUnsafeDom } from './check-dom-safety.mjs';
+import { assertDomSafety } from './check-dom-safety.mjs';
 
 const outdir = 'dist';
 const testMode = process.argv.includes('--test');
@@ -54,11 +54,7 @@ async function buildSandboxDocument(template, out) {
   await writeFile(out, html);
 }
 
-const unsafeDom = await findUnsafeDom();
-if (unsafeDom.length > 0) {
-  for (const v of unsafeDom) console.error(`HTML として挿入する API は使えません: ${v}`);
-  process.exit(1);
-}
+await assertDomSafety();
 await assertBoundaries();
 
 await rm(outdir, { recursive: true, force: true });

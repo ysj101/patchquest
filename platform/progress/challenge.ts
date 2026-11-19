@@ -1,6 +1,6 @@
 // 別条件での挑戦（チャレンジ）の条件を、同じ課題の保存済みの記録から決める。
 // 新しい seed、前回と違う variant、出題回数の少ない理解確認の設問を選ぶ。脆弱性の種類は変えない（spec §5.3, §5.4）
-import type { AttemptRecord, ChallengeInfo, MissionPack } from '../contract';
+import { byCreatedAt, type AttemptRecord, type ChallengeInfo, type MissionPack } from '../contract';
 
 export interface ChallengePlan {
   variantId: string;
@@ -60,7 +60,7 @@ function pickQuestion(pack: MissionPack, records: readonly AttemptRecord[], seed
  * 設問は前回と違うものを選ぶが、全問を出し終えていれば同じ設問を出し直し、repeatsPrevious で知らせる
  */
 export function planChallenge(pack: MissionPack, records: readonly AttemptRecord[], randomSeed: () => number = cryptoSeed): ChallengePlan {
-  const mission = records.filter((record) => record.missionId === pack.manifest.id).sort((first, second) => first.createdAt.localeCompare(second.createdAt));
+  const mission = records.filter((record) => record.missionId === pack.manifest.id).sort(byCreatedAt);
   const previous = mission.at(-1);
   const seed = freshSeed(new Set(mission.map((record) => record.seed)), randomSeed);
   const questionId = pickQuestion(pack, mission, seed);

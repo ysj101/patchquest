@@ -6,6 +6,11 @@ export type Attrs = { [key: string]: unknown; on?: Handlers };
 /** HTML として解釈される・スクリプトを実行しうるプロパティは設定させない */
 const FORBIDDEN_PROPERTIES = new Set(['innerHTML', 'outerHTML', 'srcdoc']);
 
+/** 子として入れないもの（null・undefined・false）を捨て、数値を文字列にする */
+function nodes(children: Child[]): (Node | string)[] {
+  return children.filter((c): c is Node | string | number => c !== null && c !== undefined && c !== false).map((c) => (typeof c === 'number' ? String(c) : c));
+}
+
 export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ...children: Child[]): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -21,14 +26,13 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = 
       (el as unknown as Record<string, unknown>)[key] = value;
     }
   }
-  el.append(...children.filter((c): c is Node | string | number => c !== null && c !== undefined && c !== false).map((c) => (typeof c === 'number' ? String(c) : c)));
+  el.append(...nodes(children));
   return el;
 }
 
 /** 子要素を入れ替える */
 export function fill(el: Element, ...children: Child[]): void {
-  el.replaceChildren();
-  el.append(...children.filter((c): c is Node | string | number => c !== null && c !== undefined && c !== false).map((c) => (typeof c === 'number' ? String(c) : c)));
+  el.replaceChildren(...nodes(children));
 }
 
 /** 表示に関わる値が変わったときだけ描き直すための判定（操作中のフォーカスや入力を失わないため） */

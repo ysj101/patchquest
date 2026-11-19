@@ -2,6 +2,8 @@
 import {
   HTTP_METHODS,
   RuntimeError,
+  errorMessage,
+  isObj,
   type ActorKey,
   type AppRequest,
   type AppResponse,
@@ -14,8 +16,6 @@ import type { FromFrame, ToFrame } from './protocol';
 
 const MAX_PATH_LENGTH = 2048;
 
-type Obj = Record<string, unknown>;
-const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 function isRequest(v: unknown): v is AppRequest {
   return (
@@ -187,7 +187,7 @@ export class PreviewFrame {
     try {
       ({ response, events } = await this.handleRequest(request, current.session, current.runId));
     } catch (e) {
-      response = { status: 503, body: { error: e instanceof Error ? e.message : String(e) } };
+      response = { status: 503, body: { error: errorMessage(e) } };
     }
     if (this.current?.runId !== current.runId) return;
     this.collector?.events.push(...events);
