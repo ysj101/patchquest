@@ -156,6 +156,11 @@ export class RuntimeError extends Error {
   }
 }
 
+/** 捕まえた例外を、画面や記録に出す文にする */
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * 教材アプリの起動・操作・実装切替・観測・破棄を担う。
  * 失敗は RuntimeError で通知する。教材アプリ内の例外は応答（status 500 など）として返す

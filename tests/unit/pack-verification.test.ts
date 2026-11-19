@@ -2,11 +2,10 @@
 // 検証専用の対策候補（誤った修正など）も確かめる。Node では画面を描画できないため、描画を含むテストと probe は除く（それらはブラウザの verify:packs で確かめる）
 import { describe, expect, it } from 'vitest';
 import { catalog } from '../../catalog';
-import { Evaluator } from '../../platform/evaluator/evaluator';
 import { compatibleApp } from '../../platform/orchestrator/orchestrator';
 import { VERIFICATION_SEEDS, verifyPack } from '../../platform/orchestrator/pack-verification';
 import { verificationCandidates } from '../support/catalog';
-import { EngineRuntime } from '../support/engine-runtime';
+import { nodeEvaluator } from '../support/engine-runtime';
 import { forNode } from '../support/request-only';
 
 describe.each(catalog.packs.map((pack) => [pack.manifest.id, pack] as const))('%s の出荷前検証', (_, bundled) => {
@@ -14,7 +13,7 @@ describe.each(catalog.packs.map((pack) => [pack.manifest.id, pack] as const))('%
     const app = compatibleApp(catalog.apps, bundled);
     if (!app) throw new Error(`${bundled.manifest.id} に対応する教材アプリがない`);
     const node = forNode(app, bundled);
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     const result = await verifyPack(node.pack, node.app, evaluator, seed, verificationCandidates(bundled.manifest.id), { partial: true });
     await evaluator.dispose();
     expect(result.checks.filter((check) => !check.ok)).toEqual([]);

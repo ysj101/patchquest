@@ -3,12 +3,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { parseProgress, ProgressFormatError } from '../../platform/progress/schema';
 import { MemoryBackend, ProgressStore } from '../../platform/progress/store';
 import { makeAttempt } from '../support/attempt';
+import { progressJson } from '../support/progress-json';
 
 afterEach(() => vi.restoreAllMocks());
 
-const json = (profile: unknown, schemaVersion = 7) => JSON.stringify({
-  format: 'patchquest-progress', schemaVersion, exportedAt: '', profile, attempts: [],
-});
+const json = (profile: unknown, schemaVersion = 7) => progressJson({ profile, schemaVersion });
 
 it.each([1, 2, 3, 4, 5])('v%s のXPなしを維持して読み込む', (version) => {
   expect(parseProgress(json(version === 1 ? undefined : {}, version)).profile).toEqual({});

@@ -1,11 +1,10 @@
 // PoC: Worker上のSQLite WASM（Issue #2）。計測値は docs/poc/sqlite-wasm.md に記録する。
-import { expect, test } from './fixtures';
+import { expect, openTestPage, test } from './fixtures';
 
 type SearchResult = { sql: string; bind: unknown[]; rows: { owner_id: number; title: string }[]; owners: number[] };
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/test/poc-sqlite.html');
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+  await openTestPage(page, 'poc-sqlite');
 });
 
 test('冷キャッシュのlocalhostからWorker上でメモリDBを起動できる', async ({ page, browserName }, testInfo) => {

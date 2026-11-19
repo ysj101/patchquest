@@ -1,9 +1,8 @@
 // ステージ到達時刻が本人操作でだけ記録され、保持されることを確かめる。
 import { expect, it } from 'vitest';
 import { emptyMilestones } from '../../platform/contract';
-import { Evaluator } from '../../platform/evaluator/evaluator';
 import { Orchestrator } from '../../platform/orchestrator/orchestrator';
-import { EngineRuntime } from '../support/engine-runtime';
+import { EngineRuntime, nodeEvaluator } from '../support/engine-runtime';
 import { nodePack } from '../support/node-pack';
 import { testApp } from '../support/test-app';
 
@@ -14,7 +13,7 @@ async function setup() {
   let instant = firstInstant;
   const orchestrator = new Orchestrator({
     apps: [testApp], packs: [nodePack], exercise: new EngineRuntime(),
-    evaluator: new Evaluator(() => new EngineRuntime()), now: () => instant,
+    evaluator: nodeEvaluator(), now: () => instant,
   });
   const { attempt, refs } = await orchestrator.start('test-pack');
   return { orchestrator, attempt, refs, advance: () => { instant = new Date('2026-10-16T00:00:00Z'); } };

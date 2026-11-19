@@ -6,11 +6,11 @@ import { memoApp } from '../../../apps/memo';
 import type { PickNeighbors } from '../../../apps/memo/hooks';
 import { idorPack } from '..';
 import type { Exchange, ImplementationSelection } from '../../../platform/contract';
-import { Evaluator, detectReproduction } from '../../../platform/evaluator/evaluator';
+import { detectReproduction } from '../../../platform/evaluator/evaluator';
 import type { CatalogApp } from '../../../platform/orchestrator/orchestrator';
 import { VERIFICATION_SEEDS } from '../../../platform/orchestrator/pack-verification';
 import { buildSubject, withChanges } from '../../../platform/orchestrator/subject';
-import { EngineRuntime } from '../../../tests/support/engine-runtime';
+import { EngineRuntime, nodeEvaluator } from '../../../tests/support/engine-runtime';
 import { requestOnly } from '../../../tests/support/request-only';
 import { ALICE_PRIVATE_ID_SEED_1 } from './verification';
 
@@ -27,7 +27,7 @@ function defense(id: string): ImplementationSelection {
 }
 
 async function runSuite(implementations: ImplementationSelection, seed: number) {
-  const evaluator = new Evaluator(() => new EngineRuntime());
+  const evaluator = nodeEvaluator();
   const subject = buildSubject(app, idorPack, `idor-${seed}`, seed, implementations);
   const report = await evaluator.runSuite(subject, [...app.tests, ...manifest.tests.cases], manifest.tests.target, `idor-${seed}`, '');
   await evaluator.dispose();

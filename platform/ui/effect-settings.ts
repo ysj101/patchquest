@@ -1,5 +1,5 @@
 // 端末ごとの演出設定を検証・保存する。DOM とブラウザのグローバルには依存しない。
-import { Checker } from '../contract';
+import { Checker, errorMessage } from '../contract';
 
 /** 保存する好み。system は OS の動きの設定に従う。音量は 0〜1。 */
 export interface EffectSettings {
@@ -16,7 +16,6 @@ type SettingsStorage = {
   setItem(key: string, value: string): void;
 };
 
-const describe = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /** 値を検査して設定に整える。違反は Checker の errors に path 付きで集まる */
 function checkSettings(check: Checker, value: unknown): EffectSettings {
@@ -35,7 +34,7 @@ export function readEffectSettings(raw: string | null): { settings: EffectSettin
     const value: unknown = JSON.parse(raw);
     settings = checkSettings(check, value);
   } catch (error) {
-    check.fail('演出設定', `JSON として読み込めません（${describe(error)}）`);
+    check.fail('演出設定', `JSON として読み込めません（${errorMessage(error)}）`);
   }
   if (check.errors.length > 0) return { settings: { ...DEFAULTS }, reason: `演出設定を既定値に戻しました：${check.errors.join('、')}` };
   return { settings, reason: null };
@@ -86,6 +85,6 @@ export class EffectSettingsStore {
   }
 
   private storageFailure(error: unknown): string {
-    return `演出設定をブラウザに保存できません。この画面を閉じると変更は失われます：${describe(error)}`;
+    return `演出設定をブラウザに保存できません。この画面を閉じると変更は失われます：${errorMessage(error)}`;
   }
 }

@@ -2,7 +2,7 @@
 import type { Page } from '@playwright/test';
 import { emptyMilestones, type AttemptRecord } from '../../platform/contract';
 import { makeAttempt } from '../support/attempt';
-import { expect, test } from './fixtures';
+import { blockIndexedDb, expect, openTestPage, test, testPageReady } from './fixtures';
 
 const attempt = (id: string) => makeAttempt(id);
 
@@ -10,22 +10,19 @@ const attempt = (id: string) => makeAttempt(id);
 const save = (target: Page, record: AttemptRecord) =>
   target.evaluate((text: string) => window.progressTest.save(JSON.parse(text) as AttemptRecord), JSON.stringify(record));
 
-async function open(page: Page) {
-  await page.goto('/test/progress.html');
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
-}
+const open = (page: Page) => openTestPage(page, 'progress');
 
 test('IndexedDB に保存した進捗は再読み込み後も残り、削除できる', async ({ page }) => {
   await open(page);
   expect(await page.evaluate(() => window.progressTest.reason())).toBeNull();
   await save(page, attempt('persisted'));
   await page.reload();
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+  await testPageReady(page);
   expect(await page.evaluate(() => window.progressTest.ids())).toEqual(['persisted']);
 
   await page.evaluate(() => window.progressTest.clear());
   await page.reload();
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+  await testPageReady(page);
   expect(await page.evaluate(() => window.progressTest.ids())).toEqual([]);
 });
 
@@ -46,13 +43,7 @@ test('書き出した JSON を別のブラウザ環境へ復元でき、不正�
 });
 
 test('IndexedDB を使えない環境では理由を返し、メモリで続ける', async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      get() {
-        throw new DOMException('blocked for test', 'SecurityError');
-      },
-    });
-  });
+  await blockIndexedDb(page);
   await open(page);
   expect(await page.evaluate(() => window.progressTest.reason())).toMatch(/ブラウザに保存できません/);
   await save(page, attempt('memory'));
@@ -83,7 +74,7 @@ test('v1 の既存 DB を v2 へ更新し、達成印を持つ記録を保つ', 
   const exported = JSON.parse(await page.evaluate(() => window.progressTest.exportJson())) as unknown;
   expect(exported).toMatchObject({ schemaVersion: 10, profile: {}, attempts: [{ ...legacy, milestones: emptyMilestones(), history: [], firstPass: null, verifications: 0, normalBroken: false }] });
   await page.reload();
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+  await testPageReady(page);
   expect(await page.evaluate(() => window.progressTest.ids())).toEqual(['旧DB']);
 });
 

@@ -4,15 +4,14 @@ import { completeAttempt, type AttemptRecord } from '../../platform/contract';
 import { parseProgress, PROGRESS_SCHEMA_VERSION } from '../../platform/progress/schema';
 import { MemoryBackend, ProgressStore } from '../../platform/progress/store';
 import { makeAttempt } from '../support/attempt';
+import { progressJson } from '../support/progress-json';
 
 const at = '2026-10-16T00:00:00Z';
 const entry = (passed: boolean, broken = false) => ({
   runId: '検証', at, defenseId: null, passed, undetermined: 0,
   groups: { attack: { passed: 0, total: 0 }, normal: { passed: broken ? 0 : 1, total: 1 }, regression: { passed: 0, total: 0 } },
 });
-const source = (record: unknown, schemaVersion = PROGRESS_SCHEMA_VERSION) => JSON.stringify({
-  format: 'patchquest-progress', schemaVersion, exportedAt: at, profile: {}, attempts: [record],
-});
+const source = (record: unknown, schemaVersion = PROGRESS_SCHEMA_VERSION) => progressJson({ schemaVersion, exportedAt: at, attempts: [record] });
 type Facts = 'firstPass' | 'verifications' | 'normalBroken';
 function legacy() {
   const record: Omit<AttemptRecord, Facts> & Partial<Pick<AttemptRecord, Facts>> = makeAttempt('旧記録', {

@@ -2,15 +2,16 @@
 // 「こわす → なおす → たしかめる → ふりかえる」を 3 分で一周する。セキュリティの前提知識がなくても進められる題材にしている
 import type { MissionPack } from '../../platform/contract';
 import type { PrepareTitleInput, ValidateTitle } from '../../apps/memo/hooks';
+import { TITLE_MAX_LENGTH } from '../../apps/memo/model';
 
 const HOOKS = [
   { id: 'memo.title.validate', contract: 1 },
   { id: 'memo.title.input', contract: 1 },
 ];
-const LONG_TITLE = 'あ'.repeat(41);
-const TITLE_AT_LIMIT = 'い'.repeat(40);
+const LONG_TITLE = 'あ'.repeat(TITLE_MAX_LENGTH + 1);
+const TITLE_AT_LIMIT = 'い'.repeat(TITLE_MAX_LENGTH);
 /** 応答の memo.title が上限（40 文字）を超えている */
-const SAVED_LONG_TITLE = [{ path: 'memo.title', is: { minLength: 41 } }];
+const SAVED_LONG_TITLE = [{ path: 'memo.title', is: { minLength: TITLE_MAX_LENGTH + 1 } }];
 /** 注入した状態の、保存時のタイトル検証（参考差分の変更前） */
 const NO_TITLE_CHECK = 'const validateTitle = (title) => ({ ok: true });';
 /** 練習で最初に送るタイトル（49 文字） */

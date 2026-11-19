@@ -1,5 +1,5 @@
 // 教材ロジックと SQLite を動かす Worker。Host からの呼び出しを AppEngine へ渡す
-import { RuntimeError } from '../../platform/contract';
+import { RuntimeError, errorMessage } from '../../platform/contract';
 import { AppEngine } from './engine';
 import { lockdown } from './lockdown';
 import type { WorkerEnvelope, WorkerReply, WorkerRequest, WorkerResult } from './protocol';
@@ -31,7 +31,7 @@ self.addEventListener('message', async (e: MessageEvent<WorkerEnvelope>) => {
     reply = { callId, attemptId, runId, ok: true, result: await handle(request) };
   } catch (err) {
     const code = err instanceof RuntimeError ? err.code : 'crashed';
-    reply = { callId, attemptId, runId, ok: false, error: { code, message: err instanceof Error ? err.message : String(err) } };
+    reply = { callId, attemptId, runId, ok: false, error: { code, message: errorMessage(err) } };
   }
   self.postMessage(reply);
 });

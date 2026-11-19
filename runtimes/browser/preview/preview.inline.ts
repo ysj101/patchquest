@@ -1,6 +1,6 @@
 // 隔離 iframe（sandbox="allow-scripts"、不透明な origin）の中で教材アプリの画面を動かす。
 // 教材ロジックへの呼び出しはすべて Host を経由し、Host が閲覧者のセッションを付ける
-import { ANONYMOUS, type AppRequest, type AppResponse, type ImplementationSelection } from '../../../platform/contract';
+import { ANONYMOUS, errorMessage, type AppRequest, type AppResponse, type ImplementationSelection } from '../../../platform/contract';
 import type { AppModule, ViewContext } from '../app-module';
 import type { FromFrame, ToFrame } from '../protocol';
 import { findApp, resolveHook } from '../registry';
@@ -51,7 +51,7 @@ async function show(route: string): Promise<void> {
     await ctx.app.render(root, route, view);
     if (current === ctx) send({ type: 'rendered', runId: ctx.runId, route });
   } catch (e) {
-    if (current === ctx) send({ type: 'error', runId: ctx.runId, message: e instanceof Error ? e.message : String(e) });
+    if (current === ctx) send({ type: 'error', runId: ctx.runId, message: errorMessage(e) });
   }
 }
 

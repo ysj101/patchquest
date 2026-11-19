@@ -5,7 +5,7 @@ import { sealStates, stageStates } from '../progress/stages';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, seals, settingsButton, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
-import { InvestigationPanel, storyPanel, type AppDescribers } from './investigation';
+import { InvestigationPanel, describersOf, storyPanel, type DescribingApp } from './investigation';
 import { STATE_LABEL } from './labels';
 import { AchievementToast } from './achievement-toast';
 import { XpBadge } from './xp-badge';
@@ -44,14 +44,6 @@ const NOW_REPAIR_BY_OPERATION = '教材アプリを操作して、問題を直�
 
 const NOW_DONE = '振り返りで、原因と対策を確認します。';
 
-/** 状況タブから、左の依頼と重なる問い合わせと目標を外す。依頼の文は左に 1 か所だけ残す */
-function withoutRepeatedRequest(panel: HTMLElement): HTMLElement {
-  for (const section of [...panel.querySelectorAll(':scope > section.tool-section')]) {
-    const title = section.querySelector('h3')?.textContent;
-    if (title === '問い合わせ' || title === '目標') section.remove();
-  }
-  return panel;
-}
 
 export class ExerciseView {
   readonly element = h('section', { class: 'exercise', 'aria-labelledby': 'exercise-title', hidden: true });
@@ -129,11 +121,11 @@ export class ExerciseView {
   }
 
   /** 演習を始めたときに、利用者・操作・状況を組み直す */
-  setup(snapshot: ExerciseSnapshot, app: AppDescriptor, viewer: ActorKey, describers: AppDescribers, showBriefing: boolean): void {
+  setup(snapshot: ExerciseSnapshot, app: DescribingApp & { descriptor: AppDescriptor }, viewer: ActorKey, showBriefing: boolean): void {
     fill(
       this.users,
       h('legend', {}, '表示する利用者'),
-      ...[...app.users, ANONYMOUS].map((actor) =>
+      ...[...app.descriptor.users, ANONYMOUS].map((actor) =>
         radioOption(
           { name: 'viewer', value: actor, checked: actor === viewer, className: 'user-option', onChange: () => this.actions.switchUser(actor) },
           actorLabel(actor),
@@ -145,7 +137,7 @@ export class ExerciseView {
     this.achievements.reset();
     const story = snapshot.pack.manifest.story;
     fill(this.request, h('h2', {}, '依頼'), h('p', {}, story.incident));
-    fill(this.storySlot, withoutRepeatedRequest(storyPanel(story)), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
+    fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
     fill(
       this.briefing,
       h('h2', { id: 'briefing-title' }, h('span', { class: 'eyebrow', 'aria-hidden': true }, 'SECURITY ALERT'), 'セキュリティ警報'),
@@ -158,7 +150,7 @@ export class ExerciseView {
     );
     this.setBriefingVisible(showBriefing);
     this.showNow(snapshot);
-    this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describers);
+    this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describersOf(app));
     this.investigation.setViewer(actorLabel(viewer));
     this.toolTabs.select('story');
   }
@@ -205,9 +197,6 @@ export class ExerciseView {
     this.investigation.setViewer(actorLabel(actor));
   }
 
-  label(actor: ActorKey): string {
-    return actorLabel(actor);
-  }
 
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack, defenseCurrent } = snapshot;

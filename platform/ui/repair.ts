@@ -1,13 +1,14 @@
 // 対策パネルと検証結果（spec §10）。修正方針を選んで適用・取り消しし、参考コード差分を閲覧し、
 // 攻撃阻止・正常系・回帰を検証する。合否は実際の実行結果だけで決まり、選んだ対策の ID では決まらない
-import { RESULT_GROUPS, type DefenseDef, type ReferenceDiff, type RepairDef, type TestOutcome, type VerificationReport } from '../contract';
+import { RESULT_GROUPS, failedOutcomes, type DefenseDef, type ReferenceDiff, type RepairDef, type TestOutcome, type VerificationReport } from '../contract';
 import { highlightSource } from '../syntax/highlight';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
-import { failedOutcomes, verdictKind, whyDefenseFailed } from './verdict';
+import { verdictKind, whyDefenseFailed } from './verdict';
 import { radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
+import { describersOf, type DescribingApp } from './investigation';
 import { GROUP_LABEL, STALE_VERIFICATION, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
 import { recordSection, recordedChanges, recordedSummary, type RequestDescriber } from './repair-record';
 
@@ -63,8 +64,15 @@ function resultDetails(report: VerificationReport, stale: boolean): HTMLElement 
   return h('details', { class: 'verify-details' }, h('summary', { role: 'button' }, '詳しく見る'), ...outcomeGroups(report, stale));
 }
 
-function resultNodes(report: VerificationReport, stale: boolean, whyItFailed: string | null): HTMLElement[] {
-  return [stale ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null, verdict(report), securityComparison(report, whyItFailed), resultDetails(report, stale)].filter((node): node is HTMLElement => node !== null);
+/** 不合格のときは、総評の直後に対策の選び直しへ戻るボタン（rechoose）を置く。選び直す対策がない課題では null を渡す */
+function resultNodes(report: VerificationReport, stale: boolean, whyItFailed: string | null, rechoose: HTMLElement | null): (HTMLElement | null)[] {
+  return [
+    stale ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null,
+    verdict(report),
+    verdictKind(report) === 'insufficient' ? rechoose : null,
+    securityComparison(report, whyItFailed),
+    resultDetails(report, stale),
+  ];
 }
 
 type DiffPane = 'diff-before' | 'diff-after';
@@ -76,12 +84,6 @@ function codePane(pane: DiffPane, caption: string, source: string, language: Ref
   return h('figure', {}, h('figcaption', {}, caption), h('pre', { class: `mono ${pane}` }, h('code', {}, ...body)));
 }
 
-/** 不合格の総評の直後に、対策の選び直しへ戻るボタンを差し込む */
-function withRechoose(nodes: HTMLElement[], rechoose: HTMLButtonElement): HTMLElement[] {
-  const index = nodes.findIndex((node) => node.classList.contains('banner-error'));
-  if (index < 0) throw new Error('不合格の総評がありません');
-  return [...nodes.slice(0, index + 1), rechoose, ...nodes.slice(index + 1)];
-}
 
 export class RepairPanel {
   readonly element: HTMLElement;
@@ -118,11 +120,11 @@ export class RepairPanel {
     this.element = h('div', { class: 'repair' }, this.choice, this.verifySection(), this.resetSection());
   }
 
-  /** 演習を始めたときに、修正の方式に合わせて ① の区画を組み直す。describeRequest は加えた変更の表示に使う */
-  setup(snapshot: ExerciseSnapshot, describeRequest: RequestDescriber): void {
+  /** 演習を始めたときに、修正の方式に合わせて ① の区画を組み直す。教材アプリによるリクエストの説明は、加えた変更の表示に使う */
+  setup(snapshot: ExerciseSnapshot, app: DescribingApp): void {
     const { manifest } = snapshot.pack;
     this.record = manifest.repair ?? null;
-    this.describeRequest = describeRequest;
+    this.describeRequest = describersOf(app).request;
     this.defenses = manifest.defenses;
     this.selected = snapshot.attempt.appliedDefense ?? this.defenses[0]?.id ?? null;
     this.reference.open = false;
@@ -223,9 +225,8 @@ export class RepairPanel {
       fill(this.results, h('p', { class: 'muted' }, 'まだ検証していません。'));
       return;
     }
-    const nodes = resultNodes(report, !isCurrent(report, attempt.configHash), whyDefenseFailed(snapshot));
     // 操作で直す課題には選び直す対策がないので、選び直しのボタンは出さない
-    fill(this.results, ...(verdictKind(report) === 'insufficient' && !this.record ? withRechoose(nodes, this.rechooseButton) : nodes));
+    fill(this.results, ...resultNodes(report, !isCurrent(report, attempt.configHash), whyDefenseFailed(snapshot), this.record ? null : this.rechooseButton));
   }
 
   private select(id: string): void {

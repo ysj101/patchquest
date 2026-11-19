@@ -1,6 +1,6 @@
 // パック出荷前検証（spec §15）。基準で全合格／レシピは対象テストだけが失敗し攻撃が成立／
 // 対策は expected どおり（secure は全合格、insufficient は攻撃阻止が失敗、breaks-normal は正常系が失敗）
-import type { DefenseDef, ImplementationSelection, MissionPack, ReplayEntry, VerificationReport } from '../contract';
+import { failedOutcomes, type DefenseDef, type ImplementationSelection, type MissionPack, type ReplayEntry, type VerificationReport } from '../contract';
 import type { Evaluator } from '../evaluator/evaluator';
 import type { CatalogApp } from './orchestrator';
 import { buildSubject, withChanges } from './subject';
@@ -31,14 +31,14 @@ export interface PackVerification {
  */
 export const VERIFICATION_SEEDS: readonly number[] = [1, 42, 20261012];
 
-const failedIds = (report: VerificationReport) => report.outcomes.filter((o) => !o.passed).map((o) => o.testId);
+const failedIds = (report: VerificationReport) => failedOutcomes(report).map((o) => o.testId);
 
 /**
  * 対策を適用した結果が expected どおりかを判定する。partial（テストの一部だけで確かめる）のとき、
  * 不十分・正常系を壊す対策で失敗が 1 つもなければ判定できない（除いたテストで失敗するかもしれない）
  */
 function judgeDefense(expected: DefenseDef['expected'], report: VerificationReport, partial: boolean): Pick<PackCheck, 'ok' | 'detail'> {
-  const failed = report.outcomes.filter((o) => !o.passed);
+  const failed = failedOutcomes(report);
   if (partial && expected !== 'secure' && failed.length === 0) return { ok: true, detail: 'この範囲のテストでは判定できない（全テストの検証で確かめる）' };
   const ok =
     expected === 'secure'

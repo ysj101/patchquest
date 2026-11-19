@@ -4,18 +4,17 @@ import { describe, expect, it } from 'vitest';
 import { memoApp } from '../../apps/memo';
 import { sqliPack } from '../../missions/sqli';
 import type { Exchange } from '../../platform/contract';
-import { Evaluator, detectReproduction } from '../../platform/evaluator/evaluator';
+import { detectReproduction } from '../../platform/evaluator/evaluator';
 import type { CatalogApp } from '../../platform/orchestrator/orchestrator';
-import { verifyPack } from '../../platform/orchestrator/pack-verification';
-import { EngineRuntime } from '../support/engine-runtime';
+import { VERIFICATION_SEEDS, verifyPack } from '../../platform/orchestrator/pack-verification';
+import { nodeEvaluator } from '../support/engine-runtime';
 import { requestOnly } from '../support/request-only';
 
-const SEEDS = [1, 42, 20261012];
 const app: CatalogApp = { ...memoApp, tests: requestOnly(memoApp.tests) };
 
-describe.each(SEEDS)('SQL インジェクションパック（seed %i）', (seed) => {
+describe.each(VERIFICATION_SEEDS)('SQL インジェクションパック（seed %i）', (seed) => {
   it('出荷前検証に合格する。注入で他人のメモが返り、バインドは全合格、語の禁止は攻撃が残り、検索の停止は正常系が壊れる', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     const result = await verifyPack(sqliPack, app, evaluator, seed);
     await evaluator.dispose();
     expect(result.checks.filter((check) => !check.ok)).toEqual([]);

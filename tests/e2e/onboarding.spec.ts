@@ -1,7 +1,7 @@
 // オンボーディング（練習用パック）。一覧の「まずは練習」から、操作ガイドに沿って
 // こわす → なおす → たしかめる → ふりかえる を最後まで進められる
 import type { Page } from '@playwright/test';
-import { backToList, expect, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from './fixtures';
+import { backToList, expect, launchButton, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from './fixtures';
 
 const guide = (page: Page) => page.getByRole('complementary', { name: '操作ガイド' });
 const target = (page: Page) => page.locator('[data-guide-target]');
@@ -28,7 +28,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(target(page)).toHaveAttribute('data-anchor', 'briefing');
   await guide(page).getByRole('button', { name: '場所を表示' }).click();
   await expect(page.locator('[data-anchor="briefing"]')).toBeFocused();
-  await page.getByRole('button', { name: 'ミッション開始', exact: true }).click();
+  await launchButton(page).click();
   await expect(page.locator('.now-doing')).toHaveText('今やること：調査を開いて、手がかりを集めます。');
 
   // 案内先が閉じたタブの中にあるときは、そのタブを指す。開くと中の案内先を指す

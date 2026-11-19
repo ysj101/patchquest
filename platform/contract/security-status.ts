@@ -1,5 +1,10 @@
 // 判定できた検証結果を、表示と改善履歴で共用する件数に集計する。
-import { RESULT_GROUPS, type VerificationReport, type VerificationEntry } from './attempt';
+import { RESULT_GROUPS, type TestOutcome, type VerificationReport, type VerificationEntry } from './attempt';
+
+/** 通らなかったテスト（判定不能を含む） */
+export function failedOutcomes(report: VerificationReport): TestOutcome[] {
+  return report.outcomes.filter((outcome) => !outcome.passed);
+}
 
 /** 判定できたテストの件数と割合、判定不能の件数。割合は実測がないとき null。 */
 export interface VerificationSummary {

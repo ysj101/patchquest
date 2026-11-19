@@ -17,17 +17,14 @@ function carried(resume: AttemptRecord | undefined) {
   };
 }
 
-function startRecipe(pack: MissionPack, options: StartOptions) {
-  const { manifest } = pack;
+function startRecipe({ manifest }: MissionPack, options: StartOptions) {
   const variantId = options.resume?.variantId ?? options.variantId ?? manifest.fixtures.variants[0]?.id;
   const variant = manifest.fixtures.variants.find((candidate) => candidate.id === variantId);
   const recipe = manifest.mutationRecipes.find((candidate) => candidate.id === variant?.recipe);
   return { variant, recipe };
 }
 
-function newAttempt(pack: MissionPack, app: Current['app'], options: StartOptions, sources: Sources): AttemptRecord {
-  const { manifest } = pack;
-  const { variant, recipe } = startRecipe(pack, options);
+function newAttempt({ manifest }: MissionPack, app: Current['app'], options: StartOptions, sources: Sources, { variant, recipe }: ReturnType<typeof startRecipe>): AttemptRecord {
   return {
     attemptId: sources.newId(), missionId: manifest.id, missionVersion: manifest.version,
     variantId: variant?.id ?? '', recipeId: recipe?.id ?? '', recipeVersion: recipe?.version ?? '',
@@ -44,12 +41,13 @@ export function createCurrent(deps: OrchestratorDeps, options: StartOptions & { 
   if (!pack) throw new Error(`課題 ${options.packId} は登録されていません`);
   const { manifest } = pack;
   const app = compatibleApp(deps.apps, pack) ?? deps.apps.find((candidate) => candidate.descriptor.id === manifest.appCompatibility.appId);
-  const attempt = newAttempt(pack, app, options, sources);
-  const recipe = manifest.mutationRecipes.find((candidate) => candidate.id === attempt.recipeId);
+  const start = startRecipe(pack, options);
+  const { recipe } = start;
+  const attempt = newAttempt(pack, app, options, sources, start);
   return {
     snapshot: { attempt, pack, refs: {}, implementations: {}, preflight: [], blocked: null, platformError: null, defenseCurrent: false, vulnerableVerification: null },
     app, tests: [...(app?.tests ?? []), ...manifest.tests.cases],
-    vulnerable: withChanges({}, recipe?.apply ?? []),
+    recipe, vulnerable: withChanges({}, recipe?.apply ?? []),
     baseline: Object.fromEntries(manifest.hooks.map((hook) => [hook.id, app?.descriptor.hooks.find((candidate) => candidate.id === hook.id)?.baseline ?? ''])),
     runIds: new Set(),
   };

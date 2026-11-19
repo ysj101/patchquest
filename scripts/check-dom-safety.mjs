@@ -8,7 +8,7 @@ const ROOTS = ['platform', 'runtimes/browser'];
 const EXCLUDED = ['runtimes/browser/preview'];
 const FORBIDDEN = [/\.innerHTML\s*=/, /\.outerHTML\s*=/, /\b(innerHTML|outerHTML|srcdoc)\s*:/, /insertAdjacentHTML/, /document\.write/, /\beval\s*\(/, /new\s+Function\s*\(/];
 
-export async function findUnsafeDom() {
+async function findUnsafeDom() {
   const violations = [];
   for (const root of ROOTS) {
     for (const path of await listFiles(root, ['.ts'], EXCLUDED)) {
@@ -19,9 +19,13 @@ export async function findUnsafeDom() {
   return violations;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+export async function assertDomSafety() {
   const violations = await findUnsafeDom();
   for (const v of violations) console.error(`HTML として挿入する API は使えません: ${v}`);
   if (violations.length > 0) process.exit(1);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await assertDomSafety();
   console.log('学習UIに危険な DOM 操作はありません');
 }
