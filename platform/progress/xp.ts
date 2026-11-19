@@ -1,5 +1,5 @@
 // 演習記録から課題ごとの到達報酬と再挑戦報酬を再計算する。
-import type { AttemptRecord } from '../contract';
+import { byCreatedAt, type AttemptRecord } from '../contract';
 import { reviewXp, type ReviewEntry } from './review';
 import { allBadgesAchieved, stageStates } from './stages';
 
@@ -20,7 +20,7 @@ export interface XpSummary {
 /** XP は到達した事実への報酬。防御の現在性によらず記録を使い、対策を取り消しても減らさない。復習の正答は少量を足す。 */
 export function xpFromAttempts(attempts: readonly AttemptRecord[], reviews: readonly ReviewEntry[] = []): XpSummary {
   const missions = new Map<string, { stages: Set<number>; completed: Set<string>; retries: number }>();
-  for (const attempt of [...attempts].sort((first, second) => first.createdAt.localeCompare(second.createdAt))) {
+  for (const attempt of [...attempts].sort(byCreatedAt)) {
     let mission = missions.get(attempt.missionId);
     if (!mission) {
       mission = { stages: new Set(), completed: new Set(), retries: 0 };

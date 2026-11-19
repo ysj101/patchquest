@@ -1,6 +1,6 @@
 // 進捗の保存・復元・削除・JSON 入出力（spec §13）。ブラウザ内（IndexedDB）にだけ保存し、外部へは送らない。
 // 保存できない環境ではメモリで続け、その理由と書き出しの必要を呼び出し側へ伝える
-import { completeAttempt, canonicalJson, type AttemptRecord } from '../contract';
+import { byCreatedAt, completeAttempt, canonicalJson, errorMessage, type AttemptRecord } from '../contract';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile, type ProgressProfile } from './schema';
 
 import { profileFromAttempts, storedProfile, type KeptProfile, type ProfileOptions, type ProfileSummary } from './profile';
@@ -144,7 +144,7 @@ export class ProgressStore {
     try {
       return new ProgressStore(await IndexedDbBackend.open(), null, options);
     } catch (e) {
-      return new ProgressStore(new MemoryBackend(), `ブラウザに保存できません（${e instanceof Error ? e.message : String(e)}）`, options);
+      return new ProgressStore(new MemoryBackend(), `ブラウザに保存できません（${errorMessage(e)}）`, options);
     }
   }
 
@@ -164,7 +164,7 @@ export class ProgressStore {
   async list(): Promise<AttemptRecord[]> {
     const records = await this.withBackend((b) => b.getAll());
     // 旧版の IndexedDB に保存された記録も、JSON 取り込みと同じ未到達の形にそろえる。
-    return records.map(completeAttempt).sort((first, second) => first.createdAt.localeCompare(second.createdAt));
+    return records.map(completeAttempt).sort(byCreatedAt);
   }
 
   clear(): Promise<void> {
@@ -216,7 +216,7 @@ export class ProgressStore {
     try {
       file = parseProgress(text);
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      return { ok: false, error: errorMessage(e) };
     }
     const expected = profileFromAttempts(file.attempts, this.options, file.profile);
     const xpDiffers = file.profile.xp !== undefined && file.profile.xp.total !== expected.xp.total;
@@ -247,7 +247,7 @@ export class ProgressStore {
       ]);
       await Promise.all([memory.put(attempts), memory.putProfile(profile)]);
       this.backend = memory;
-      this.reason = `ブラウザに保存できなくなりました（${e instanceof Error ? e.message : String(e)}）`;
+      this.reason = `ブラウザに保存できなくなりました（${errorMessage(e)}）`;
       return operation(memory);
     }
   }

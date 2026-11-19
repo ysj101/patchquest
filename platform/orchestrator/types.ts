@@ -1,7 +1,7 @@
 // 演習進行の共有型と、教材アプリとの互換性判定。
 import { satisfies, validatePack, type AppDescriptor, type AttemptRecord,
   type ImplementationRegistry, type ImplementationSelection, type MissionPack, type RuntimeAdapter,
-  type TestCase, type VerificationReport } from '../contract';
+  type MutationRecipeDef, type TestCase, type VerificationReport } from '../contract';
 import type { Evaluator } from '../evaluator/evaluator';
 import type { Scope } from '../evaluator/scenario';
 
@@ -78,6 +78,8 @@ export interface Current {
   /** 対応する教材アプリ。見つからなければ互換性の確認で開始不可にする */
   app: CatalogApp | undefined;
   tests: TestCase[];
+  /** 開始条件（variant）に対応する注入レシピ。見つからなければ事前検証の注入で止める */
+  recipe: MutationRecipeDef | undefined;
   /** 注入後の状態 V の実装 */
   vulnerable: ImplementationSelection;
   /** パックが交換するフックの基準実装 */

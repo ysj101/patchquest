@@ -160,7 +160,7 @@
   },
   "platform/orchestrator/pack-verification.ts": {
     "id-length": {
-      "count": 13
+      "count": 11
     },
     "sonarjs/no-nested-conditional": {
       "count": 1
@@ -237,7 +237,7 @@
       "count": 1
     },
     "id-length": {
-      "count": 5
+      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -307,7 +307,7 @@
       "count": 1
     },
     "id-length": {
-      "count": 5
+      "count": 4
     },
     "sonarjs/post-message": {
       "count": 1
@@ -374,7 +374,7 @@
       "count": 1
     },
     "id-length": {
-      "count": 7
+      "count": 6
     }
   },
   "scripts/check-boundaries.mjs": {

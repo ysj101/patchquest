@@ -1,6 +1,7 @@
 // メモアプリ共通のテスト。安全な基準状態 S ではすべて通る（spec A01）。
 // ID や名前はハードコードせず fixture の値（{{キー}}）で参照し、複数の seed で同じテストが通るようにする
 import type { TestCase } from '../../platform/contract';
+import { TITLE_MAX_LENGTH } from './model';
 
 const ALICE_PRIVATE = '/api/memos/{{memos.alice.private.id}}';
 const PAGE = '/api/pages/{{pages.shared.id}}';
@@ -295,7 +296,7 @@ export const MEMO_TESTS: TestCase[] = [
       {
         kind: 'request',
         as: 'alice',
-        request: { method: 'POST', path: '/api/memos', body: { title: 'あ'.repeat(41), body: 'x' } },
+        request: { method: 'POST', path: '/api/memos', body: { title: 'あ'.repeat(TITLE_MAX_LENGTH + 1), body: 'x' } },
         expect: { status: 400, body: [{ path: 'field', is: { equals: 'title' } }] },
       },
     ],

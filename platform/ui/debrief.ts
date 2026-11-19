@@ -2,7 +2,7 @@
 // 理解確認は登録済みの選択肢で判定し、自由記述は採点しない
 import { askedQuestions } from '../contract';
 import { characterVoice, guideVoice, requesterVoice } from './characters';
-import type { VulnerabilityCategory, VulnerabilityDef } from '../contract';
+import type { TransferQuestion, VulnerabilityCategory, VulnerabilityDef } from '../contract';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { confirmDialog, radioOption, status } from './components';
@@ -142,7 +142,7 @@ export class DebriefPanel {
     const { answers } = snapshot.attempt;
     const form = h(
       'form',
-      { class: 'transfer', on: { submit: (e) => (e.preventDefault(), this.submit(form, snapshot)) } },
+      { class: 'transfer', on: { submit: (e) => (e.preventDefault(), this.submit(form, transferCheck)) } },
       ...transferCheck.map((q) => {
         // 回答済みの設問だけ正誤を示す
         const result = q.id in answers ? q.choices.find((c) => c.id === answers[q.id])?.correct === true : undefined;
@@ -166,9 +166,9 @@ export class DebriefPanel {
     return form;
   }
 
-  private submit(form: HTMLFormElement, snapshot: ExerciseSnapshot): void {
+  private submit(form: HTMLFormElement, questions: readonly TransferQuestion[]): void {
     const data = new FormData(form);
-    this.actions.answer(Object.fromEntries(askedQuestions(snapshot.pack.manifest, snapshot.attempt).map((q) => [q.id, String(data.get(q.id) ?? '')])));
+    this.actions.answer(Object.fromEntries(questions.map((q) => [q.id, String(data.get(q.id) ?? '')])));
   }
 
   private retrySection(variantCount: number): HTMLElement {
