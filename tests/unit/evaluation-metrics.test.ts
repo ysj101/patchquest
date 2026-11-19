@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION } from '../../platform/progress/schema';
+import { progressJson } from '../support/progress-json';
 import { STAGES } from '../../platform/progress/stages';
 import {
   collectMetrics,
@@ -21,7 +22,7 @@ const DONE = { achieved: true, at: '2026-10-12T01:00:00Z' };
 const ALL_MILESTONES = { briefedAt: '2026-10-12T00:01:00Z', firstRequestAt: '2026-10-12T00:02:00Z', firstDefenseAt: '2026-10-12T00:03:00Z' };
 
 function exportOf(attempts: AttemptRecord[]): string {
-  return JSON.stringify({ format: PROGRESS_FORMAT, schemaVersion: PROGRESS_SCHEMA_VERSION, exportedAt: '2026-10-16T00:00:00Z', attempts, profile: {} });
+  return progressJson({ exportedAt: '2026-10-16T00:00:00Z', attempts });
 }
 
 const completedIdor = (attemptId: string, seed: number) =>

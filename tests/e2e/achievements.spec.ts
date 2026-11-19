@@ -1,7 +1,7 @@
 // 実績の解除通知・称号・履歴による条件と進捗の照合をブラウザで確かめる。
 import type { Page } from '@playwright/test';
 import { makeAttempt } from '../support/attempt';
-import { backToList, expect, importProgressFile, openMission, openRecords, reproduceNoteLeak, startMission, test, ticketSeals, verifyWith, turnMotionOffWithKeyboard, settingsButton, openHome } from './fixtures';
+import { TEST_PACK_ANSWERS, answerTransferCheck, backToList, expect, importProgressFile, openMission, openRecords, openTestPage, reproduceNoteLeak, startMission, startWithMotionOff, test, ticketSeals, verifyWith } from './fixtures';
 
 const section = (page: Page) => page.getByRole('region', { name: '実績', exact: true });
 const item = (page: Page, id: string) => section(page).locator(`[data-achievement="${id}"]`);
@@ -28,10 +28,7 @@ test('ヒントなしで完走すると五つの実績を日時付きで表示�
   for (const name of ['初めて防御', 'ヒントなしで防御', '正常な利用を壊さず防御', '一度の検証で防御']) {
     await expect(toast(page)).toContainText(`実績解除：${name}`);
   }
-  await page.getByRole('tab', { name: '振り返り' }).click();
-  await page.getByRole('radio', { name: '取得時に所有者を照合する' }).check();
-  await page.getByRole('button', { name: '回答する' }).click();
-  await expect(ticketSeals(page)).toContainText('理解：達成');
+  await answerTransferCheck(page, TEST_PACK_ANSWERS);
   await back(page);
   await expect(section(page)).toContainText('称号：修理担当（実績 5 / 6）');
   for (const id of ['first-reproduction', 'first-defense', 'no-hint-defense', 'clean-repair', 'first-try']) {
@@ -65,11 +62,7 @@ test('正常系を壊す検証の後で防御しても正常利用と一度の�
 });
 
 test('ヒント閲覧後はヒントなし実績を付けず、動きオフでも解除を文字と読み上げで伝える', async ({ page }) => {
-  await openHome(page);
-  await settingsButton(page).focus();
-  await turnMotionOffWithKeyboard(page);
-  await openMission(page, 'test-pack');
-  await page.getByRole('button', { name: 'ミッション開始', exact: true }).click();
+  await startWithMotionOff(page, 'test-pack');
   await page.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
   await defended(page);
   await expect(toast(page)).toContainText('実績解除：初めて防御');
@@ -82,8 +75,7 @@ test('ヒント閲覧後はヒントなし実績を付けず、動きオフで�
 });
 
 test('存在しない解除を取り込むと注記し、記録から再判定した実績を表示する', async ({ page }) => {
-  await page.goto('/test/progress.html');
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+  await openTestPage(page, 'progress');
   const source = JSON.parse(await page.evaluate(() => window.progressTest.exportJson())) as { profile: { achievements: Record<string, string> } };
   source.profile.achievements = { 'first-defense': '2026-10-12T00:00:00Z' };
   await importProgressFile(page, source, '記録から計算し直しました');

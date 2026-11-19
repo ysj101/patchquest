@@ -1,4 +1,5 @@
 // 手順データ（Step）を実行し、期待との差を判定する。テスト・probe・プレイヤー操作の判定で共通に使う
+import { errorMessage } from '../contract';
 import type {
   ActorKey,
   AppRequest,
@@ -172,7 +173,7 @@ function tryExpand<T>(value: T, scope: Scope): { value: T } | { error: string } 
   try {
     return { value: expandAs(value, scope) };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
+    return { error: errorMessage(e) };
   }
 }
 

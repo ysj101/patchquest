@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { memoApp } from '../../apps/memo';
 import type { Exchange, TestCase } from '../../platform/contract';
-import { Evaluator, configHash, detectReproduction, groupOf, isCurrent, type EvaluationSubject } from '../../platform/evaluator/evaluator';
-import { EngineRuntime } from '../support/engine-runtime';
+import { configHash, detectReproduction, groupOf, isCurrent, type EvaluationSubject } from '../../platform/evaluator/evaluator';
+import { nodeEvaluator } from '../support/engine-runtime';
 import { requestOnly } from '../support/request-only';
 import { testPack } from '../support/test-pack';
 
@@ -26,7 +26,7 @@ const packTests: TestCase[] = requestOnly(manifest.tests.cases);
 
 describe('Evaluator', () => {
   it('基準アプリの全テストを検証インスタンスで実行して合格する（A01）', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     const report = await evaluator.runSuite(memoSubject(11), memoTests, [], 'run-s', 'hash-s');
     expect(report.outcomes.filter((o) => !o.passed)).toEqual([]);
     expect(report).toMatchObject({ runId: 'run-s', attemptId: 'memo-11', configHash: 'hash-s', passed: true });
@@ -34,7 +34,7 @@ describe('Evaluator', () => {
   });
 
   it('脆弱な状態では攻撃阻止のテストだけが失敗し、期待と実測を返す', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     const report = await evaluator.runSuite(packSubject({ 'note.read': 'test-pack/any-owner' }), packTests, manifest.tests.target, 'run-v', 'hash-v');
     const failed = report.outcomes.filter((o) => !o.passed);
     expect(failed).toEqual([
@@ -44,7 +44,7 @@ describe('Evaluator', () => {
   });
 
   it('すべて拒否する対策は正常系の失敗で不合格になり、正しい対策はすべて合格する（A05 の基盤）', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     const denyAll = await evaluator.runSuite(packSubject({ 'note.read': 'test-pack/deny-all' }), packTests, manifest.tests.target, 'run-d', 'h');
     expect(denyAll.outcomes.filter((o) => !o.passed).map((o) => o.group)).toEqual(['normal']);
     expect(denyAll.passed).toBe(false);
@@ -54,7 +54,7 @@ describe('Evaluator', () => {
   });
 
   it('攻撃の成立条件（probe）を確かめる。基準状態では成立しない', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     expect(await evaluator.runProbes(packSubject({ 'note.read': 'test-pack/any-owner' }), manifest.probes, 'run-p')).toEqual([
       expect.objectContaining({ probeId: 'read-other', succeeded: true }),
     ]);
@@ -62,7 +62,7 @@ describe('Evaluator', () => {
   });
 
   it('各テストは初期データから実行され、前のテストの副作用を受けない', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     const deleteThenRead: TestCase[] = [
       memoApp.tests.find((t) => t.id === 'memo.delete-own')!,
       memoApp.tests.find((t) => t.id === 'memo.read-own')!,
@@ -71,7 +71,7 @@ describe('Evaluator', () => {
   });
 
   it('再生したやり取りは各テストの前に初期データへ戻したあと送られ、テストの状態に反映される', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     // 再生で bob のノートを 2 件作る。各テストの前に初期化しても、毎回この 2 件が作り直される
     const subject: EvaluationSubject = {
       ...packSubject({}),
@@ -95,7 +95,7 @@ describe('Evaluator', () => {
   });
 
   it('新しい検証が始まると古い検証は結果を返さずに stopped で終わる（A20 の基盤）', async () => {
-    const evaluator = new Evaluator(() => new EngineRuntime());
+    const evaluator = nodeEvaluator();
     const first = evaluator.runSuite(memoSubject(13), memoTests, [], 'old', 'h');
     const second = evaluator.runSuite(memoSubject(13), memoTests, [], 'new', 'h');
     await expect(first).rejects.toMatchObject({ code: 'stopped' });

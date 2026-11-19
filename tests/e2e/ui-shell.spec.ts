@@ -1,6 +1,6 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { backToList, enterWorkbench, expect, settingsButton, tabTo, test, openHome, openMissions } from './fixtures';
+import { backToList, blockIndexedDb, enterWorkbench, expect, launchButton, settingsButton, tabTo, test, openHome, openMissions } from './fixtures';
 
 const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
@@ -108,7 +108,7 @@ test('キーボードだけで課題一覧から開始前チェックを経て�
   await expect(page.locator('.check .status-passed')).toHaveCount(4);
   await page.keyboard.press('Enter');
 
-  await expect(page.getByRole('button', { name: 'ミッション開始', exact: true })).toBeFocused();
+  await expect(launchButton(page)).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('#exercise-title')).toBeFocused();
   await expect(page.getByText('学習用に脆弱性を注入した架空のサービスです。', { exact: true })).toBeVisible();
@@ -177,13 +177,7 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
 });
 
 test('ブラウザに保存できないときは、書き出しを促す', async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(window, 'indexedDB', {
-      get() {
-        throw new DOMException('blocked for test', 'SecurityError');
-      },
-    });
-  });
+  await blockIndexedDb(page);
   await page.reload();
   await expect(page.getByText(/ブラウザに保存できません.*設定の「進捗を書き出す」で保存してください/)).toBeVisible();
   await page.getByRole('button', { name: '設定を開く' }).click();

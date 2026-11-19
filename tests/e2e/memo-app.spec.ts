@@ -2,7 +2,7 @@
 import type { Page } from '@playwright/test';
 import { memoApp } from '../../apps/memo';
 import type { FixtureData } from '../../platform/contract';
-import { expect, test } from './fixtures';
+import { expect, openTestPage, test } from './fixtures';
 
 async function prepare(page: Page, seed: number): Promise<FixtureData> {
   const result = await page.evaluate(
@@ -24,8 +24,7 @@ const show = (page: Page, actor: string, route: string, runId: string) =>
   page.evaluate(([a, r, id]) => window.runtimeTest.call('exercise', 'showView', a, r, id), [actor, route, runId] as const);
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/test/runtime.html');
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+  await openTestPage(page, 'runtime');
 });
 
 test('利用者を切り替えると、その利用者のメモだけが表示される', async ({ page }) => {

@@ -1,9 +1,9 @@
 // 演習の進行を担う（spec §5, §13）。互換性の確認、基準状態の検証、注入、事前検証、
 // 演習用インスタンスの準備、対策の切り替え、再検証、リセットを状態遷移表に沿って行う
 import {
-  RuntimeError,
   askedQuestions,
   canTransition,
+  errorMessage,
   isInExercise,
   type Exchange,
   type ExerciseState,
@@ -95,29 +95,33 @@ export class Orchestrator {
     if (!c?.runIds.has(exchange.runId)) return false;
     const { attempt, pack, refs } = c.snapshot;
     if (!isInExercise(attempt.state)) return false;
-    if (!options.initialView && exchange.kind === 'request' && attempt.milestones.firstRequestAt === null) attempt.milestones.firstRequestAt = this.now().toISOString();
-    if (attempt.state === 'Prepared') this.transition('Explored');
+    const firstRequest = !options.initialView && exchange.kind === 'request' && attempt.milestones.firstRequestAt === null;
+    if (firstRequest) attempt.milestones.firstRequestAt = this.now().toISOString();
+    const explored = attempt.state === 'Prepared';
+    if (explored) this.transition('Explored');
     const reproduced = !attempt.badges.reproduction.achieved && detectReproduction(exchange, pack.manifest.probes, refs) !== null;
     if (reproduced) attempt.badges.reproduction = { achieved: true, runId: exchange.runId, at: this.now().toISOString() };
-    await this.recordRepair(c, exchange);
-    this.emit();
+    const repaired = await this.recordRepair(c, exchange);
+    // やり取りのたびに届くので、記録が変わったときだけ知らせる（描き直しと保存を増やさない）
+    if (firstRequest || explored || reproduced || repaired) this.emit();
     return reproduced;
   }
 
   /**
    * 操作で直す課題で、状態を変える操作を修正の記録として残す（spec §5.3）。記録は検証の前に再生する。
-   * 記録を加えたら構成が変わるので、過去の合格を現在の合格として扱わない（defenseCurrent を下げる）
+   * 記録を加えたら構成が変わるので、過去の合格を現在の合格として扱わない（defenseCurrent を下げる）。記録を加えたら true を返す
    */
-  private async recordRepair(current: Current, exchange: Exchange): Promise<void> {
+  private async recordRepair(current: Current, exchange: Exchange): Promise<boolean> {
     const { snapshot } = current;
     const repair = snapshot.pack.manifest.repair;
-    if (repair?.kind !== 'record' || !exchange.request || !matchesExchange(exchange, repair.record, snapshot.refs)) return;
+    if (repair?.kind !== 'record' || !exchange.request || !matchesExchange(exchange, repair.record, snapshot.refs)) return false;
     const { attempt } = snapshot;
     attempt.repairLog = [...attempt.repairLog, { as: exchange.actor, request: exchange.request }];
     if (attempt.milestones.firstDefenseAt === null) attempt.milestones.firstDefenseAt = this.now().toISOString();
-    if (attempt.state !== 'Repairing') this.transition('Repairing');
+    this.transition('Repairing');
     snapshot.defenseCurrent = false;
     attempt.configHash = await this.hashFor(snapshot.implementations);
+    return true;
   }
 
   /** 対策を適用する（null で取り消して脆弱な状態 V に戻す）。動作を切り替えるだけで合否は返さない */
@@ -140,7 +144,7 @@ export class Orchestrator {
     await this.switchImplementations(withChanges(c.vulnerable, defense?.apply ?? []));
     c.snapshot.defenseCurrent = false;
     attempt.appliedDefense = defenseId;
-    if (attempt.state !== 'Repairing') this.transition('Repairing');
+    this.transition('Repairing');
     this.emit();
   }
 
@@ -163,7 +167,7 @@ export class Orchestrator {
     } catch (e) {
       // 基盤エラーは学習上の不合格に数えない
       if (this.current !== c) return null;
-      c.snapshot.platformError = e instanceof Error ? e.message : String(e);
+      c.snapshot.platformError = errorMessage(e);
       this.transition('Repairing');
       this.emit();
       return null;
@@ -239,7 +243,7 @@ export class Orchestrator {
     } catch (e) {
       if (this.current !== c) return;
       snapshot.blocked =
-        e instanceof Blocked ? e.reason : { kind: 'platform-error', message: e instanceof RuntimeError || e instanceof Error ? e.message : String(e) };
+        e instanceof Blocked ? e.reason : { kind: 'platform-error', message: errorMessage(e) };
       if (!(e instanceof Blocked)) await this.deps.exercise.stop().catch(() => undefined);
       this.transition('Blocked');
       this.emit();
@@ -260,7 +264,7 @@ export class Orchestrator {
       entry.status = 'passed';
     } catch (e) {
       entry.status = 'failed';
-      entry.detail = e instanceof Error ? e.message : String(e);
+      entry.detail = errorMessage(e);
       throw e;
     } finally {
       this.emit();

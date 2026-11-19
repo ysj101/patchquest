@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・記録・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { ANONYMOUS, RuntimeError, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type ObservedEvent, type SessionToken } from '../contract';
+import { ANONYMOUS, RuntimeError, errorMessage, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { profileFromAttempts } from '../progress/profile';
@@ -12,7 +12,7 @@ import { openSettings as openSettingsDialog } from './effect-settings-panel';
 import { confirmDialog } from './components';
 import { announce, fill, h } from './dom';
 import { DebriefPanel, HintsPanel } from './debrief';
-import { ExerciseView } from './exercise';
+import { actorLabel, ExerciseView } from './exercise';
 import { GuidePanel } from './guide';
 import { missionList } from './mission-list';
 import { missionEntries } from './mission-entries';
@@ -34,13 +34,14 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const openSettings = () => openSettingsDialog(effects, progress);
   const store = await ProgressStore.open(profileOptions);
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
-  const resultEffects = new ResultEffects(effects, (message) => announce(live, message));
+  const say = (message: string) => announce(live, message);
+  const resultEffects = new ResultEffects(effects, say);
   const listView = h('section', { class: 'list-view' }), recordsView = h('section', { class: 'records-view' }), main = h('main', { id: 'main' });
   const nav = siteNav((page) => void (page === 'list' ? showList() : showRecords()));
 
   let orchestrator: Orchestrator;
   /** 練習用パックの操作ガイド。演習が始まるたびにそのパックのガイドで始め直し、課題一覧へ戻っても表示し続ける */
-  const guide = new GuidePanel({ announce: (message) => announce(live, message), finish: () => void showList() });
+  const guide = new GuidePanel({ announce: say, finish: () => void showList() });
   const preflightView = new PreflightView({
     begin: () => void beginExercise(),
     retry: () => void orchestrator.retryPreflight(),
@@ -60,14 +61,13 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const debrief = new DebriefPanel({
     answer: (answers) => {
       const correct = orchestrator.answerTransfer(answers);
-      announce(live, correct ? '理解の検印を押しました' : 'まだ正解でない設問があります');
+      say(correct ? '理解の検印を押しました' : 'まだ正解でない設問があります');
     },
-    retry: () => withCurrentPack((packId) => begin(packId)),
+    retry: () => {
+      const packId = orchestrator.snapshot?.pack.manifest.id;
+      if (packId) void begin(packId);
+    },
   });
-  function withCurrentPack(run: (packId: string) => Promise<void>): void {
-    const packId = orchestrator.snapshot?.pack.manifest.id;
-    if (packId) void run(packId);
-  }
   const exerciseView = new ExerciseView(
     {
       back: () => void showList(),
@@ -93,7 +93,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
       storyFooter: hints.element,
       callout: resultEffects.element,
     },
-    (message) => announce(live, message),
+    say,
   );
   const exercise = new BrowserRuntimeAdapter({
     container: exerciseView.previewSlot,
@@ -177,18 +177,21 @@ export async function startApp(root: HTMLElement): Promise<void> {
         resume: (record) => void begin(record.missionId, record),
       }, { mastery: profile.mastery, storageWarning: store.unavailableReason }),
     );
-    show('list');
-    if (message) announce(live, message);
+    settle(listView, 'list', message);
+  }
+
+  /** 描き直した一覧・記録ページへ切り替え、知らせる文があれば読み上げて、見出しへフォーカスを移す */
+  function settle(view: HTMLElement, next: Screen, message?: string): void {
+    show(next);
+    if (message) say(message);
     // 設定を開いたまま描き直すときは、見出しへフォーカスを移さない
-    if (!document.querySelector('dialog[open]')) listView.querySelector<HTMLElement>('h1')?.focus();
+    if (!document.querySelector('dialog[open]')) view.querySelector<HTMLElement>('h1')?.focus();
   }
 
   async function showRecords(message?: string): Promise<void> {
     const { profile } = await loadRecords();
     fill(recordsView, recordsPage(profile, catalog.packs, store.unavailableReason, openSettings));
-    show('records');
-    if (message) announce(live, message);
-    if (!document.querySelector('dialog[open]')) recordsView.querySelector<HTMLElement>('h1')?.focus();
+    settle(recordsView, 'records', message);
   }
 
   let briefingAttemptId: string | null = null;
@@ -197,11 +200,11 @@ export async function startApp(root: HTMLElement): Promise<void> {
     // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の「演習を始める」を残さない）
     const started = orchestrator.start(packId, { resume });
     show('preflight');
-    announce(live, '開始前チェックを始めました');
+    say('開始前チェックを始めました');
     const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
     others = records.filter((record) => record.attemptId !== snapshot.attempt.attemptId);
     briefingAttemptId = resume ? null : snapshot.attempt.attemptId;
-    announce(live, isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
+    say(isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
   }
 
   function updateExercise(snapshot: ExerciseSnapshot): void {
@@ -219,17 +222,17 @@ export async function startApp(root: HTMLElement): Promise<void> {
     // 同じ対策の再適用や、脆弱な状態での取り消しでは演習の状態が変わらないので、ここで消す
     resultEffects.clear();
     await orchestrator.applyDefense(defenseId);
-    announce(live, defenseId ? '対策を適用しました。検証して確かめましょう' : '対策を取り消しました');
+    say(defenseId ? '対策を適用しました。検証して確かめましょう' : '対策を取り消しました');
   }
 
   async function verify(): Promise<void> {
-    announce(live, '検証を始めました');
+    say('検証を始めました');
     const report = await orchestrator.verify();
     const effect = verificationEffect(report, orchestrator.snapshot?.attempt.state === 'Passed');
     if (effect) resultEffects.show(effect);
     repair.focusResults();
-    if (!report) announce(live, '実行環境のエラーで検証できませんでした（不合格には数えません）');
-    else if (!effect) announce(live, '実行環境のエラーで判定できませんでした（不合格には数えません）');
+    if (!report) say('実行環境のエラーで検証できませんでした（不合格には数えません）');
+    else if (!effect) say('実行環境のエラーで判定できませんでした（不合格には数えません）');
   }
 
   async function resetToInitial(): Promise<void> {
@@ -245,7 +248,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     guide.reach('reset');
     sessions.clear();
     await showViewer(viewer, { fresh: true });
-    announce(live, '初期状態へ戻しました');
+    say('初期状態へ戻しました');
   }
 
   // 初期表示の自動要求と、その後の利用者操作は同じ実行 ID を使うので、読み込み中かどうかで区別する。
@@ -255,7 +258,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   /** 観測したやり取りを進行（再現の判定・修正の記録）と観測ログへ渡す。画面の表示だけのやり取りは事象があるときだけ記録する */
   async function observe(exchange: Exchange): Promise<void> {
     const reproduced = await orchestrator.onExchange(exchange, { initialView: openingViews.has(exchange.runId) });
-    if (exchange.kind === 'request' || exchange.events.length > 0) exerciseView.investigation.record(exchange, exerciseView.label(exchange.actor));
+    if (exchange.kind === 'request' || exchange.events.length > 0) exerciseView.investigation.record(exchange, actorLabel(exchange.actor));
     if (reproduced) resultEffects.show({ kind: 'reproduced', detail: '再現の検印を押しました。事故を自分の操作で再現できました。' });
   }
 
@@ -275,7 +278,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
         await exercise.showView(actor, app.descriptor.entryRoute, runId);
         return true;
       } catch (e) {
-        announce(live, `画面を表示できませんでした：${e instanceof Error ? e.message : String(e)}`);
+        say(`画面を表示できませんでした：${errorMessage(e)}`);
         return false;
       } finally {
         openingViews.delete(runId);
@@ -287,7 +290,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
    * 読み上げると、送信で届いた XP や到達の通知を上書きしてしまう */
   async function showViewer(actor: ActorKey, options: { fresh?: boolean } = {}): Promise<void> {
     const shown = await renderView({ actor, ...options });
-    if (shown) announce(live, `${exerciseView.label(actor)} として表示しています`);
+    if (shown) say(`${actorLabel(actor)} として表示しています`);
   }
 
   async function beginExercise(): Promise<void> {
@@ -299,9 +302,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     // 続きから始めると attemptId・configHash・検証結果が前回と同じなので、前回のコールアウトは明示的に消す
     resultEffects.clear();
     const showBriefing = snapshot.attempt.attemptId === briefingAttemptId;
-    const describers = { event: (event: ObservedEvent) => app.describeEvent?.(event) ?? null, request: (request: AppRequest) => app.describeRequest?.(request) ?? null };
-    exerciseView.setup(snapshot, app.descriptor, viewer, describers, showBriefing);
-    repair.setup(snapshot, describers.request);
+    exerciseView.setup(snapshot, app, viewer, showBriefing);
+    repair.setup(snapshot, app);
     if (!showBriefing) orchestrator.markBriefed();
     show('exercise');
     // 既定で飛ばすときは 2 つの出来事をまとめて知らせ、読み上げを 1 回にする
@@ -342,7 +344,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     }
   }
 
-  const progress = progressActions({ store, view: document.body, guide, refresh: (message) => screen === 'records' ? showRecords(message) : showList(message), announce: (message) => announce(live, message) });
+  const progress = progressActions({ store, view: document.body, guide, refresh: (message) => screen === 'records' ? showRecords(message) : showList(message), announce: say });
 
   await showList();
 }

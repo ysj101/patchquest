@@ -1,5 +1,6 @@
 // Node のユニットテスト用の RuntimeAdapter。Worker やプレビューを使わず AppEngine を直接動かす（描画はしない）
 import { RuntimeError, type FixtureData, type InvokeCall, type InvokeResult, type PrepareOptions, type RuntimeAdapter } from '../../platform/contract';
+import { Evaluator } from '../../platform/evaluator/evaluator';
 import { AppEngine } from '../../runtimes/browser/engine';
 
 export class EngineRuntime implements RuntimeAdapter {
@@ -30,3 +31,6 @@ export class EngineRuntime implements RuntimeAdapter {
 
   async dispose(): Promise<void> {}
 }
+
+/** Node の実行環境で検証する Evaluator。使い終わったら dispose する */
+export const nodeEvaluator = (): Evaluator => new Evaluator(() => new EngineRuntime());

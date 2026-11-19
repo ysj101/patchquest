@@ -88,6 +88,9 @@ export interface ChallengeInfo {
   repeatsPrevious: boolean;
 }
 
+/** 記録を作成の古い順に並べる比較 */
+export const byCreatedAt = (first: Pick<AttemptRecord, 'createdAt'>, second: Pick<AttemptRecord, 'createdAt'>): number => first.createdAt.localeCompare(second.createdAt);
+
 /** 演習 1 回分の記録。開始時に版・seed を固定する（spec §5.3） */
 export interface AttemptRecord {
   attemptId: string;

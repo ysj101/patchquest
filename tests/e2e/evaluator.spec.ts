@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { memoApp } from '../../apps/memo';
 import type { TestCase, TestOutcome } from '../../platform/contract';
 import type { EvaluationSubject, EvaluatorLimits } from '../../platform/evaluator/evaluator';
-import { expect, test } from './fixtures';
+import { expect, openTestPage, test } from './fixtures';
 
 const notes = (implementations: Record<string, string> = {}): EvaluationSubject => ({
   attemptId: 'attempt-e2e',
@@ -27,8 +27,7 @@ async function runSuite(page: Page, subject: EvaluationSubject, tests: TestCase[
 const failed = (outcomes: TestOutcome[]) => outcomes.filter((o) => !o.passed);
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/test/evaluator.html');
-  await expect(page.locator('body[data-ready="true"]')).toBeAttached();
+  await openTestPage(page, 'evaluator');
 });
 
 test('基準のメモアプリは全テストに合格する（A01）', async ({ page }) => {

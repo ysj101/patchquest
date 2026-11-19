@@ -1,6 +1,6 @@
 // メモアプリの教材ロジック（サーバの判断をブラウザ内でモデル化したもの、spec §14）。
 // 主体はセッションから解決し、リクエストの userId・ownerId などは認証済みの情報として扱わない
-import type { AppRequest, AppResponse } from '../../platform/contract';
+import { errorMessage, isObj, type AppRequest, type AppResponse } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
 import type { BuildSearchQuery, ReadMemo, ValidateTitle } from './hooks';
 import { json } from '../shared/http';
@@ -38,7 +38,7 @@ function text(ctx: ServerContext, field: string, value: unknown, label: string, 
 
 /** タイトルと本文の検証。違反があればその応答を返す */
 function validate(ctx: ServerContext, body: AppRequest['body']): { title: string; body: string } | AppResponse {
-  const input = (typeof body === 'object' && body !== null && !Array.isArray(body) ? body : {}) as Record<string, unknown>;
+  const input = isObj(body) ? body : {};
   // タイトルの文字数の検証は交換点（memo.title.validate）が受け持つ
   const title = text(ctx, 'title', input.title, 'タイトル');
   if (typeof title !== 'string') return title;
@@ -105,7 +105,7 @@ function search(ctx: ServerContext, query: string, user: User): AppResponse {
   try {
     rows = ctx.db.selectObjects(sql, bind) as typeof rows;
   } catch (e) {
-    ctx.emit('sql.error', { sql, bind, message: e instanceof Error ? e.message : String(e) });
+    ctx.emit('sql.error', { sql, bind, message: errorMessage(e) });
     return json(400, { error: '検索に失敗しました' });
   }
   // 返却行の所有者は、クエリが返した列名に頼らず、実際のメモの所有者から記録する

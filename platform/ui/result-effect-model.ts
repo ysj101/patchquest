@@ -1,5 +1,5 @@
 // 実際の評価結果から通知内容と合成音のパラメーターを決める。DOM に依存しない。
-import type { VerificationReport } from '../contract';
+import { failedOutcomes, type VerificationReport } from '../contract';
 import type { EffectSettings } from './effect-settings';
 import { VERDICT_REASON, VERDICT_SUCCESS } from './labels';
 
@@ -13,7 +13,7 @@ export function verificationEffect(report: VerificationReport | null, allSealsDo
     const sealMessage = allSealsDone ? 'すべての検印がそろいました。' : '防御の検印を押しました。';
     return { kind: 'secured', detail: sealMessage + VERDICT_SUCCESS };
   }
-  const failed = report.outcomes.filter((outcome) => !outcome.passed);
+  const failed = failedOutcomes(report);
   if (failed.some((outcome) => outcome.error !== undefined)) return null;
   const details = failed.slice(0, 2).map((outcome) => `${VERDICT_REASON[outcome.group]}：${outcome.title}（期待「${outcome.expected}」、実測「${outcome.actual}」）`);
   if (failed.length > 2) details.push(`ほか ${failed.length - 2} 件`);
