@@ -5,7 +5,7 @@ import { sealStates, stageStates } from '../progress/stages';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, seals, settingsButton, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
-import { InvestigationPanel, storyPanel, type EventDescriber } from './investigation';
+import { InvestigationPanel, storyPanel, type AppDescribers } from './investigation';
 import { STATE_LABEL } from './labels';
 import { AchievementToast } from './achievement-toast';
 import { XpBadge } from './xp-badge';
@@ -38,6 +38,9 @@ const NOW_DOING = {
   repaired: '対策を選んで、適用します。',
   verified: '攻撃と普段の使い方を検証します。',
 } as const;
+
+/** 操作で直す課題（repair: record）では、対策を選ぶのではなく教材アプリを操作して直す */
+const NOW_REPAIR_BY_OPERATION = '教材アプリを操作して、問題を直します。';
 
 const NOW_DONE = '振り返りで、原因と対策を確認します。';
 
@@ -126,7 +129,7 @@ export class ExerciseView {
   }
 
   /** 演習を始めたときに、利用者・操作・状況を組み直す */
-  setup(snapshot: ExerciseSnapshot, app: AppDescriptor, viewer: ActorKey, describeEvent: EventDescriber, showBriefing: boolean): void {
+  setup(snapshot: ExerciseSnapshot, app: AppDescriptor, viewer: ActorKey, describers: AppDescribers, showBriefing: boolean): void {
     fill(
       this.users,
       h('legend', {}, '表示する利用者'),
@@ -154,8 +157,8 @@ export class ExerciseView {
       h('p', { class: 'note' }, 'Esc キーでも導入を飛ばして始められます。'),
     );
     this.setBriefingVisible(showBriefing);
-    this.showNow(snapshot.attempt, snapshot.defenseCurrent);
-    this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describeEvent);
+    this.showNow(snapshot);
+    this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describers);
     this.investigation.setViewer(actorLabel(viewer));
     this.toolTabs.select('story');
   }
@@ -189,11 +192,12 @@ export class ExerciseView {
     this.actions.briefed();
   }
 
-  private showNow(attempt: ExerciseSnapshot['attempt'], defenseCurrent: boolean): void {
+  private showNow({ attempt, defenseCurrent, pack }: ExerciseSnapshot): void {
     const current = stageStates(attempt, defenseCurrent).find((stage) => stage.current);
     // 最終検証のステージは、防御が済んだあとの残りが振り返り
     const reflecting = current?.id === 'verified' && attempt.badges.defense.achieved && defenseCurrent;
-    const sentence = reflecting || !current ? NOW_DONE : NOW_DOING[current.id];
+    let sentence: string = NOW_DONE;
+    if (current && !reflecting) sentence = current.id === 'repaired' && pack.manifest.repair ? NOW_REPAIR_BY_OPERATION : NOW_DOING[current.id];
     this.nowDoing.textContent = `今やること：${sentence}`;
   }
 
@@ -208,7 +212,7 @@ export class ExerciseView {
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack, defenseCurrent } = snapshot;
     this.stages.update(attempt, defenseCurrent);
-    this.showNow(attempt, defenseCurrent);
+    this.showNow(snapshot);
     this.title.textContent = pack.manifest.title;
     this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}`;
     this.state.textContent = STATE_LABEL[attempt.state];

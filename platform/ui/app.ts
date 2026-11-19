@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・記録・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { ANONYMOUS, RuntimeError, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
+import { ANONYMOUS, RuntimeError, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type ObservedEvent, type SessionToken } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { profileFromAttempts } from '../progress/profile';
@@ -299,8 +299,9 @@ export async function startApp(root: HTMLElement): Promise<void> {
     // 続きから始めると attemptId・configHash・検証結果が前回と同じなので、前回のコールアウトは明示的に消す
     resultEffects.clear();
     const showBriefing = snapshot.attempt.attemptId === briefingAttemptId;
-    exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null, showBriefing);
-    repair.setup(snapshot);
+    const describers = { event: (event: ObservedEvent) => app.describeEvent?.(event) ?? null, request: (request: AppRequest) => app.describeRequest?.(request) ?? null };
+    exerciseView.setup(snapshot, app.descriptor, viewer, describers, showBriefing);
+    repair.setup(snapshot, describers.request);
     if (!showBriefing) orchestrator.markBriefed();
     show('exercise');
     // 既定で飛ばすときは 2 つの出来事をまとめて知らせ、読み上げを 1 回にする

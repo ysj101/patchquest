@@ -43,6 +43,7 @@ export const VULNERABILITY_CATEGORY_LABEL: Record<VulnerabilityCategory, string>
   authorization: '認可',
   'output-encoding': '出力',
   'data-access': 'データアクセス',
+  misconfiguration: '設定',
 };
 
 /** 分類の一言説明。初めての人が分類名だけで意味を取れないときの手がかり */
@@ -50,6 +51,7 @@ export const VULNERABILITY_CATEGORY_NOTE: Record<VulnerabilityCategory, string> 
   authorization: '「このデータは誰のものか」を確かめる仕組みの問題',
   'output-encoding': '受け取った文字を画面に出すときの扱いの問題',
   'data-access': 'データベースへの問い合わせの組み立て方の問題',
+  misconfiguration: '権限や公開範囲の設定が、必要以上に広くなっている問題',
 };
 
 /** CWE が何かの説明。略語を初回の説明なしに出さないために、CWE の番号には必ず添える */
