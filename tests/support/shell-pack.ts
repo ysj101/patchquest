@@ -1,5 +1,6 @@
 // 擬似シェルの土台（操作で直す課題）の検証専用の課題パック。運用担当への過剰な sudo の許可を初期データへ注入する。配布物には含めない
 import type { ProvisionSudoers } from '../../apps/shell/hooks';
+import { STATE_CHANGING_COMMAND, SUCCEEDED, ranAsRoot, sh } from '../../apps/shell/scenario';
 import type { MissionPack, ReplayEntry } from '../../platform/contract';
 import type { PackVerificationData } from './verification-data';
 
@@ -42,29 +43,13 @@ export const shellTestPack: MissionPack = {
     ],
     actions: [],
     defenses: [],
-    repair: {
-      kind: 'record',
-      record: { kind: 'request', request: { method: 'POST', path: '/sh' }, response: { status: 200, body: [{ path: 'changed', is: { equals: true } }] } },
-      noun: '加えた変更',
-    },
+    repair: { kind: 'record', record: STATE_CHANGING_COMMAND, noun: '加えた変更' },
     probes: [
       {
         id: 'operator-runs-maintenance',
         title: '運用担当が保守の操作を root として実行できる',
-        steps: [
-          {
-            kind: 'request',
-            as: 'operator',
-            request: { method: 'POST', path: '/sh', body: { line: `sudo ${MAINTENANCE}` } },
-            expect: { status: 200, body: [{ path: 'exit', is: { equals: 0 } }] },
-            events: [{ type: 'shell.exec', where: [{ path: 'program', is: { equals: MAINTENANCE } }, { path: 'runAs', is: { equals: 'root' } }] }],
-          },
-        ],
-        detect: {
-          actor: { is: 'operator' },
-          request: { method: 'POST', path: '/sh' },
-          events: [{ type: 'shell.exec', where: [{ path: 'program', is: { equals: MAINTENANCE } }, { path: 'runAs', is: { equals: 'root' } }] }],
-        },
+        steps: [sh('operator', `sudo ${MAINTENANCE}`, SUCCEEDED, [ranAsRoot(MAINTENANCE)])],
+        detect: { actor: { is: 'operator' }, request: { method: 'POST', path: '/sh' }, events: [ranAsRoot(MAINTENANCE)] },
       },
     ],
     tests: { target: ['shell.maintenance-denied'], cases: [] },

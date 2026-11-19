@@ -1,28 +1,7 @@
 // 擬似シェル共通のテスト。安全な基準状態 S ではすべて通る（spec A01）。
 // 利用者名・プログラム名はハードコードせず fixture の値（{{キー}}）で参照し、複数の seed で同じテストが通るようにする
-import type { Step, TestCase } from '../../platform/contract';
-
-type Expect = NonNullable<Extract<Step, { kind: 'request' }>['expect']>;
-type Events = NonNullable<Extract<Step, { kind: 'request' }>['events']>;
-
-const SUCCEEDED: Expect = { status: 200, body: [{ path: 'exit', is: { equals: 0 } }] };
-const FAILED: Expect = { status: 200, body: [{ path: 'exit', is: { notEquals: 0 } }, { path: 'changed', is: { equals: false } }] };
-
-/** コマンド行を 1 つ送る手順 */
-const sh = (as: string, line: string, expect: Expect, events?: Events): Step => ({
-  kind: 'request',
-  as,
-  request: { method: 'POST', path: '/sh', body: { line } },
-  expect,
-  ...(events ? { events } : {}),
-});
-
-/** プログラムが root として実行された、という観測イベント */
-const ranAsRoot = (program: string, presence: 'present' | 'absent' = 'present'): Events[number] => ({
-  type: 'shell.exec',
-  where: [{ path: 'program', is: { equals: program } }, { path: 'runAs', is: { equals: 'root' } }],
-  presence,
-});
+import type { TestCase } from '../../platform/contract';
+import { FAILED, SUCCEEDED, ranAsRoot, sh } from './scenario';
 
 const OPERATION = '{{programs.operation.path}}';
 const OPERATION2 = '{{programs.operation2.path}}';

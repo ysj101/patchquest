@@ -1,26 +1,9 @@
 // 擬似シェル（ターミナル）と、操作で直す課題の学習UI。端末で調べて再現し、設定を書き換えた操作が記録され、検証の前に再生されることを確かめる
 import type { Page } from '@playwright/test';
-import { expect, preview, startMission, test, ticketSeals as seals, verifyResults } from './fixtures';
+import { expect, loginToTerminal as loginAs, preview, resetToInitial, startMission, terminalInput as commandInput, terminalOutput, test, ticketSeals as seals, typeCommand as type, verifyResults } from './fixtures';
 
 const OPERATORS = '/etc/sudoers.d/operators';
-const commandInput = (page: Page) => preview(page).getByRole('textbox', { name: 'コマンド' });
-const terminalOutput = (page: Page) => preview(page).getByRole('log', { name: '端末の出力' });
 const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
-
-/** 端末にコマンド行を入力して Enter で送る。前のコマンドの応答が返るまで入力欄は使えないので、続けて呼べる */
-async function type(page: Page, line: string): Promise<void> {
-  await commandInput(page).fill(line);
-  await commandInput(page).press('Enter');
-}
-
-/** 利用者を切り替え、その利用者の端末が開き直るのを待つ。プロンプトの利用者名が変わったら、開き直しが終わっている */
-async function loginAs(page: Page, actor: string): Promise<void> {
-  const prompt = preview(page).locator('.term-prompt');
-  const before = await prompt.innerText();
-  await page.getByRole('radio', { name: actor }).check();
-  await expect(prompt).not.toHaveText(before);
-  await expect(prompt).toHaveText(/^[a-z]+@/);
-}
 
 /** 管理者として、運用担当向けの設定の 1 行をコメントに書き換える */
 const commentOut = (page: Page, line: number) => type(page, `sudo edit ${OPERATORS} ${line} '# 外した'`);
@@ -106,8 +89,7 @@ test('絞りすぎると普段の使い方の失敗で合格せず、初期状�
   // 選び直す対策はないので、選び直しのボタンは出ない
   await expect(page.getByRole('button', { name: /対策を選び直す/ })).toHaveCount(0);
 
-  await page.getByRole('button', { name: '初期状態へ戻す' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '初期状態へ戻す' }).click();
+  await resetToInitial(page);
   await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
   await expect(terminalOutput(page).locator('pre')).toHaveCount(1);
 });

@@ -6,9 +6,10 @@ import { idorPack } from '../missions/idor';
 import { onboardingPack } from '../missions/onboarding';
 import { storedXssPack } from '../missions/stored-xss';
 import { sqliPack } from '../missions/sqli';
+import { sudoMisconfigPack } from '../missions/sudo-misconfig';
 import type { Catalog } from '../runtimes/browser/app-module';
 
 export const catalog: Catalog = {
   apps: [memoApp, shellApp],
-  packs: [onboardingPack, idorPack, storedXssPack, sqliPack],
+  packs: [onboardingPack, idorPack, storedXssPack, sqliPack, sudoMisconfigPack],
 };
