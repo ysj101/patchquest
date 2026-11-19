@@ -5,10 +5,10 @@ import { describeEvent } from '../../apps/memo/events';
 import { BASELINE, type PickNeighbors } from '../../apps/memo/hooks';
 import type { PrepareOptions } from '../../platform/contract';
 import { runSteps, type ScenarioInvoker } from '../../platform/evaluator/scenario';
+import { VERIFICATION_SEEDS } from '../../platform/orchestrator/pack-verification';
 import { AppEngine } from '../../runtimes/browser/engine';
 import { requestOnly } from '../support/request-only';
 
-const SEEDS = [1, 42, 20261012];
 
 const options = (seed: number): PrepareOptions => ({
   attemptId: `memo-${seed}`,
@@ -30,7 +30,7 @@ function invokerFor(engine: AppEngine): ScenarioInvoker {
   };
 }
 
-describe.each(SEEDS)('メモアプリの基準実装（seed %i）', (seed) => {
+describe.each(VERIFICATION_SEEDS)('メモアプリの基準実装（seed %i）', (seed) => {
   const engine = new AppEngine();
   beforeAll(() => engine.prepare(options(seed)));
 

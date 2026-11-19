@@ -1,5 +1,5 @@
 // 学習UI：対策パネル・検証結果・ヒント・振り返り（Issue #13）
-import { backToList, enterWorkbench, expect, openRawRequest, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyWith } from './fixtures';
+import { backToList, enterWorkbench, expect, openRawRequest, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyResults, verifyWith } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await startMission(page, 'test-pack');
@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 
 test('正常系を壊す対策は、検証結果に理由と期待・実測が出て合格しない', async ({ page }) => {
   await verifyWith(page, 'すべて拒否する');
-  const results = page.locator('[data-anchor="results"]');
+  const results = verifyResults(page);
   await expect(results).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 15_000 });
   await expect(results.locator('.conclusion[data-group="normal"]')).toContainText('不合格');
   await expect(results.locator('.outcome').first()).toBeHidden();
@@ -25,7 +25,7 @@ test('再現・正しい対策・理解確認をそろえると解決になり�
   await page.getByRole('tab', { name: '調査' }).click();
   await reproduceNoteLeak(page);
   await verifyWith(page, '所有者を照合する');
-  await expect(page.locator('[data-anchor="results"]')).toContainText('防御できました', { timeout: 15_000 });
+  await expect(verifyResults(page)).toContainText('防御できました', { timeout: 15_000 });
   await expect(seals(page)).toContainText('防御：達成');
 
   await page.getByRole('tab', { name: '振り返り' }).click();
@@ -41,7 +41,7 @@ test('再現・正しい対策・理解確認をそろえると解決になり�
 
   await page.getByRole('tab', { name: '対策' }).click();
   await page.getByRole('button', { name: '対策を取り消す' }).click();
-  await expect(page.locator('[data-anchor="results"]')).toContainText('この結果はいまの構成のものではありません');
+  await expect(verifyResults(page)).toContainText('この結果はいまの構成のものではありません');
   await expect(seals(page)).toContainText('防御：記録あり（再検証で確定）');
   await expect(page.locator('.state-stamp')).toHaveText('修正中');
 });
@@ -61,7 +61,7 @@ test('キーボードで対策を選び、適用して検証できる', async ({
   await expect(page.getByText('適用中の対策：すべて拒否する')).toBeVisible();
   await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('[data-anchor="results"]')).toContainText('まだ合格ではありません', { timeout: 15_000 });
+  await expect(verifyResults(page)).toContainText('まだ合格ではありません', { timeout: 15_000 });
 });
 
 test('ヒントは段階的に開け、解法は確認してから表示する', async ({ page }) => {
@@ -88,7 +88,7 @@ test('初期状態へ戻すと対策とデータが戻り、新しいデータ�
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await expect(preview(page).getByText('あとで消えるノート')).toBeVisible();
   await verifyWith(page, '所有者を照合する');
-  await expect(page.locator('[data-anchor="results"]')).toContainText('防御できました', { timeout: 15_000 });
+  await expect(verifyResults(page)).toContainText('防御できました', { timeout: 15_000 });
 
   await page.getByRole('button', { name: '初期状態へ戻す' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '初期状態へ戻す' }).click();
@@ -114,7 +114,7 @@ test('不合格のあと①に戻って、別の対策を選び直せる', async
   await expect(page.getByRole('button', { name: '① に戻って対策を選び直す' })).toBeHidden();
 
   await verifyWith(page, 'すべて拒否する');
-  const results = page.locator('[data-anchor="results"]');
+  const results = verifyResults(page);
   await expect(results).toContainText('まだ合格ではありません', { timeout: 15_000 });
   await expect(page.getByRole('heading', { name: '検証結果' })).toBeFocused();
   const back = page.getByRole('button', { name: '① に戻って対策を選び直す' });
@@ -130,17 +130,14 @@ test('不合格のあと①に戻って、別の対策を選び直せる', async
 
   await back.click();
   await expect(page.getByRole('radio', { name: /すべて拒否する/ })).toBeFocused();
-  await page.getByRole('radio', { name: /所有者を照合する/ }).check();
-  await page.getByRole('button', { name: 'この対策を適用する' }).click();
-  await expect(page.getByText('適用中の対策：所有者を照合する')).toBeVisible();
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+  await verifyWith(page, '所有者を照合する');
   await expect(results).toContainText('防御できました', { timeout: 15_000 });
   await expect(back).toBeHidden();
 });
 
 test('対策を適用した演習を続きから始めると、開始前チェックの後に前回の対策を適用し直して演習を始められる', async ({ page }) => {
   await verifyWith(page, '所有者を照合する');
-  await expect(page.locator('[data-anchor="results"]')).toContainText('防御できました', { timeout: 15_000 });
+  await expect(verifyResults(page)).toContainText('防御できました', { timeout: 15_000 });
   await backToList(page).click();
 
   await page.locator('[data-mission="test-pack"]').getByRole('button', { name: '続きから始める' }).click();

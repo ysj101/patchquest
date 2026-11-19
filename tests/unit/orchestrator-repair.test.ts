@@ -1,9 +1,8 @@
 // 操作で直す課題（record）で、状態を変える操作が修正の記録になり、検証の前に再生されることを確かめる。
 import { expect, it } from 'vitest';
 import type { Exchange, MissionPack } from '../../platform/contract';
-import { Evaluator } from '../../platform/evaluator/evaluator';
 import { Orchestrator } from '../../platform/orchestrator/orchestrator';
-import { EngineRuntime } from '../support/engine-runtime';
+import { EngineRuntime, nodeEvaluator } from '../support/engine-runtime';
 import { nodePack } from '../support/node-pack';
 import { testApp } from '../support/test-app';
 
@@ -18,7 +17,7 @@ function recordPack(): MissionPack {
 function setup() {
   const orchestrator = new Orchestrator({
     apps: [testApp], packs: [recordPack()], exercise: new EngineRuntime(),
-    evaluator: new Evaluator(() => new EngineRuntime()),
+    evaluator: nodeEvaluator(),
     randomSeed: () => 4242, newId: () => 'attempt-1', now: () => new Date('2026-10-12T00:00:00Z'),
   });
   return orchestrator;

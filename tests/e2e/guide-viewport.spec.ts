@@ -1,7 +1,7 @@
 // 練習の全6項目で、操作ガイドと案内先が画面サイズやスクロールに隠れないことを確かめる。
 import type { Page } from '@playwright/test';
 import { expectGuide } from '../../.cursor/skills/verify-patchquest/guide-visibility.mjs';
-import { expect, openHome, test, ticketSeals } from './fixtures';
+import { expect, launchButton, openHome, test, ticketSeals } from './fixtures';
 
 /** 案内文を読み、案内先を表示しても同じ文が読めることを確かめる。 */
 async function readGuide(page: Page, title: string, anchor: string): Promise<void> {
@@ -21,7 +21,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1024, height: 600
     await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
 
     await readGuide(page, '何が起きたか読んでみよう', 'briefing');
-    await page.getByRole('button', { name: 'ミッション開始', exact: true }).click();
+    await launchButton(page).click();
 
     await readGuide(page, 'こわしてみよう', 'actions');
     expect((await page.getByLabel('タイトル（49 文字）').inputValue()).length, '40文字を超えるタイトルのまま送る').toBeGreaterThan(40);
