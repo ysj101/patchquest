@@ -95,7 +95,8 @@ push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）�
 | - | - |
 | platform/ | 共通UI、実行制御、評価、保存 |
 | runtimes/browser/ | ブラウザ用 RuntimeAdapter |
-| apps/memo/ | 教材アプリと交換フック |
+| apps/memo/ | 教材アプリ「メモ帳」と交換フック |
+| apps/shell/ | 教材アプリ「擬似シェル」と交換フック（ターミナルで設定を調べて直す課題の土台） |
 | missions/ | 課題パック。開発用の固有テストと検証データは各パックの `__tests__/` |
 | catalog/ | 同梱パックの登録 |
 | tests/ | 共通のユニットテスト（tests/unit）と E2E テスト（tests/e2e）、テスト用の部品（tests/support） |

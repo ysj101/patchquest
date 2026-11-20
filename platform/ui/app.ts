@@ -302,8 +302,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     // 続きから始めると attemptId・configHash・検証結果が前回と同じなので、前回のコールアウトは明示的に消す
     resultEffects.clear();
     const showBriefing = snapshot.attempt.attemptId === briefingAttemptId;
-    exerciseView.setup(snapshot, app.descriptor, viewer, (event) => app.describeEvent?.(event) ?? null, showBriefing);
-    repair.setup(snapshot);
+    exerciseView.setup(snapshot, app, viewer, showBriefing);
+    repair.setup(snapshot, app);
     if (!showBriefing) orchestrator.markBriefed();
     show('exercise');
     // 既定で飛ばすときは 2 つの出来事をまとめて知らせ、読み上げを 1 回にする

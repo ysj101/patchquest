@@ -8,9 +8,10 @@ import type { Catalog } from '../../runtimes/browser/app-module';
 import { testApp } from './test-app';
 import { brokenPack } from './broken-pack';
 import { testPack } from './test-pack';
+import { shellTestPack, shellTestVerification } from './shell-pack';
 import type { PackVerificationData } from './verification-data';
 
-const verifications: PackVerificationData[] = [idorVerification];
+const verifications: PackVerificationData[] = [idorVerification, shellTestVerification];
 
 /** パックの出荷前検証だけで確かめる対策候補（誤った修正など） */
 export const verificationCandidates = (packId: string): VerificationCandidate[] =>
@@ -24,5 +25,5 @@ const withVerification = (pack: MissionPack): MissionPack => {
 
 export const catalog: Catalog = {
   apps: [...bundled.apps, testApp],
-  packs: [...bundled.packs.map(withVerification), testPack, brokenPack],
+  packs: [...bundled.packs.map(withVerification), testPack, shellTestPack, brokenPack],
 };

@@ -19,6 +19,7 @@ export default defineConfig({
         'platform/main.ts',
         'platform/ui/**',
         'apps/memo/view.ts',
+        'apps/shell/view.ts',
         'apps/shared/dom.ts',
         'runtimes/browser/adapter.ts',
         'runtimes/browser/lockdown.ts',

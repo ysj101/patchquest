@@ -1,0 +1,29 @@
+// 教材アプリ「擬似シェル」。ブラウザ内のターミナルで、架空の機械の設定（第一弾は sudo）を調べて直す。
+// bash を動かすのではなく、固定のコマンド集合を機械の状態に対して解釈する（任意のコードは実行しない）
+import type { AppModule } from '../../runtimes/browser/app-module';
+import { describeEvent, describeRequest } from './events';
+import { ACTORS, shellFixture } from './fixtures';
+import { BASELINE, HOOKS } from './hooks';
+import { SCHEMA } from './schema';
+import { handle } from './server';
+import { SHELL_TESTS } from './tests';
+import { render } from './view';
+
+export const shellApp: AppModule = {
+  descriptor: {
+    id: 'shell',
+    version: '1.0.0',
+    features: ['terminal', 'sudo'],
+    users: [...ACTORS],
+    entryRoute: '/terminal',
+    hooks: HOOKS,
+  },
+  schema: SCHEMA,
+  fixtures: { 'shell.default': shellFixture },
+  implementations: BASELINE,
+  tests: SHELL_TESTS,
+  handle,
+  render,
+  describeEvent,
+  describeRequest,
+};

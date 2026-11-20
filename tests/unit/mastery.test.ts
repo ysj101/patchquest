@@ -1,5 +1,6 @@
 // 分類ごとの習熟度を演習記録から計算し、同じ条件の繰り返しで上がらず、根拠を説明できることを確かめる。
 import { describe, expect, it } from 'vitest';
+import { VULNERABILITY_CATEGORIES } from '../../platform/contract';
 import { REVIEW_CONSOLIDATION, masteryFromAttempts } from '../../platform/progress/mastery';
 import { makeAttempt } from '../support/attempt';
 
@@ -92,7 +93,7 @@ describe('復習の正答の反映', () => {
     const reviews = [review('q1', '__proto__')];
     const attempt = makeAttempt('不正', { missionId: '__proto__', badges: { reproduction: { achieved: true }, defense: { achieved: false }, understanding: { achieved: false } } });
     const summary = masteryFromAttempts([attempt], categories, reviews);
-    expect(Object.values(summary).map((mastery) => [mastery.stars, mastery.reviewed])).toEqual([[0, 0], [0, 0], [0, 0]]);
+    expect(Object.values(summary).map((mastery) => [mastery.stars, mastery.reviewed])).toEqual(VULNERABILITY_CATEGORIES.map(() => [0, 0]));
   });
 
   it('分類の分からない課題の復習は数えず、別の分類には効かない', () => {

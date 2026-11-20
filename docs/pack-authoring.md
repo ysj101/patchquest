@@ -13,7 +13,7 @@
 | `manifest` | 課題の説明・初期データの扱い・注入レシピ・対策候補・操作定義・攻撃の成立条件・テスト・ヒント・解説（`MissionManifest`）。すべてデータで書く |
 | `implementations` | 注入する脆弱な実装と、対策候補の実装。事前にバンドルする関数だけを登録する（`ImplementationRegistry`） |
 
-`manifest.vulnerability` は課題が扱う脆弱性の種類で、`kind: 'mission'` のパックでは必須（`kind: 'tutorial'` では省略し、一覧に脆弱性名を出さない）。`name`（短い通称。例: `'IDOR'`）、`plain`（用語を使わない「一言でいうと」の 1 文。例: `'メモの番号を変えるだけで、他人の非公開メモが読めてしまう問題'`。一覧の行に通称と並べて出す）、`fullName`（正式な名前。例: `'安全でない直接オブジェクト参照'`）、`cwe`（`'CWE-639'` の形式）、`category`（`VULNERABILITY_CATEGORIES` のいずれか。`authorization`＝認可、`output-encoding`＝出力、`data-access`＝データアクセス）を持つ。課題一覧の行には通称と `plain` だけを出し、正式名・分類・CWE は ⓘ の説明と振り返りの「原因」の後に、CWE が何かの説明つきで出す（初めての人に略語だけを見せない）。分類ごとの表示（習熟度）もこの項目から組み立てる。コアは課題 ID で分岐しないので、新しい分類が要るときは `VULNERABILITY_CATEGORIES` に足す（§8 の記録に残す）。
+`manifest.vulnerability` は課題が扱う脆弱性の種類で、`kind: 'mission'` のパックでは必須（`kind: 'tutorial'` では省略し、一覧に脆弱性名を出さない）。`name`（短い通称。例: `'IDOR'`）、`plain`（用語を使わない「一言でいうと」の 1 文。例: `'メモの番号を変えるだけで、他人の非公開メモが読めてしまう問題'`。一覧の行に通称と並べて出す）、`fullName`（正式な名前。例: `'安全でない直接オブジェクト参照'`）、`cwe`（`'CWE-639'` の形式）、`category`（`VULNERABILITY_CATEGORIES` のいずれか。`authorization`＝認可、`output-encoding`＝出力、`data-access`＝データアクセス、`misconfiguration`＝設定）を持つ。課題一覧の行には通称と `plain` だけを出し、正式名・分類・CWE は ⓘ の説明と振り返りの「原因」の後に、CWE が何かの説明つきで出す（初めての人に略語だけを見せない）。分類ごとの表示（習熟度）もこの項目から組み立てる。コアは課題 ID で分岐しないので、新しい分類が要るときは `VULNERABILITY_CATEGORIES` に足す（§8 の記録に残す）。
 
 `manifest.difficulty` は課題の難易度で、`kind: 'mission'` では必須（`beginner`＝入門、`intermediate`＝基本、`advanced`＝応用。`tutorial` では省略し、一覧の先頭に置く）。一覧はこの順（同じ難易度ではカタログの順）に並べるだけで、課題をロックしない（spec §9）。
 
@@ -64,6 +64,27 @@ missions/<パックID>/
 `insufficient` と `breaks-normal` には `whyItFails` を書く。`secure` には書かない。何がまだ通ったか、または普段の使い方の何が壊れたかを 1 文で示す。正しい対策の名前や、そこを指す手がかりは書かない。学習画面に出ない検証専用の候補は、この文を持たない。演習では、その対策の検証が不合格だったときだけ、結論の行の下に出す。
 
 悪い例は「所有者を照合していないので、他人のメモが読めました。」である。正しい直し方を名指ししている。よい例は「画面のリンクを隠しても、ID を直接指定した取得はそのまま通りました。」である。
+
+### 操作で直す課題（`repair: { kind: 'record' }`）
+
+対策を選ぶ代わりに、教材アプリの操作（ターミナルでの設定の書き換えなど）で直す課題は、`manifest.repair` を書く。
+
+```ts
+repair: {
+  kind: 'record',
+  // 修正の記録として残すやり取りの条件。状態を変えた操作だけに合うように書く
+  record: { kind: 'request', request: { method: 'POST', path: '/sh' }, response: { status: 200, body: [{ path: 'changed', is: { equals: true } }] } },
+  noun: '加えた変更',
+},
+```
+
+- プレイヤーの操作のうち `record` に合うやり取りを、順に記録する。検証では、各テストの前に初期データへ戻してから記録を再生し、そのあとでテストの手順を実行する。合否は再生後の実測だけで決まる。
+- 調べるだけの操作（状態を変えない操作）が `record` に合わないようにする。合うと、調べただけで「修正中」になる。
+- 対策タブには対策候補の代わりに、記録した操作の一覧（「あなたが`noun`」）を出す。`defenses` は空でよい。
+- 設定ミスのように、問題がコードではなく初期データにある課題は、初期データ生成器が呼ぶ交換点へ実装を注入する（例：擬似シェルの `shell.sudoers.provision`）。レシピの `apply` は対策パネルの課題と同じ形で書ける。
+- 解ける操作と誤った操作は、`__tests__/verification.ts` の `candidates` に `replay` で書き、出荷前検証で `expected` どおりかを確かめる（§7 の 5）。`replay` の `{{キー}}` は展開されないので、seed で変わる値（利用者名やプログラム名）を含まない操作で書く。
+
+擬似シェル（`apps/shell`）のやり取りの形・コマンド・交換点・fixture の値は [apps/shell/README.md](../apps/shell/README.md) を参照する。現実に転用できる権限昇格の手口は、パックの文書にも実装にも書かない。危険さの根拠は、モデルが記録する観測イベント（`shell.exec` の `runAs` など）で表す。
 
 ## 4. 初期データとバリエーション
 
@@ -199,4 +220,5 @@ MVP は開発者が同梱する信頼済みパックだけを扱い、利用者�
 | - | - | - | - |
 | `idor` | なし | 交換点 `memo.detail.neighbors`（詳細画面の「前のメモ」「次のメモ」の移動先、画面側）を追加し、版を 1.3.0 に上げた | 対策候補「画面のリンクだけを隠す」（spec §8.1）に実際の処理を用意するには、他人のメモへのリンクを出す・出さないを切り替える交換点が必要だった。ID 指定の取得（`memo.read.authorize`）は既存の交換点で足りた |
 | `stored-xss` | 画面側の `ViewContext` に `emit` を追加した（`runtimes/browser/app-module.ts`、隔離 iframe の `preview.inline.ts`）。観測イベントを Host へ文字列として送る。描画手順の `route` に含まれる `{{キー}}` を、リクエストと同じように展開する（`platform/evaluator/scenario.ts`） | コメントを描いた直後に、画面へ出た文字列を `comment.rendered` として記録する | 対策「コメントをすべて表示しない」が正常系を壊すことは、保存 API の応答では区別できない（本文は保存されたまま）。描画後の文字列と実行マーカーを観測する必要があった。共有ページの ID は seed ごとに変わるため、描画手順の route を展開しないと開き直しのテストが別の画面を見てしまう。攻撃コメントは #3 の固定ペイロード `<img src="x" onerror="pqMarker()">` だけで、任意の JavaScript 入力はパックの操作に置いていない |
+| （擬似シェルの土台。課題パックはまだない） | 分類 `misconfiguration`（設定）を `VULNERABILITY_CATEGORIES` に追加した。`AppModule` に `describeRequest`（やり取りの短い表示）を足し、観測ログの見出しに使う。対策タブは、`repair: record` の課題では対策候補の代わりに記録した操作の一覧を出す（`platform/ui/repair-record.ts`） | 教材アプリ `apps/shell` を追加した（版 1.0.0。交換点 `shell.sudoers.provision`） | ターミナルで設定を調べて直す課題は、入出力がコマンド行と端末の出力で、直し方が操作そのものになる。メモ帳の交換点では表せない。既存のランタイム・評価器・記録と再生はそのまま使い、コアに課題 ID の分岐は足していない。ターミナルは教材アプリの画面（隔離 iframe）として作ったので、学習UIに端末専用の部品はない |
 | `sqli` | なし | なし | 検索クエリの組み立ては既存の交換点 `memo.search.query` で足りた。注入、UNION という語だけの禁止、検索の停止はパックの実装で表せた。この演習が実行するのは SQLite |

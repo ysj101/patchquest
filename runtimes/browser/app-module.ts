@@ -63,6 +63,8 @@ export interface AppModule {
   render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
   /** アプリが記録する観測イベントの説明（調査パネルで表示する）。知らない種類は null */
   describeEvent?(event: ObservedEvent): string | null;
+  /** やり取りの見出しに使う、リクエストの短い表示（例：端末に打ったコマンド行）。説明しないものは null で、メソッドとパスを示す */
+  describeRequest?(request: AppRequest): string | null;
 }
 
 /** 同梱する教材アプリと課題パック。テスト用ビルドではテスト専用のものに差し替わる */
