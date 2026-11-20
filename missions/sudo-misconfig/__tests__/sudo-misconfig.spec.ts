@@ -1,0 +1,80 @@
+// ミッション「広すぎる sudo の許可を絞る」（Issue #153）。カタログに登録しただけで一覧に出て、ターミナルで過剰な許可を見つけて
+// 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。直す操作は端末に打たなくても、
+// 調査タブの定型の操作だけで行える（A22）
+import type { Page } from '@playwright/test';
+import { answerTransferCheck, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
+
+const CORRECT_CHOICES: Record<string, string> = {
+  'backup-cause': 'バックアップに必要な範囲を超えて、すべてのコマンドが許可されている',
+  'deploy-defense': '利用者アカウントの管理の許可だけを外し、サービスの再起動の許可は残す',
+  'shared-folder-defense': 'フォルダを閲覧・編集できる人を、経理の 3 人だけに絞る',
+};
+
+const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
+const action = (page: Page, label: string) => page.locator('form.action').filter({ has: page.getByRole('heading', { name: label, exact: true }) });
+
+/** 調査タブの定型の操作で、設定の 1 行を無効にする（端末には打たない） */
+async function disableLine(page: Page, line: number): Promise<void> {
+  await page.getByRole('tab', { name: '調査' }).click();
+  const form = action(page, '設定の 1 行を無効にする');
+  await form.getByLabel('行番号').fill(String(line));
+  await form.getByRole('button', { name: '送る', exact: true }).click();
+}
+
+async function verify(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: '対策' }).click();
+  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+}
+
+test('ターミナルで過剰な許可を見つけて再現し、絞りすぎでは不合格、保守の操作の許可だけを外すと合格する', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openHome(page);
+  const card = page.locator('[data-mission="sudo-misconfig"]');
+  await expect(card.getByRole('heading', { name: '広すぎる sudo の許可を絞る' })).toBeVisible();
+  await expect(card).toContainText('過剰な sudo 権限');
+  await startMission(page, 'sudo-misconfig');
+  await expect(terminalInput(page)).toBeVisible();
+
+  // 調べる：運用メモでは管理者だけの操作が、運用担当の許可の一覧に入っている
+  await typeCommand(page, 'cat runbook.txt');
+  await expect(terminalOutput(page)).toContainText('は管理者だけが行う');
+  await typeCommand(page, 'sudo -l');
+  await expect(terminalOutput(page)).toContainText('NOPASSWD: /usr/local/sbin/');
+  const maintenance = (await terminalOutput(page).innerText()).match(/NOPASSWD: (\/usr\/local\/sbin\/[a-z-]+)/)?.[1];
+  if (!maintenance) throw new Error('保守の操作が許可の一覧に出ていません');
+
+  // 再現：運用担当が保守の操作を root の権限で実行できる
+  await typeCommand(page, `sudo ${maintenance}`);
+  await expect(seals(page)).toContainText('再現：達成');
+  await expect(page.locator('.result-callout')).toContainText('運用担当の権限で、保守の操作まで動いてしまうんですね。');
+
+  // A05：日常の運用操作の許可（2 行目）まで外すと、普段の使い方が壊れて合格しない
+  await loginToTerminal(page, 'admin');
+  await disableLine(page, 2);
+  await disableLine(page, 3);
+  await verify(page);
+  await expect(repairPanel(page).locator('.repair-log li')).toHaveCount(2);
+  await expect(results(page)).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 20_000 });
+  await expect(seals(page)).toContainText('防御：未達成');
+
+  // やり直す：加えた変更が消え、機械も過剰な許可のある状態へ戻る
+  await resetToInitial(page);
+  await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
+
+  // A04：保守の操作の許可（3 行目）だけを外すと、記録した操作が再生されて合格する
+  await disableLine(page, 3);
+  await verify(page);
+  await expect(repairPanel(page).locator('.repair-log li')).toHaveText(["admin → $ sudo edit /etc/sudoers.d/operators 3 '# 許可を外した'"]);
+  await expect(results(page)).toContainText('防御できました', { timeout: 20_000 });
+  await expect(seals(page)).toContainText('防御：達成');
+
+  // 演習中の機械でも、運用担当の保守の操作は拒否され、許可の一覧からも消えている
+  await loginToTerminal(page, 'operator');
+  await typeCommand(page, `sudo ${maintenance}`);
+  await expect(terminalOutput(page).locator('.term-err')).toContainText('is not allowed to execute');
+  await typeCommand(page, 'sudo -l');
+  await expect(terminalOutput(page).locator('.term-out')).not.toContainText(maintenance);
+
+  await answerTransferCheck(page, CORRECT_CHOICES);
+  await expect(page.locator('.state-stamp')).toHaveText('解決');
+});

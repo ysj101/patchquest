@@ -76,9 +76,9 @@ test('ⓘ はクリックとキーボード（Enter・Space・Esc）で開閉し
 test('課題は練習を先頭に難易度順に並び、難易度と進捗を文字で示し、どの課題もロックされない', async ({ page }) => {
   const table = page.getByRole('list', { name: '課題の一覧' });
   const rows = table.locator('.mission-row');
-  await expect(rows).toHaveCount(7);
-  // 練習 → 入門（idor, test-pack, shell-test-pack, test-broken はカタログ順）→ 基本（stored-xss）→ 応用（sqli）
-  expect(await rows.evaluateAll((items) => items.map((item) => item.getAttribute('data-mission')))).toEqual(['onboarding', 'idor', 'test-pack', 'shell-test-pack', 'test-broken', 'stored-xss', 'sqli']);
+  await expect(rows).toHaveCount(8);
+  // 練習 → 入門（idor, sudo-misconfig, test-pack, shell-test-pack, test-broken はカタログ順）→ 基本（stored-xss）→ 応用（sqli）
+  expect(await rows.evaluateAll((items) => items.map((item) => item.getAttribute('data-mission')))).toEqual(['onboarding', 'idor', 'sudo-misconfig', 'test-pack', 'shell-test-pack', 'test-broken', 'stored-xss', 'sqli']);
   await expect(card(page, 'onboarding').locator('.difficulty-label')).toHaveText('練習');
   await expect(card(page, 'idor').locator('.difficulty-label')).toHaveText('入門');
   await expect(card(page, 'stored-xss').locator('.difficulty-label')).toHaveText('基本');

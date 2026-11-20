@@ -35,6 +35,31 @@ export const backToList = (page: Page) => page.getByRole('button', { name: /^(?:
 
 /** 演習画面の教材アプリ（隔離 iframe） */
 export const preview = (page: Page) => page.frameLocator('.preview-slot iframe');
+/** 擬似シェルの端末（教材アプリの画面）の入力欄と出力 */
+export const terminalInput = (page: Page) => preview(page).getByRole('textbox', { name: 'コマンド' });
+export const terminalOutput = (page: Page) => preview(page).getByRole('log', { name: '端末の出力' });
+
+/** 端末にコマンド行を入力して Enter で送る。前のコマンドの応答が返るまで入力欄は使えないので、続けて呼べる */
+export async function typeCommand(page: Page, line: string): Promise<void> {
+  await terminalInput(page).fill(line);
+  await terminalInput(page).press('Enter');
+}
+
+/** 利用者を切り替え、その利用者の端末が開き直るのを待つ。プロンプトの利用者名が変わったら、開き直しが終わっている */
+export async function loginToTerminal(page: Page, actor: string): Promise<void> {
+  const prompt = preview(page).locator('.term-prompt');
+  const before = await prompt.innerText();
+  await page.getByRole('radio', { name: actor }).check();
+  await expect(prompt).not.toHaveText(before);
+  await expect(prompt).toHaveText(/^[a-z]+@/);
+}
+
+/** 対策タブの「初期状態へ戻す」を押し、確認して戻す */
+export async function resetToInitial(page: Page): Promise<void> {
+  await page.getByRole('button', { name: '初期状態へ戻す' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '初期状態へ戻す' }).click();
+}
+
 /** 検証結果のパネル */
 export const verifyResults = (page: Page) => page.locator('[data-anchor="results"]');
 /** 演習票の達成印 */

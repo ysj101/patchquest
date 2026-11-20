@@ -15,6 +15,7 @@ bash を動かすのではなく、固定のコマンド集合を機械の状態
 | `hooks.ts` | 交換点と基準実装。`shell.sudoers.provision`（配備時に運用担当へ許可するコマンド。初期データ生成器が呼ぶ。契約 1） |
 | `fixtures.ts` | seed から架空の機械（ホスト名・運用担当と管理者の名前・プログラム名・ファイル）を作る `shell.default` |
 | `tests.ts` | アプリ共通のテスト。基準実装ではすべて通る |
+| `scenario.ts` | テスト・攻撃の成立条件・修正の記録を書くための部品（`sh`・`ranAsRoot`・`STATE_CHANGING_COMMAND` など）。課題パックからも使う |
 | `view.ts` | 隔離 iframe 内のターミナル。出力は textContent で表示する |
 
 ## やり取りの形
