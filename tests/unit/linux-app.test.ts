@@ -52,6 +52,13 @@ describe('本物の Linux の端末', { timeout: SLOW }, () => {
     expect((await sh('admin', `sudo stat -c '%a %U' ${OPERATORS} /etc/sudoers`)).stdout).toBe('440 root\n440 root');
   });
 
+  it('help は、シェルの組み込みコマンドの一覧ではなく、この端末でよく使うコマンドを案内する', async () => {
+    const { stdout, exit } = await sh('operator', 'help');
+    expect(exit).toBe(0);
+    for (const command of ['whoami', 'cat 名前', 'sudo -l', 'sudo visudo -f 名前']) expect(stdout).toContain(command);
+    expect(stdout).not.toContain('Built-in commands');
+  });
+
   it('パイプ・リダイレクト・移動など、本物のシェルの機能を使える', async () => {
     expect((await sh('operator', 'cat runbook.txt | grep -c sudo')).stdout).toBe('2');
     expect(await sh('operator', 'cd /etc && pwd')).toMatchObject({ stdout: '/etc', cwd: '/etc' });

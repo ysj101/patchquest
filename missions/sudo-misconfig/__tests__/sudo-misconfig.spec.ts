@@ -10,6 +10,7 @@ const CORRECT_CHOICES: Record<string, string> = {
   'shared-folder-defense': 'フォルダを見て編集できる人を、経理の 3 人だけにする',
 };
 
+const GUIDE = '本物の Linux です。help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。↑↓ キーで前に入力したコマンドを呼び出せます。';
 const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
 
 /** 管理者の端末で、運用担当向けの設定の行を visudo でコメントにして保存する */
@@ -30,9 +31,10 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await startMission(page, 'sudo-misconfig');
   await expect(terminalInput(page)).toBeVisible();
 
-  // 最初の案内は、本物の Linux で通じる内容で、help を勧めない
-  await expect(terminalOutput(page).locator('.term-note')).toHaveText('本物の Linux です。ls・cat・grep などのコマンドやパイプ（|）がそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。↑↓ キーで前に入力したコマンドを呼び出せます。');
-
+  // 最初の案内は、本物の Linux で通じる内容。案内どおりに help と打つと、調べるのに使うコマンドが分かる
+  await expect(terminalOutput(page).locator('.term-note')).toHaveText(GUIDE);
+  await typeCommand(page, 'help');
+  await expect(terminalOutput(page)).toContainText('sudo -l     sudo で実行できる操作の一覧');
   // 端末の中身は本物の Linux で、パイプも使える
   await typeCommand(page, 'uname -s | tr a-z A-Z');
   await expect(terminalOutput(page)).toContainText('LINUX');
