@@ -56,7 +56,7 @@ export function requestLabel(request: AppRequest, describe: AppDescribers['reque
 function describeEvent(event: ObservedEvent, describeApp: EventDescriber): string {
   const described = describeApp(event);
   if (described !== null) return described;
-  if (event.type === 'dom.marker') return '画面でスクリプトが実行されました（実行マーカー）';
+  if (event.type === 'dom.marker') return '画面でスクリプトが動きました（実行マーカー）';
   if (event.type === 'app.error') return `アプリ内の例外：${String(event.data.message)}`;
   return `${event.type} ${JSON.stringify(event.data)}`;
 }
@@ -106,7 +106,7 @@ export class InvestigationPanel {
     // 閉じた summary はボタンとして辿れないことがある。開く操作をボタン名で届ける
     h('summary', { role: 'button' }, '上級者向け'),
     h('h3', { id: 'editor-title' }, 'リクエストを編集して送る'),
-    h('p', { class: 'note' }, '送信者：', this.viewer, '（画面の上で切り替えた利用者として送ります）。ブラウザの中の教材アプリへの呼び出しで、実際のネットワーク通信ではありません。'),
+    h('p', { class: 'note' }, '送信者：', this.viewer, '（画面の上で選んだ利用者として送ります）。ブラウザの中の教材アプリへ送るだけで、本物の通信ではありません。'),
     h('div', { class: 'request-line' }, this.method, this.path),
     this.body,
     h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary', on: { click: () => void this.sendEditor() } }, 'このリクエストを送る')),
@@ -133,7 +133,7 @@ export class InvestigationPanel {
       'section',
       { class: 'log-section', 'aria-labelledby': 'log-title', 'data-anchor': 'investigation-log' },
       h('h3', { id: 'log-title' }, '観測ログ'),
-      h('p', { class: 'note' }, 'ブラウザの中で教材アプリへ送った呼び出しと、計測した事象の記録です。実際のネットワーク通信ではありません。'),
+      h('p', { class: 'note' }, '教材アプリへ送った呼び出しと、そのとき起きたことの記録です。本物の通信ではありません。'),
       this.log,
     );
   }
@@ -146,7 +146,7 @@ export class InvestigationPanel {
     this.describers = describers;
     fill(this.actionList, ...actions.map((a) => this.actionForm(a)));
     this.editor.hidden = !describers.requestEditor;
-    if (actions.length === 0) fill(this.actionList, h('p', { class: 'muted' }, `この課題に定型の操作はありません。${describers.requestEditor ? '下の編集欄からリクエストを送れます。' : '教材アプリの画面を操作して調べます。'}`));
+    if (actions.length === 0) fill(this.actionList, h('p', { class: 'muted' }, `この課題には、決まった操作がありません。${describers.requestEditor ? '下の編集欄からリクエストを送れます。' : '教材アプリの画面を操作して調べます。'}`));
     this.log.replaceChildren();
     this.count = 0;
   }
@@ -168,8 +168,8 @@ export class InvestigationPanel {
       () => {
         const events = exchange.events.length
           ? exchange.events.map((e) => describeEvent(e, describers.event)).join('\n\n')
-          : '計測イベントなし（この処理の内部の判断は記録されていません）';
-        details.append(...exchangeBlocks(exchange, described), block('計測した事象', events));
+          : '記録された出来事はありません';
+        details.append(...exchangeBlocks(exchange, described), block('起きたこと', events));
       },
       { once: true },
     );
@@ -239,11 +239,11 @@ function workedExample(example: WorkedExample): HTMLElement {
   return h(
     'details',
     { class: 'worked-example tool-section' },
-    h('summary', {}, h('h3', {}, '仕組みの例'), h('span', { class: 'note' }, '攻撃を試す前に、何が起きるかを読んで確かめたいときに開きます')),
+    h('summary', {}, h('h3', {}, '仕組みの例'), h('span', { class: 'note' }, '試す前に、何が起きるかを読みたいときに開きます')),
     h('p', { class: 'eyebrow' }, example.title),
     h('ol', { class: 'worked-example-steps' }, ...example.steps.map((step) => h('li', {}, step))),
     h('p', {}, h('strong', {}, 'ここから分かること：'), example.takeaway),
-    h('p', { class: 'note' }, '対策は書いていません。どう守るかは、対策パネルで自分で選びます。'),
+    h('p', { class: 'note' }, '対策は書いていません。どう守るかは、「対策」で自分で選びます。'),
   );
 }
 
@@ -253,7 +253,7 @@ export function storyPanel(story: StoryDef): HTMLElement {
     'div',
     { class: 'story', 'data-anchor': 'story' },
     h('section', { class: 'tool-section' }, h('h3', {}, '守るもの'), h('ul', {}, ...story.protectedAssets.map((a) => h('li', {}, a)))),
-    h('section', { class: 'tool-section' }, h('h3', {}, '壊してはいけない普段の使い方'), h('ul', {}, ...story.normalUse.map((a) => h('li', {}, a)))),
+    h('section', { class: 'tool-section' }, h('h3', {}, '壊してはいけない、ふだんの使い方'), h('ul', {}, ...story.normalUse.map((a) => h('li', {}, a)))),
     story.workedExample ? workedExample(story.workedExample) : null,
   );
 }

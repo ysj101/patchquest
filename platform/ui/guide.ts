@@ -177,7 +177,7 @@ export class GuidePanel {
           // うまくいかなかったときは、前のステップへの言葉より次の手を見せる
           step && this.praise && !retry ? h('p', { class: 'guide-praise' }, h('span', { 'aria-hidden': true }, '✓ '), this.praise) : null,
           h('h3', {}, step ? step.title : (this.praise ?? '練習はおしまいです')),
-          h('p', {}, step ? step.body : 'これで基本の流れはひと通りです。本番の課題では、利用者の切り替えやリクエストの編集、ヒントも使えます。'),
+          h('p', {}, step ? step.body : 'これで基本の流れはひと通りです。本番の課題では、利用者の切り替えやヒントも使えます。'),
           retry ? h('p', { class: 'guide-retry' }, retry) : null,
         ),
         h(

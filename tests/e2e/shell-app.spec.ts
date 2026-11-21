@@ -45,7 +45,7 @@ test('観測ログと調査タブは、HTTP のリクエストではなく端末
   await expect(log.locator('.log-entry').filter({ hasText: 'operator → 端末を開く' })).toHaveCount(1);
 
   await failed.locator('summary').click();
-  await expect(failed.locator('.log-block h4')).toHaveText(['コマンド', '端末の出力', '計測した事象']);
+  await expect(failed.locator('.log-block h4')).toHaveText(['コマンド', '端末の出力', '起きたこと']);
   await expect(failed).toContainText('cat: /etc/sudoers: Permission denied');
   await expect(log).not.toContainText('POST');
   await expect(log).not.toContainText('GET');
@@ -54,7 +54,7 @@ test('観測ログと調査タブは、HTTP のリクエストではなく端末
   // 端末にコマンドを打てば足りるので、リクエストを手で組む欄は出さない
   await page.getByRole('tab', { name: '調査' }).click();
   const investigation = page.getByRole('tabpanel', { name: '調査' });
-  await expect(investigation).toContainText('この課題に定型の操作はありません。教材アプリの画面を操作して調べます。');
+  await expect(investigation).toContainText('この課題には、決まった操作がありません。教材アプリの画面を操作して調べます。');
   await expect(investigation.getByRole('button', { name: '上級者向け' })).toBeHidden();
 });
 
@@ -134,8 +134,8 @@ test('過剰な許可を調べて再現し、端末の操作で外すと、記�
   // 調べるだけの操作は、加えた変更にならない
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
-  await expect(page.getByRole('button', { name: '攻撃と普段の使い方を検証する' })).toBeDisabled();
-  await expect(repairPanel(page).getByRole('button', { name: 'この対策を適用する' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' })).toBeDisabled();
+  await expect(repairPanel(page).getByRole('button', { name: 'この対策を使う' })).toHaveCount(0);
 
   await loginAs(page, 'admin');
   await type(page, `sudo visudo -f ${OPERATORS}`);
@@ -146,9 +146,9 @@ test('過剰な許可を調べて再現し、端末の操作で外すと、記�
   await expect(terminalOutput(page)).toContainText(`visudo: ${OPERATORS} の 3 行目を保存しました`);
   await expect(repairPanel(page).locator('.repair-log li')).toHaveText([new RegExp(`^admin → \\$ sudo visudo -f ${OPERATORS}（3 行目を「# [a-z]+ ALL=\\(root\\) NOPASSWD: ${maintenance}」に書き換えて保存）$`)]);
   await expect(repairPanel(page)).toContainText('加えた変更：1 件');
-  await expect(page.locator('.state-stamp')).toHaveText('修正中');
+  await expect(page.locator('.state-stamp')).toHaveText('対策中');
 
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+  await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
   await expect(verifyResults(page)).toContainText('防御できました', { timeout: 20_000 });
   await expect(seals(page)).toContainText('防御：達成');
 
@@ -158,15 +158,15 @@ test('過剰な許可を調べて再現し、端末の操作で外すと、記�
   await expect(terminalOutput(page).locator('.term-err')).toContainText('is not allowed to execute');
 });
 
-test('絞りすぎると普段の使い方の失敗で合格せず、初期状態へ戻すと加えた変更が消える', async ({ page }) => {
+test('絞りすぎるとふだんの使い方の失敗で合格せず、最初の状態に戻すと加えた変更が消える', async ({ page }) => {
   await loginAs(page, 'admin');
   // 2 行を 1 回の保存で書き換えると、加えた変更は 1 件になる
   await commentOut(page, 2, 3);
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(repairPanel(page).locator('.repair-log li')).toHaveCount(1);
 
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
-  await expect(verifyResults(page)).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 20_000 });
+  await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
+  await expect(verifyResults(page)).toContainText('まだ合格ではありません ふだんの使い方が壊れています。', { timeout: 20_000 });
   await expect(seals(page)).toContainText('防御：未達成');
   // 選び直す対策はないので、選び直しのボタンは出ない
   await expect(page.getByRole('button', { name: /対策を選び直す/ })).toHaveCount(0);

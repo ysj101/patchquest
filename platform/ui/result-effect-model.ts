@@ -10,12 +10,12 @@ export interface ResultEffect { kind: ResultEffectKind; detail: string }
 export function verificationEffect(report: VerificationReport | null, allSealsDone: boolean): ResultEffect | null {
   if (!report) return null;
   if (report.passed) {
-    const sealMessage = allSealsDone ? 'すべての検印がそろいました。' : '防御の検印を押しました。';
+    const sealMessage = allSealsDone ? '再現・防御・理解がぜんぶそろいました。' : '「防御」達成です。';
     return { kind: 'secured', detail: sealMessage + VERDICT_SUCCESS };
   }
   const failed = failedOutcomes(report);
   if (failed.some((outcome) => outcome.error !== undefined)) return null;
-  const details = failed.slice(0, 2).map((outcome) => `${VERDICT_REASON[outcome.group]}：${outcome.title}（期待「${outcome.expected}」、実測「${outcome.actual}」）`);
+  const details = failed.slice(0, 2).map((outcome) => `${VERDICT_REASON[outcome.group]}：${outcome.title}（正しい結果「${outcome.expected}」、実際の結果「${outcome.actual}」）`);
   if (failed.length > 2) details.push(`ほか ${failed.length - 2} 件`);
   return { kind: 'insufficient', detail: details.join('。') };
 }

@@ -72,16 +72,16 @@ export async function commentOutWithVisudo(page: Page, file: string, lines: numb
   await expect(editor).toHaveCount(0);
 }
 
-/** 対策タブの「初期状態へ戻す」を押し、確認して戻す */
+/** 対策タブの「最初の状態に戻す」を押し、確認して戻す */
 export async function resetToInitial(page: Page): Promise<void> {
-  await page.getByRole('button', { name: '初期状態へ戻す' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '初期状態へ戻す' }).click();
+  await page.getByRole('button', { name: '最初の状態に戻す' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '最初の状態に戻す' }).click();
 }
 
 /** 検証結果のパネル */
 export const verifyResults = (page: Page) => page.locator('[data-anchor="results"]');
 /** 演習票の達成印 */
-export const ticketSeals = (page: Page) => page.locator('.ticket').getByRole('list', { name: '達成印' });
+export const ticketSeals = (page: Page) => page.locator('.ticket').getByRole('list', { name: 'スタンプ' });
 
 /** 導入を閉じてミッションを始めるボタン */
 export const launchButton = (page: Page) => page.getByRole('button', { name: 'ミッション開始', exact: true });
@@ -199,14 +199,14 @@ async function finishBriefing(page: Page): Promise<void> {
 export async function applyDefense(page: Page, defense: string): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
   await page.getByRole('radio', { name: new RegExp(defense) }).check();
-  await page.getByRole('button', { name: 'この対策を適用する' }).click();
-  await expect(page.getByText(`適用中の対策：${defense}`)).toBeVisible();
+  await page.getByRole('button', { name: 'この対策を使う' }).click();
+  await expect(page.getByText(`使っている対策：${defense}`)).toBeVisible();
 }
 
 /** 対策パネルで対策を選んで適用し、検証を始める */
 export async function verifyWith(page: Page, defense: string): Promise<void> {
   await applyDefense(page, defense);
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+  await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
 }
 
 /** Tab キーだけで、指定した名前または Locator の要素までフォーカスを移す */
@@ -225,7 +225,7 @@ export async function tabTo(page: Page, name: string | RegExp | Locator, max = 4
 
 /** 直近の検証総評と、コールアウトの種類・文言・防御の達成印が一致することを確かめる */
 export async function expectCalloutMatchesVerdict(page: Page): Promise<void> {
-  await expect(page.getByRole('button', { name: '攻撃と普段の使い方を検証する' })).toBeEnabled({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' })).toBeEnabled({ timeout: 20_000 });
   const verdict = verifyResults(page).locator('.banner .status');
   await expect(verdict).toHaveText(/防御できました|まだ合格ではありません/, { timeout: 20_000 });
   const secured = (await verdict.innerText()).includes('防御できました');
@@ -272,7 +272,7 @@ export async function answerTransferCheck(page: Page, correct: Record<string, st
     if (!label) throw new Error(`設問 ${id} の正解が分かりません`);
     await page.getByRole('radio', { name: label, exact: true }).check();
   }
-  await page.getByRole('button', { name: '回答する' }).click();
+  await page.getByRole('button', { name: '答える' }).click();
   await expect(ticketSeals(page)).toContainText('理解：達成');
   return asked;
 }

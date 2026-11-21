@@ -3,12 +3,12 @@ import type { AttemptRecord, BadgeKind } from '../contract';
 import { allBadgesAchieved } from './stages';
 
 export const ACHIEVEMENTS = [
-  { id: 'first-reproduction', name: '初めて再現', description: 'いずれかの演習で再現の達成印を得る' },
-  { id: 'first-defense', name: '初めて防御', description: 'いずれかの演習で防御の達成印を得る' },
-  { id: 'no-hint-defense', name: 'ヒントなしで防御', description: 'ヒントと解法を見ずに防御の達成印を得る' },
-  { id: 'clean-repair', name: '正常な利用を壊さず防御', description: '初回の防御達成まで正常系を一度も壊さずに検証する（判定不能を除く）' },
-  { id: 'first-try', name: '一度の検証で防御', description: '最初の検証で合格し、防御の達成印を得る' },
-  { id: 'all-missions', name: 'すべての課題を解決', description: 'すべての課題で再現・防御・理解の達成印を揃える' },
+  { id: 'first-reproduction', name: '初めて再現', description: 'どれかの演習で、再現のスタンプをもらう' },
+  { id: 'first-defense', name: '初めて防御', description: 'どれかの演習で、防御のスタンプをもらう' },
+  { id: 'no-hint-defense', name: 'ヒントなしで防御', description: 'ヒントと解法を見ないで、防御のスタンプをもらう' },
+  { id: 'clean-repair', name: 'ふだんの使い方を壊さず防御', description: '初めて防御を達成するまで、ふだんの使い方を一度も壊さない（判定できなかった回は除く）' },
+  { id: 'first-try', name: '一度のテストで防御', description: '最初のテストで合格して、防御のスタンプをもらう' },
+  { id: 'all-missions', name: 'すべての課題を解決', description: 'すべての課題で、再現・防御・理解のスタンプをそろえる' },
 ] as const;
 
 export type AchievementId = typeof ACHIEVEMENTS[number]['id'];

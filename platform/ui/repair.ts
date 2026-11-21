@@ -23,7 +23,7 @@ function verdict(report: VerificationReport): HTMLElement {
   const kind = verdictKind(report);
   if (kind === 'secured') return h('div', { class: 'banner banner-ok' }, status('passed', VERDICT_TITLE.secured), ` ${VERDICT_SUCCESS}`);
   if (kind === 'undetermined') {
-    return h('div', { class: 'banner banner-warn' }, status('error', '判定できませんでした'), ' 実行環境のエラーです。不合格には数えません。もう一度検証してください。');
+    return h('div', { class: 'banner banner-warn' }, status('error', '判定できませんでした'), ' システムのエラーです。不合格には数えません。もう一度テストしてください。');
   }
   const groups = new Set(failedOutcomes(report).map((outcome) => outcome.group));
   const reasons = RESULT_GROUPS.filter((group) => groups.has(group)).map((group) => VERDICT_REASON[group]);
@@ -45,7 +45,7 @@ function outcomeItem(outcome: TestOutcome): HTMLElement {
     'li',
     { class: 'outcome' },
     h('div', { class: 'outcome-head' }, status(kind, text), h('span', {}, outcome.title)),
-    h('dl', { class: 'outcome-detail' }, h('dt', {}, '期待'), h('dd', { class: 'mono' }, outcome.expected), h('dt', {}, '実測'), h('dd', { class: 'mono' }, outcome.actual)),
+    h('dl', { class: 'outcome-detail' }, h('dt', {}, '正しい結果'), h('dd', { class: 'mono' }, outcome.expected), h('dt', {}, '実際の結果'), h('dd', { class: 'mono' }, outcome.actual)),
   );
 }
 
@@ -95,16 +95,16 @@ export class RepairPanel {
   private readonly verifyButton = h(
     'button',
     { type: 'button', class: 'button button-primary', 'data-anchor': 'verify', on: { click: () => void this.actions.verify() } },
-    '攻撃と普段の使い方を検証する',
+    '攻撃とふだんの使い方をテストする',
   );
   private readonly verifyNote = h('p', { class: 'note', hidden: true });
   /** 検証中は押せない操作 */
-  private readonly applyButton = h('button', { type: 'button', class: 'button', on: { click: () => this.selected && void this.actions.apply(this.selected) } }, 'この対策を適用する');
-  private readonly revertButton = h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.actions.apply(null) } }, '対策を取り消す');
-  private readonly resetButton = h('button', { type: 'button', class: 'button button-danger', on: { click: () => void this.actions.reset() } }, '初期状態へ戻す');
+  private readonly applyButton = h('button', { type: 'button', class: 'button', on: { click: () => this.selected && void this.actions.apply(this.selected) } }, 'この対策を使う');
+  private readonly revertButton = h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.actions.apply(null) } }, '対策を外す');
+  private readonly resetButton = h('button', { type: 'button', class: 'button button-danger', on: { click: () => void this.actions.reset() } }, '最初の状態に戻す');
   private readonly rechooseButton = h('button', { type: 'button', class: 'button', on: { click: () => this.returnToChoices() } }, '① に戻って対策を選び直す');
   private readonly results = h('div', { class: 'results' });
-  private readonly resultsTitle = h('h3', { tabIndex: -1 }, '検証結果');
+  private readonly resultsTitle = h('h3', { tabIndex: -1 }, 'テストの結果');
   private readonly resultsGuard = renderGuard();
   /** ① の区画。対策を選ぶ課題では候補、操作で直す課題では加えた変更の一覧を置く */
   private readonly choice = h('section', { class: 'tool-section', 'data-anchor': 'defense-panel' });
@@ -130,8 +130,8 @@ export class RepairPanel {
     this.selected = snapshot.attempt.appliedDefense ?? this.defenses[0]?.id ?? null;
     this.reference.open = false;
     fill(this.choice, ...(this.record ? recordSection(this.record, this.changes) : this.choiceNodes()));
-    const undone = this.record ? `${this.record.noun}を消し` : '適用した対策を外し';
-    this.resetNote.textContent = `${undone}、データも演習開始時の状態へ戻します。達成印は残ります。`;
+    const undone = this.record ? `${this.record.noun}を消し` : '使った対策を外し';
+    this.resetNote.textContent = `${undone}、データも最初の状態に戻します。スタンプは残ります。`;
     fill(
       this.choices,
       ...this.defenses.map((defense) =>
@@ -158,8 +158,8 @@ export class RepairPanel {
 
   private choiceNodes(): HTMLElement[] {
     return [
-      h('h3', { id: 'defense-title' }, '① 対策を選んで適用する'),
-      h('p', { class: 'note' }, '対策を選んで適用すると、教材アプリの該当する処理が、あらかじめ用意した実装に切り替わります。'),
+      h('h3', { id: 'defense-title' }, '① 対策を選んで使う'),
+      h('p', { class: 'note' }, '選んだ対策に、教材アプリの中身が切り替わります。'),
       this.choices,
       this.reference,
       h('div', { class: 'actions' }, this.applyButton, this.revertButton),
@@ -170,12 +170,12 @@ export class RepairPanel {
     return h(
       'section',
       { class: 'tool-section' },
-      h('h3', {}, '② 検証する'),
+      h('h3', {}, '② テストする'),
       this.applied,
       h('div', { class: 'actions' }, this.verifyButton),
       this.verifyNote,
       h('section', { class: 'tool-section', 'data-anchor': 'results' }, this.resultsTitle, this.results),
-      h('p', { class: 'note' }, '検証は、同じ初期データで、攻撃を防げたか・普段の使い方ができるか・ほかの守りが壊れていないかを確かめます。'),
+      h('p', { class: 'note' }, '攻撃を防げたか、ふだんの使い方ができるかを、自動で確かめます。'),
     );
   }
 
@@ -196,7 +196,7 @@ export class RepairPanel {
       return;
     }
     const applied = this.defenses.find((defense) => defense.id === attempt.appliedDefense);
-    const label = applied ? `適用中の対策：${applied.label}` : '対策は適用していません（脆弱な状態）';
+    const label = applied ? `使っている対策：${applied.label}` : '対策は使っていません（弱点が残った状態）';
     fill(this.applied, status('idle', label));
   }
 
@@ -208,8 +208,8 @@ export class RepairPanel {
     this.revertButton.disabled = verifying;
     this.resetButton.disabled = verifying;
     this.verifyNote.replaceChildren();
-    if (verifying) fill(this.verifyNote, status('running', '検証しています…'));
-    else if (!canVerify) this.verifyNote.textContent = this.record ? '教材アプリで状態を変える操作をすると検証できます。' : '対策を適用すると検証できます（取り消した状態も検証できます）。';
+    if (verifying) fill(this.verifyNote, status('running', 'テストしています…'));
+    else if (!canVerify) this.verifyNote.textContent = this.record ? '教材アプリで直す操作をすると、テストできます。' : '対策を使うと、テストできます。';
     this.verifyNote.hidden = !verifying && canVerify;
   }
 
@@ -219,11 +219,11 @@ export class RepairPanel {
     const key = `${attempt.attemptId}|${report?.runId}|${attempt.configHash}|${snapshot.platformError}|${snapshot.vulnerableVerification?.runId}`;
     if (!this.resultsGuard.changed(key)) return;
     if (snapshot.platformError) {
-      fill(this.results, h('div', { class: 'banner banner-warn', role: 'alert' }, status('error', '実行環境のエラー'), ` ${snapshot.platformError}（不合格には数えません）`));
+      fill(this.results, h('div', { class: 'banner banner-warn', role: 'alert' }, status('error', 'システムのエラー'), ` ${snapshot.platformError}（不合格には数えません）`));
       return;
     }
     if (!report) {
-      fill(this.results, h('p', { class: 'muted' }, 'まだ検証していません。'));
+      fill(this.results, h('p', { class: 'muted' }, 'まだテストしていません。'));
       return;
     }
     // 操作で直す課題には選び直す対策がないので、選び直しのボタンは出さない
@@ -243,7 +243,7 @@ export class RepairPanel {
     const { file, before, after, language } = defense.referenceDiff;
     fill(
       this.diff,
-      h('h4', {}, `参考コード（閲覧専用）：${file}`),
+      h('h4', {}, `参考コード（見るだけ）：${file}`),
       h(
         'div',
         { class: 'diff-pair' },

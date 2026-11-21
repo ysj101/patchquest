@@ -5,9 +5,9 @@ import type { Page } from '@playwright/test';
 import { answerTransferCheck, commentOutWithVisudo, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
-  'backup-cause': 'バックアップに必要な範囲を超えて、すべてのコマンドが許可されている',
+  'backup-cause': 'バックアップに必要な分をこえて、すべてのコマンドが許可されている',
   'deploy-defense': '利用者アカウントの管理の許可だけを外し、サービスの再起動の許可は残す',
-  'shared-folder-defense': 'フォルダを閲覧・編集できる人を、経理の 3 人だけに絞る',
+  'shared-folder-defense': 'フォルダを見て編集できる人を、経理の 3 人だけにする',
 };
 
 const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
@@ -17,7 +17,7 @@ const disableLines = (page: Page, ...lines: number[]) => commentOutWithVisudo(pa
 
 async function verify(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+  await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
 }
 
 test('ターミナルで過剰な許可を見つけて再現し、絞りすぎでは不合格、保守の操作の許可だけを外すと合格する', async ({ page }) => {
@@ -48,15 +48,15 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   // 再現：運用担当が保守の操作を root の権限で実行できる
   await typeCommand(page, `sudo ${maintenance}`);
   await expect(seals(page)).toContainText('再現：達成');
-  await expect(page.locator('.result-callout')).toContainText('運用担当の権限で、保守の操作まで動いてしまうんですね。');
+  await expect(page.locator('.result-callout')).toContainText('運用担当なのに、保守の操作までできてしまうんですね。');
 
-  // A05：日常の運用操作の許可（2 行目）まで外すと、普段の使い方が壊れて合格しない
+  // A05：日常の運用操作の許可（2 行目）まで外すと、ふだんの使い方が壊れて合格しない
   await loginToTerminal(page, 'admin');
   await disableLines(page, 2);
   await disableLines(page, 3);
   await verify(page);
   await expect(repairPanel(page).locator('.repair-log li')).toHaveCount(2);
-  await expect(results(page)).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 90_000 });
+  await expect(results(page)).toContainText('まだ合格ではありません ふだんの使い方が壊れています。', { timeout: 90_000 });
   await expect(seals(page)).toContainText('防御：未達成');
 
   // やり直す：加えた変更が消え、機械も過剰な許可のある状態へ戻る
@@ -87,7 +87,7 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   await startMission(page, 'sudo-misconfig');
   await page.getByRole('tab', { name: '調査' }).click();
   const approach = page.getByRole('region', { name: '調べ方' });
-  await expect(approach).toContainText('sudo は、許可された利用者が、コマンドを管理者（root）の権限で実行するための仕組みです');
+  await expect(approach).toContainText('sudo は、許可された利用者が、コマンドを管理者（root）の権限で動かすための仕組みです');
   await expect(approach.locator('.approach-steps li')).toHaveCount(4);
   for (const command of ['whoami', 'cat runbook.txt', 'sudo -l']) await expect(approach).toContainText(command);
   await expect(approach).not.toContainText('visudo');
@@ -95,14 +95,14 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   // 調べ方を読んでもヒントの利用には数えず、ヒントは調査タブからも開ける
   const hints = page.getByRole('tabpanel', { name: '調査' }).getByRole('region', { name: 'ヒント' });
   await expect(hints.locator('.hint')).toHaveCount(0);
-  await hints.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
+  await hints.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
   await expect(hints.locator('.hint')).toContainText('sudo -l の一覧に入っていないでしょうか');
 
-  // 直し方のヒント（修正方針）は対策タブからも開ける
+  // 直し方のヒント（直し方）は対策タブからも開ける
   const repairHints = page.getByRole('tabpanel', { name: '対策' }).getByRole('region', { name: 'ヒント' });
   await page.getByRole('tab', { name: '対策' }).click();
-  await repairHints.getByRole('button', { name: 'ヒント 2（調査方法）を見る' }).click();
-  await repairHints.getByRole('button', { name: 'ヒント 3（修正方針）を見る' }).click();
+  await repairHints.getByRole('button', { name: 'ヒント 2（調べ方）を見る' }).click();
+  await repairHints.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
   await expect(repairHints.locator('.hint').last()).toContainText('sudo visudo -f /etc/sudoers.d/operators');
 
   // 調べ方のとおりに打つと、比べる 2 つが端末に出る

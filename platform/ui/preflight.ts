@@ -28,13 +28,13 @@ export class PreflightView {
     h(
       'p',
       { class: 'note' },
-      '安全な状態で全テストが通ること、脆弱性を注入すると攻撃が成立することを、演習とは別の環境で自動的に確かめます。この確認はあなたの達成には数えません。',
+      '安全な状態でテストが通ること、弱点を入れると攻撃が通ることを、自動で確かめます。あなたの成績には数えません。',
     ),
     this.list,
   );
 
   constructor(private readonly actions: PreflightActions) {
-    fill(this.element, h('p', { class: 'eyebrow' }, '演習を始める前に、環境を点検しています'), this.title, this.mission, this.outcome, this.details);
+    fill(this.element, h('p', { class: 'eyebrow' }, '始める前に、準備ができているか確かめています'), this.title, this.mission, this.outcome, this.details);
   }
 
   focus(): void {
@@ -45,7 +45,7 @@ export class PreflightView {
     const { attempt, pack, preflight, blocked } = snapshot;
     this.mission.textContent = `課題：${pack.manifest.title}`;
     const passed = preflight.filter((check) => check.status === 'passed').length;
-    this.summary.textContent = `点検の内容（${passed} / ${STEPS.length} 項目が合格）`;
+    this.summary.textContent = `確かめたこと（${passed} / ${STEPS.length} 項目が合格）`;
     // 開閉はプレイヤーに任せる。開始できないときだけ開いて理由を見せる
     if (attempt.state === 'Blocked') this.details.open = true;
     fill(
@@ -75,7 +75,7 @@ export class PreflightView {
       );
     } else {
       // 合格した直後も、演習画面へ切り替わるまでは点検中として見せる
-      fill(this.outcome, h('p', { class: 'muted' }, status('running', `点検しています…（${passed} / ${STEPS.length}）`)));
+      fill(this.outcome, h('p', { class: 'muted' }, status('running', `確かめています…（${passed} / ${STEPS.length}）`)));
     }
   }
 }

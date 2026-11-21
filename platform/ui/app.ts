@@ -54,7 +54,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const debrief = new DebriefPanel({
     answer: (answers) => {
       const correct = orchestrator.answerTransfer(answers);
-      say(correct ? '理解の検印を押しました' : 'まだ正解でない設問があります');
+      say(correct ? '「理解」達成です' : 'まだ正解していない問題があります');
     },
     retry: () => {
       const packId = orchestrator.snapshot?.pack.manifest.id;
@@ -222,24 +222,24 @@ export async function startApp(root: HTMLElement): Promise<void> {
     // 同じ対策の再適用や、脆弱な状態での取り消しでは演習の状態が変わらないので、ここで消す
     resultEffects.clear();
     await orchestrator.applyDefense(defenseId);
-    say(defenseId ? '対策を適用しました。検証して確かめましょう' : '対策を取り消しました');
+    say(defenseId ? '対策を使いました。テストで確かめましょう' : '対策を外しました');
   }
 
   async function verify(): Promise<void> {
-    say('検証を始めました');
+    say('テストを始めました');
     const report = await orchestrator.verify();
     const effect = verificationEffect(report, orchestrator.snapshot?.attempt.state === 'Passed');
     if (effect) resultEffects.show(effect);
     repair.focusResults();
-    if (!report) say('実行環境のエラーで検証できませんでした（不合格には数えません）');
-    else if (!effect) say('実行環境のエラーで判定できませんでした（不合格には数えません）');
+    if (!report) say('システムのエラーでテストできませんでした（不合格には数えません）');
+    else if (!effect) say('システムのエラーで判定できませんでした（不合格には数えません）');
   }
 
   async function resetToInitial(): Promise<void> {
     const ok = await confirmDialog({
-      title: '初期状態へ戻しますか？',
-      body: 'この演習で適用した対策を外し、データも演習開始時の状態へ戻します。達成印と観測ログは残ります。',
-      confirm: '初期状態へ戻す',
+      title: '最初の状態に戻しますか？',
+      body: '使った対策を外し、データも最初の状態に戻します。スタンプと観測ログは残ります。',
+      confirm: '最初の状態に戻す',
       danger: true,
     });
     if (!ok) return;
@@ -248,7 +248,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     guide.reach('reset');
     sessions.clear();
     await showViewer(viewer, { fresh: true });
-    say('初期状態へ戻しました');
+    say('最初の状態に戻しました');
   }
 
   // 初期表示の自動要求と、その後の利用者操作は同じ実行 ID を使うので、読み込み中かどうかで区別する。
@@ -259,7 +259,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   async function observe(exchange: Exchange): Promise<void> {
     const reproduced = await orchestrator.onExchange(exchange, { initialView: openingViews.has(exchange.runId) });
     if (exchange.kind === 'request' || exchange.events.length > 0) exerciseView.investigation.record(exchange, actorLabel(exchange.actor));
-    if (reproduced) resultEffects.show({ kind: 'reproduced', detail: '再現の検印を押しました。事故を自分の操作で再現できました。' });
+    if (reproduced) resultEffects.show({ kind: 'reproduced', detail: '「再現」達成です。報告と同じトラブルを、自分の手で起こせました。' });
   }
 
   // 初期表示と利用者切り替えが同時に走ると描画要求がフレームへ逆順に届き、古い画面が後から上書きしうる。直列化して要求順に描画する。
@@ -338,8 +338,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
       const { response, events } = await exercise.invoke({ kind: 'request', session, request }, { runId });
       return { exchange: { runId, actor, kind: 'request', request, response, events } };
     } catch (e) {
-      if (e instanceof RuntimeError && e.code === 'input-too-large') return { failure: '入力が大きすぎます（1 件 4KB まで）。内容を短くしてください。' };
-      if (e instanceof RuntimeError) return { failure: `実行環境のエラーで送れませんでした（不合格には数えません）：${e.message}` };
+      if (e instanceof RuntimeError && e.code === 'input-too-large') return { failure: '入力が大きすぎます（1 件 4KB まで）。短くしてください。' };
+      if (e instanceof RuntimeError) return { failure: `システムのエラーで送れませんでした（不合格には数えません）：${e.message}` };
       throw e;
     }
   }

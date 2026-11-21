@@ -13,8 +13,8 @@ export type MissionCategories = Readonly<Record<string, VulnerabilityCategory>>;
 
 /** ★の段階。同じ分類の課題の達成印と、別条件（別の seed・variant・課題）での全達成の回数で決まる */
 export const MASTERY_STEPS = [
-  { stars: 1, reason: '再現の達成印' },
-  { stars: 2, reason: '防御の達成印' },
+  { stars: 1, reason: '再現のスタンプ' },
+  { stars: 2, reason: '防御のスタンプ' },
   { stars: 3, reason: '再現・防御・理解がそろった' },
   { stars: 4, reason: '別の条件（seed）でもう一度そろえた' },
   { stars: 5, reason: '別の条件で 3 回目をそろえた' },

@@ -5,13 +5,13 @@ import { backToList, expect, launchButton, openHome, openMission, openRecords, r
 const listSection = (page: Page) => page.getByRole('region', { name: '習熟度', exact: true });
 const authorization = (page: Page) => listSection(page).locator('.mastery-line[data-category="authorization"]');
 
-test('達成印に応じて認可の習熟度が★と文字で上がり、根拠に演習と達成の種類を示す', async ({ page }) => {
+test('達成印に応じて持ち主の確認の習熟度が★と文字で上がり、根拠に演習と達成の種類を示す', async ({ page }) => {
   await openHome(page);
   // 課題の行の習熟度は完了した課題にだけ出す。未着手と練習課題には出さない。分類ごとの一覧は記録ページにある
   await expect(page.locator('[data-mission="test-pack"] .mastery-line')).toHaveCount(0);
   await expect(page.locator('[data-mission="onboarding"] .mastery-line')).toHaveCount(0);
   await openRecords(page);
-  await expect(authorization(page)).toHaveText('認可の習熟度☆☆☆☆☆Lv0：未着手');
+  await expect(authorization(page)).toHaveText('持ち主の確認の習熟度☆☆☆☆☆Lv0：未着手');
 
   await openMission(page, 'test-pack');
   await launchButton(page).click();
@@ -25,14 +25,14 @@ test('達成印に応じて認可の習熟度が★と文字で上がり、根�
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(debrief).toContainText('Lv2：防御まで');
   await page.getByRole('radio', { name: '取得時に所有者を照合する' }).check();
-  await page.getByRole('button', { name: '回答する' }).click();
+  await page.getByRole('button', { name: '答える' }).click();
   await expect(debrief).toContainText('Lv3：理解まで');
   await page.locator('.debrief .mastery-evidence summary').click();
-  await expect(page.locator('.debrief .mastery-evidence-list li')).toHaveText([/^★1：再現の達成印（課題 test-pack/, /^★2：防御の達成印/, /^★3：再現・防御・理解がそろった/]);
+  await expect(page.locator('.debrief .mastery-evidence-list li')).toHaveText([/^★1：再現のスタンプ（課題 test-pack/, /^★2：防御のスタンプ/, /^★3：再現・防御・理解がそろった/]);
 
   await backToList(page).click();
   // 完了した課題の行には、その分類の習熟度が付く
   await expect(page.locator('[data-mission="test-pack"] .mastery-line')).toHaveAttribute('data-stars', '3');
   await openRecords(page);
-  await expect(authorization(page)).toHaveText('認可の習熟度★★★☆☆Lv3：理解まで');
+  await expect(authorization(page)).toHaveText('持ち主の確認の習熟度★★★☆☆Lv3：理解まで');
 });

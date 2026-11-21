@@ -9,16 +9,16 @@ test.beforeEach(async ({ page }) => {
 test('正常系を壊す対策は、検証結果に理由と期待・実測が出て合格しない', async ({ page }) => {
   await verifyWith(page, 'すべて拒否する');
   const results = verifyResults(page);
-  await expect(results).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 15_000 });
+  await expect(results).toContainText('まだ合格ではありません ふだんの使い方が壊れています。', { timeout: 15_000 });
   await expect(results.locator('.conclusion[data-group="normal"]')).toContainText('不合格');
   await expect(results.locator('.outcome').first()).toBeHidden();
   await expect(seals(page)).toContainText('防御：未達成');
-  await expect(page.getByRole('heading', { name: '検証結果' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'テストの結果' })).toBeFocused();
   await results.getByRole('button', { name: '詳しく見る', exact: true }).click();
-  const normal = results.locator('.result-group').filter({ hasText: '正常な利用ができるか' });
+  const normal = results.locator('.result-group').filter({ hasText: 'ふだんの使い方ができるか' });
   await expect(normal.locator('.outcome')).toContainText('不合格');
-  await expect(normal.locator('.outcome')).toContainText('期待');
-  await expect(normal.locator('.outcome')).toContainText('status が 200 ではない（実測 403）');
+  await expect(normal.locator('.outcome')).toContainText('正しい結果');
+  await expect(normal.locator('.outcome')).toContainText('status が 200 ではない（実際は 403）');
 });
 
 test('再現・正しい対策・理解確認をそろえると解決になり、対策を変えると防御は再検証待ちになる', async ({ page }) => {
@@ -31,19 +31,19 @@ test('再現・正しい対策・理解確認をそろえると解決になり�
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(page.getByRole('tabpanel', { name: '振り返り' })).toContainText('所有者を照合していない');
   await page.getByRole('radio', { name: '一覧のリンクを隠す' }).check();
-  await page.getByRole('button', { name: '回答する' }).click();
+  await page.getByRole('button', { name: '答える' }).click();
   await expect(page.locator('.question')).toContainText('不正解');
   await expect(page.locator('.question')).toContainText('直接の要求は防げない');
   await page.getByRole('radio', { name: '取得時に所有者を照合する' }).check();
-  await page.getByRole('button', { name: '回答する' }).click();
+  await page.getByRole('button', { name: '答える' }).click();
   await expect(seals(page)).toContainText('理解：達成');
   await expect(page.locator('.state-stamp')).toHaveText('解決');
 
   await page.getByRole('tab', { name: '対策' }).click();
-  await page.getByRole('button', { name: '対策を取り消す' }).click();
-  await expect(verifyResults(page)).toContainText('この結果はいまの構成のものではありません');
-  await expect(seals(page)).toContainText('防御：記録あり（再検証で確定）');
-  await expect(page.locator('.state-stamp')).toHaveText('修正中');
+  await page.getByRole('button', { name: '対策を外す' }).click();
+  await expect(verifyResults(page)).toContainText('これは前の結果です');
+  await expect(seals(page)).toContainText('防御：記録あり（もう一度テストすると確定）');
+  await expect(page.locator('.state-stamp')).toHaveText('対策中');
 });
 
 test('キーボードで対策を選び、適用して検証できる', async ({ page }) => {
@@ -58,26 +58,26 @@ test('キーボードで対策を選び、適用して検証できる', async ({
   await expect(page.locator('.reference-code summary')).toBeFocused();
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
-  await expect(page.getByText('適用中の対策：すべて拒否する')).toBeVisible();
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).focus();
+  await expect(page.getByText('使っている対策：すべて拒否する')).toBeVisible();
+  await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).focus();
   await page.keyboard.press('Enter');
   await expect(verifyResults(page)).toContainText('まだ合格ではありません', { timeout: 15_000 });
 });
 
 test('ヒントは段階的に開け、解法は確認してから表示する', async ({ page }) => {
   const hints = page.getByRole('tabpanel', { name: '状況' }).locator('[data-anchor="hints"]');
-  await hints.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
+  await hints.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
   await expect(hints).toContainText('ID を変えると何が返るか');
-  await expect(hints.getByRole('button', { name: 'ヒント 2（調査方法）を見る' })).toBeFocused();
+  await expect(hints.getByRole('button', { name: 'ヒント 2（調べ方）を見る' })).toBeFocused();
   await page.keyboard.press('Enter');
-  await hints.getByRole('button', { name: 'ヒント 3（修正方針）を見る' }).click();
+  await hints.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
   await hints.getByRole('button', { name: '解法を見る' }).click();
   await expect(page.getByRole('dialog')).toContainText('記録に残ります');
   await page.getByRole('dialog').getByRole('button', { name: '解法を見る' }).click();
   await expect(hints).toContainText('note.read で所有者を照合する');
 });
 
-test('初期状態へ戻すと対策とデータが戻り、新しいデータで再挑戦すると新しい演習票になる', async ({ page }) => {
+test('最初の状態に戻すと対策とデータが戻り、新しいデータで再挑戦すると新しい演習票になる', async ({ page }) => {
   const editor = page.locator('[data-anchor="request-editor"]');
   await page.getByRole('tab', { name: '調査' }).click();
   await openRawRequest(page);
@@ -90,17 +90,17 @@ test('初期状態へ戻すと対策とデータが戻り、新しいデータ�
   await verifyWith(page, '所有者を照合する');
   await expect(verifyResults(page)).toContainText('防御できました', { timeout: 15_000 });
 
-  await page.getByRole('button', { name: '初期状態へ戻す' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '初期状態へ戻す' }).click();
+  await page.getByRole('button', { name: '最初の状態に戻す' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '最初の状態に戻す' }).click();
   // 戻した直後に画面を開き直すので、「調査を始められます」か「調査中」になる
   await expect(page.locator('.state-stamp')).toHaveText(/調査/);
-  await expect(page.getByText('対策は適用していません（脆弱な状態）')).toBeVisible();
+  await expect(page.getByText('対策は使っていません（弱点が残った状態）')).toBeVisible();
   await expect(preview(page).getByRole('heading', { name: 'ノート（alice）' })).toBeVisible();
   await expect(preview(page).getByText('あとで消えるノート')).toHaveCount(0);
 
   const ticket = await page.locator('.ticket-id').textContent();
   await page.getByRole('tab', { name: '振り返り' }).click();
-  await page.getByRole('button', { name: '新しいデータで再挑戦する' }).click();
+  await page.getByRole('button', { name: '新しいデータでもう一度挑戦する' }).click();
   await enterWorkbench(page);
   await expect(page.locator('.ticket-id')).not.toHaveText(ticket!);
   await expect(seals(page)).toContainText('再現：未達成');
@@ -108,20 +108,20 @@ test('初期状態へ戻すと対策とデータが戻り、新しいデータ�
 
 test('不合格のあと①に戻って、別の対策を選び直せる', async ({ page }) => {
   await page.getByRole('tab', { name: '対策' }).click();
-  await expect(page.getByRole('heading', { name: '① 対策を選んで適用する' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '② 検証する' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '① 対策を選んで使う' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '② テストする' })).toBeVisible();
   await expect(page.locator('.reference-code')).not.toHaveAttribute('open');
   await expect(page.getByRole('button', { name: '① に戻って対策を選び直す' })).toBeHidden();
 
   await verifyWith(page, 'すべて拒否する');
   const results = verifyResults(page);
   await expect(results).toContainText('まだ合格ではありません', { timeout: 15_000 });
-  await expect(page.getByRole('heading', { name: '検証結果' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'テストの結果' })).toBeFocused();
   const back = page.getByRole('button', { name: '① に戻って対策を選び直す' });
   await expect(back).toBeVisible();
   const verdictBox = await results.locator('.banner-error').boundingBox();
   const backBox = await back.boundingBox();
-  const verifyBox = await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).boundingBox();
+  const verifyBox = await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).boundingBox();
   const appliedBox = await page.locator('.applied').boundingBox();
   if (!verdictBox || !backBox || !verifyBox || !appliedBox) throw new Error('対策タブの配置を測れません');
   expect(appliedBox.y).toBeLessThan(verifyBox.y);
@@ -142,9 +142,9 @@ test('対策を適用した演習を続きから始めると、開始前チェ�
 
   await page.locator('[data-mission="test-pack"]').getByRole('button', { name: '続きから始める' }).click();
   await enterWorkbench(page);
-  await expect(page.locator('.exercise').getByText('前回の対策「所有者を照合する」を適用し直しました')).toBeVisible();
+  await expect(page.locator('.exercise').getByText('前回の対策「所有者を照合する」を使い直しました')).toBeVisible();
   await page.getByRole('tab', { name: '対策' }).click();
-  await expect(page.getByText('適用中の対策：所有者を照合する')).toBeVisible();
+  await expect(page.getByText('使っている対策：所有者を照合する')).toBeVisible();
   // 記録の合格は、再検証するまで現在の合格として扱わない
-  await expect(seals(page)).toContainText('防御：記録あり（再検証で確定）');
+  await expect(seals(page)).toContainText('防御：記録あり（もう一度テストすると確定）');
 });

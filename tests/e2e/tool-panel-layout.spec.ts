@@ -35,8 +35,8 @@ async function expectRepairActionsInView(page: Page): Promise<void> {
   await page.locator('.tools').evaluate((el) => el.scrollIntoView({ block: 'start' }));
   await expect(page.locator('.reference-code')).not.toHaveAttribute('open');
   await expectNoPanelScroll(page);
-  await expect(page.getByRole('button', { name: 'この対策を適用する' })).toBeInViewport();
-  await expect(page.getByRole('button', { name: '攻撃と普段の使い方を検証する' })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'この対策を使う' })).toBeInViewport();
+  await expect(page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' })).toBeInViewport();
 }
 
 /** 閉じている参考コードを開く。差分の列数は開いたあとに測る */
@@ -94,11 +94,11 @@ test('1512×900 の練習では、操作ガイドがあっても送る・適用�
 test('振り返りの「回答する」は、ページを送れば届き、パネルの中はスクロールしない', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await startMission(page, 'idor');
-  await verifyWith(page, '取り出す処理で、ログイン中の利用者と所有者を照合する');
+  await verifyWith(page, '取り出すときに、ログイン中の利用者が持ち主かを確かめる');
   await expect(verifyResults(page)).toContainText('防御できました', { timeout: 20_000 });
 
   await page.getByRole('tab', { name: '振り返り' }).click();
-  const answer = page.getByRole('button', { name: '回答する' });
+  const answer = page.getByRole('button', { name: '答える' });
   await expect(answer).toBeVisible();
   const panel = page.locator('[role="tabpanel"]:not([hidden])');
   expect(await panel.evaluate((el) => el.scrollHeight)).toBeGreaterThan(720);
@@ -128,11 +128,11 @@ test('960px 以下は教材アプリの下に道具が並び、横にはみ出�
   await openReference(page);
   const diffTracks = await page.locator('.diff-pair').first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
   expect(diffTracks).toBe(1);
-  await expect(page.getByRole('button', { name: 'この対策を適用する' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'この対策を使う' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
   await page.setViewportSize({ width: 390, height: 700 });
-  await expect(page.getByRole('button', { name: '攻撃と普段の使い方を検証する' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await expectNoPanelScroll(page);
 });

@@ -105,7 +105,7 @@ describe('操作で直す課題の進行', () => {
     expect(snapshot.attempt.badges.defense.achieved).toBe(false);
   });
 
-  it('初期状態へ戻すと記録が消え、機械も過剰な許可のある状態へ戻る', async () => {
+  it('最初の状態に戻すと記録が消え、機械も過剰な許可のある状態へ戻る', async () => {
     const { orchestrator, snapshot, type, commentOut } = await setup();
     await commentOut('admin', 3);
     await orchestrator.resetToInitial();

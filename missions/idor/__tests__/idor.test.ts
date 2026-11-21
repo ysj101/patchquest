@@ -39,7 +39,7 @@ describe.each(VERIFICATION_SEEDS)('IDOR パック（seed %i）', (seed) => {
     const failed = await runSuite(defense('hide-links'), seed);
     const direct = failed.find((outcome) => outcome.testId === 'memo.read.other-denied');
     expect(direct?.group).toBe('attack');
-    expect(direct?.actual).toContain('実測 200');
+    expect(direct?.actual).toContain('実際は 200');
     expect(failed.every((outcome) => outcome.group === 'attack')).toBe(true);
   });
 

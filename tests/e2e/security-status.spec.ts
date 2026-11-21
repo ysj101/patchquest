@@ -20,7 +20,7 @@ test('不十分な対策・全面停止・正しい対策の結論と、改善�
   await expect(conclusions.locator('> :last-child')).toHaveText('表示を変えただけでは、ID を直接指定した取得が通り、他人のノートが読めました。');
   await expect(results.locator('.security-status')).toHaveCount(0);
   await expect(results.locator('.outcome').first()).toBeHidden();
-  const normalHeading = results.locator('.result-group h4', { hasText: '正常な利用ができるか' });
+  const normalHeading = results.locator('.result-group h4', { hasText: 'ふだんの使い方ができるか' });
   const original = passedCount((await normalHeading.textContent()) ?? '');
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(page.locator('.security-history > ol > li')).toHaveCount(1);
@@ -61,12 +61,12 @@ test('振り返りは対策取り消し・リセット・再開後の古い検�
   await verifyWith(page, '所有者を照合する');
   await expect(verifyResults(page).locator('.verify-conclusions')).not.toContainText('%');
   const warning = page.locator('.debrief > .banner-warn');
-  await page.getByRole('button', { name: '対策を取り消す', exact: true }).click();
+  await page.getByRole('button', { name: '対策を外す', exact: true }).click();
   await page.getByRole('tab', { name: '振り返り' }).click();
-  await expect(warning).toHaveText('対策を変えたため、この結果はいまの構成のものではありません。もう一度検証してください。');
+  await expect(warning).toHaveText('対策を変えたので、これは前の結果です。もう一度テストしてください。');
   await page.getByRole('tab', { name: '対策' }).click();
-  await page.getByRole('button', { name: '初期状態へ戻す', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '初期状態へ戻す', exact: true }).click();
+  await page.getByRole('button', { name: '最初の状態に戻す', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '最初の状態に戻す', exact: true }).click();
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(warning).toBeVisible();
   await page.reload();

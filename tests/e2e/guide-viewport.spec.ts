@@ -29,15 +29,15 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1024, height: 600
 
     await readGuide(page, 'なおし方を選ぼう', 'defense-panel');
     await page.getByRole('radio', { name: /保存するときに文字数を確かめる/ }).check();
-    await page.getByRole('button', { name: 'この対策を適用する' }).click();
+    await page.getByRole('button', { name: 'この対策を使う' }).click();
 
     await readGuide(page, 'たしかめよう', 'verify');
-    await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+    await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
     await expect(ticketSeals(page)).toContainText('防御：達成', { timeout: 20_000 });
 
     await readGuide(page, 'ふりかえろう', 'debrief');
     await page.getByRole('radio', { name: 'コメントを保存するときに文字数を確かめる' }).check();
-    await page.getByRole('button', { name: '回答する' }).click();
+    await page.getByRole('button', { name: '答える' }).click();
     await expect(ticketSeals(page)).toContainText('理解：達成');
     await expectGuide(page, '練習クリア！');
   });

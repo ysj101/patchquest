@@ -36,7 +36,7 @@ test('依頼の文は「依頼」に重ねて一度だけ出て、矢印キー�
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: '調査' })).toBeFocused();
   await expect(page.getByRole('tab', { name: '調査' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel', { name: '調査' })).toContainText('実際のネットワーク通信ではありません');
+  await expect(page.getByRole('tabpanel', { name: '調査' })).toContainText('本物の通信ではありません');
 });
 
 test('キーボードで利用者を切り替え、定型の操作で事故を再現すると再現の検印が押される', async ({ page }) => {
@@ -55,7 +55,7 @@ test('キーボードで利用者を切り替え、定型の操作で事故を�
   const entry = page.locator('.log-entry').filter({ hasText: `bob → GET /notes/${id}` });
   await expect(entry.locator('summary')).toContainText(`bob → GET /notes/${id}`);
   await expect(entry.locator('.status')).toHaveText(/200/);
-  await expect(page.getByRole('list', { name: '達成印' })).toContainText('再現：達成');
+  await expect(page.getByRole('list', { name: 'スタンプ' })).toContainText('再現：達成');
   await expect(page.locator('.state-stamp')).toHaveText('調査中');
 });
 
@@ -137,20 +137,20 @@ test('調べ方を持たない課題では調査タブに調べ方を出さず�
   await expect(investigation.getByRole('heading', { name: '調べ方' })).toHaveCount(0);
   await expect(investigation.getByRole('region', { name: 'ヒント' })).toBeVisible();
 
-  await investigation.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
+  await investigation.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
   await expect(investigation.locator('.hint')).toHaveCount(1);
-  await expect(investigation.getByRole('button', { name: 'ヒント 2（調査方法）を見る' })).toBeFocused();
+  await expect(investigation.getByRole('button', { name: 'ヒント 2（調べ方）を見る' })).toBeFocused();
 
   await page.getByRole('tab', { name: '状況' }).click();
   await expect(story.locator('.hint')).toHaveCount(1);
-  await story.getByRole('button', { name: 'ヒント 2（調査方法）を見る' }).click();
+  await story.getByRole('button', { name: 'ヒント 2（調べ方）を見る' }).click();
   await page.getByRole('tab', { name: '調査' }).click();
   await expect(investigation.locator('.hint')).toHaveCount(2);
 
   const repair = page.getByRole('tabpanel', { name: '対策' });
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(repair.locator('.hint')).toHaveCount(2);
-  await repair.getByRole('button', { name: 'ヒント 3（修正方針）を見る' }).click();
+  await repair.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
   await expect(repair.locator('.hint')).toHaveCount(3);
   await page.getByRole('tab', { name: '状況' }).click();
   await expect(story.locator('.hint')).toHaveCount(3);

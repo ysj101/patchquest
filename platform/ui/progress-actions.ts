@@ -38,7 +38,7 @@ export function progressActions({ store, view, guide, refresh, announce }: Progr
   async function clearProgress(): Promise<void> {
     const ok = await confirmDialog({
       title: '進捗をすべて削除しますか？',
-      body: 'このブラウザに保存した達成印と記録がすべて消えます。必要なら先に書き出してください。',
+      body: 'このブラウザに保存したスタンプと記録が、すべて消えます。必要なら先に書き出してください。',
       confirm: '削除する',
       danger: true,
     });

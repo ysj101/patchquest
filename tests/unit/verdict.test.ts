@@ -57,7 +57,7 @@ describe('不合格の対策の一文', () => {
     expect(whyDefenseFailed(view)).toBeNull();
   });
 
-  it('実行環境のエラーで判定できないときは一文を返さない', () => {
+  it('システムのエラーで判定できないときは一文を返さない', () => {
     const view = snapshot({ lastVerification: report('run-1', { error: '時間切れ' }), history: [entry('run-1', 'display-only')], appliedDefense: 'display-only' });
     expect(whyDefenseFailed(view)).toBeNull();
   });

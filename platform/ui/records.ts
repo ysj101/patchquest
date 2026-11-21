@@ -6,7 +6,7 @@ import { h } from './dom';
 import { masteryList } from './mastery';
 import { storageWarningBanner } from './progress-feedback';
 
-const HOW_TO_GROW = '課題を解くと「再現・防御・理解」の達成印が付き、分類ごとの習熟度が ★1 → ★2 → ★3 と上がります。';
+const HOW_TO_GROW = '課題を解くと「再現・防御・理解」のスタンプが付き、分類ごとの習熟度が ★1 → ★2 → ★3 と上がります。';
 
 /** カタログの課題が扱う脆弱性の分類を、カタログの順に重複なく集める（習熟度の並び）。練習課題は飛ばす */
 const categoriesOf = (packs: readonly MissionPack[]) => [...new Set(packs.flatMap((pack) => pack.manifest.vulnerability?.category ?? []))];

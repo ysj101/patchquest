@@ -3,10 +3,10 @@ import type { ResultGroup, VerificationEntry, VerificationSummary } from '../con
 import { GROUP_LABEL, VERDICT_TITLE } from './labels';
 
 export const SECURITY_COPY = {
-  heading: '安全化状況',
+  heading: 'どれだけ守れたか',
   undetermined: (count: number) => `判定できなかった ${count} 件は数えていません`,
-  formula: '通ったテスト数 ÷ この課題の検証で実行したテスト数',
-  scope: '演習中の架空サービスの、この課題で検証した範囲の状態です。セキュリティ全般の保証や、本番で使える安全性を意味しません',
+  formula: '通ったテストの数 ÷ この課題で行ったテストの数',
+  scope: 'この課題でテストした範囲だけの結果です。アプリ全体が安全だという意味ではありません',
 };
 
 /** 実測がないときは 0% と表示しない。 */

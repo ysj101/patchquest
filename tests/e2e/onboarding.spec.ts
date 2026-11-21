@@ -36,7 +36,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(target(page)).toHaveAttribute('data-anchor', 'actions');
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await expect(seals(page)).toContainText('再現：達成');
-  await expect(page.locator('.now-doing')).toHaveText('今やること：対策を選んで、適用します。');
+  await expect(page.locator('.now-doing')).toHaveText('今やること：対策を選んで、使います。');
 
   // 「場所を表示」は、案内先のタブを開いてフォーカスを移す
   await expectStep(page, '2 / 5', 'なおし方を選ぼう');
@@ -59,7 +59,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(page.locator('.now-doing')).toHaveText('今やること：振り返りで、原因と対策を確認します。');
   await page.getByRole('tab', { name: '振り返り' }).click();
   await page.getByRole('radio', { name: 'コメントを保存するときに文字数を確かめる' }).check();
-  await page.getByRole('button', { name: '回答する' }).click();
+  await page.getByRole('button', { name: '答える' }).click();
   await expect(seals(page)).toContainText('理解：達成');
 
   await expect(guide(page).locator('.guide-count')).toHaveText('完了');
@@ -71,7 +71,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(guide(page)).toBeHidden();
   await expect(page.getByRole('button', { name: /まずは練習/ })).toHaveCount(0);
   await expect(page.locator('[data-mission="onboarding"] .mission-progress')).toContainText('完了');
-  await expect(page.locator('[data-mission="onboarding"]').getByRole('list', { name: '達成印' })).toContainText('理解：達成');
+  await expect(page.locator('[data-mission="onboarding"]').getByRole('list', { name: 'スタンプ' })).toContainText('理解：達成');
 });
 
 test('調査で送ったメモが、プレビューの最初の画面に出る', async ({ page }) => {
@@ -97,7 +97,7 @@ test('「入力欄で 41 文字目を打てなくする」を適用すると、�
 
   await page.getByRole('tab', { name: '対策' }).click();
   await page.getByRole('radio', { name: /入力欄で 41 文字目を打てなくする/ }).check();
-  await page.getByRole('button', { name: 'この対策を適用する' }).click();
+  await page.getByRole('button', { name: 'この対策を使う' }).click();
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await frame.getByRole('button', { name: '＋ 新しいメモ' }).click();
   await expect(frame.getByLabel('タイトル')).toHaveAttribute('maxlength', '40');

@@ -8,7 +8,7 @@ export function storageWarningBanner(reason: string, openSettings: () => void): 
   return h(
     'div',
     { class: 'banner banner-warn', role: 'status' },
-    h('p', {}, `${reason}。進捗はこの画面を閉じると消えるため、設定の「進捗を書き出す」で保存してください。`),
+    h('p', {}, `${reason}。進捗はこの画面を閉じると消えます。設定の「進捗を書き出す」で保存してください。`),
     h('button', { type: 'button', class: 'button', on: { click: openSettings } }, '設定を開く'),
   );
 }

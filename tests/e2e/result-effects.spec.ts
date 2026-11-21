@@ -1,7 +1,7 @@
 // 観測・検証結果とコールアウト、達成印、音の一致を確かめる。
 import { backToList, expect, openMission, settingsButton, startMission, test, ticketSeals, verifyResults, verifyWith } from './fixtures';
 
-const ownerDefense = '取り出す処理で、ログイン中の利用者と所有者を照合する';
+const ownerDefense = '取り出すときに、ログイン中の利用者が持ち主かを確かめる';
 
 test('調査で再現し、不十分な対策から防御成功へ進むと結果と達成印が一致する', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -17,9 +17,9 @@ test('調査で再現し、不十分な対策から防御成功へ進むと結�
   await page.getByLabel('メモの ID').fill(String(memo.id));
   await page.getByRole('button', { name: '送る', exact: true }).nth(1).click();
   const callout = page.locator('.result-callout');
-  await expect(callout).toContainText('脆弱性を再現しました');
+  await expect(callout).toContainText('弱点を再現できました');
   // 読み上げは常設の live 領域で行う
-  await expect(page.locator('[aria-live="polite"]')).toContainText('脆弱性を再現しました');
+  await expect(page.locator('[aria-live="polite"]')).toContainText('弱点を再現できました');
   await expect(ticketSeals(page)).toContainText('再現：達成');
   await verifyWith(page, '画面のリンクだけを隠す');
   await expect(callout).toContainText('まだ合格ではありません', { timeout: 15_000 });
@@ -29,13 +29,13 @@ test('調査で再現し、不十分な対策から防御成功へ進むと結�
   await verifyWith(page, ownerDefense);
   await expect(callout).toContainText('防御できました', { timeout: 15_000 });
   await expect(ticketSeals(page)).toContainText('防御：達成');
-  await expect(verifyResults(page).locator('.result-group h4')).toHaveText([/攻撃を防げたか/, /正常な利用ができるか/, /ほかの守りが壊れていないか/]);
+  await expect(verifyResults(page).locator('.result-group h4')).toHaveText([/攻撃を防げたか/, /ふだんの使い方ができるか/, /ほかの守りが壊れていないか/]);
   await callout.getByRole('button', { name: '結果を閉じる' }).click();
   await expect(callout).toBeHidden();
-  await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+  await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
   await expect(callout).toBeVisible();
-  await page.getByRole('button', { name: '初期状態へ戻す', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '初期状態へ戻す', exact: true }).click();
+  await page.getByRole('button', { name: '最初の状態に戻す', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '最初の状態に戻す', exact: true }).click();
   await expect(callout).toBeHidden();
   await backToList(page).click();
   await openMission(page, 'idor');
@@ -80,7 +80,7 @@ for (const enabled of [false, true]) {
       await expect(page.getByRole('slider', { name: '音量' })).toHaveValue('0.3');
       await page.getByRole('checkbox', { name: '効果音を鳴らす' }).uncheck();
       await page.getByRole('button', { name: '閉じる', exact: true }).click();
-      await page.getByRole('button', { name: '攻撃と普段の使い方を検証する' }).click();
+      await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
       await expect(page.locator('.result-callout')).toBeVisible();
       expect(await page.evaluate(() => Reflect.get(window, 'audioGains') as number[])).toHaveLength(2);
     }
