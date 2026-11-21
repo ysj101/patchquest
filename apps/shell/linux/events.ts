@@ -1,7 +1,7 @@
 // 機械の中の記録（プログラムの実行・sudo の判断・変わったファイル）を観測イベントにし、その説明を返す。
 // イベントの種類は擬似シェルと同じにして、同じテストと課題パックで判定できるようにする
 import type { JsonValue, ObservedEvent } from '../../../platform/contract';
-import { describeEvent as describeShellEvent, shown } from '../events';
+import { EVENT_LABELS, describeEvent as describeShellEvent, shown } from '../events';
 
 type Emit = (type: string, data: Record<string, JsonValue>) => void;
 
@@ -36,5 +36,5 @@ export function emitChanges(emit: Emit, paths: string[], user: string): void {
 
 export function describeEvent(event: ObservedEvent): string | null {
   if (event.type !== 'file.changed') return describeShellEvent(event);
-  return `ファイルの変更：${shown(event.data.path)}・利用者 ${shown(event.data.user)}`;
+  return `${EVENT_LABELS['file.changed']}：${shown(event.data.path)}・利用者 ${shown(event.data.user)}`;
 }
