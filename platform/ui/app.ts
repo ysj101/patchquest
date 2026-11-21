@@ -50,7 +50,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     apply: (defenseId) => applyDefense(defenseId),
     verify: () => verify(),
     reset: () => resetToInitial(),
-  }, hints.repair.element);
+  }, hints.place('repair-hints-title'));
   const debrief = new DebriefPanel({
     answer: (answers) => {
       const correct = orchestrator.answerTransfer(answers);
@@ -83,7 +83,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
         { id: 'repair', label: '対策', panel: repair.element },
         { id: 'debrief', label: '振り返り', panel: debrief.element },
       ],
-      storyFooter: hints.story.element, investigationFooter: hints.investigation.element,
+      storyFooter: hints.place('story-hints-title'), investigationFooter: hints.place('investigation-hints-title'),
       callout: resultEffects.element,
     },
     say,
