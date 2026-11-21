@@ -42,9 +42,8 @@ const isLineEdit = (value: unknown): value is LineEdit => {
 };
 
 /** 書き換えた行（edits）を読む。付いていなければ edits は null。形が違えば理由を返す */
-function parseEdits(edits: unknown, line: string): { edits: LineEdit[] | null } | { error: string } {
+function parseEdits(edits: unknown): { edits: LineEdit[] | null } | { error: string } {
   if (edits === undefined) return { edits: null };
-  if (!EDITOR_LINE.test(line)) return { error: 'edits は、visudo のコマンド行にだけ付けられます' };
   if (!Array.isArray(edits) || edits.length === 0 || edits.length > MAX_EDITS || !edits.every(isLineEdit)) {
     return { error: 'edits には、{ "line": 行番号, "text": "1 行の内容" } を 1 件以上入れてください' };
   }
@@ -52,32 +51,45 @@ function parseEdits(edits: unknown, line: string): { edits: LineEdit[] | null } 
   return { edits };
 }
 
-interface Input {
+export interface Input {
   line: string;
   cwd: string;
   edits: LineEdit[] | null;
 }
 
-/** 要求の本文（{ line, cwd?, edits? }）を読む。cwd を省くとホームから始める。形が違えば理由を返す */
-function parseBody(ctx: ServerContext, body: AppRequest['body'], account: Account): Input | { error: string } {
+/**
+ * 要求の本文（{ line, cwd?, edits? }）を読む。cwd を省くとホーム（home）から始める。形が違えば理由を返す。
+ * validCwd は、cwd として受け取れる場所かどうか。本物の Linux で動かすアプリ（apps/shell/linux）も同じ形の要求を受けるので共有する
+ */
+function parseBody(body: AppRequest['body'], home: string, validCwd: (cwd: string) => boolean): Input | { error: string } {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return { error: '本文は { "line": "コマンド行" } の形で送ってください' };
-  const { line, cwd = account.home } = body;
+  const { line, cwd = home } = body;
   if (typeof line !== 'string' || /[\r\n]/.test(line)) return { error: 'line には 1 行のコマンド行を文字列で入れてください' };
-  if (typeof cwd !== 'string' || findNode(ctx.db, cwd)?.kind !== 'dir') return { error: 'cwd には、実在するディレクトリの絶対パスを入れてください' };
-  const parsed = parseEdits(body.edits, line);
+  if (typeof cwd !== 'string' || !validCwd(cwd)) return { error: 'cwd には、実在するディレクトリの絶対パスを入れてください' };
+  const parsed = parseEdits(body.edits);
   return 'error' in parsed ? parsed : { line, cwd, edits: parsed.edits };
 }
 
-export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
-  if (req.path !== '/sh') return json(404, { error: '見つかりません' });
+/**
+ * 端末の要求の入口。コマンド行の要求（POST /sh）なら、ログインした利用者と入力を返す。
+ * それ以外（端末を開く問い合わせ・未ログイン・形の違う要求）は、その場で返す応答を返す
+ */
+export function terminalRequest(ctx: ServerContext, req: AppRequest, validCwd: (cwd: string) => boolean): { response: AppResponse } | { account: Account; input: Input } {
+  if (req.path !== '/sh') return { response: json(404, { error: '見つかりません' }) };
   const account = currentAccount(ctx);
-  if (!account) return json(401, { error: 'ログインが必要です' });
+  if (!account) return { response: json(401, { error: 'ログインが必要です' }) };
   // 端末を開いたときの表示（プロンプト）に使う
-  if (req.method === 'GET') return json(200, { user: account.name, host: hostname(ctx.db), cwd: account.home });
-  if (req.method !== 'POST') return json(405, { error: '許可されていない操作です' });
+  if (req.method === 'GET') return { response: json(200, { user: account.name, host: hostname(ctx.db), cwd: account.home }) };
+  if (req.method !== 'POST') return { response: json(405, { error: '許可されていない操作です' }) };
+  const input = parseBody(req.body, account.home, validCwd);
+  return 'error' in input ? { response: json(400, { error: input.error }) } : { account, input };
+}
 
-  const input = parseBody(ctx, req.body, account);
-  if ('error' in input) return json(400, { error: input.error });
+export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
+  const opened = terminalRequest(ctx, req, (cwd) => findNode(ctx.db, cwd)?.kind === 'dir');
+  if ('response' in opened) return opened.response;
+  const { account, input } = opened;
+  if (input.edits && !EDITOR_LINE.test(input.line)) return json(400, { error: 'edits は、visudo のコマンド行にだけ付けられます' });
   const output = runLine({ ctx, user: account, as: account, cwd: input.cwd, edits: input.edits }, input.line);
   const result = { stdout: output.stdout, stderr: output.stderr, exit: output.exit, cwd: output.cwd ?? input.cwd, changed: output.changed ?? false };
   return json(200, output.editor ? { ...result, editor: output.editor } : result);

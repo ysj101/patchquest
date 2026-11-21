@@ -121,13 +121,17 @@ function writeFiles(db: Database, { host, operator, operations, maintenance }: C
   return runbook;
 }
 
-export const shellFixture: FixtureGenerator = (db, seed, hook) => {
+/**
+ * 機械の初期データを作る生成器。provisionHook は、運用担当への sudo の許可を決める交換点の ID。
+ * 同じ機械を別の教材アプリ（本物の Linux で動かす apps/shell/linux）でも使えるよう、交換点だけを差し替えられる
+ */
+export const machineFixture = (provisionHook: string): FixtureGenerator => (db, seed, hook) => {
   const machine = cast(seed);
   const { operator, admin, maintenance } = machine;
   const operations = machine.operations.map((operation) => operation.path);
   build(db, machine);
   // 運用担当への許可は交換点が決める。レシピが注入した実装なら、ここで過剰な許可が初期データに入る
-  const granted = hook<ProvisionSudoers>('shell.sudoers.provision')({ operator: operator.name, operations, maintenance: [maintenance] });
+  const granted = hook<ProvisionSudoers>(provisionHook)({ operator: operator.name, operations, maintenance: [maintenance] });
   const runbook = writeFiles(db, machine, granted);
   const refs: Record<string, JsonPrimitive> = {
     'host.name': machine.host,
@@ -143,3 +147,5 @@ export const shellFixture: FixtureGenerator = (db, seed, hook) => {
   operations.forEach((path, index) => (refs[`programs.operation${index === 0 ? '' : index + 1}.path`] = path));
   return refs;
 };
+
+export const shellFixture = machineFixture('shell.sudoers.provision');

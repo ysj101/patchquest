@@ -42,3 +42,4 @@
 ## 同梱しているソフトウェア
 
 - SQLite（パブリックドメイン）と、その WebAssembly 版のラッパー `@sqlite.org/sqlite-wasm`（Apache License 2.0）。ライセンスの全文は `assets/runtime-worker.js.LEGAL.txt` を参照してください。
+- 演習用の機械（ブラウザの中で動く Linux）：エミュレータ v86（BSD-2-Clause）、SeaBIOS・VGA BIOS（LGPL）、Alpine Linux 3.24 の最小構成（BusyBox・musl ほか）、Linux カーネル（GPL-2.0）、sudo（ISC）、zlib。`assets/linux.state.zst` は、これらを起動した状態を保存したものです。それぞれのソースコードは、Alpine Linux（https://alpinelinux.org/）と v86（https://github.com/copy/v86）の配布元から入手できます。

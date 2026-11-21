@@ -19,9 +19,9 @@ const options = (seed: number): PrepareOptions => ({
 
 function invokerFor(engine: AppEngine): ScenarioInvoker {
   return {
-    session: async (actor) => engine.invoke({ kind: 'session', actor }).session ?? null,
+    session: async (actor) => (await engine.invoke({ kind: 'session', actor })).session ?? null,
     request: async (session, request) => {
-      const { response, events } = engine.invoke({ kind: 'request', session, request });
+      const { response, events } = await engine.invoke({ kind: 'request', session, request });
       return { response: response!, events };
     },
     render: async () => {
@@ -61,8 +61,8 @@ describe('初期データ', () => {
   it('認可の判断を観測イベントとして記録する', async () => {
     const engine = new AppEngine();
     const { refs } = await engine.prepare(options(3));
-    const session = engine.invoke({ kind: 'session', actor: 'bob' }).session ?? null;
-    const { response, events } = engine.invoke({ kind: 'request', session, request: { method: 'GET', path: `/api/memos/${refs['memos.alice.private.id']}` } });
+    const session = (await engine.invoke({ kind: 'session', actor: 'bob' })).session ?? null;
+    const { response, events } = await engine.invoke({ kind: 'request', session, request: { method: 'GET', path: `/api/memos/${refs['memos.alice.private.id']}` } });
     expect(response?.status).toBe(403);
     expect(events).toContainEqual({
       type: 'authz.decision',

@@ -14,6 +14,20 @@ const ALLOWED_PREFIXES = [
   'https://sqlite.org/wasm/doc/',
 ];
 
+/**
+ * エミュレータ v86（演習用の機械）のネットワーク機能のコードに含まれる URL。ネットワークの装置を付けたときだけ通る分岐にあり、
+ * 演習用の機械には装置を付けない（runtimes/browser/machine.ts）。Worker の通信 API も塞いでいる（runtimes/browser/lockdown.ts）
+ */
+const ALLOWED_PATTERNS = [
+  // DNS over HTTPS の問い合わせ先を組み立てるテンプレート
+  /^https:\/\/\$\{\w+\.doh_server\|\|$/,
+  // 機械の中からの HTTP リクエストを解釈するときの、仮のホスト名
+  /^http:\/\/host$/,
+];
+
+/** @type {(url: string) => boolean} */
+const isAllowed = (url) => ALLOWED_PREFIXES.some((prefix) => url.startsWith(prefix)) || ALLOWED_PATTERNS.some((pattern) => pattern.test(url));
+
 const ABSOLUTE_URL = /\bhttps?:\/\/[^\s"'`<>()\\]+/gi;
 // プロトコル相対URL（//host/...）はHTML属性とCSSのurl()・@importで外部読み込みになる
 const PROTOCOL_RELATIVE = /(?:=\s*["']?|url\(\s*["']?|@import\s+["'])\s*(\/\/[^\s"'`<>()\\]+)/gi;
@@ -32,7 +46,7 @@ export function findExternalRefs(files) {
     const urls = [...content.matchAll(ABSOLUTE_URL)].map((m) => m[0]);
     if (ext !== '.js') urls.push(...[...content.matchAll(PROTOCOL_RELATIVE)].map((m) => m[1]));
     for (const url of urls) {
-      if (!ALLOWED_PREFIXES.some((p) => url.startsWith(p))) violations.push({ path, match: url });
+      if (!isAllowed(url)) violations.push({ path, match: url });
     }
   }
   return violations;

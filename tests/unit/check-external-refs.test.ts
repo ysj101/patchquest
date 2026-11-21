@@ -27,4 +27,11 @@ describe('findExternalRefs', () => {
     ]);
     expect(violations).toEqual([]);
   });
+
+  it('エミュレータ v86 の、通らない分岐にある URL だけを個別に許可する', () => {
+    const violations = findExternalRefs([
+      { path: 'runtime-worker.js', content: 'fetch(`https://${b.doh_server||"x"}/dns-query`);new URL("http://host"+p);fetch(`https://${b.other||"x"}/`);new URL("http://hostile.example/")' },
+    ]);
+    expect(violations.map((violation) => violation.match)).toEqual(['https://${b.other||', 'http://hostile.example/']);
+  });
 });

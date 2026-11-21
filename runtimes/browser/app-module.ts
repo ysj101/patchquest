@@ -14,6 +14,7 @@ import type {
   ObservedEvent,
   TestCase,
 } from '../../platform/contract';
+import type { Machine } from './machine';
 import type { Database } from './sqlite';
 
 export type HookFunction = (...args: never[]) => unknown;
@@ -26,6 +27,8 @@ export interface ServerContext {
   hook<F extends HookFunction>(id: HookId): F;
   /** 観測イベントを記録する */
   emit(type: string, data: Record<string, JsonValue>): void;
+  /** 演習用の機械（本物の Linux）。machine を宣言したアプリにだけ渡る */
+  machine?: Machine;
 }
 
 export interface ViewContext {
@@ -60,7 +63,14 @@ export interface AppModule {
   implementations: ImplementationRegistry;
   /** アプリ共通のテスト。基準状態 S ではすべて通る。パックの tests.target から ID で参照できる */
   tests: TestCase[];
-  handle(ctx: ServerContext, request: AppRequest): AppResponse;
+  /** 機械（本物の Linux）へ問い合わせるアプリは、応答を待って返せる */
+  handle(ctx: ServerContext, request: AppRequest): AppResponse | Promise<AppResponse>;
+  /**
+   * 演習用の機械（本物の Linux を WASM のエミュレータで動かす）を使うアプリが宣言する。
+   * provision は、初期データ（db）を起動直後の機械へ反映する。reset は、反映を終えた機械を初期状態へ戻す（テストごとに呼ばれる）。
+   * 使うパックは runtime.capabilities に linux-vm を挙げる
+   */
+  machine?: { provision(machine: Machine, db: Database): Promise<void>; reset(machine: Machine): Promise<void> };
   render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
   /** アプリが記録する観測イベントの説明（調査パネルで表示する）。知らない種類は null */
   describeEvent?(event: ObservedEvent): string | null;

@@ -19,7 +19,7 @@ export const HOOKS: HookDescriptor[] = [
 ];
 
 /** 最小権限：運用担当には、日常の運用操作だけを許可する */
-const leastPrivilege: ProvisionSudoers = ({ operator, operations }) => [`${operator} ALL=(root) NOPASSWD: ${operations.join(', ')}`];
+export const leastPrivilege: ProvisionSudoers = ({ operator, operations }) => [`${operator} ALL=(root) NOPASSWD: ${operations.join(', ')}`];
 
 export const BASELINE: ImplementationRegistry = {
   'shell/sudoers-least-privilege': { hook: 'shell.sudoers.provision', run: leastPrivilege },

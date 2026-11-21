@@ -1,0 +1,16 @@
+#!/bin/sh
+# 演習用の機械の PID 1。仮想のファイルシステムと重ね合わせ（overlayfs）の置き場所を用意し、シリアル回線で要求を待つ係（agent）に替わる。
+# ネットワークの装置は付けていないので、外とは通信できない
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+mount -t proc proc /proc
+mount -t sysfs sys /sys
+mount -t devtmpfs dev /dev
+mkdir -p /dev/pts /mnt/root /mnt/base /run/layers
+mount -t devpts devpts /dev/pts
+insmod /usr/lib/pq/overlay.ko
+# 層と係の作業ファイルは、/ とは別のファイルシステムに置く（/ を下の層にしたとき、重ね合わせの中から見えないようにする）
+mount -t tmpfs -o mode=700 layers /run/layers
+mkdir -p /run/layers/agent /run/layers/provisioned /run/layers/provisioned.work
+# 行の長さの上限（4096 文字）と改行の変換を避けるため、回線をそのまま読み書きする
+stty -F /dev/ttyS0 raw -echo
+exec /usr/lib/pq/agent </dev/ttyS0 >/dev/ttyS0 2>/dev/null

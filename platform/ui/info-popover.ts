@@ -1,21 +1,29 @@
-// ⓘ ボタンで開く小さな説明。クリック・Enter・Space で開閉、Esc で閉じ、マウスを乗せても同じ中身を出す。
+// ⓘ ボタンや文字のボタンで開く小さな説明。クリック・Enter・Space で開閉、Esc で閉じ、マウスを乗せても同じ中身を出す。
 // マウスオーバーだけに頼らず、キーボードでも同じ操作ができる（spec §10, A22）
 import { h } from './dom';
 
 let sequence = 0;
 
+type Content = (Node | string | null)[];
+
 /**
  * 説明を畳んだ ⓘ ボタンと、その説明の入れ物を返す。label はボタンの読み上げ名（例：「IDOR の説明」）。
  * フォーカスが移っただけでは閉じず、Esc か再度の押下、またはマウスが離れたときに閉じる
  */
-export function infoPopover(label: string, ...content: (Node | string | null)[]): HTMLElement {
+export function infoPopover(label: string, ...content: Content): HTMLElement {
+  return popover(h('button', { type: 'button', class: 'info-button', 'aria-label': label }, h('span', { 'aria-hidden': true }, 'i')), content);
+}
+
+/** 文字のボタンに畳んだ説明と、その入れ物を返す。開閉の操作は ⓘ と同じ */
+export function labelPopover(label: string, ...content: Content): HTMLElement {
+  return popover(h('button', { type: 'button', class: 'button button-quiet info-label' }, label), content);
+}
+
+function popover(button: HTMLElement, content: Content): HTMLElement {
   const id = `info-${++sequence}`;
   const panel = h('div', { id, class: 'info-panel', role: 'note', hidden: true }, ...content);
-  const button = h(
-    'button',
-    { type: 'button', class: 'info-button', 'aria-label': label, 'aria-expanded': 'false', 'aria-controls': id },
-    h('span', { 'aria-hidden': true }, 'i'),
-  );
+  button.setAttribute('aria-expanded', 'false');
+  button.setAttribute('aria-controls', id);
   // 押す・キーで開いたもの（pinned）はマウスが離れても残る。マウスを乗せただけなら離れたら閉じる。
   // 押して閉じた直後は、マウスがまだ乗っていても開き直さない（離れたら元に戻る）
   let pinned = false;

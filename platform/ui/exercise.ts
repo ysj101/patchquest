@@ -1,10 +1,11 @@
 // 演習画面（spec §10）。調査デスクの形で、上に演習票（課題・状態・達成印・架空サービスの表示）、
-// 左に依頼とステージ、中央に動く教材アプリと観測ログ、右に状況・調査・対策・振り返りの道具、下に演習票番号を並べる
+// その下の帯に依頼（ボタンに畳み、重ねて出す）とステージ、左に動く教材アプリと観測ログ、右に状況・調査・対策・振り返りの道具、下に演習票番号を並べる
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
 import { sealStates, stageStates } from '../progress/stages';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, seals, settingsButton, tabs, type TabSpec } from './components';
 import { fill, h } from './dom';
+import { labelPopover } from './info-popover';
 import { InvestigationPanel, describersOf, storyPanel, type DescribingApp } from './investigation';
 import { STATE_LABEL } from './labels';
 import { AchievementToast } from './achievement-toast';
@@ -148,7 +149,7 @@ export class ExerciseView {
     this.xp.reset();
     this.achievements.reset();
     const story = snapshot.pack.manifest.story;
-    fill(this.request, h('h2', {}, '依頼'), h('p', {}, story.incident));
+    fill(this.request, labelPopover('依頼', h('p', {}, story.incident)));
     fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
     fill(
       this.briefing,
