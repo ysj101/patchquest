@@ -23,12 +23,12 @@ export const HINTS: HintDef[] = [
   },
   {
     level: 3,
-    text: "利用者を admin に切り替え、sudo edit /etc/sudoers.d/operators で設定を行番号つきで表示します。保守の操作を許可している行を、sudo edit /etc/sudoers.d/operators 行番号 '# 許可を外した' のようにコメントへ書き換えます。日常の運用操作を許可している行は残します。",
+    text: '画面の「表示する利用者」を admin に切り替え、sudo visudo -f /etc/sudoers.d/operators で設定を編集画面に開きます。保守の操作を許可している行の先頭に # を付けてコメントにし、保存します。日常の運用操作を許可している行は残します。',
   },
 ];
 
 export const SOLUTION =
-  "利用者を admin に切り替え、sudo edit /etc/sudoers.d/operators で設定を表示します。保守の操作を許可している 3 行目を、sudo edit /etc/sudoers.d/operators 3 '# 許可を外した' でコメントに書き換えます。日常の運用操作を許可している 2 行目まで外すと、保守の操作は止まりますが、運用担当の普段の仕事もできなくなります。運用メモを書き直しても、設定が残っていれば実行できるままです。";
+  '画面の「表示する利用者」を admin に切り替え、sudo visudo -f /etc/sudoers.d/operators で設定を編集画面に開きます。保守の操作を許可している 3 行目の先頭に # を付けてコメントにし、保存します。日常の運用操作を許可している 2 行目まで外すと、保守の操作は止まりますが、運用担当の普段の仕事もできなくなります。運用メモを書き直しても、設定が残っていれば実行できるままです。';
 
 export const TRANSFER_CHECK: TransferQuestion[] = [
   {

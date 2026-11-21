@@ -5,6 +5,12 @@ import type { Account } from './model';
 /** 1 行に入力できる長さ（文字数） */
 export const MAX_LINE_LENGTH = 1024;
 
+/** エディタで書き換えた 1 行。line は 1 から数える行番号 */
+export type LineEdit = { line: number; text: string };
+
+/** エディタで開いたファイル（端末の画面が編集画面を出すのに使う） */
+export type EditorFile = { path: string; lines: string[] };
+
 export interface Output {
   stdout: string;
   stderr: string;
@@ -14,6 +20,8 @@ export interface Output {
   cwd?: string;
   /** 機械の状態（ファイルの内容）を変えたか */
   changed?: boolean;
+  /** エディタを開くコマンドが、保存する内容を受け取らずに実行されたときの、開いたファイル */
+  editor?: EditorFile;
 }
 
 export interface Env {
@@ -23,6 +31,8 @@ export interface Env {
   /** コマンドを実行する利用者。sudo を通すと root になる */
   as: Account;
   cwd: string;
+  /** エディタで書き換えて保存する行。エディタを開くだけのときと、エディタを使わないコマンドでは null */
+  edits: LineEdit[] | null;
 }
 
 export interface Command {

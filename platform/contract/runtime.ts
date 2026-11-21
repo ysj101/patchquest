@@ -121,6 +121,17 @@ export interface Exchange {
   events: ObservedEvent[];
 }
 
+/**
+ * 教材アプリによる、やり取りの表示（観測ログ）。HTTP の形ではなく、そのアプリの言葉（例：端末のコマンドと終了コード）で示すときに使う。
+ * 計測した値だけを示し、起きていないことを書かない
+ */
+export interface ExchangeDescription {
+  /** 結果の印。ok が false なら失敗として示す */
+  mark: { ok: boolean; text: string };
+  /** 記録を開いたときに並べる中身（見出しと本文） */
+  blocks: { title: string; text: string }[];
+}
+
 export interface PrepareOptions {
   attemptId: string;
   app: { id: string; version: string };

@@ -1,8 +1,11 @@
 // 擬似シェルの画面（ターミナル）。隔離 iframe の中で動き、コマンド行を 1 行ずつ ctx.request（Host 経由）で送る。
+// エディタを開くコマンド（visudo）では、入力欄の代わりに編集画面を出し、保存するときに同じコマンド行へ書き換えた行を付けて送る。
 // 出力は textContent で表示し、端末のエスケープや HTML を解釈しない。キーボードだけで操作できる
 import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
+import { editorPanel } from './editor-view';
+import type { EditorFile, LineEdit } from './shell';
 
 interface Session {
   user: string;
@@ -13,7 +16,10 @@ interface Session {
 interface CommandResult {
   stdout: string;
   stderr: string;
+  exit: number;
   cwd: string;
+  /** エディタを開くコマンドのときの、開いたファイル */
+  editor?: EditorFile;
 }
 
 function errorMessage(res: AppResponse): string {
@@ -39,58 +45,110 @@ function lineHistory(input: HTMLInputElement) {
   };
 }
 
-function terminal(ctx: ViewContext, session: Session): HTMLElement {
-  let cwd = session.cwd;
-  const output = el('div', { className: 'term-output', role: 'log', ariaLabel: '端末の出力', tabIndex: 0 });
-  const prompt = el('span', { className: 'term-prompt' });
-  const input = el('input', { className: 'term-input', ariaLabel: 'コマンド', autocomplete: 'off', autocapitalize: 'off', spellcheck: false });
-  const history = lineHistory(input);
-  const promptText = () => `${session.user}@${session.host}:${cwd}$`;
-  const print = (className: string, text: string) => {
-    if (text !== '') output.append(el('pre', { className }, text));
-  };
+/** ターミナルの画面。コマンドの入力欄と出力を持ち、エディタを開くコマンドでは入力欄の代わりに編集画面を出す */
+class Terminal {
+  private readonly output = el('div', { className: 'term-output', role: 'log', ariaLabel: '端末の出力', tabIndex: 0 });
+  private readonly prompt = el('span', { className: 'term-prompt' });
+  private readonly input = el('input', { className: 'term-input', ariaLabel: 'コマンド', autocomplete: 'off', autocapitalize: 'off', spellcheck: false });
+  private readonly entry = el('label', { className: 'term-entry' }, this.prompt, this.input);
+  readonly element = el('div', { className: 'terminal' }, this.output, this.entry);
+  private readonly history = lineHistory(this.input);
+  private cwd: string;
 
-  /** コマンド行を送り、応答（標準出力・標準エラー・移動先）を表示する */
-  const run = async (line: string) => {
-    input.disabled = true;
-    try {
-      const res = await ctx.request({ method: 'POST', path: '/sh', body: { line, cwd } });
-      if (res.status !== 200) return void print('term-err', errorMessage(res));
-      const result = res.body as unknown as CommandResult;
-      print('term-out', result.stdout);
-      print('term-err', result.stderr);
-      cwd = result.cwd;
-    } catch (error) {
-      print('term-err', `送れませんでした：${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      input.disabled = false;
-      prompt.textContent = promptText();
-      output.scrollTop = output.scrollHeight;
-      input.focus();
-    }
-  };
+  constructor(private readonly ctx: ViewContext, private readonly session: Session) {
+    this.cwd = session.cwd;
+    // sandbox ではフォーム送信が禁止されているため、submit ではなく Enter キーで送る
+    this.input.addEventListener('keydown', (event) => this.onKey(event));
+    this.prompt.textContent = this.promptText();
+    this.print('term-note', 'help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。');
+  }
 
-  // sandbox ではフォーム送信が禁止されているため、submit ではなく Enter キーで送る
-  input.addEventListener('keydown', (event) => {
+  private promptText(): string {
+    return `${this.session.user}@${this.session.host}:${this.cwd}$`;
+  }
+
+  private print(className: string, text: string): void {
+    if (text !== '') this.output.append(el('pre', { className }, text));
+  }
+
+  /** 次のコマンドを受け付ける状態にする */
+  private ready(): void {
+    this.prompt.textContent = this.promptText();
+    this.output.scrollTop = this.output.scrollHeight;
+    if (!this.entry.hidden) this.input.focus();
+  }
+
+  private onKey(event: KeyboardEvent): void {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       event.preventDefault();
-      if (event.key === 'ArrowUp') history.older();
-      else history.newer();
+      if (event.key === 'ArrowUp') this.history.older();
+      else this.history.newer();
       return;
     }
     if (event.key !== 'Enter') return;
-    const line = input.value;
-    input.value = '';
-    print('term-line', `${promptText()} ${line}`);
-    output.scrollTop = output.scrollHeight;
+    const line = this.input.value;
+    this.input.value = '';
+    this.print('term-line', `${this.promptText()} ${line}`);
+    this.output.scrollTop = this.output.scrollHeight;
     if (line.trim() === '') return;
-    history.add(line);
-    void run(line);
-  });
+    this.history.add(line);
+    void this.run(line);
+  }
 
-  prompt.textContent = promptText();
-  print('term-note', 'help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。');
-  return el('div', { className: 'terminal' }, output, el('label', { className: 'term-entry' }, prompt, input));
+  /** コマンド行を送る。コマンドを解釈できなかったとき（応答が 200 以外・送れなかった）は、理由を表示して null を返す */
+  private async send(line: string, edits?: LineEdit[]): Promise<CommandResult | null> {
+    try {
+      const res = await this.ctx.request({ method: 'POST', path: '/sh', body: { line, cwd: this.cwd, ...(edits && { edits }) } });
+      if (res.status === 200) return res.body as unknown as CommandResult;
+      this.print('term-err', errorMessage(res));
+    } catch (error) {
+      this.print('term-err', `送れませんでした：${error instanceof Error ? error.message : String(error)}`);
+    }
+    return null;
+  }
+
+  /** コマンド行を実行し、応答（標準出力・標準エラー・移動先）を表示する */
+  private async run(line: string): Promise<void> {
+    this.input.disabled = true;
+    const result = await this.send(line);
+    this.input.disabled = false;
+    if (result) {
+      this.print('term-out', result.stdout);
+      this.print('term-err', result.stderr);
+      this.cwd = result.cwd;
+      if (result.editor) this.edit(line, result.editor);
+    }
+    this.ready();
+  }
+
+  /** 編集している間は、端末の出力とコマンドの入力欄を隠す（エディタが画面を占める） */
+  private setEditing(editing: boolean): void {
+    this.output.hidden = editing;
+    this.entry.hidden = editing;
+  }
+
+  /** 編集画面を、端末の出力と入力欄の代わりに出す。保存できるか、保存せずに閉じるまで、コマンドは入力できない */
+  private edit(line: string, file: EditorFile): void {
+    const close = (note: string) => {
+      panel.element.remove();
+      this.setEditing(false);
+      this.print('term-note', note);
+      this.ready();
+    };
+    const panel = editorPanel(file, {
+      save: async (edits) => {
+        const result = await this.send(line, edits);
+        if (result === null) return 'visudo: 保存できませんでした（端末の出力を確かめてください）';
+        if (result.exit !== 0) return result.stderr;
+        close(result.stdout);
+        return null;
+      },
+      close,
+    });
+    this.setEditing(true);
+    this.element.append(panel.element);
+    panel.focus();
+  }
 }
 
 export async function render(root: HTMLElement, _route: string, ctx: ViewContext): Promise<void> {
@@ -98,5 +156,5 @@ export async function render(root: HTMLElement, _route: string, ctx: ViewContext
   if (!ctx.viewer) return void root.append(el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
   const res = await ctx.request({ method: 'GET', path: '/sh' });
   if (res.status !== 200) return void root.append(el('p', { className: 'error' }, errorMessage(res)));
-  root.append(terminal(ctx, res.body as unknown as Session));
+  root.append(new Terminal(ctx, res.body as unknown as Session).element);
 }

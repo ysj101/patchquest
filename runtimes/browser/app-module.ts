@@ -5,6 +5,7 @@ import type {
   AppDescriptor,
   AppRequest,
   AppResponse,
+  ExchangeDescription,
   HookId,
   ImplementationRegistry,
   JsonPrimitive,
@@ -65,6 +66,13 @@ export interface AppModule {
   describeEvent?(event: ObservedEvent): string | null;
   /** やり取りの見出しに使う、リクエストの短い表示（例：端末に打ったコマンド行）。説明しないものは null で、メソッドとパスを示す */
   describeRequest?(request: AppRequest): string | null;
+  /** 観測ログでの、やり取りの結果の印と中身。説明しないものは null で、状態コードとリクエスト・応答をそのまま示す */
+  describeExchange?(request: AppRequest, response: AppResponse): ExchangeDescription | null;
+  /**
+   * false にすると、調査タブの「リクエストを編集して送る」を出さない。
+   * 端末のように、アプリの画面からどの操作でも送れて、リクエストを手で組む意味がないアプリで使う
+   */
+  requestEditor?: false;
 }
 
 /** 同梱する教材アプリと課題パック。テスト用ビルドではテスト専用のものに差し替わる */

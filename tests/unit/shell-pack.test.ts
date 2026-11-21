@@ -9,6 +9,7 @@ import { VERIFICATION_SEEDS, verifyPack } from '../../platform/orchestrator/pack
 import { verificationCandidates } from '../support/catalog';
 import { EngineRuntime } from '../support/engine-runtime';
 import { shellTestPack } from '../support/shell-pack';
+import { visudoSave } from '../../apps/shell/scenario';
 
 const OPERATORS = '/etc/sudoers.d/operators';
 
@@ -39,16 +40,22 @@ async function setup() {
   const snapshot = await orchestrator.start('shell-test-pack');
   expect(snapshot.attempt.state).toBe('Prepared');
 
-  /** 演習用の機械でコマンド行を実行し、観測したやり取りを進行へ渡す（プレビューの端末と同じ経路） */
-  async function type(actor: string, line: string, cwd?: string) {
+  /** 演習用の機械でコマンド行を実行する */
+  function type(actor: string, line: string, cwd?: string) {
+    return send(actor, { method: 'POST', path: '/sh', body: { line, ...(cwd !== undefined && { cwd }) } });
+  }
+
+  /** 演習用の機械へ要求を送り、観測したやり取りを進行へ渡す（プレビューの端末と同じ経路） */
+  async function send(actor: string, request: AppRequest) {
     const runId = orchestrator.newRunId();
-    const request: AppRequest = { method: 'POST', path: '/sh', body: { line, ...(cwd !== undefined && { cwd }) } };
     const { session } = await exercise.invoke({ kind: 'session', actor });
     const { response, events } = await exercise.invoke({ kind: 'request', session: session ?? null, request });
     const reproduced = await orchestrator.onExchange({ runId, actor, kind: 'request', request, response, events });
     return { reproduced, body: response?.body as { exit: number; stderr: string; cwd: string } };
   }
-  return { orchestrator, snapshot, type };
+  /** visudo の編集画面で、運用担当向けの設定の 1 行をコメントに書き換えて保存する */
+  const commentOut = (actor: string, line: number, file = OPERATORS, cwd?: string) => send(actor, visudoSave(file, [{ line, text: '# 外した' }], cwd));
+  return { orchestrator, snapshot, type, commentOut };
 }
 
 describe('操作で直す課題の進行', () => {
@@ -63,13 +70,14 @@ describe('操作で直す課題の進行', () => {
   });
 
   it('過剰な許可を外す操作が記録され、検証の前に再生されて合格する', async () => {
-    const { orchestrator, snapshot, type } = await setup();
-    // 断られた操作（運用担当による書き換え）は、状態を変えていないので記録しない
-    await type('operator', `sudo edit ${OPERATORS} 3 '# 外した'`);
+    const { orchestrator, snapshot, type, commentOut } = await setup();
+    // 断られた操作（運用担当による書き換え）と、開いただけの操作は、状態を変えていないので記録しない
+    await commentOut('operator', 3);
+    await type('admin', `sudo visudo -f ${OPERATORS}`);
     expect(snapshot.attempt.repairLog).toEqual([]);
 
-    await type('admin', `sudo edit ${OPERATORS} 3 '# 外した'`);
-    expect(snapshot.attempt.repairLog).toEqual([{ as: 'admin', request: { method: 'POST', path: '/sh', body: { line: `sudo edit ${OPERATORS} 3 '# 外した'` } } }]);
+    await commentOut('admin', 3);
+    expect(snapshot.attempt.repairLog).toEqual([{ as: 'admin', request: visudoSave(OPERATORS, [{ line: 3, text: '# 外した' }]) }]);
     expect(snapshot.attempt.state).toBe('Repairing');
 
     const report = await orchestrator.verify();
@@ -80,17 +88,17 @@ describe('操作で直す課題の進行', () => {
   });
 
   it('移動してから相対パスで直しても、記録に場所が残るので再生で同じファイルを直せる', async () => {
-    const { orchestrator, snapshot, type } = await setup();
+    const { orchestrator, snapshot, type, commentOut } = await setup();
     const { body } = await type('admin', 'cd /etc/sudoers.d');
-    await type('admin', "sudo edit operators 3 '# 外した'", body.cwd);
+    await commentOut('admin', 3, 'operators', body.cwd);
     expect(snapshot.attempt.repairLog).toHaveLength(1);
     expect((await orchestrator.verify())?.passed).toBe(true);
   });
 
   it('絞りすぎて日常の運用操作まで止めると、正常系の失敗で合格しない', async () => {
-    const { orchestrator, snapshot, type } = await setup();
-    await type('admin', `sudo edit ${OPERATORS} 2 '# 外した'`);
-    await type('admin', `sudo edit ${OPERATORS} 3 '# 外した'`);
+    const { orchestrator, snapshot, commentOut } = await setup();
+    await commentOut('admin', 2);
+    await commentOut('admin', 3);
     const report = await orchestrator.verify();
     expect(report?.passed).toBe(false);
     expect(report?.outcomes.filter((outcome) => !outcome.passed).map((outcome) => `${outcome.testId}(${outcome.group})`)).toEqual(['shell.operation-allowed(normal)']);
@@ -98,8 +106,8 @@ describe('操作で直す課題の進行', () => {
   });
 
   it('初期状態へ戻すと記録が消え、機械も過剰な許可のある状態へ戻る', async () => {
-    const { orchestrator, snapshot, type } = await setup();
-    await type('admin', `sudo edit ${OPERATORS} 3 '# 外した'`);
+    const { orchestrator, snapshot, type, commentOut } = await setup();
+    await commentOut('admin', 3);
     await orchestrator.resetToInitial();
     expect(snapshot.attempt.repairLog).toEqual([]);
     expect((await type('operator', `sudo ${snapshot.refs['programs.maintenance.path']}`)).body.exit).toBe(0);

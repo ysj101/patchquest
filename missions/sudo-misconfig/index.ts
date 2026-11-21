@@ -1,32 +1,19 @@
 // ミッション「広すぎる sudo の許可を絞る」（設定ミスによる過剰な権限）。運用担当に、管理者だけが行う保守の操作まで sudo で
 // 許可されているサーバを点検し、ターミナルの操作で設定を絞る。対策を選ぶのではなく、操作そのものが修正になる（repair: record）
 import { STATE_CHANGING_COMMAND } from '../../apps/shell/scenario';
-import type { ActionDef, MissionPack } from '../../platform/contract';
+import type { MissionPack } from '../../platform/contract';
 import { IMPLEMENTATIONS } from './implementations';
 import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './learning';
 import { CASES, PROBES, TARGET_CASES } from './tests';
 
 const HOOKS = [{ id: 'shell.sudoers.provision', contract: 1 }];
-const TARGET_APP = { appId: 'shell', versions: '^1.0.0' };
+const TARGET_APP = { appId: 'shell', versions: '^2.0.0' };
 const RECIPE = 'excess-sudo-grant';
-/** 運用担当向けの sudo の設定ファイル。場所は seed によらず同じ（説明文は {{キー}} を展開しないので、そのまま書く） */
-const OPERATORS_SUDOERS = '/etc/sudoers.d/operators';
-
-/** コマンド行を 1 つ送る定型の操作。端末に打たなくても、調査タブから同じ操作ができる（結果は観測ログに出る） */
-const command = (action: Pick<ActionDef, 'id' | 'label' | 'description'> & { line: string; fields?: ActionDef['fields'] }): ActionDef => ({
-  id: action.id,
-  label: action.label,
-  description: action.description,
-  request: { method: 'POST', path: '/sh', body: { line: action.line } },
-  fields: action.fields ?? [],
-  editable: false,
-});
-
 export const sudoMisconfigPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sudo-misconfig',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'mission',
     title: '広すぎる sudo の許可を絞る',
     summary:
@@ -71,31 +58,10 @@ export const sudoMisconfigPack: MissionPack = {
         revert: 'baseline',
       },
     ],
-    actions: [
-      command({ id: 'sudo-list', label: '自分が sudo で実行できる操作を一覧する', description: 'いまの利用者に許可された操作を表示します（sudo -l）。結果は観測ログの応答に出ます。', line: 'sudo -l' }),
-      command({
-        id: 'sudo-run',
-        label: 'プログラムを sudo で実行する',
-        description: '指定したプログラムを、root の権限で実行しようとします（sudo パス）。許可されていなければ断られます。',
-        line: 'sudo {{field.program}}',
-        fields: [{ name: 'program', label: 'プログラムのパス', input: 'text', help: '/ から始まるパスを入力します。許可の一覧や運用メモで確かめられます。' }],
-      }),
-      command({
-        id: 'show-sudoers',
-        label: '運用担当向けの sudo の設定を表示する',
-        description: `設定ファイルを行番号つきで表示します（sudo edit ${OPERATORS_SUDOERS}）。管理者だけが表示できます。`,
-        line: `sudo edit ${OPERATORS_SUDOERS}`,
-      }),
-      command({
-        id: 'disable-line',
-        label: '設定の 1 行を無効にする',
-        description: '設定ファイルの指定した行を、コメント（# で始まる行）に書き換えます。管理者だけが書き換えられます。',
-        line: `sudo edit ${OPERATORS_SUDOERS} {{field.line}} '# 許可を外した'`,
-        fields: [{ name: 'line', label: '行番号', input: 'number', help: '設定を表示したときの行番号を入力します。' }],
-      }),
-    ],
+    // 調べるのも直すのも、ターミナルにコマンドを打って行う。同じ操作を送る定型の操作は置かない
+    actions: [],
     defenses: [],
-    // 状態を変えた操作（ファイルを書き換えた edit）だけを記録する。調べるだけの操作や、断られた操作は記録しない
+    // 状態を変えた操作（visudo で書き換えて保存した）だけを記録する。調べるだけの操作や、断られた操作は記録しない
     repair: { kind: 'record', record: STATE_CHANGING_COMMAND, noun: '加えた変更' },
     probes: PROBES,
     tests: {

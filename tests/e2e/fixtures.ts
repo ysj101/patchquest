@@ -54,6 +54,24 @@ export async function loginToTerminal(page: Page, actor: string): Promise<void> 
   await expect(prompt).toHaveText(/^[a-z]+@/);
 }
 
+/** 端末の中に開いた編集画面（visudo） */
+export const terminalEditor = (page: Page) => preview(page).getByRole('region', { name: /の編集$/ });
+
+/**
+ * 端末で visudo を開き、指定した行の先頭に # を付けてコメントにして保存する。
+ * 保存が済むと編集画面が閉じ、コマンドの入力欄へ戻る
+ */
+export async function commentOutWithVisudo(page: Page, file: string, lines: number[]): Promise<void> {
+  await typeCommand(page, `sudo visudo -f ${file}`);
+  const editor = terminalEditor(page);
+  for (const line of lines) {
+    const row = editor.getByRole('textbox', { name: `${line} 行目`, exact: true });
+    await row.fill(`# ${await row.inputValue()}`);
+  }
+  await editor.getByRole('button', { name: /^保存して閉じる/ }).click();
+  await expect(editor).toHaveCount(0);
+}
+
 /** 対策タブの「初期状態へ戻す」を押し、確認して戻す */
 export async function resetToInitial(page: Page): Promise<void> {
   await page.getByRole('button', { name: '初期状態へ戻す' }).click();

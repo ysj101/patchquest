@@ -20,6 +20,7 @@ export default defineConfig({
         'platform/ui/**',
         'apps/memo/view.ts',
         'apps/shell/view.ts',
+        'apps/shell/editor-view.ts',
         'apps/shared/dom.ts',
         'runtimes/browser/adapter.ts',
         'runtimes/browser/lockdown.ts',

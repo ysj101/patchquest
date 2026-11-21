@@ -9,7 +9,7 @@ import { decide, describeEntry, entriesFor, parseSudoers, type SudoEntry } from 
 type PolicyEntry = SudoEntry & { file: string };
 
 /**
- * 設定を読む。読めない設定は保存の時点（初期データの生成と edit）で断っているので、ここで読めないのは機械の状態が壊れているとき。
+ * 設定を読む。読めない設定は保存の時点（初期データの生成と visudo）で断っているので、ここで読めないのは機械の状態が壊れているとき。
  * 黙って許可・拒否を決めずに例外にする（応答は 500 になる）
  */
 function loadPolicy(db: Database): PolicyEntry[] {
