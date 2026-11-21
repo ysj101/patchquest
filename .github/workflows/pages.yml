@@ -32,11 +32,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # 演習用の機械（本物の Linux）の元になるもの。版とハッシュを固定して取得するので、変わらない限り取りに行かない
+      # 演習用の機械（本物の Linux）の元になるもの。版とハッシュを固定して、このリポジトリのリリースから取得する（docs/machine-sources.md）。変わらない限り取りに行かない
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .machine/cache
-          key: machine-sources-${{ hashFiles('scripts/build-machine.mjs') }}
+          key: machine-sources-${{ hashFiles('scripts/machine-sources.mjs') }}
       - run: pnpm run build
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

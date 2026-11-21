@@ -69,7 +69,7 @@ bash を動かすのではなく、固定のコマンド集合を機械の状態
 | `linux/hooks.ts` | 交換点 `linux.sudoers.provision`（処理の形は `shell.sudoers.provision` と同じ。契約 1） |
 | `linux/guest/` | 機械の中で動くシェルスクリプト。`init`（起動）、`agent`（要求を受ける係）、`run`（利用者としてコマンド行を実行）、`editor`（visudo が呼ぶエディタ） |
 
-機械の配布物（エミュレータ・BIOS・起動を済ませた状態）は `scripts/build-machine.mjs` が `.machine/` に作る。Alpine Linux の最小構成・sudo・カーネルを、版とハッシュを固定して取得する。ビルド（`pnpm run build`）とユニットテストの前に、必要なら自動で作る。機械を動かす部品は `runtimes/browser/machine.ts`。
+機械の配布物（エミュレータ・BIOS・起動を済ませた状態）は `scripts/build-machine.mjs` が `.machine/` に作る。Alpine Linux の最小構成・sudo・カーネルを、版とハッシュを固定して、このリポジトリのリリースに保管したものから取得する（`scripts/machine-sources.mjs`。版を上げる手順は [docs/machine-sources.md](../../docs/machine-sources.md)）。ビルド（`pnpm run build`）とユニットテストの前に、必要なら自動で作る。機械を動かす部品は `runtimes/browser/machine.ts`。
 
 ### 機械の中の仕組み
 
