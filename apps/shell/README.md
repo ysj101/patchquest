@@ -17,7 +17,7 @@ bash を動かすのではなく、固定のコマンド集合を機械の状態
 | `tests.ts` | アプリ共通のテスト。基準実装ではすべて通る |
 | `scenario.ts` | テスト・攻撃の成立条件・修正の記録を書くための部品（`sh`・`saveWithVisudo`・`ranAsRoot`・`STATE_CHANGING_COMMAND` など）。課題パックからも使う |
 | `events.ts` | 観測イベントとやり取りの表示。観測ログと「加えた変更」に、HTTP の形ではなく端末の言葉（コマンド行・終了コード・端末の出力）で示す |
-| `view.ts`・`editor-view.ts` | 隔離 iframe 内のターミナルと、その中に開く編集画面。出力は textContent、編集する内容は入力欄の値として扱う |
+| `view.ts`・`editor-view.ts` | 隔離 iframe 内のターミナルと、その中に開く編集画面。出力は textContent、編集する内容は入力欄の値として扱う。端末を開いたときの最初の案内は、アプリごとに渡す（`terminalView`） |
 
 ## やり取りの形
 
@@ -62,7 +62,7 @@ bash を動かすのではなく、固定のコマンド集合を機械の状態
 
 | ファイル | 内容 |
 | - | - |
-| `linux/index.ts` | アプリの定義。画面（`view.ts`）・初期データ（`fixtures.ts`）・テスト（`tests.ts`）・やり取りの表示は擬似シェルと共有する |
+| `linux/index.ts` | アプリの定義。画面（`view.ts`）・初期データ（`fixtures.ts`）・テスト（`tests.ts`）・やり取りの表示は擬似シェルと共有する。端末の最初の案内だけは、本物の Linux で通じる文を渡す |
 | `linux/server.ts` | 教材ロジック。要求の形は擬似シェルと同じ（`POST /sh { line, cwd?, edits? }`）で、コマンド行を機械の中で、ログインした利用者として実行する |
 | `linux/provision.ts` | 初期データ（SQLite の表）を機械へ反映するスクリプトを組み立てる。利用者・ファイル・プログラム・sudo の設定を置く |
 | `linux/events.ts` | 機械の中の記録（プログラムの実行・sudo の記録・変わったファイル）を観測イベントにする |

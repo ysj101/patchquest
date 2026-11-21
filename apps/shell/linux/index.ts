@@ -5,7 +5,7 @@ import { describeExchange, describeRequest } from '../events';
 import { ACTORS, machineFixture } from '../fixtures';
 import { SCHEMA } from '../schema';
 import { SHELL_TESTS } from '../tests';
-import { render } from '../view';
+import { terminalView } from '../view';
 import { describeEvent } from './events';
 import { BASELINE, HOOKS, PROVISION_HOOK } from './hooks';
 import { provision, reset } from './provision';
@@ -27,7 +27,8 @@ export const linuxApp: AppModule = {
   // 擬似シェルと同じテストが、本物の Linux でも通る
   tests: SHELL_TESTS,
   handle,
-  render,
+  // 本物のシェルの help は組み込みコマンドの一覧を出すだけなので、勧めない
+  render: terminalView('本物の Linux です。ls・cat・grep などのコマンドやパイプ（|）がそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。'),
   machine: { provision, reset },
   describeEvent,
   describeRequest,

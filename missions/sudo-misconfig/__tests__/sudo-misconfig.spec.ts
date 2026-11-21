@@ -30,6 +30,9 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await startMission(page, 'sudo-misconfig');
   await expect(terminalInput(page)).toBeVisible();
 
+  // 最初の案内は、本物の Linux で通じる内容で、help を勧めない
+  await expect(terminalOutput(page).locator('.term-note')).toHaveText('本物の Linux です。ls・cat・grep などのコマンドやパイプ（|）がそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。↑↓ キーで前に入力したコマンドを呼び出せます。');
+
   // 端末の中身は本物の Linux で、パイプも使える
   await typeCommand(page, 'uname -s | tr a-z A-Z');
   await expect(terminalOutput(page)).toContainText('LINUX');
