@@ -5,9 +5,9 @@ import type { AttemptRecord, BadgeKind } from '../contract';
 export const STAGES = [
   { id: 'briefed', label: '事件を確認' },
   { id: 'investigated', label: '手がかりを探す' },
-  { id: 'reproduced', label: '脆弱性を再現' },
+  { id: 'reproduced', label: '弱点を再現' },
   { id: 'repaired', label: '対策する' },
-  { id: 'verified', label: '最終検証' },
+  { id: 'verified', label: '最終テスト' },
 ] as const;
 
 /** 現在地は最初の未到達。順不同で到達しても、達成印や他のステージを変更しない。 */

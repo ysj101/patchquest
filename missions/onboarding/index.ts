@@ -21,7 +21,7 @@ export const onboardingPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'onboarding',
-    version: '1.5.0',
+    version: '1.6.0',
     kind: 'tutorial',
     title: '練習：はじめての修正',
     summary: 'わざと壊したメモアプリで「こわす → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
@@ -85,7 +85,7 @@ export const onboardingPack: MissionPack = {
           before: 'const prepareTitleInput = (input) => {};',
           after: 'const prepareTitleInput = (input) => {\n  input.maxLength = 40;\n};',
         },
-        whyItFails: '入力欄の上限は画面にしか効かず、画面を通さずに送ると長いタイトルのまま保存できました。',
+        whyItFails: '入力欄の上限は画面にしか効きません。画面を通さずに送ると、長いタイトルのまま保存できました。',
         expected: 'insufficient',
       },
       {
@@ -170,7 +170,7 @@ export const onboardingPack: MissionPack = {
       { level: 3, text: '「保存するときに文字数を確かめる」を選びます。入力欄の上限は、直接の呼び出しには効きません。' },
     ],
     solution:
-      '「保存するときに文字数を確かめる」を適用します。保存する処理で確かめれば、画面を通さない呼び出しにも決まりが効きます。入力欄の上限だけでは直接の呼び出しを防げず、保存をすべて止めると普段の使い方まで壊れます。',
+      '「保存するときに文字数を確かめる」を使います。保存する処理で確かめれば、画面を通さない呼び出しにも決まりが効きます。入力欄の上限だけでは直接の呼び出しを防げません。保存をすべて止めると、ふだんの使い方まで壊れます。',
     transferCheck: [
       {
         id: 'comment-length',
@@ -185,7 +185,7 @@ export const onboardingPack: MissionPack = {
     debrief: {
       cause: '40 文字の決まりを、保存する処理で確かめていなかったことが原因です。画面を通さずに送れば、長いタイトルでも保存できました。',
       defenseRationale: '決まりは保存する処理で確かめます。入力欄の上限は、入力しやすくするための補助です。',
-      takeaways: ['決まりは保存する処理で確かめる', '直したら、攻撃を防げたかと、普段の使い方が壊れていないかの両方を確かめる'],
+      takeaways: ['決まりは保存する処理で確かめる', '直したら、攻撃を防げたかと、ふだんの使い方が壊れていないかの両方を確かめる'],
     },
     guide: [
       {
@@ -207,7 +207,7 @@ export const onboardingPack: MissionPack = {
       {
         id: 'fix',
         title: 'なおし方を選ぼう',
-        body: '「対策」を開き、正しそうな直し方を 1 つ選んで「この対策を適用する」を押します。',
+        body: '「対策」を開き、正しそうな直し方を 1 つ選んで「この対策を使う」を押します。',
         anchor: 'defense-panel',
         until: 'defense-applied',
         praise: '対策を入れました',
@@ -215,11 +215,11 @@ export const onboardingPack: MissionPack = {
       {
         id: 'check',
         title: 'たしかめよう',
-        body: '「攻撃と普段の使い方を検証する」を押すと、自動テストが合否を判定します。',
+        body: '「攻撃とふだんの使い方をテストする」を押すと、自動テストが合格かどうかを決めます。',
         anchor: 'verify',
         until: 'verify-passed',
         praise: '合格！ 攻撃を防げました',
-        retry: { when: 'verify-failed', text: 'おしい！ 結果を見て、別の対策を選び直してからもう一度検証しよう。' },
+        retry: { when: 'verify-failed', text: 'おしい！ 結果を見て、別の対策を選び直してから、もう一度テストしよう。' },
       },
       {
         id: 'review',

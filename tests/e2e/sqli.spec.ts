@@ -6,10 +6,10 @@ import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, star
 
 /** 理解確認の正解の選択肢（設問 ID → ラベル） */
 const CORRECT_CHOICES: Record<string, string> = {
-  'catalog-cause': '検索語を SQL の文字としてつないでいるため、検索語の中で条件を書き換えられる',
-  'catalog-defense': '検索語を値としてバインドし、自分の貸出だけという条件を残す',
-  'login-cause': '入力を SQL の文字列につないでいるため、入力の中で照合の条件を書き換えられる',
-  'sort-column-defense': '受け付ける列名を決まった一覧から選び、一覧にない指定は断る',
+  'catalog-cause': '検索語を SQL の文字としてつないでいるので、検索語の中で条件を書き換えられる',
+  'catalog-defense': '検索語を値として渡し（バインド）、自分の貸出だけという条件を残す',
+  'login-cause': '入力を SQL の文字としてつないでいるので、入力の中で確かめる条件を書き換えられる',
+  'sort-column-defense': '使ってよい列の名前を一覧で決めておき、一覧にない指定は断る',
 };
 
 const OR_TITLE = "') OR title LIKE '%' --";
@@ -31,20 +31,20 @@ async function leakedPrivates(page: Page): Promise<void> {
 test('登録済みの検索語で他人のメモが返り、値としてのバインドだけが合格する', async ({ page }) => {
   test.setTimeout(120_000);
   await openHome(page);
-  await expect(page.locator('[data-mission="sqli"]').getByRole('heading', { name: '検索条件からの情報漏えいを防ぐ' })).toBeVisible();
+  await expect(page.locator('[data-mission="sqli"]').getByRole('heading', { name: '検索から他人のメモがもれるのを防ぐ' })).toBeVisible();
   await expect(page.locator('[data-mission="sqli"]')).toContainText('目安 15 分');
   await startMission(page, 'sqli');
   const app = preview(page);
 
   // A10：登録済みの検索語で所有者の条件を迂回し、別の利用者のメモが結果に含まれる
   await page.getByRole('tab', { name: '調査' }).click();
-  await page.getByLabel('登録済みの検索語').selectOption({ label: '所有者の条件を広げる（タイトル）' });
+  await page.getByLabel('登録済みの検索語').selectOption({ label: '持ち主の条件を広げる（タイトル）' });
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await expect(seals(page)).toContainText('再現：達成');
   await leakedPrivates(page);
 
   // 特定の語だけを止めても、その語を使わない検索語では他人のメモが返る
-  await verifyWith(page, 'UNION という語だけを止める');
+  await verifyWith(page, 'UNION という言葉だけを止める');
   await expectCalloutMatchesVerdict(page);
   await expect(results(page)).toContainText('まだ合格ではありません 攻撃をまだ防げていません。', { timeout: 20_000 });
   await leakedPrivates(page);
@@ -52,13 +52,13 @@ test('登録済みの検索語で他人のメモが返り、値としてのバ�
   // 検索を止めると、自分のメモも探せない
   await verifyWith(page, '検索を止める');
   await expectCalloutMatchesVerdict(page);
-  await expect(results(page)).toContainText('普段の使い方が壊れています', { timeout: 20_000 });
+  await expect(results(page)).toContainText('ふだんの使い方が壊れています', { timeout: 20_000 });
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await search(page, '週報');
   await expect(app.getByText('該当するメモはありません。')).toBeVisible();
 
   // A11：値としてバインドすると、他人のメモは返らず、日本語・引用符・該当なしは通る
-  await verifyWith(page, '検索語を値としてバインドし、所有者の条件を残す');
+  await verifyWith(page, '検索語を値として渡し（バインド）、持ち主の条件を残す');
   await expect(results(page)).toContainText('防御できました', { timeout: 20_000 });
   await expectCalloutMatchesVerdict(page);
   await expect(seals(page)).toContainText('防御：達成');

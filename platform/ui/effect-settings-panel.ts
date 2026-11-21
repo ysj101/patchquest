@@ -48,7 +48,7 @@ export function openSettings(store: EffectSettingsStore, progress: ProgressToolA
     'dialog', { class: 'dialog effect-settings', 'aria-labelledby': 'settings-title' },
     h('h2', { id: 'settings-title' }, '設定'),
     progressTools(progress),
-    h('p', {}, 'このブラウザの設定です。進捗ファイルには含まれません。変更はすぐに適用されます。'),
+    h('p', {}, 'このブラウザだけの設定です。変更はすぐに反映されます。'),
     h('fieldset', {}, h('legend', {}, '動き（アニメーション）'),
       ...([['system', 'OS の設定に従う'], ['on', 'オン'], ['off', 'オフ']] as const).map(([value, label]) =>
         radioOption({ name: 'effect-motion', value, checked: settings.motion === value, className: 'effect-option', autoFocus: value === 'system', onChange: () => update({ motion: value }) }, label))),

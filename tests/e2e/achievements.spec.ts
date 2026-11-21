@@ -25,7 +25,7 @@ test('ヒントなしで完走すると五つの実績を日時付きで表示�
   await reproduceNoteLeak(page);
   await expect(toast(page)).toContainText('実績解除：初めて再現');
   await defended(page);
-  for (const name of ['初めて防御', 'ヒントなしで防御', '正常な利用を壊さず防御', '一度の検証で防御']) {
+  for (const name of ['初めて防御', 'ヒントなしで防御', 'ふだんの使い方を壊さず防御', '一度のテストで防御']) {
     await expect(toast(page)).toContainText(`実績解除：${name}`);
   }
   await answerTransferCheck(page, TEST_PACK_ANSWERS);
@@ -53,7 +53,7 @@ test('正常系を壊す検証の後で防御しても正常利用と一度の�
   await startMission(page, 'test-pack');
   await verifyWith(page, 'すべて拒否する');
   await expect(ticketSeals(page)).toContainText('防御：未達成');
-  await expect(page.getByRole('button', { name: '攻撃と普段の使い方を検証する' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' })).toBeEnabled();
   await defended(page);
   await back(page);
   await expect(item(page, 'clean-repair')).toContainText('未解除');
@@ -63,7 +63,7 @@ test('正常系を壊す検証の後で防御しても正常利用と一度の�
 
 test('ヒント閲覧後はヒントなし実績を付けず、動きオフでも解除を文字と読み上げで伝える', async ({ page }) => {
   await startWithMotionOff(page, 'test-pack');
-  await page.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
+  await page.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
   await defended(page);
   await expect(toast(page)).toContainText('実績解除：初めて防御');
   await expect(toast(page).locator('.achievement-gain').first()).toHaveCSS('animation-name', 'none');
@@ -94,9 +94,9 @@ test('防御後にヒントと解法を開いてもヒントなし実績と解�
   const at = await unlocked.locator('time').textContent();
   if (!at) throw new Error('解除日時がありません');
   await openMission(page, 'test-pack', { resume: true });
-  await page.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
-  await page.getByRole('button', { name: 'ヒント 2（調査方法）を見る' }).click();
-  await page.getByRole('button', { name: 'ヒント 3（修正方針）を見る' }).click();
+  await page.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
+  await page.getByRole('button', { name: 'ヒント 2（調べ方）を見る' }).click();
+  await page.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
   await page.getByRole('button', { name: '解法を見る', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: '解法を見る', exact: true }).click();
   await back(page);

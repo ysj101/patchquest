@@ -22,13 +22,13 @@ export function status(kind: StatusKind, text: string): HTMLSpanElement {
 }
 
 const SEAL_MARK: Record<SealState, string> = { done: '済', todo: '未', stale: '再' };
-const SEAL_TEXT: Record<SealState, string> = { done: '達成', todo: '未達成', stale: '記録あり（再検証で確定）' };
+const SEAL_TEXT: Record<SealState, string> = { done: '達成', todo: '未達成', stale: '記録あり（もう一度テストすると確定）' };
 
 /** 演習票に押す 3 つの検印（再現・防御・理解） */
 export function seals(states: Record<BadgeKind, SealState>, size: 'large' | 'small' = 'large'): HTMLElement {
   return h(
     'ul',
-    { class: `seals seals-${size}`, 'aria-label': '達成印' },
+    { class: `seals seals-${size}`, 'aria-label': 'スタンプ' },
     ...BADGE_KINDS.map((kind) =>
       h(
         'li',

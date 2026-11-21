@@ -16,15 +16,15 @@ export const storedXssPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'stored-xss',
-    version: '1.7.0',
+    version: '1.8.0',
     kind: 'mission',
-    title: 'コメントからのスクリプト実行を防ぐ',
+    title: 'コメントが勝手に動くのを防ぐ',
     summary:
-      '共有ページのコメントが、別の利用者の画面でスクリプトとして動く問い合わせを調べます。危険な HTML 解釈を、文字として表示する描画に戻します。',
+      '共有ページのコメントが、ほかの人の画面でプログラムとして動いてしまう問い合わせを調べます。コメントを、ただの文字として表示するように直します。',
     learningObjectives: [
-      '検証済みの攻撃コメントを保存し、別の利用者が開いたときに画面で実行されることを再現できる',
-      'script タグだけを消すことと、文字として表示することの違いを説明できる',
-      '対策のあと、保存済みの攻撃コメントが動かず、日本語・記号・角括弧のコメントは文字のまま読めることを確かめられる',
+      '用意された攻撃コメントを保存し、別の利用者が開いたときに画面で動くことを再現できる',
+      '「script タグだけを消す」と「文字として表示する」の違いを説明できる',
+      '対策のあと、保存済みの攻撃コメントが動かず、ふつうのコメントは文字のまま読めると確かめられる',
     ],
     estimatedMinutes: 15,
     vulnerability: { name: '保存型 XSS', plain: 'コメントに仕込んだ命令が、ほかの人の画面で勝手に動いてしまう問題', fullName: '格納型クロスサイトスクリプティング', cwe: 'CWE-79', category: 'output-encoding' },
@@ -40,9 +40,9 @@ export const storedXssPack: MissionPack = {
         },
       },
       incident:
-        '利用者の carol さんから問い合わせがありました。「共有ページを開いたら、bob さんが書いたコメントのところで、自分では操作していない動きが起きました。コメントに書いたことが、ほかの人の画面でプログラムとして動いているようです」',
-      goal: 'コメントは保存された文字列のまま、読んだ人の画面では文字として表示します。スクリプトとしては動かしません。日本語・記号・角括弧を含む普通のコメントは、これまでどおり読めます。',
-      protectedAssets: ['共有ページを開いた人の画面（その人の操作としてスクリプトが動いてしまうこと）'],
+        '利用者の carol さんから問い合わせがありました。「共有ページを開いたら、bob さんのコメントのところで、何もしていないのに勝手な動きが起きました。コメントに書いたことが、ほかの人の画面でプログラムとして動いているようです」',
+      goal: 'コメントは、読んだ人の画面で文字として表示します。プログラムとしては動かしません。日本語・記号・角括弧を含むふつうのコメントは、今までどおり読めます。',
+      protectedAssets: ['共有ページを開いた人の画面（その人になりすましてスクリプトが動いてしまうこと）'],
       normalUse: ['日本語・記号・角括弧を含むコメントが、文字として読める'],
     },
     appCompatibility: TARGET_APP,
@@ -65,16 +65,16 @@ export const storedXssPack: MissionPack = {
       {
         id: 'post-comment',
         label: 'コメントを投稿する',
-        description: '共有ページにコメントを保存します。攻撃に使えるのは、隔離の検証で実行できると確認した固定のコメントだけです。自由に JavaScript を書く欄はありません。',
+        description: '共有ページにコメントを保存します。攻撃に使えるのは、あらかじめ用意したコメントだけです。JavaScript を自由に書く欄はありません。',
         request: { method: 'POST', path: '/api/pages/{{pages.shared.id}}/comments', body: { body: '{{field.body}}' } },
         fields: [
           {
             name: 'body',
             label: '投稿するコメント',
             input: 'select',
-            help: '検証済みの攻撃コメントは、画像の読み込み失敗（onerror）で教材用の実行マーカーを呼びます。普通のコメントは、日本語・記号・角括弧の例です。',
+            help: '攻撃コメントは、画像の読み込み失敗（onerror）を使って、教材用の実行マーカーを呼びます。ふつうのコメントは、日本語・記号・角括弧の例です。',
             options: [
-              { value: ATTACK_COMMENT, label: '検証済みの攻撃コメント（画像の onerror）' },
+              { value: ATTACK_COMMENT, label: '攻撃コメント（画像の onerror）' },
               { value: PLAIN_COMMENT, label: '普通のコメント（日本語・記号・角括弧）' },
             ],
           },
@@ -86,7 +86,7 @@ export const storedXssPack: MissionPack = {
       {
         id: 'text-content',
         label: 'コメントを文字として表示する',
-        description: 'コメント本文を textContent で出します。タグもイベント属性も、入力された文字のまま表示され、実行されません。',
+        description: 'コメントを textContent で出します。タグも属性も、書かれた文字のまま表示され、動きません。',
         apply: [{ hook: 'comment.render', implementation: 'memo/comment-text' }],
         referenceDiff: {
           file: 'apps/memo/hooks.ts',
@@ -101,7 +101,7 @@ export const storedXssPack: MissionPack = {
       {
         id: 'strip-script',
         label: 'script タグだけを削除する',
-        description: 'script タグを取り除いてから、残りを HTML として解釈します。ほかのタグやイベント属性はそのままです。',
+        description: 'script タグを取り除いてから、残りを HTML として読みます。ほかのタグや属性はそのままです。',
         apply: [{ hook: 'comment.render', implementation: 'stored-xss/strip-script' }],
         referenceDiff: {
           file: 'apps/memo/hooks.ts',
@@ -112,13 +112,13 @@ export const storedXssPack: MissionPack = {
   el.innerHTML = withoutScript;
 };`,
         },
-        whyItFails: 'script タグ以外の書き方は残り、画像の onerror が共有ページで実行されました。',
+        whyItFails: 'script タグ以外の書き方は残り、画像の onerror が共有ページで動きました。',
         expected: 'insufficient',
       },
       {
         id: 'hide-all',
         label: 'コメントをすべて表示しない',
-        description: 'コメント本文を画面に出さないようにします。危険なコメントは動きませんが、普通のコメントも読めなくなります。',
+        description: 'コメントを画面に出さないようにします。危険なコメントは動きませんが、ふつうのコメントも読めなくなります。',
         apply: [{ hook: 'comment.render', implementation: 'stored-xss/hide-all' }],
         referenceDiff: {
           file: 'apps/memo/hooks.ts',
@@ -128,7 +128,7 @@ export const storedXssPack: MissionPack = {
   el.textContent = '';
 };`,
         },
-        whyItFails: 'コメントを出さないようにしたため、普通のコメントが読めなくなり、攻撃に使った文字列も画面に残りませんでした。',
+        whyItFails: 'コメントを出さないようにしたので、ふつうのコメントも読めなくなりました。',
         expected: 'breaks-normal',
       },
     ],

@@ -123,7 +123,7 @@ function checkMatchers(root: JsonValue | undefined, matchers: Matcher[], scope: 
     const condition = expandAs(m.is, scope);
     const { values, wildcard } = select(root, m.path);
     const ok = wildcard ? values.every((v) => satisfiesCondition(condition, v)) : satisfiesCondition(condition, values[0]);
-    if (!ok) failures.push(`${m.path || '(全体)'} が ${describeCondition(condition)} ではない（実測 ${preview(wildcard ? values : values[0])}）`);
+    if (!ok) failures.push(`${m.path || '(全体)'} が ${describeCondition(condition)} ではない（実際は ${preview(wildcard ? values : values[0])}）`);
   }
   return failures;
 }
@@ -132,7 +132,7 @@ export function checkResponse(response: AppResponse, expectation: ResponseExpect
   const failures: string[] = [];
   if (expectation.status !== undefined) {
     const allowed = Array.isArray(expectation.status) ? expectation.status : [expectation.status];
-    if (!allowed.includes(response.status)) failures.push(`status が ${allowed.join(' か ')} ではない（実測 ${response.status}）`);
+    if (!allowed.includes(response.status)) failures.push(`status が ${allowed.join(' か ')} ではない（実際は ${response.status}）`);
   }
   return [...failures, ...checkMatchers(response.body, expectation.body ?? [], scope)];
 }

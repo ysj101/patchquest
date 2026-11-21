@@ -24,7 +24,7 @@ export async function reproduceByPreviousMemo(page: Page): Promise<void> {
 
 /** 所有者を照合する対策で検証し、防御の達成印を得る（A07） */
 export async function secureByOwnerCheck(page: Page): Promise<void> {
-  await verifyWith(page, '取り出す処理で、ログイン中の利用者と所有者を照合する');
+  await verifyWith(page, '取り出すときに、ログイン中の利用者が持ち主かを確かめる');
   await expectCalloutMatchesVerdict(page);
   await expect(results(page)).toContainText('防御できました', { timeout: 15_000 });
   await expect(seals(page)).toContainText('防御：達成');
@@ -32,10 +32,10 @@ export async function secureByOwnerCheck(page: Page): Promise<void> {
 
 /** 理解確認の正解の選択肢（設問 ID → ラベル）。出ている設問だけに答える */
 export const CORRECT_CHOICES: Record<string, string> = {
-  'invoice-cause': '請求書を取り出す処理が、要求した会社がその請求書の持ち主かを確かめていない',
-  'comment-edit-defense': '編集する処理で、セッションの利用者とコメントの投稿者を照合する',
-  'photo-download-cause': '写真を取り出す処理が、要求した利用者がそのアルバムの持ち主かを確かめていない',
-  'orders-api-defense': 'どの利用者の注文を返すかはトークンから決め、要求の userId は使わない（または一致を確かめる）',
+  'invoice-cause': '請求書を取り出す処理が、頼んだ会社がその請求書の持ち主かを確かめていない',
+  'comment-edit-defense': '編集する処理で、ログイン中の利用者がコメントを書いた人かを確かめる',
+  'photo-download-cause': '写真を取り出す処理が、頼んだ利用者がそのアルバムの持ち主かを確かめていない',
+  'orders-api-defense': 'だれの注文を返すかはトークンから決め、要求の userId は使わない（または同じかを確かめる）',
 };
 
 /** 振り返りを開き、表示されている設問すべてに正解して理解の達成印を得る。答えた設問 ID を返す */

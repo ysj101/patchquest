@@ -155,7 +155,7 @@ export class Orchestrator {
   async verify(): Promise<VerificationReport | null> {
     const c = this.require();
     const { attempt } = c.snapshot;
-    if (attempt.state !== 'Repairing' && attempt.state !== 'Passed') throw new Error('対策を適用してから検証してください');
+    if (attempt.state !== 'Repairing' && attempt.state !== 'Passed') throw new Error('対策を使ってからテストしてください');
     if (attempt.state === 'Passed') this.transition('Repairing');
     this.transition('Verifying');
     c.snapshot.platformError = null;

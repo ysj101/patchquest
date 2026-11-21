@@ -4,8 +4,8 @@ import { sectionNote } from './components';
 import { h } from './dom';
 import { japanDateLabel } from './japan-time';
 
-const NOTE = '実績は保存された記録から判定します。';
-const NOTE_MORE = 'ヒントや解法を見ても減点はありません。';
+const NOTE = '実績は、保存された記録から決まります。';
+const NOTE_MORE = 'ヒントや解法を見ても、減点はありません。';
 
 function achievementItem(id: AchievementId, name: string, description: string, at: string | undefined): HTMLElement {
   return h(

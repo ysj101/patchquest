@@ -18,7 +18,7 @@ test('導入に依頼人の話と案内役を名前・役割・顔付きで表�
     await expect(face).toBeVisible();
     await expect.poll(() => face.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
   }
-  await expect(briefing.locator('[data-character="guide"]')).toContainText('まずは何が起きたか、本人の話を聞こう。');
+  await expect(briefing.locator('[data-character="guide"]')).toContainText('まずは、何があったのか話を聞いてみよう。');
   await expect(launchButton(page)).toBeFocused();
 });
 

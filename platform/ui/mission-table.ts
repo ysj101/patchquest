@@ -129,7 +129,7 @@ function row(entry: MissionEntry, actions: MissionActions, mastery: MasterySumma
         manifest.vulnerability ? vulnerabilityLabel(manifest, manifest.vulnerability) : null,
         h('h3', { id: titleId }, manifest.title),
         details(entry, mastery),
-        entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が更新されたため、前回の続きからは始められません。') : null,
+        entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が新しくなったため、前回の続きからは始められません。') : null,
       ),
       h('p', { class: 'mission-difficulty' }, difficultyLabel(entry)),
       h('div', { class: 'mission-progress' }, status(label.kind, label.text), progress === 'todo' ? null : seals(sealStates(entry.latest, entry.defenseCurrent), 'small')),
@@ -149,7 +149,7 @@ export function missionTable(entries: MissionEntry[], actions: MissionActions, m
     'section',
     { class: 'mission-section', 'aria-labelledby': 'table-title' },
     h('h2', { id: 'table-title' }, '課題の一覧'),
-    h('p', { class: 'note' }, '入門から順に並んでいます。どの課題からでも始められます。'),
+    h('p', { class: 'note' }, '入門から順に並んでいます。どれからでも始められます。'),
     h('div', { class: 'mission-table' }, tableHead(), h('ol', { class: 'mission-rows', 'aria-label': '課題の一覧' }, ...tableOrder(entries).map((entry) => row(entry, actions, mastery)))),
   );
 }

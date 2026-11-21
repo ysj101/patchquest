@@ -44,7 +44,7 @@ export class HintsPanel {
     fill(
       element,
       h('h3', { id: titleId }, 'ヒント'),
-      h('p', { class: 'note' }, '行き詰まったら順に開けます。使っても減点はありません。'),
+      h('p', { class: 'note' }, '困ったら、順番に開けます。見ても減点はありません。'),
       ...opened.map((hint) => h('div', { class: 'hint' }, h('p', { class: 'eyebrow' }, `ヒント ${hint.level}：${HINT_LABEL[hint.level]}`), h('p', {}, hint.text))),
       next
         ? h('button', { type: 'button', class: 'button', on: { click: () => this.actions.openHint(next.level) } }, `ヒント ${next.level}（${HINT_LABEL[next.level]}）を見る`)
@@ -59,7 +59,7 @@ export class HintsPanel {
   private async revealSolution(): Promise<void> {
     const ok = await confirmDialog({
       title: '解法を見ますか？',
-      body: '解法を見たことは、あなたの記録に残ります。減点はありません。',
+      body: '解法を見たことは記録に残ります。減点はありません。',
       confirm: '解法を見る',
     });
     if (ok) this.actions.viewSolution();
@@ -68,7 +68,7 @@ export class HintsPanel {
 
 /** 学び終えた時点で、体験した問題を正式な名前と結びつける。一覧の ⓘ と同じ言い方で出す */
 function termsNote(vulnerability: VulnerabilityDef): HTMLElement {
-  return h('div', { class: 'terms-note' }, h('p', { class: 'eyebrow' }, `いま直した問題は「${vulnerability.name}」と呼ばれます`), vulnerabilityTerms(vulnerability));
+  return h('div', { class: 'terms-note' }, h('p', { class: 'eyebrow' }, `いま直した問題は「${vulnerability.name}」といいます`), vulnerabilityTerms(vulnerability));
 }
 
 /** この課題の分類の習熟度と判定の根拠。分類のないパックでは出さない */
@@ -85,9 +85,9 @@ export interface DebriefActions {
 /** 理解確認の出題の種類。通常の演習と、出題を絞った演習で説明が分かれる */
 type TransferKind = 'normal' | 'fresh' | 'repeated';
 const TRANSFER_NOTE: Record<TransferKind, string> = {
-  normal: '演習とは違う状況で、原因と有効な対策を選びます。',
-  fresh: '前回と違う設問を 1 問出します。',
-  repeated: 'この課題の設問はすべて出し終えているため、前回と同じ設問を 1 問出し直します。',
+  normal: '演習とは違う場面で、原因と正しい対策を選びます。',
+  fresh: '前回と違う問題を 1 問出します。',
+  repeated: 'この課題の問題はすべて出し終えたので、前回と同じ問題を 1 問出します。',
 };
 function transferKind(challenge: ExerciseSnapshot['attempt']['challenge']): TransferKind {
   if (challenge === null) return 'normal';
@@ -111,7 +111,7 @@ export class DebriefPanel {
     if (!attempt.badges.defense.achieved) {
       fill(
         this.element,
-        h('section', { class: 'tool-section' }, h('h3', {}, '振り返り'), h('p', { class: 'muted' }, '対策を検証して防御に合格すると、原因と対策の振り返り、理解の確認ができます。')),
+        h('section', { class: 'tool-section' }, h('h3', {}, '振り返り'), h('p', { class: 'muted' }, '対策をテストして防御に合格すると、ここで原因と対策を振り返れます。')),
         securityHistory(snapshot),
         masterySection(pack.manifest.vulnerability?.category, mastery),
         retry,
@@ -123,7 +123,7 @@ export class DebriefPanel {
     const closing = requesterVoice(pack.manifest.story.requester, 'closing');
     const lesson = [
       h('section', { class: 'tool-section debrief-cause' }, h('h3', {}, '原因'), h('p', {}, debrief.cause)),
-      h('section', { class: 'tool-section debrief-takeaway' }, h('h3', {}, '持ち帰ること'), h('ul', {}, ...debrief.takeaways.map((takeaway) => h('li', {}, takeaway)))),
+      h('section', { class: 'tool-section debrief-takeaway' }, h('h3', {}, '覚えておくこと'), h('ul', {}, ...debrief.takeaways.map((takeaway) => h('li', {}, takeaway)))),
       h('section', { class: 'tool-section debrief-reason' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
     ];
     fill(
@@ -140,7 +140,7 @@ export class DebriefPanel {
         { class: 'tool-section', 'aria-labelledby': 'transfer-title' },
         h('h3', { id: 'transfer-title' }, '理解の確認'),
         h('p', { class: 'note', 'data-transfer-note': kind }, TRANSFER_NOTE[kind]),
-        attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '理解の検印を押しました')) : null,
+        attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '「理解」達成です')) : null,
         form,
       ),
       retry,
@@ -168,10 +168,10 @@ export class DebriefPanel {
               result !== undefined && answers[q.id] === c.id ? h('span', { class: 'note choice-explanation' }, c.explanation) : null,
             ),
           ),
-          result === undefined ? null : status(result ? 'passed' : 'failed', result ? '正解' : '不正解。別の選択肢も考えてみましょう'),
+          result === undefined ? null : status(result ? 'passed' : 'failed', result ? '正解' : '不正解。ほかの答えも考えてみましょう'),
         );
       }),
-      h('div', { class: 'actions' }, h('button', { type: 'submit', class: 'button button-primary' }, '回答する')),
+      h('div', { class: 'actions' }, h('button', { type: 'submit', class: 'button button-primary' }, '答える')),
     );
     return form;
   }
@@ -185,15 +185,15 @@ export class DebriefPanel {
     return h(
       'section',
       { class: 'tool-section', 'aria-labelledby': 'retry-title' },
-      h('h3', { id: 'retry-title' }, '再挑戦'),
+      h('h3', { id: 'retry-title' }, 'もう一度挑戦'),
       h(
         'p',
         { class: 'note' },
         variantCount > 1
-          ? '新しい演習票で始めます。利用者やメモなどのデータと、脆弱性のバリエーションが変わることがあります。'
-          : '新しい演習票で始めます。利用者やメモなどのデータが変わります（脆弱性の種類は同じです）。',
+          ? '新しいデータで始めます。利用者やメモなどのデータと、弱点の出方が変わることがあります。'
+          : '新しいデータで始めます。利用者やメモなどのデータが変わります（弱点の種類は同じです）。',
       ),
-      h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button', on: { click: this.actions.retry } }, '新しいデータで再挑戦する')),
+      h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button', on: { click: this.actions.retry } }, '新しいデータでもう一度挑戦する')),
     );
   }
 }

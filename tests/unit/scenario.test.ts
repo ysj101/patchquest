@@ -25,7 +25,7 @@ describe('select', () => {
 describe('checkResponse', () => {
   it('status と本文の条件を確かめ、違いを説明する', () => {
     const res = { status: 200, body: { memo: { body: '合言葉' } } };
-    expect(checkResponse(res, { status: [403, 404] }, scope)).toEqual(['status が 403 か 404 ではない（実測 200）']);
+    expect(checkResponse(res, { status: [403, 404] }, scope)).toEqual(['status が 403 か 404 ではない（実際は 200）']);
     expect(checkResponse(res, { body: [{ path: '', is: { notContains: '{{memos.alice.private.body}}' } }] }, scope)).toHaveLength(1);
     expect(checkResponse(res, { status: 200, body: [{ path: 'memo.body', is: { equals: '{{memos.alice.private.body}}' } }] }, scope)).toEqual([]);
   });
@@ -87,7 +87,7 @@ describe('runSteps', () => {
       scope,
       inv,
     );
-    expect(result).toEqual({ passed: false, expected: 'bob が GET /api/memos/1 → status 403 か 404', actual: 'status が 403 か 404 ではない（実測 200）' });
+    expect(result).toEqual({ passed: false, expected: 'bob が GET /api/memos/1 → status 403 か 404', actual: 'status が 403 か 404 ではない（実際は 200）' });
     expect(inv.calls).toHaveLength(1);
   });
 

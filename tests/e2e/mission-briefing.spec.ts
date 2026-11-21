@@ -9,8 +9,8 @@ test('初回の事件と依頼、注意書きと演習票を表示し、Escで�
   await openMission(page, 'idor');
   await expect(page.getByRole('heading', { name: 'セキュリティ警報', exact: true })).toBeVisible();
   await expect(launchButton(page)).toBeFocused();
-  await expect(briefing(page)).toContainText('知らない人の非公開メモが表示されました');
-  await expect(briefing(page)).toContainText('非公開メモは、書いた本人（所有者）だけが読めるようにします。');
+  await expect(briefing(page)).toContainText('知らない人の非公開メモが出てきました');
+  await expect(briefing(page)).toContainText('非公開メモは、書いた本人（持ち主）だけが読めるようにします。');
   await expect(page.locator('.fictional-label')).toBeVisible();
   await expect(backToList(page)).toBeVisible();
   await expect(page.locator('.ticket')).toContainText('非公開メモを守る');

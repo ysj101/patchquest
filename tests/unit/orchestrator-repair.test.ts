@@ -56,7 +56,7 @@ it('状態を変える操作だけを記録して Repairing へ移り、構成�
   expect(snapshot.defenseCurrent).toBe(false);
 });
 
-it('初期状態へ戻すと記録が消え、構成も開始時へ戻る', async () => {
+it('最初の状態に戻すと記録が消え、構成も開始時へ戻る', async () => {
   const orchestrator = setup();
   const snapshot = await orchestrator.start('test-pack');
   const hashBefore = snapshot.attempt.configHash;

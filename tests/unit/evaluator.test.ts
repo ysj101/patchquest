@@ -38,7 +38,7 @@ describe('Evaluator', () => {
     const report = await evaluator.runSuite(packSubject({ 'note.read': 'test-pack/any-owner' }), packTests, manifest.tests.target, 'run-v', 'hash-v');
     const failed = report.outcomes.filter((o) => !o.passed);
     expect(failed).toEqual([
-      expect.objectContaining({ testId: 'test.read-other-denied', group: 'attack', expected: expect.stringMatching(/^bob が GET \/notes\/\d+ → status 403 か 404$/), actual: 'status が 403 か 404 ではない（実測 200）' }),
+      expect.objectContaining({ testId: 'test.read-other-denied', group: 'attack', expected: expect.stringMatching(/^bob が GET \/notes\/\d+ → status 403 か 404$/), actual: 'status が 403 か 404 ではない（実際は 200）' }),
     ]);
     expect(report.passed).toBe(false);
   });

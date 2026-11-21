@@ -7,8 +7,8 @@ const count = (page: Page, total: number) => expect(page.getByRole('heading', { 
 
 async function apply(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
-  await page.getByRole('radio', { name: /取り出す処理で、ログイン中/ }).check();
-  await page.getByRole('button', { name: 'この対策を適用する' }).click();
+  await page.getByRole('radio', { name: /取り出すときに、ログイン中/ }).check();
+  await page.getByRole('button', { name: 'この対策を使う' }).click();
   await expect(stages(page).locator('li').nth(3)).toHaveAttribute('data-state', 'done');
 }
 
@@ -37,17 +37,17 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await apply(page);
   await count(page, 4);
   await expect(ticketSeals(page)).toContainText('防御：未達成');
-  await page.getByRole('button', { name: '対策を取り消す' }).click();
+  await page.getByRole('button', { name: '対策を外す' }).click();
   await count(page, 4);
-  await verifyWith(page, '取り出す処理で、ログイン中の利用者と所有者を照合する');
+  await verifyWith(page, '取り出すときに、ログイン中の利用者が持ち主かを確かめる');
   await expect(ticketSeals(page)).toContainText('防御：達成');
   await count(page, 4);
   await page.getByRole('tab', { name: '振り返り' }).click();
   await page.getByRole('radio', { name: /^請求書を取り出す処理が/ }).check();
-  await page.getByRole('radio', { name: /^編集する処理で、セッション/ }).check();
+  await page.getByRole('radio', { name: /^編集する処理で、ログイン中/ }).check();
   await page.getByRole('radio', { name: /^写真を取り出す処理が/ }).check();
-  await page.getByRole('radio', { name: /^どの利用者の注文を返すかはトークンから決め/ }).check();
-  await page.getByRole('button', { name: '回答する' }).click();
+  await page.getByRole('radio', { name: /^だれの注文を返すかはトークンから決め/ }).check();
+  await page.getByRole('button', { name: '答える' }).click();
   await count(page, 5);
   await expect(stages(page).locator('[aria-current="step"]')).toHaveCount(0);
 });

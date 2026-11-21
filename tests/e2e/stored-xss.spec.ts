@@ -6,10 +6,10 @@ import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, star
 
 /** 理解確認の正解の選択肢（設問 ID → ラベル） */
 const CORRECT_CHOICES: Record<string, string> = {
-  'guestbook-cause': '保存したニックネームを、開いた人の画面で HTML として解釈している',
+  'guestbook-cause': '保存したニックネームを、開いた人の画面で HTML として読んでいる',
   'status-defense': '表示するときに textContent で文字として出す',
-  'support-ticket-cause': '管理画面が、保存した本文を HTML として解釈して描いている',
-  'markdown-diary-defense': '表示するたびに、Markdown から作った HTML を許可したタグ・属性だけ残す処理（サニタイズ）に通す',
+  'support-ticket-cause': '管理画面が、保存した本文を HTML として読んで表示している',
+  'markdown-diary-defense': '表示するたびに、Markdown から作った HTML を、許可したタグ・属性だけ残す処理（サニタイズ）に通す',
 };
 
 const CAROL_COMMENT = '来週は演習問題を解いてみます';
@@ -18,14 +18,14 @@ const ATTACK = '<img src="x" onerror="pqMarker()">';
 test('保存した攻撃コメントが別の利用者の画面で実行され、文字としての表示だけが合格する', async ({ page }) => {
   test.setTimeout(120_000);
   await openHome(page);
-  await expect(page.locator('[data-mission="stored-xss"]').getByRole('heading', { name: 'コメントからのスクリプト実行を防ぐ' })).toBeVisible();
+  await expect(page.locator('[data-mission="stored-xss"]').getByRole('heading', { name: 'コメントが勝手に動くのを防ぐ' })).toBeVisible();
   await expect(page.locator('[data-mission="stored-xss"]')).toContainText('目安 15 分');
   await startMission(page, 'stored-xss');
   const app = preview(page);
 
   // A08：検証済みペイロードを保存し、投稿者以外が共有ページを開くと実行マーカーが出る
   await page.getByRole('tab', { name: '調査' }).click();
-  await page.getByLabel('投稿するコメント').selectOption({ label: '検証済みの攻撃コメント（画像の onerror）' });
+  await page.getByLabel('投稿するコメント').selectOption({ label: '攻撃コメント（画像の onerror）' });
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await page.getByRole('radio', { name: /^bob/ }).check();
   await expect(app.getByText('bob さんとしてログイン中')).toBeVisible();
@@ -50,7 +50,7 @@ test('保存した攻撃コメントが別の利用者の画面で実行され�
   // コメントを出さないと、普通のコメントも読めない
   await verifyWith(page, 'コメントをすべて表示しない');
   await expectCalloutMatchesVerdict(page);
-  await expect(results(page)).toContainText('普段の使い方が壊れています', { timeout: 20_000 });
+  await expect(results(page)).toContainText('ふだんの使い方が壊れています', { timeout: 20_000 });
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await app.getByRole('button', { name: '共有ページ', exact: true }).click();
   await app.getByRole('button', { name: '共有ページ：今週の学習メモ' }).click();

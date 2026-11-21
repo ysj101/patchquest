@@ -35,9 +35,9 @@ export function masteryEvidence(mastery: CategoryMastery): HTMLElement {
   return h(
     'details',
     { class: 'mastery-evidence' },
-    h('summary', {}, '判定の根拠'),
+    h('summary', {}, '★の理由'),
     mastery.evidence.length === 0
-      ? h('p', { class: 'note' }, 'まだ達成印がありません。再現で ★1、防御で ★2、理解までそろえて ★3 になります。')
+      ? h('p', { class: 'note' }, 'まだスタンプがありません。再現で ★1、防御で ★2、理解までそろえて ★3 になります。')
       : h(
           'ol',
           { class: 'mastery-evidence-list' },

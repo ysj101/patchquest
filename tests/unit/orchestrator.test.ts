@@ -180,7 +180,7 @@ describe('Orchestrator', () => {
     expect(snapshot.attempt.state).toBe('Passed');
   });
 
-  it('検証中は対策の変更も初期状態へ戻す操作も受け付けない', async () => {
+  it('検証中は対策の変更も最初の状態に戻す操作も受け付けない', async () => {
     const { orchestrator } = setup();
     const snapshot = await orchestrator.start('test-pack');
     await orchestrator.applyDefense('owner-only');
@@ -215,7 +215,7 @@ describe('Orchestrator', () => {
     expect(snapshot.implementations).toEqual({ 'note.read': 'test-pack/any-owner' });
   });
 
-  it('初期状態へ戻すと対策を破棄して脆弱な初期状態に戻り、達成印は残る（A13）', async () => {
+  it('最初の状態に戻すと対策を破棄して脆弱な初期状態に戻り、達成印は残る（A13）', async () => {
     const { orchestrator, snapshot } = await startDefended();
     await orchestrator.resetToInitial();
     expect(snapshot.attempt).toMatchObject({ state: 'Prepared', appliedDefense: null });

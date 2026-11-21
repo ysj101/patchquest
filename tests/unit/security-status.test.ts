@@ -9,7 +9,7 @@ function report(outcomes: Partial<TestOutcome>[]): VerificationReport {
     outcomes: outcomes.map((outcome, index) => ({ testId: String(index), title: 'テスト', group: 'attack', passed: false, expected: '', actual: '', ...outcome })) };
 }
 
-describe('安全化状況', () => {
+describe('どれだけ守れたか', () => {
   it('判定不可を分母と分子から除き、グループ別に集計する', () => {
     expect(summarizeVerification(report([{ passed: true }, { group: 'normal', passed: true }, { group: 'regression' }, { passed: true, error: '時間切れ' }]))).toEqual({
       passed: 2, total: 3, percent: 67, undetermined: 1,
@@ -27,7 +27,7 @@ describe('安全化状況', () => {
     const stopped = summarizeVerification(report([{ group: 'normal' }, { passed: true }]));
     expect(securityLine('修正前', before)).toBe('修正前 1/2 件（50%）');
     expect(groupLine('attack', insufficient.groups)).toBe('攻撃を防げたか 0/1 件合格');
-    expect(groupLine('normal', stopped.groups)).toBe('正常な利用ができるか 0/1 件合格');
+    expect(groupLine('normal', stopped.groups)).toBe('ふだんの使い方ができるか 0/1 件合格');
     expect(insufficient.groups.attack.passed).toBe(before.groups.attack.passed);
     expect(stopped.groups.normal.passed).toBeLessThan(before.groups.normal.passed);
   });

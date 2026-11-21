@@ -43,10 +43,10 @@ test('キーボードだけで導入を飛ばし、動きをオフにして演�
   await tabTo(page, defense);
   await page.keyboard.press('Space');
   await expect(defense).toBeChecked();
-  await tabTo(page, 'この対策を適用する');
+  await tabTo(page, 'この対策を使う');
   await page.keyboard.press('Enter');
-  await expect(page.getByText('適用中の対策：所有者を照合する')).toBeVisible();
-  await tabTo(page, '攻撃と普段の使い方を検証する');
+  await expect(page.getByText('使っている対策：所有者を照合する')).toBeVisible();
+  await tabTo(page, '攻撃とふだんの使い方をテストする');
   await page.keyboard.press('Enter');
   await expectCalloutMatchesVerdict(page);
   await expect(ticketSeals(page)).toContainText('防御：達成');
@@ -56,7 +56,7 @@ test('キーボードだけで導入を飛ばし、動きをオフにして演�
   await expect(page.getByRole('tab', { name: '振り返り' })).toBeFocused();
   await tabTo(page, page.getByRole('radio', { name: '取得時に所有者を照合する', exact: true }));
   await page.keyboard.press('Space');
-  await tabTo(page, '回答する');
+  await tabTo(page, '答える');
   await page.keyboard.press('Enter');
   for (const seal of ['再現：達成', '防御：達成', '理解：達成']) await expect(ticketSeals(page)).toContainText(seal);
   await expect(page.getByRole('heading', { name: '完了 5 / 5 ステージ', exact: true })).toBeVisible();

@@ -81,9 +81,9 @@ export function samplePack(): MissionPack {
       ],
     },
     hints: [
-      { level: 1, text: '着眼点' },
-      { level: 2, text: '調査方法' },
-      { level: 3, text: '修正方針' },
+      { level: 1, text: '見るところ' },
+      { level: 2, text: '調べ方' },
+      { level: 3, text: '直し方' },
     ],
     solution: '取得時に所有者を照合する',
     transferCheck: [

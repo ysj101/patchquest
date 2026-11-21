@@ -23,12 +23,12 @@ test('画面の「前のメモ」から事故を再現し、リンクを隠す�
   await expect(app.getByRole('button', { name: '← 前のメモ' })).toHaveCount(0);
 
   // A05：すべての取得を断ると、所有者も自分のメモを読めない
-  await verifyWith(page, 'ID 指定でのメモの取得をすべて断る');
+  await verifyWith(page, 'ID を指定したメモの取り出しを、すべて断る');
   await expectCalloutMatchesVerdict(page);
-  await expect(results(page)).toContainText('普段の使い方が壊れています', { timeout: 15_000 });
+  await expect(results(page)).toContainText('ふだんの使い方が壊れています', { timeout: 15_000 });
 
   // A07：所有者を照合すると合格。画面のリンクが残っていても、他人のメモは断られる
-  await verifyWith(page, '取り出す処理で、ログイン中の利用者と所有者を照合する');
+  await verifyWith(page, '取り出すときに、ログイン中の利用者が持ち主かを確かめる');
   await expectCalloutMatchesVerdict(page);
   await expect(results(page)).toContainText('防御できました', { timeout: 15_000 });
   await expect(seals(page)).toContainText('防御：達成');

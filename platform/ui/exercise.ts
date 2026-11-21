@@ -34,9 +34,9 @@ export function actorLabel(actor: ActorKey): string {
 const NOW_DOING = {
   briefed: '依頼を読んで、ミッションを始めます。',
   investigated: '調査を開いて、手がかりを集めます。',
-  reproduced: '同じ操作で、不具合を再現します。',
-  repaired: '対策を選んで、適用します。',
-  verified: '攻撃と普段の使い方を検証します。',
+  reproduced: '同じ操作をして、問題を再現します。',
+  repaired: '対策を選んで、使います。',
+  verified: '攻撃とふだんの使い方をテストします。',
 } as const;
 
 /** 操作で直す課題（repair: record）では、対策を選ぶのではなく教材アプリを操作して直す */
@@ -109,7 +109,7 @@ export class ExerciseView {
         { class: 'ticket' },
         h('button', { type: 'button', class: 'button button-quiet ticket-back', on: { click: actions.back } }, '課題一覧へ戻る'),
         h('div', { class: 'ticket-main' }, this.title, this.state),
-        h('p', { class: 'fictional-label', role: 'note' }, h('strong', {}, '学習用に脆弱性を注入した架空のサービスです。')),
+        h('p', { class: 'fictional-label', role: 'note' }, h('strong', {}, '学習用に、わざと弱点を入れた架空のサービスです。')),
         this.sealSlot,
         settingsButton(() => actions.openSettings()),
       ),
@@ -122,7 +122,7 @@ export class ExerciseView {
         'footer',
         { class: 'desk-status' },
         this.ticket,
-        h('p', {}, '実在のサービスの診断結果ではありません。データはすべて架空で、このブラウザの中だけで動いています。'),
+        h('p', {}, '本物のサービスを調べた結果ではありません。データはすべて架空で、このブラウザの中だけで動いています。'),
       ),
     );
   }
@@ -158,7 +158,7 @@ export class ExerciseView {
       h('h3', {}, '依頼'),
       h('p', { class: 'briefing-goal' }, story.goal),
       this.launch,
-      h('p', { class: 'note' }, 'Esc キーでも導入を飛ばして始められます。'),
+      h('p', { class: 'note' }, 'Esc キーでも始められます。'),
     );
     this.setBriefingVisible(showBriefing);
     this.showResumed(snapshot);
@@ -202,7 +202,7 @@ export class ExerciseView {
     const resumed = pack.manifest.defenses.find((defense) => defense.id === attempt.appliedDefense);
     this.resumeNote.hidden = !resumed;
     if (!resumed) return;
-    const message = `データは演習開始時の状態に戻し、前回の対策「${resumed.label}」を適用し直しました`;
+    const message = `データを最初の状態に戻し、前回の対策「${resumed.label}」を使い直しました`;
     this.resumeNote.textContent = `${message}。`;
     this.announce(message);
   }

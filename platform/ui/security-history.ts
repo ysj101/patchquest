@@ -7,7 +7,7 @@ import { groupLine, historyVerdict, SECURITY_COPY } from './security-status';
 
 function historyItem(entry: VerificationEntry, previous: VerificationEntry['groups'] | null, snapshot: ExerciseSnapshot): HTMLElement {
   const label = entry.defenseId === null ? '対策なし' : snapshot.pack.manifest.defenses.find((defense) => defense.id === entry.defenseId)?.label
-    ?? `対策 ${entry.defenseId}（この版の課題にはありません）`;
+    ?? `対策 ${entry.defenseId}（今の課題にはありません）`;
   const date = new Date(entry.at);
   const time = Number.isNaN(date.getTime()) ? entry.at : date.toLocaleString('ja-JP');
   return h('li', { class: 'result-group' },
@@ -17,7 +17,7 @@ function historyItem(entry: VerificationEntry, previous: VerificationEntry['grou
     h('ul', {}, ...RESULT_GROUPS.map((group) => h('li', {}, groupLine(group, entry.groups)))),
     h('p', { class: 'note' }, previous
       ? RESULT_GROUPS.map((group) => `${GROUP_LABEL[group]} ${previous[group].passed}→${entry.groups[group].passed}`).join('／')
-      : '修正前の検証結果がないため、変化は判定できません'),
+      : '直す前のテスト結果がないので、変化は分かりません'),
   );
 }
 

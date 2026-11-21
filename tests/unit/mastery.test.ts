@@ -29,8 +29,8 @@ it('再現で★1、防御で★2、三つそろって★3になり、根拠に�
   const mastery = masteryFromAttempts([record], categories).authorization;
   expect(mastery.stars).toBe(3);
   expect(mastery.evidence.map((item) => [item.stars, item.reason, item.attemptId, item.at])).toEqual([
-    [1, '再現の達成印', '演習', '2026-10-12T03:00:00Z'],
-    [2, '防御の達成印', '演習', '2026-10-12T03:00:00Z'],
+    [1, '再現のスタンプ', '演習', '2026-10-12T03:00:00Z'],
+    [2, '防御のスタンプ', '演習', '2026-10-12T03:00:00Z'],
     [3, '再現・防御・理解がそろった', '演習', '2026-10-12T03:00:00Z'],
   ]);
 });

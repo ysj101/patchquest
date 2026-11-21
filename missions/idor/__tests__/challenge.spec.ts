@@ -13,7 +13,7 @@ test('完走した振り返りと課題の表に、別条件で挑戦するボ�
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(page.getByRole('button', { name: '別条件で挑戦する' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '別条件で挑戦' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '新しいデータで再挑戦する' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '新しいデータでもう一度挑戦する' })).toBeVisible();
 
   await backToList(page).click();
   await openHome(page);
