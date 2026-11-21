@@ -12,6 +12,8 @@ export const disableLines = (...lines: number[]): ReplayEntry => ({ as: 'admin',
 export const sudoMisconfigVerification: PackVerificationData = {
   packId: 'sudo-misconfig',
   implementations: {},
+  // 直す対象（ファイル・行）と、直し方（行をコメントにする）・直す人（管理者）。調べ方と操作のしかたには書かない
+  answerTerms: ['/etc/sudoers.d/operators', '3 行目', '# を付け', 'コメント', 'admin'],
   candidates: [
     // 正しい修正：保守の操作の許可だけを外す
     { id: 'disable-maintenance', apply: [], replay: [disableLines(3)], expected: 'secure' },
