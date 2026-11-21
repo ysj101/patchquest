@@ -91,7 +91,9 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   const approach = page.getByRole('region', { name: '調べ方' });
   await expect(approach).toContainText('sudo は、許可された利用者が、コマンドを管理者（root）の権限で動かすための仕組みです');
   await expect(approach.locator('.approach-steps li')).toHaveCount(4);
-  for (const command of ['whoami', 'cat runbook.txt', 'sudo -l']) await expect(approach).toContainText(command);
+  // 端末に打つコマンドは、地の文と区別したコードとして出る
+  await expect(approach.locator('code')).toHaveText(['whoami', 'cat runbook.txt', 'sudo -l', '(root) NOPASSWD: パス']);
+  await expect(approach.locator('code').first()).toHaveCSS('font-family', /monospace/);
   await expect(approach).not.toContainText('visudo');
 
   // 調べ方を読んでもヒントの利用には数えず、ヒントは調査タブからも開ける
