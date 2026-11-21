@@ -17,12 +17,21 @@ import {
   type SessionToken,
 } from '../../platform/contract';
 import type { AppModule, ServerContext } from './app-module';
+import { Machine, type AssetLoader } from './machine';
 import { checkImplementation, findApp, resolveHook, splitByRealm } from './registry';
 import { openMemoryDatabase, type Database } from './sqlite';
+
+/** 動いている機械と、反映した初期データ（アプリと hash） */
+interface Running {
+  machine: Machine;
+  key: string;
+}
 
 interface State {
   app: AppModule;
   db: Database;
+  /** 演習用の機械。使わないアプリでは持たない */
+  machine: Running | undefined;
   options: PrepareOptions;
   selection: ImplementationSelection;
   sessions: Map<SessionToken, ActorKey>;
@@ -38,6 +47,9 @@ async function snapshotHash(db: Database): Promise<string> {
 export class AppEngine {
   private state: State | undefined;
 
+  /** loadAsset は、演習用の機械の配布物を読む手段。機械を使うアプリを動かすときに要る */
+  constructor(private readonly loadAsset?: AssetLoader) {}
+
   /** fixture と seed から初期データを作る。server のフックの実装だけを保持する */
   async prepare(options: PrepareOptions, selection: ImplementationSelection = options.implementations): Promise<FixtureData> {
     const app = findApp(options.app.id, options.app.version);
@@ -50,9 +62,43 @@ export class AppEngine {
     // 生成器には server のフックの現在の実装を渡す。レシピが注入した実装なら、初期データに問題が仕込まれる
     const refs = generate(db, options.fixture.seed, (id) => resolveHook(app, server, id));
     const hash = await snapshotHash(db);
-    this.state?.db.close();
-    this.state = { app, db, options, selection: server, sessions: new Map() };
+    const previous = this.state;
+    // 機械の用意に失敗したら、止まった機械を指したままにせず、準備されていない状態にする
+    this.state = undefined;
+    const machine = app.machine ? await this.machineFor(app, app.machine, db, hash, previous?.machine) : undefined;
+    if (!app.machine) await previous?.machine?.machine.destroy();
+    previous?.db.close();
+    this.state = { app, db, machine, options, selection: server, sessions: new Map() };
     return { refs, hash };
+  }
+
+  /** 機械を止め、DB を閉じる。使い終わった実行環境が、エミュレータのメモリを持ち続けないようにする */
+  async dispose(): Promise<void> {
+    const previous = this.state;
+    this.state = undefined;
+    previous?.db.close();
+    await previous?.machine?.machine.destroy();
+  }
+
+  /**
+   * 初期データを反映した機械を返す。機械の起動直後は動きが遅い（エミュレータが、よく通る処理から順に速くしていく）ので、
+   * すでに動いている機械があれば使い回す。同じ初期データ（hash が同じ）なら初期状態へ戻すだけにし、
+   * 違う初期データなら置き直す。応答しなくなった機械は捨てて、新しく起動する
+   */
+  private async machineFor(app: AppModule, spec: NonNullable<AppModule['machine']>, db: Database, hash: string, running: Running | undefined): Promise<Running> {
+    if (!this.loadAsset) throw new RuntimeError('crashed', 'この実行環境は、演習用の機械を動かせません');
+    const key = `${app.descriptor.id}@${app.descriptor.version}:${hash}`;
+    if (running) {
+      try {
+        await (running.key === key ? spec.reset(running.machine) : spec.provision(running.machine, db));
+        return { machine: running.machine, key };
+      } catch {
+        await running.machine.destroy();
+      }
+    }
+    const machine = await Machine.boot(this.loadAsset);
+    await spec.provision(machine, db);
+    return { machine, key };
   }
 
   /** 実装の選択を保ったまま、同じ fixture と seed で初期データを作り直す。セッションは失効する */
@@ -67,7 +113,7 @@ export class AppEngine {
     s.selection[hook] = implementation;
   }
 
-  invoke(call: Exclude<InvokeCall, { kind: 'render' }>): InvokeResult {
+  async invoke(call: Exclude<InvokeCall, { kind: 'render' }>): Promise<InvokeResult> {
     const s = this.require();
     const started = performance.now();
     const events: ObservedEvent[] = [];
@@ -86,10 +132,11 @@ export class AppEngine {
       principal: (call.session && s.sessions.get(call.session)) ?? null,
       hook: (id) => resolveHook(s.app, s.selection, id),
       emit: (type, data) => events.push({ type, data }),
+      ...(s.machine && { machine: s.machine.machine }),
     };
     let response;
     try {
-      response = s.app.handle(ctx, call.request);
+      response = await s.app.handle(ctx, call.request);
     } catch (e) {
       // 教材アプリ内の例外は基盤エラーではなく応答として返す
       const message = errorMessage(e);

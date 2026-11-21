@@ -34,7 +34,7 @@ python3 -m http.server 8000 --bind 127.0.0.1   # Windows は py -m http.server 8
 
 ## 開発
 
-必要なもの：Node.js 22、pnpm 11（`corepack enable pnpm` で package.json の `packageManager` の版が使われます）、Python 3、PC版 Chrome。
+必要なもの：Node.js 22（22.15 以上。機械の状態の圧縮に使う）、pnpm 11（`corepack enable pnpm` で package.json の `packageManager` の版が使われます）、Python 3、PC版 Chrome。
 
 ```sh
 pnpm install            # 依存のインストールと Git フックの有効化（依存のビルドは pnpm-workspace.yaml の allowBuilds で制御）
@@ -48,6 +48,8 @@ pnpm run package        # 配布用の ZIP を release/ に作る
 pnpm run test:dist      # ZIP を展開して localhost で開き、Chrome で確かめる
 node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API を使っていないか（ビルドでも実行）
 ```
+
+演習用の機械（本物の Linux を動かす課題で使う）の配布物は、ビルドとユニットテストの前に `.machine/` へ自動で作ります（`node scripts/build-machine.mjs` でも作れます）。初回は、Alpine Linux の最小構成・sudo・カーネルと v86 の BIOS を、版とハッシュを固定して取得します（約 31MB。取得したものは `.machine/cache/` に残し、次からは取りに行きません）。取得するのはこのときだけで、配布物は実行時に外へ取りに行きません。
 
 ### 品質ゲート
 
@@ -96,7 +98,7 @@ push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）�
 | platform/ | 共通UI、実行制御、評価、保存 |
 | runtimes/browser/ | ブラウザ用 RuntimeAdapter |
 | apps/memo/ | 教材アプリ「メモ帳」と交換フック |
-| apps/shell/ | 教材アプリ「擬似シェル」と交換フック（ターミナルで設定を調べて直す課題の土台） |
+| apps/shell/ | 教材アプリ「擬似シェル」と「Linux 端末」（`linux/`。本物の Linux を WASM のエミュレータで動かす）、交換フック（ターミナルで設定を調べて直す課題の土台） |
 | missions/ | 課題パック。開発用の固有テストと検証データは各パックの `__tests__/` |
 | catalog/ | 同梱パックの登録 |
 | tests/ | 共通のユニットテスト（tests/unit）と E2E テスト（tests/e2e）、テスト用の部品（tests/support） |
@@ -108,6 +110,9 @@ push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）�
 | - | - | - |
 | SQLite（`@sqlite.org/sqlite-wasm` に同梱） | 教材アプリのデータベース（配布物に同梱） | パブリックドメイン |
 | `@sqlite.org/sqlite-wasm` | SQLite の WebAssembly 版ラッパー（配布物に同梱） | Apache License 2.0 |
+| v86 | 演習用の機械（x86 のエミュレータ。配布物に同梱） | BSD-2-Clause |
+| SeaBIOS・VGA BIOS（v86 のリポジトリから取得） | 演習用の機械の BIOS（配布物に同梱） | LGPL-3.0 / LGPL-2.1 |
+| Alpine Linux の最小構成（BusyBox・musl ほか）・Linux カーネル・sudo・zlib | 演習用の機械の中身（起動を済ませた状態として配布物に同梱） | GPL-2.0（カーネル・BusyBox）/ MIT（musl）/ ISC（sudo）/ Zlib ほか |
 | esbuild・Vitest・Playwright・TypeScript | 開発時のビルドとテスト（配布物には含まない） | MIT / Apache License 2.0 |
 | ESLint・typescript-eslint・eslint-plugin-import-x・eslint-import-resolver-typescript・globals・jscpd・knip | 開発時の静的検査（配布物には含まない） | MIT / ISC |
 | eslint-plugin-sonarjs | 開発時の静的検査（配布物には含まない） | LGPL-3.0 |

@@ -21,13 +21,18 @@ async function verify(page: Page): Promise<void> {
 }
 
 test('ターミナルで過剰な許可を見つけて再現し、絞りすぎでは不合格、保守の操作の許可だけを外すと合格する', async ({ page }) => {
-  test.setTimeout(120_000);
+  // 本物の Linux を起動し、検証のたびに機械の中でコマンドを実行するので、擬似シェルより時間がかかる
+  test.setTimeout(240_000);
   await openHome(page);
   const card = page.locator('[data-mission="sudo-misconfig"]');
   await expect(card.getByRole('heading', { name: '広すぎる sudo の許可を絞る' })).toBeVisible();
   await expect(card).toContainText('過剰な sudo 権限');
   await startMission(page, 'sudo-misconfig');
   await expect(terminalInput(page)).toBeVisible();
+
+  // 端末の中身は本物の Linux で、パイプも使える
+  await typeCommand(page, 'uname -s | tr a-z A-Z');
+  await expect(terminalOutput(page)).toContainText('LINUX');
 
   // 調べる：運用メモでは管理者だけの操作が、運用担当の許可の一覧に入っている
   await typeCommand(page, 'cat runbook.txt');
@@ -48,7 +53,7 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await disableLines(page, 3);
   await verify(page);
   await expect(repairPanel(page).locator('.repair-log li')).toHaveCount(2);
-  await expect(results(page)).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 20_000 });
+  await expect(results(page)).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 90_000 });
   await expect(seals(page)).toContainText('防御：未達成');
 
   // やり直す：加えた変更が消え、機械も過剰な許可のある状態へ戻る
@@ -59,7 +64,7 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await disableLines(page, 3);
   await verify(page);
   await expect(repairPanel(page).locator('.repair-log li')).toHaveText([new RegExp(`^admin → \\$ sudo visudo -f /etc/sudoers.d/operators（3 行目を「# [a-z]+ ALL=\\(root\\) NOPASSWD: ${maintenance}」に書き換えて保存）$`)]);
-  await expect(results(page)).toContainText('防御できました', { timeout: 20_000 });
+  await expect(results(page)).toContainText('防御できました', { timeout: 90_000 });
   await expect(seals(page)).toContainText('防御：達成');
 
   // 演習中の機械でも、運用担当の保守の操作は拒否され、許可の一覧からも消えている
@@ -74,12 +79,14 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
 });
 
 test('調査タブの先頭に、sudo の仕組みと最初に打つコマンドを示す調べ方が出て、直し方はヒントとして対策タブからも開ける', async ({ page }) => {
+  // 開始前チェックで本物の Linux を起動するので、既定の上限（30 秒）では足りないことがある
+  test.setTimeout(120_000);
   await startMission(page, 'sudo-misconfig');
   await page.getByRole('tab', { name: '調査' }).click();
   const approach = page.getByRole('region', { name: '調べ方' });
   await expect(approach).toContainText('sudo は、許可された利用者が、コマンドを管理者（root）の権限で実行するための仕組みです');
   await expect(approach.locator('.approach-steps li')).toHaveCount(4);
-  for (const command of ['help', 'cat runbook.txt', 'sudo -l']) await expect(approach).toContainText(command);
+  for (const command of ['whoami', 'cat runbook.txt', 'sudo -l']) await expect(approach).toContainText(command);
   await expect(approach).not.toContainText('visudo');
 
   // 調べ方を読んでもヒントの利用には数えず、ヒントは調査タブからも開ける

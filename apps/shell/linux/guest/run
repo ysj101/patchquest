@@ -1,0 +1,8 @@
+#!/bin/sh
+# 利用者として、要求された場所でコマンド行を実行する。終了コードと終わったときの場所を、3 番の出力へ書き残す
+trap 'printf "%s\n%s\n" "$?" "$PWD" >&3' EXIT
+# visudo が開くエディタ。画面を持つエディタ（vi）は、この端末では入力を受け取れない
+export EDITOR=/usr/lib/pq/editor VISUAL=/usr/lib/pq/editor SUDO_EDITOR=/usr/lib/pq/editor
+IFS= read -r cwd < /run/pq/cwd
+cd "$cwd" || exit 1
+. /run/pq/line

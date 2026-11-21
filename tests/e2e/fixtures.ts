@@ -185,7 +185,8 @@ export async function expectWorkbench(page: Page): Promise<void> {
 
 /** 開始前チェックに合格すると、ボタンを押さずに演習画面へ進む */
 async function beginExercise(page: Page): Promise<void> {
-  await expect(page.locator('.exercise')).toBeVisible({ timeout: 15_000 });
+  // 本物の Linux を起動する課題では、機械の起動と検証に十数秒かかる
+  await expect(page.locator('.exercise')).toBeVisible({ timeout: 60_000 });
 }
 
 async function finishBriefing(page: Page): Promise<void> {

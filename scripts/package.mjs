@@ -10,7 +10,7 @@ import { createZip } from './zip.mjs';
 export async function packageRelease() {
   execFileSync(process.execPath, ['scripts/build.mjs'], { stdio: 'inherit' });
   // ソースマップは開発用のため同梱しない
-  const files = (await listFiles('dist', ['.html', '.js', '.css', '.wasm', '.txt', '.svg'])).sort();
+  const files = (await listFiles('dist', ['.html', '.js', '.css', '.wasm', '.txt', '.svg', '.bin', '.zst'])).sort();
   // ZIP の名前の区切りは常に /（Windows でも）
   const entries = [
     { name: `${releaseName}/README.md`, data: await readFile('docs/local-readme.md') },

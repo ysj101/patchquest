@@ -2,7 +2,7 @@
 import { expect, openTestPage, test } from './fixtures';
 
 test('カタログのすべてのパックが出荷前検証に合格する', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(600_000);
   await openTestPage(page, 'pack-verification');
   const results = await page.evaluate(() => window.verifyAllPacks());
   for (const result of results) {

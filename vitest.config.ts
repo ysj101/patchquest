@@ -9,6 +9,8 @@ export default defineConfig({
     // 共通のテストと、課題パックの固有テスト（missions/<課題>/__tests__）
     include: ['tests/unit/**/*.test.ts', 'missions/*/__tests__/**/*.test.ts'],
     environment: 'node',
+    // 演習用の機械（本物の Linux）の配布物を、テストの前に用意する
+    globalSetup: ['tests/support/machine-setup.ts'],
     coverage: {
       reporter: ['text-summary', 'text'],
       include: ['platform/**/*.ts', 'runtimes/**/*.ts', 'apps/**/*.ts', 'missions/**/*.ts', 'catalog/**/*.ts'],

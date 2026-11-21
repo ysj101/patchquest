@@ -44,6 +44,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # 演習用の機械（本物の Linux）の元になるもの。版とハッシュを固定して取得するので、変わらない限り取りに行かない
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .machine/cache
+          key: machine-sources-${{ hashFiles('scripts/build-machine.mjs') }}
       # 重複コードを Code Scanning に送り、PR で増えた分を差分として表示する（止めるのは check の check:duplication）
       - run: pnpm exec jscpd --reporters sarif --silent
       - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
@@ -56,7 +61,8 @@ jobs:
   browsers:
     name: E2E・出荷前検証・配布物（Chrome）
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 本物の Linux を動かす課題の出荷前検証は、機械の中でコマンドを実行する分だけ時間がかかる
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -67,6 +73,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # 演習用の機械（本物の Linux）の元になるもの。版とハッシュを固定して取得するので、変わらない限り取りに行かない
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .machine/cache
+          key: machine-sources-${{ hashFiles('scripts/build-machine.mjs') }}
       # Chrome はランナーに入っているものを使う
       - run: pnpm run test:e2e
       - run: pnpm run test:dist

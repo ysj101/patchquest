@@ -8,6 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import { assertNoExternalRefs } from './check-external-refs.mjs';
 import { assertBoundaries } from './check-boundaries.mjs';
 import { assertDomSafety } from './check-dom-safety.mjs';
+import { MACHINE_DIR, MACHINE_FILES, ensureMachine } from './build-machine.mjs';
 
 const outdir = 'dist';
 const testMode = process.argv.includes('--test');
@@ -22,6 +23,8 @@ const common = {
   sourcemap: 'linked',
   legalComments: 'linked',
   logLevel: 'warning',
+  // エミュレータ（v86）は Node でも動くよう Node の組み込みモジュールを参照するが、ブラウザでは通らない分岐にある
+  external: ['crypto', 'fs', 'perf_hooks', 'node:crypto', 'node:fs/promises'],
 };
 
 const sha256 = (text) => `'sha256-${createHash('sha256').update(text).digest('base64')}'`;
@@ -56,6 +59,8 @@ async function buildSandboxDocument(template, out) {
 
 await assertDomSafety();
 await assertBoundaries();
+// 演習用の機械（本物の Linux）の配布物。元になるものが変わっていなければ作り直さない
+await ensureMachine();
 
 await rm(outdir, { recursive: true, force: true });
 await mkdir(`${outdir}/assets`, { recursive: true });
@@ -72,6 +77,8 @@ const tasks = [
   cp('platform/index.html', `${outdir}/index.html`),
   // SQLite WASMは、それを読み込むWorkerと同じディレクトリから取得される
   cp(sqliteWasm, `${outdir}/assets/sqlite3.wasm`),
+  // 演習用の機械の配布物も、Worker と同じディレクトリから取得される
+  ...MACHINE_FILES.map((file) => cp(join(MACHINE_DIR, file), `${outdir}/assets/${file}`)),
 ];
 
 if (testMode) {

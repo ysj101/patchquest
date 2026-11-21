@@ -1,0 +1,84 @@
+// 教材アプリ「Linux 端末」の教材ロジック。擬似シェルと同じ形の要求（POST /sh { line, cwd?, edits? }）を受け、
+// コマンド行を演習用の機械（本物の Linux）の中で、ログインした利用者として実行する。sudo も visudo も本物が動く。
+// 主体はセッションから解決する。機械の状態を変えたかどうかは、実行の前後でファイルを比べて決める
+import type { AppRequest, AppResponse } from '../../../platform/contract';
+import type { ServerContext } from '../../../runtimes/browser/app-module';
+import { json } from '../../shared/http';
+import { terminalRequest, type Input } from '../server';
+import { MAX_LINE_LENGTH, type EditorFile } from '../shell';
+import { emitChanges, emitExecutions, emitSudoDecisions } from './events';
+
+/** 機械がコマンド行を止めるまでの時間（guest/agent の LIMIT）より長く待つ */
+const RUN_TIMEOUT_MS = 4500;
+/** visudo が、構文エラーのあとに入力を待って出す問い。この端末では答えられないので、保存せずに終わる */
+const VISUDO_PROMPT = /What now\? /g;
+/** エディタを開いて、何も変えずに閉じたときの visudo の知らせ。編集画面を開く操作では出さない */
+const VISUDO_UNCHANGED = /^visudo: .*\.tmp unchanged\n?/m;
+
+/** エディタ（guest/editor）が残す結果 */
+type EditorResult = '' | 'opened' | 'applied' | 'same' | 'range';
+
+interface Ran {
+  exit: number;
+  stdout: string;
+  stderr: string;
+  cwd: string;
+  editorDump: string;
+  editorResult: EditorResult;
+  changed: string[];
+}
+
+const withoutLastNewline = (text: string): string => (text.endsWith('\n') ? text.slice(0, -1) : text);
+
+/** エディタが渡した内容（1 行目がファイルのパス、残りが中身） */
+function openedFile(dump: string): EditorFile {
+  const [path = '', ...lines] = withoutLastNewline(dump).split('\n');
+  return { path, lines };
+}
+
+/**
+ * 書き換える行を付けた要求の終了コード。visudo は、保存しなかったときも 0 で終わることがあるので、エディタの結果と実際の変化から決める。
+ * 範囲外の行は 2。書き換えたのに保存されなかった（構文エラー）、エディタが開かれなかった（断られた）ときは失敗にする
+ */
+function saveExit(ran: Ran): { exit: number; note?: string } {
+  if (ran.editorResult === 'range') return { exit: 2 };
+  if (ran.editorResult === 'same' || ran.changed.length > 0) return { exit: ran.exit };
+  if (ran.editorResult === 'applied') return { exit: ran.exit || 1, note: 'visudo: 構文を読めないので、保存していません' };
+  return { exit: ran.exit || 1, note: 'エディタが開かれなかったので、書き換えた行は保存していません' };
+}
+
+function respond(ran: Ran, input: Input): AppResponse {
+  const opened = ran.editorResult === 'opened';
+  const save = input.edits ? saveExit(ran) : { exit: ran.exit };
+  const stderr = [withoutLastNewline(opened ? ran.stderr.replace(VISUDO_UNCHANGED, '') : ran.stderr), ...(save.note ? [save.note] : [])].filter((part) => part !== '').join('\n');
+  const result = { stdout: withoutLastNewline(ran.stdout.replace(VISUDO_PROMPT, '')), stderr, exit: save.exit, cwd: ran.cwd, changed: ran.changed.length > 0 };
+  return json(200, opened ? { ...result, editor: openedFile(ran.editorDump) } : result);
+}
+
+/** コマンド行を機械の中で実行し、記録を観測イベントにする */
+async function run(ctx: ServerContext, user: string, input: Input): Promise<Ran> {
+  if (!ctx.machine) throw new Error('演習用の機械がありません');
+  const edits = (input.edits ?? []).map((edit) => `${edit.line}\t${edit.text}\n`).join('');
+  // 本文は、1 行目が利用者、2 行目が場所、3 行目がコマンド行、4 行目以降が書き換える行（guest/agent の run）
+  const payload = `${[user, input.cwd, input.line].join('\n')}\n${edits}`;
+  const [status = '', stdout = '', stderr = '', cwd = '', editorDump = '', editorResult = '', executions = '', sudoLog = '', changedPaths = ''] = await ctx.machine.call('run', payload, RUN_TIMEOUT_MS);
+  const exit = Number(status);
+  if (status === '' || !Number.isInteger(exit)) throw new Error(`機械から終了コードを受け取れません：${status}`);
+  const changed = changedPaths.split('\n').filter((path) => path !== '');
+  const emit: ServerContext['emit'] = (type, data) => {
+    ctx.emit(type, data);
+  };
+  emitSudoDecisions(emit, sudoLog);
+  emitExecutions(emit, executions);
+  emitChanges(emit, changed, user);
+  return { exit, stdout, stderr, cwd: cwd || input.cwd, editorDump, editorResult: editorResult as EditorResult, changed };
+}
+
+export async function handle(ctx: ServerContext, req: AppRequest): Promise<AppResponse> {
+  // 場所が実在するかどうかは機械が確かめる（なければ cd が失敗する）。ここでは形だけを確かめる
+  const opened = terminalRequest(ctx, req, (cwd) => cwd.startsWith('/') && !/[\r\n]/.test(cwd));
+  if ('response' in opened) return opened.response;
+  const { account, input } = opened;
+  if (input.line.length > MAX_LINE_LENGTH) return json(200, { stdout: '', stderr: `sh: 入力が長すぎます（${MAX_LINE_LENGTH} 文字まで）`, exit: 2, cwd: input.cwd, changed: false });
+  return respond(await run(ctx, account.name, input), input);
+}
