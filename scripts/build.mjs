@@ -9,6 +9,7 @@ import { assertNoExternalRefs } from './check-external-refs.mjs';
 import { assertBoundaries } from './check-boundaries.mjs';
 import { assertDomSafety } from './check-dom-safety.mjs';
 import { MACHINE_DIR, MACHINE_FILES, ensureMachine } from './build-machine.mjs';
+import { machineLegalText } from './machine-licenses.mjs';
 
 const outdir = 'dist';
 const testMode = process.argv.includes('--test');
@@ -79,6 +80,8 @@ const tasks = [
   cp(sqliteWasm, `${outdir}/assets/sqlite3.wasm`),
   // 演習用の機械の配布物も、Worker と同じディレクトリから取得される
   ...MACHINE_FILES.map((file) => cp(join(MACHINE_DIR, file), `${outdir}/assets/${file}`)),
+  // 機械に入っているソフトウェアの一覧・ソースコードの入手先・ライセンスの全文
+  machineLegalText().then((text) => writeFile(`${outdir}/assets/linux-machine.LEGAL.txt`, text)),
 ];
 
 if (testMode) {
