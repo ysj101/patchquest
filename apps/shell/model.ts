@@ -76,9 +76,6 @@ export function findProgram(db: Database, path: string): Program | null {
 /** 読めるのは、誰でも読めるもの・自分のもの。root はすべて読める */
 export const canRead = (node: FileNode, as: Account): boolean => as.name === ROOT || node.readable === 'all' || node.owner === as.name;
 
-/** 書けるのは所有者と root だけ */
-export const canWrite = (node: FileNode, as: Account): boolean => as.name === ROOT || node.owner === as.name;
-
 export function writeFile(db: Database, path: string, content: string): void {
   db.exec({ sql: "UPDATE files SET content = ? WHERE path = ? AND kind = 'file'", bind: [content, path] });
 }

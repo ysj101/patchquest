@@ -1,6 +1,6 @@
 // 調査パネル（spec §10）。定型の操作とリクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, errorMessage, type ActionDef, type AppRequest, type Exchange, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
+import { HTTP_METHODS, errorMessage, type ActionDef, type AppRequest, type AppResponse, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
 import { expandRequest, type Scope } from '../evaluator/scenario';
 import { status } from './components';
 import { fill, h } from './dom';
@@ -19,21 +19,33 @@ const block = (title: string, text: string) => h('div', { class: 'log-block' }, 
 /** 観測イベントの説明。アプリが説明できない種類は、基盤が記録する事象か、種類と値をそのまま示す */
 export type EventDescriber = (event: ObservedEvent) => string | null;
 
-/** 教材アプリによる、観測イベントとリクエストの説明。説明しないものは null を返す */
+/** 教材アプリによる、観測イベント・リクエスト・やり取りの説明。説明しないものは null を返す */
 export interface AppDescribers {
   event: EventDescriber;
   request: (request: AppRequest) => string | null;
+  exchange: (request: AppRequest, response: AppResponse) => ExchangeDescription | null;
+  /** 「リクエストを編集して送る」を出すか */
+  requestEditor: boolean;
 }
 
-/** 教材アプリのうち、観測イベントとリクエストを説明する部分（どちらも任意） */
+/** 教材アプリのうち、観測ログと調査タブの見せ方を決める部分（どれも任意） */
 export interface DescribingApp {
   describeEvent?: EventDescriber;
   describeRequest?: AppDescribers['request'];
+  describeExchange?: AppDescribers['exchange'];
+  requestEditor?: false;
 }
+
+const DESCRIBES_NOTHING: AppDescribers = { event: () => null, request: () => null, exchange: () => null, requestEditor: true };
 
 /** 教材アプリが持つ説明を、説明しないものは null を返す形にそろえる */
 export function describersOf(app: DescribingApp): AppDescribers {
-  return { event: (event) => app.describeEvent?.(event) ?? null, request: (request) => app.describeRequest?.(request) ?? null };
+  return {
+    event: (event) => app.describeEvent?.(event) ?? null,
+    request: (request) => app.describeRequest?.(request) ?? null,
+    exchange: (request, response) => app.describeExchange?.(request, response) ?? null,
+    requestEditor: app.requestEditor ?? true,
+  };
 }
 
 /** リクエストの短い表示。アプリが説明しないものは、メソッドとパスを示す */
@@ -49,8 +61,8 @@ function describeEvent(event: ObservedEvent, describeApp: EventDescriber): strin
   return `${event.type} ${JSON.stringify(event.data)}`;
 }
 
-/** ログの 1 行目：状態と、誰が何をしたか */
-function headline(exchange: Exchange, actorLabel: string, describe: AppDescribers['request']): { mark: HTMLElement; summary: string } {
+/** ログの 1 行目：状態と、誰が何をしたか。described はアプリによるやり取りの説明で、なければ状態コードを示す */
+function headline(exchange: Exchange, actorLabel: string, describe: AppDescribers['request'], described: ExchangeDescription | null): { mark: HTMLElement; summary: string } {
   if (exchange.kind === 'render') {
     return {
       mark: status(exchange.events.some((e) => e.type === 'dom.marker') ? 'error' : 'idle', '画面'),
@@ -58,7 +70,17 @@ function headline(exchange: Exchange, actorLabel: string, describe: AppDescriber
     };
   }
   const code = exchange.response?.status ?? 0;
-  return { mark: status(code < 400 ? 'passed' : 'failed', String(code)), summary: `${actorLabel} → ${exchange.request ? requestLabel(exchange.request, describe) : ''}` };
+  const mark = described?.mark ?? { ok: code < 400, text: String(code) };
+  return { mark: status(mark.ok ? 'passed' : 'failed', mark.text), summary: `${actorLabel} → ${exchange.request ? requestLabel(exchange.request, describe) : ''}` };
+}
+
+/** 記録を開いたときの、やり取りの中身。アプリが説明しないものは、リクエストと応答をそのまま示す */
+function exchangeBlocks(exchange: Exchange, described: ExchangeDescription | null): HTMLElement[] {
+  if (described) return described.blocks.map(({ title, text }) => block(title, text));
+  return [
+    ...(exchange.request ? [block('リクエスト', `${exchange.request.method} ${exchange.request.path}\n${pretty(exchange.request.body)}`)] : []),
+    ...(exchange.response ? [block(`応答（status ${exchange.response.status}）`, pretty(exchange.response.body))] : []),
+  ];
 }
 
 function fieldControl(field: FieldDef, id: string): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
@@ -93,7 +115,7 @@ export class InvestigationPanel {
   private readonly actionList = h('div', { class: 'action-list' });
   private count = 0;
   private refs: Scope = {};
-  private describers: AppDescribers = { event: () => null, request: () => null };
+  private describers: AppDescribers = DESCRIBES_NOTHING;
 
   constructor(private readonly actions: InvestigationActions) {
     this.element = h(
@@ -111,12 +133,13 @@ export class InvestigationPanel {
     );
   }
 
-  /** 演習を始めたときに、操作の定義・fixture の値・アプリによる観測イベントとリクエストの説明を受け取る */
+  /** 演習を始めたときに、操作の定義・fixture の値・アプリによる観測ログと調査タブの見せ方を受け取る */
   setup(actions: ActionDef[], refs: Scope, describers: AppDescribers): void {
     this.refs = refs;
     this.describers = describers;
     fill(this.actionList, ...actions.map((a) => this.actionForm(a)));
-    if (actions.length === 0) fill(this.actionList, h('p', { class: 'muted' }, 'この課題に定型の操作はありません。下の編集欄からリクエストを送れます。'));
+    this.editor.hidden = !describers.requestEditor;
+    if (actions.length === 0) fill(this.actionList, h('p', { class: 'muted' }, `この課題に定型の操作はありません。${describers.requestEditor ? '下の編集欄からリクエストを送れます。' : '教材アプリの画面を操作して調べます。'}`));
     this.log.replaceChildren();
     this.count = 0;
   }
@@ -129,7 +152,8 @@ export class InvestigationPanel {
   record(exchange: Exchange, actorLabel: string): void {
     this.count++;
     const describers = this.describers;
-    const { mark, summary } = headline(exchange, actorLabel, describers.request);
+    const described = exchange.request && exchange.response ? describers.exchange(exchange.request, exchange.response) : null;
+    const { mark, summary } = headline(exchange, actorLabel, describers.request, described);
     const details = h('details', { class: 'log-entry' }, h('summary', {}, h('span', { class: 'log-no' }, `#${this.count}`), mark, h('span', { class: 'log-summary mono' }, summary)));
     // 中身は開いたときに 1 回だけ組み立てる（ほとんどの記録は開かれない）
     details.addEventListener(
@@ -138,11 +162,7 @@ export class InvestigationPanel {
         const events = exchange.events.length
           ? exchange.events.map((e) => describeEvent(e, describers.event)).join('\n\n')
           : '計測イベントなし（この処理の内部の判断は記録されていません）';
-        details.append(
-          ...(exchange.request ? [block('リクエスト', `${exchange.request.method} ${exchange.request.path}\n${pretty(exchange.request.body)}`)] : []),
-          ...(exchange.response ? [block(`応答（status ${exchange.response.status}）`, pretty(exchange.response.body))] : []),
-          block('計測した事象', events),
-        );
+        details.append(...exchangeBlocks(exchange, described), block('計測した事象', events));
       },
       { once: true },
     );

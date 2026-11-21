@@ -42,8 +42,17 @@ const NOW_DOING = {
 /** 操作で直す課題（repair: record）では、対策を選ぶのではなく教材アプリを操作して直す */
 const NOW_REPAIR_BY_OPERATION = '教材アプリを操作して、問題を直します。';
 
+/** 定型の操作がない課題では、調査タブではなく教材アプリの画面で調べる */
+const NOW_INVESTIGATE_IN_APP = '教材アプリを操作して、手がかりを集めます。';
+
 const NOW_DONE = '振り返りで、原因と対策を確認します。';
 
+
+function nowDoing(stage: keyof typeof NOW_DOING, manifest: ExerciseSnapshot['pack']['manifest']): string {
+  if (stage === 'repaired' && manifest.repair) return NOW_REPAIR_BY_OPERATION;
+  if (stage === 'investigated' && manifest.actions.length === 0) return NOW_INVESTIGATE_IN_APP;
+  return NOW_DOING[stage];
+}
 
 export class ExerciseView {
   readonly element = h('section', { class: 'exercise', 'aria-labelledby': 'exercise-title', hidden: true });
@@ -189,7 +198,7 @@ export class ExerciseView {
     // 最終検証のステージは、防御が済んだあとの残りが振り返り
     const reflecting = current?.id === 'verified' && attempt.badges.defense.achieved && defenseCurrent;
     let sentence: string = NOW_DONE;
-    if (current && !reflecting) sentence = current.id === 'repaired' && pack.manifest.repair ? NOW_REPAIR_BY_OPERATION : NOW_DOING[current.id];
+    if (current && !reflecting) sentence = nowDoing(current.id, pack.manifest);
     this.nowDoing.textContent = `今やること：${sentence}`;
   }
 

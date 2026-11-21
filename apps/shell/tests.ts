@@ -1,7 +1,7 @@
 // 擬似シェル共通のテスト。安全な基準状態 S ではすべて通る（spec A01）。
 // 利用者名・プログラム名はハードコードせず fixture の値（{{キー}}）で参照し、複数の seed で同じテストが通るようにする
 import type { TestCase } from '../../platform/contract';
-import { FAILED, SUCCEEDED, ranAsRoot, sh } from './scenario';
+import { FAILED, SAVED, SUCCEEDED, ranAsRoot, saveWithVisudo, sh } from './scenario';
 
 const OPERATION = '{{programs.operation.path}}';
 const OPERATION2 = '{{programs.operation2.path}}';
@@ -43,9 +43,10 @@ export const SHELL_TESTS: TestCase[] = [
   {
     id: 'shell.admin-edits-sudoers',
     category: 'normal',
-    title: '管理者は sudo の設定を書き換えられる',
+    title: '管理者は visudo で sudo の設定を開き、書き換えて保存できる',
     steps: [
-      sh('admin', `sudo edit ${OPERATORS_SUDOERS} 1 '# 点検済み'`, { status: 200, body: [{ path: 'exit', is: { equals: 0 } }, { path: 'changed', is: { equals: true } }] }),
+      sh('admin', `sudo visudo -f ${OPERATORS_SUDOERS}`, { status: 200, body: [{ path: 'exit', is: { equals: 0 } }, { path: 'changed', is: { equals: false } }, { path: 'editor.path', is: { equals: OPERATORS_SUDOERS } }] }),
+      saveWithVisudo('admin', OPERATORS_SUDOERS, [{ line: 1, text: '# 点検済み' }], SAVED, [{ type: 'file.changed', where: [{ path: 'path', is: { equals: OPERATORS_SUDOERS } }] }]),
       sh('admin', `sudo cat ${OPERATORS_SUDOERS}`, { status: 200, body: [{ path: 'stdout', is: { contains: '# 点検済み' } }] }),
     ],
   },
@@ -73,10 +74,11 @@ export const SHELL_TESTS: TestCase[] = [
   {
     id: 'shell.sudoers-edit-denied',
     category: 'security',
-    title: '運用担当は sudo の設定を書き換えられない',
+    title: '運用担当は sudo の設定を開くことも、書き換えることもできない',
     steps: [
-      sh('operator', `edit ${OPERATORS_SUDOERS} 1 '# 書き換え'`, FAILED),
-      sh('operator', `sudo edit ${OPERATORS_SUDOERS} 1 '# 書き換え'`, FAILED, [{ type: 'file.changed', presence: 'absent' }]),
+      sh('operator', `visudo -f ${OPERATORS_SUDOERS}`, FAILED),
+      sh('operator', `sudo visudo -f ${OPERATORS_SUDOERS}`, FAILED),
+      saveWithVisudo('operator', OPERATORS_SUDOERS, [{ line: 1, text: '# 書き換え' }], FAILED, [{ type: 'file.changed', presence: 'absent' }]),
     ],
   },
   {
@@ -84,7 +86,7 @@ export const SHELL_TESTS: TestCase[] = [
     category: 'security',
     title: '読めない内容の sudo の設定は保存されない',
     steps: [
-      sh('admin', `sudo edit ${OPERATORS_SUDOERS} 2 'これは設定ではない'`, FAILED),
+      saveWithVisudo('admin', OPERATORS_SUDOERS, [{ line: 2, text: 'これは設定ではない' }], FAILED),
       sh('admin', `sudo cat ${OPERATORS_SUDOERS}`, { status: 200, body: [{ path: 'exit', is: { equals: 0 } }, { path: 'stdout', is: { notContains: 'これは設定ではない' } }] }),
     ],
   },

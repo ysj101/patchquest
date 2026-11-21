@@ -1,11 +1,11 @@
 // コマンドの登録簿と実行。実行できるのは、ここに登録したコマンドと、初期データが置いた架空のプログラムだけ（任意のコードは実行しない）
 import { INSPECT_COMMANDS } from './commands';
-import { edit } from './edit';
 import { PATH_DIRS, ROOT, baseName, findProgram, normalizePath, type Program } from './model';
 import { fail, ok, type Command, type Env, type Output } from './shell';
+import { visudo } from './visudo';
 
 /** 固定のコマンド集合。ここにない名前は、プログラムとしても見つからなければ command not found にする */
-export const COMMANDS: Record<string, Command> = { ...INSPECT_COMMANDS, edit };
+export const COMMANDS: Record<string, Command> = { ...INSPECT_COMMANDS, visudo };
 
 export type Target = { name: string; path: string | null; command: Command } | { name: string; path: string; program: Program };
 

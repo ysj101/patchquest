@@ -1,8 +1,8 @@
 // ミッション「広すぎる sudo の許可を絞る」（Issue #153）。カタログに登録しただけで一覧に出て、ターミナルで過剰な許可を見つけて
-// 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。直す操作は端末に打たなくても、
-// 調査タブの定型の操作だけで行える（A22）
+// 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。調べるのも直すのも、
+// ターミナルにコマンドを打って行う（visudo の編集画面で行をコメントにする）
 import type { Page } from '@playwright/test';
-import { answerTransferCheck, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
+import { answerTransferCheck, commentOutWithVisudo, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'backup-cause': 'バックアップに必要な範囲を超えて、すべてのコマンドが許可されている',
@@ -11,15 +11,9 @@ const CORRECT_CHOICES: Record<string, string> = {
 };
 
 const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
-const action = (page: Page, label: string) => page.locator('form.action').filter({ has: page.getByRole('heading', { name: label, exact: true }) });
 
-/** 調査タブの定型の操作で、設定の 1 行を無効にする（端末には打たない） */
-async function disableLine(page: Page, line: number): Promise<void> {
-  await page.getByRole('tab', { name: '調査' }).click();
-  const form = action(page, '設定の 1 行を無効にする');
-  await form.getByLabel('行番号').fill(String(line));
-  await form.getByRole('button', { name: '送る', exact: true }).click();
-}
+/** 管理者の端末で、運用担当向けの設定の行を visudo でコメントにして保存する */
+const disableLines = (page: Page, ...lines: number[]) => commentOutWithVisudo(page, '/etc/sudoers.d/operators', lines);
 
 async function verify(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
@@ -50,8 +44,8 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
 
   // A05：日常の運用操作の許可（2 行目）まで外すと、普段の使い方が壊れて合格しない
   await loginToTerminal(page, 'admin');
-  await disableLine(page, 2);
-  await disableLine(page, 3);
+  await disableLines(page, 2);
+  await disableLines(page, 3);
   await verify(page);
   await expect(repairPanel(page).locator('.repair-log li')).toHaveCount(2);
   await expect(results(page)).toContainText('まだ合格ではありません 普段の使い方が壊れています。', { timeout: 20_000 });
@@ -62,9 +56,9 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
 
   // A04：保守の操作の許可（3 行目）だけを外すと、記録した操作が再生されて合格する
-  await disableLine(page, 3);
+  await disableLines(page, 3);
   await verify(page);
-  await expect(repairPanel(page).locator('.repair-log li')).toHaveText(["admin → $ sudo edit /etc/sudoers.d/operators 3 '# 許可を外した'"]);
+  await expect(repairPanel(page).locator('.repair-log li')).toHaveText([new RegExp(`^admin → \\$ sudo visudo -f /etc/sudoers.d/operators（3 行目を「# [a-z]+ ALL=\\(root\\) NOPASSWD: ${maintenance}」に書き換えて保存）$`)]);
   await expect(results(page)).toContainText('防御できました', { timeout: 20_000 });
   await expect(seals(page)).toContainText('防御：達成');
 

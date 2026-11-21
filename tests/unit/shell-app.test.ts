@@ -1,51 +1,20 @@
-// 擬似シェルの基準実装（状態 S）が共通テストをすべて通すこと（spec A01）と、コマンドの解釈・sudo の判断・1 行の書き換えを確かめる
+// 擬似シェルの基準実装（状態 S）が共通テストをすべて通すこと（spec A01）と、コマンドの解釈・sudo の判断を確かめる
 import { beforeEach, describe, expect, it } from 'vitest';
 import { shellApp } from '../../apps/shell';
-import { describeEvent, describeRequest } from '../../apps/shell/events';
 import { tokenize } from '../../apps/shell/shell';
 import { decide, parseSudoers } from '../../apps/shell/sudoers';
-import type { AppResponse, FixtureData, ObservedEvent, PrepareOptions } from '../../platform/contract';
+import type { FixtureData } from '../../platform/contract';
 import { Evaluator } from '../../platform/evaluator/evaluator';
 import { AppEngine } from '../../runtimes/browser/engine';
 import { EngineRuntime } from '../support/engine-runtime';
+import { OPERATORS, save, send, sh, shellOptions } from '../support/shell-terminal';
 
 const SEEDS = [1, 42, 20261012];
-const OPERATORS = '/etc/sudoers.d/operators';
-
-const options = (seed: number, implementations: Record<string, string> = {}): PrepareOptions => ({
-  attemptId: `shell-${seed}`,
-  app: { id: 'shell', version: shellApp.descriptor.version },
-  fixture: { generator: 'shell.default', seed },
-  implementations,
-});
-
-interface Result {
-  stdout: string;
-  stderr: string;
-  exit: number;
-  cwd: string;
-  changed: boolean;
-}
-
-/** 利用者としてやり取りを 1 回送る */
-function send(engine: AppEngine, actor: string, request: { method: 'GET' | 'POST' | 'PUT'; path: string; body?: unknown }): { response: AppResponse; events: ObservedEvent[] } {
-  const session = engine.invoke({ kind: 'session', actor }).session ?? null;
-  const { response, events } = engine.invoke({ kind: 'request', session, request: request as never });
-  if (!response) throw new Error('応答がない');
-  return { response, events };
-}
-
-/** コマンド行を 1 つ実行し、端末の出力を返す */
-function sh(engine: AppEngine, actor: string, line: string, cwd?: string): Result & { events: ObservedEvent[] } {
-  const { response, events } = send(engine, actor, { method: 'POST', path: '/sh', body: cwd === undefined ? { line } : { line, cwd } });
-  expect(response.status).toBe(200);
-  return { ...(response.body as unknown as Result), events };
-}
 
 describe.each(SEEDS)('擬似シェルの基準実装（seed %i）', (seed) => {
   it('共通テストがすべて通る', async () => {
     const evaluator = new Evaluator(() => new EngineRuntime());
-    const report = await evaluator.runSuite(options(seed), shellApp.tests, [], `shell-${seed}`, '');
+    const report = await evaluator.runSuite(shellOptions(seed), shellApp.tests, [], `shell-${seed}`, '');
     await evaluator.dispose();
     expect(report.outcomes.filter((outcome) => !outcome.passed)).toEqual([]);
     expect(report.outcomes).toHaveLength(shellApp.tests.length);
@@ -55,9 +24,9 @@ describe.each(SEEDS)('擬似シェルの基準実装（seed %i）', (seed) => {
 describe('初期データ', () => {
   it('同じ seed なら同じ機械になり、違う seed なら利用者名やプログラム名が変わる', async () => {
     const engine = new AppEngine();
-    const first = await engine.prepare(options(1));
-    expect(await engine.prepare(options(1))).toEqual(first);
-    const others = await Promise.all([2, 3, 4, 5].map((seed) => new AppEngine().prepare(options(seed))));
+    const first = await engine.prepare(shellOptions(1));
+    expect(await engine.prepare(shellOptions(1))).toEqual(first);
+    const others = await Promise.all([2, 3, 4, 5].map((seed) => new AppEngine().prepare(shellOptions(seed))));
     expect(others.every((other) => other.hash !== first.hash)).toBe(true);
     expect(new Set(others.map((other) => other.refs['accounts.operator.name'])).size).toBeGreaterThan(1);
   });
@@ -65,13 +34,13 @@ describe('初期データ', () => {
   it('どの seed でも機械を作れ、運用担当の 2 つの操作は重ならない', async () => {
     const engine = new AppEngine();
     for (let seed = 0; seed < 100; seed++) {
-      const { refs } = await engine.prepare(options(seed));
+      const { refs } = await engine.prepare(shellOptions(seed));
       expect(refs['programs.operation.path']).not.toBe(refs['programs.operation2.path']);
     }
   });
 
   it('交換点が読めない設定を返したら、黙って続けずに初期データの生成を止める', async () => {
-    await expect(new AppEngine().prepare(options(1, { 'shell.sudoers.provision': 'shell-test-pack/sudoers-unreadable' }))).rejects.toThrow('shell.sudoers.provision が返した設定を読めません（2 行目');
+    await expect(new AppEngine().prepare(shellOptions(1, { 'shell.sudoers.provision': 'shell-test-pack/sudoers-unreadable' }))).rejects.toThrow('shell.sudoers.provision が返した設定を読めません（2 行目');
   });
 });
 
@@ -80,7 +49,7 @@ describe('コマンドの解釈', () => {
   let refs: FixtureData['refs'];
   let home: string;
   beforeEach(async () => {
-    ({ refs } = await engine.prepare(options(7)));
+    ({ refs } = await engine.prepare(shellOptions(7)));
     home = String(refs['accounts.operator.home']);
   });
 
@@ -153,7 +122,7 @@ describe('コマンドの解釈', () => {
 
   it('help は使えるコマンドを一覧する', () => {
     const { stdout } = sh(engine, 'operator', 'help');
-    for (const usage of ['whoami', 'ls [パス]', 'edit ファイル [行番号 新しい内容]', 'sudo -l ／ sudo コマンド', 'help']) expect(stdout).toContain(usage);
+    for (const usage of ['whoami', 'ls [パス]', 'visudo [-f ファイル]', 'sudo -l ／ sudo コマンド', 'help']) expect(stdout).toContain(usage);
   });
 
   it('形の違う要求は、理由を示して受け付けない', () => {
@@ -172,7 +141,7 @@ describe('コマンドの解釈', () => {
 describe('sudo の判断', () => {
   const engine = new AppEngine();
   let refs: FixtureData['refs'];
-  beforeEach(async () => ({ refs } = await engine.prepare(options(11))));
+  beforeEach(async () => ({ refs } = await engine.prepare(shellOptions(11))));
 
   it('sudo -l は、自分が実行できるコマンドだけを一覧する', () => {
     const operator = sh(engine, 'operator', 'sudo -l').stdout;
@@ -205,60 +174,21 @@ describe('sudo の判断', () => {
 
   it('パスワードを求める設定は、この端末では入力できないので実行しない', () => {
     const operation = String(refs['programs.operation.path']);
-    expect(sh(engine, 'admin', `sudo edit ${OPERATORS} 2 ${refs['accounts.operator.name']} ALL=(root) ${operation}`).changed).toBe(true);
+    expect(save(engine, 'admin', OPERATORS, [{ line: 2, text: `${refs['accounts.operator.name']} ALL=(root) ${operation}` }]).changed).toBe(true);
     const result = sh(engine, 'operator', `sudo ${operation}`);
     expect(result).toMatchObject({ exit: 1, stderr: 'sudo: a password is required' });
     expect(result.events).toEqual([expect.objectContaining({ type: 'sudo.decision', data: expect.objectContaining({ decision: 'deny' }) as unknown })]);
   });
 
   it('許可をすべて外すと、sudo を使えない利用者になる', () => {
-    sh(engine, 'admin', `sudo edit ${OPERATORS} 2 '# 外した'`);
+    save(engine, 'admin', OPERATORS, [{ line: 2, text: '# 外した' }]);
     expect(sh(engine, 'operator', 'sudo -l')).toMatchObject({ exit: 1, stderr: `Sorry, user ${refs['accounts.operator.name']} may not run sudo on ${refs['host.name']}.` });
-  });
-});
-
-describe('1 行の書き換え（edit）', () => {
-  const engine = new AppEngine();
-  let refs: FixtureData['refs'];
-  beforeEach(async () => ({ refs } = await engine.prepare(options(13))));
-
-  it('行番号つきで表示し、指定した 1 行だけを書き換える', () => {
-    expect(sh(engine, 'operator', 'edit runbook.txt').stdout.split('\n')[0]).toBe(`     1  運用メモ（${refs['host.name']}）`);
-    const edited = sh(engine, 'operator', 'edit runbook.txt 1 新しい  見出し');
-    expect(edited).toMatchObject({ exit: 0, changed: true, stdout: `${refs['files.runbook.path']}: 1 行目を書き換えました` });
-    expect(edited.events).toEqual([{ type: 'file.changed', data: { path: refs['files.runbook.path'], line: 1, user: refs['accounts.operator.name'], runAs: refs['accounts.operator.name'] } }]);
-    const lines = sh(engine, 'operator', 'cat runbook.txt').stdout.split('\n');
-    expect(lines[0]).toBe('新しい 見出し');
-    expect(lines).toHaveLength(4);
-  });
-
-  it('同じ内容への書き換えは、状態を変えたことにしない', () => {
-    sh(engine, 'operator', "edit runbook.txt 1 '同じ  内容'");
-    expect(sh(engine, 'operator', "edit runbook.txt 1 '同じ  内容'")).toMatchObject({ exit: 0, changed: false });
-  });
-
-  it('使い方の誤り・存在しないファイル・権限のないファイルを断る', () => {
-    expect(sh(engine, 'operator', 'edit').exit).toBe(2);
-    expect(sh(engine, 'operator', 'edit /etc/none').stderr).toBe('edit: /etc/none: No such file or directory');
-    expect(sh(engine, 'operator', 'edit /etc 1 x').stderr).toContain('書き換えられるのは通常のファイルだけです');
-    expect(sh(engine, 'operator', 'edit runbook.txt 0 x')).toMatchObject({ exit: 2, stderr: 'edit: 行番号は 1〜4 で指定してください（指定：0）' });
-    expect(sh(engine, 'operator', 'edit runbook.txt 5 x').exit).toBe(2);
-    expect(sh(engine, 'operator', 'edit runbook.txt 2').exit).toBe(2);
-    expect(sh(engine, 'operator', `edit ${OPERATORS}`).stderr).toBe(`edit: ${OPERATORS}: Permission denied`);
-    expect(sh(engine, 'operator', 'edit /etc/hostname 1 other')).toMatchObject({ exit: 1, changed: false, stderr: 'edit: /etc/hostname: Permission denied' });
-  });
-
-  it('sudo の設定は構文を確かめてから保存し、読めない内容では保存しない', () => {
-    const rejected = sh(engine, 'admin', `sudo edit ${OPERATORS} 2 ${refs['accounts.operator.name']} ALL=(root) NOPASSWD: backup`);
-    expect(rejected).toMatchObject({ exit: 1, changed: false });
-    expect(rejected.stderr).toBe(`edit: ${OPERATORS}:2: 構文エラー：コマンド「backup」は絶対パスか ALL で書いてください\nedit: 変更は保存していません`);
-    expect(sh(engine, 'admin', `sudo cat ${OPERATORS}`).stdout).toContain(String(refs['programs.operation.path']));
   });
 });
 
 describe('コマンド行の分解', () => {
   it('空白で区切り、引用符の中は 1 語にまとめる', () => {
-    expect(tokenize('  edit  a.txt 2 "x  y" \'# z\'  ')).toEqual({ words: ['edit', 'a.txt', '2', 'x  y', '# z'] });
+    expect(tokenize('  cat  a.txt "x  y" \'# z\'  ')).toEqual({ words: ['cat', 'a.txt', 'x  y', '# z'] });
     expect(tokenize('a"b c"d \'\'')).toEqual({ words: ['ab cd', ''] });
     expect(tokenize('a#b')).toEqual({ words: ['a#b'] });
   });
@@ -268,7 +198,7 @@ describe('コマンド行の分解', () => {
   });
 
   it('# で始まる語は、引用符で囲むよう求める', () => {
-    expect(tokenize('edit a.txt 1 # メモ')).toEqual({ error: expect.stringContaining('引用符で囲んでください') as unknown });
+    expect(tokenize('cat a.txt # メモ')).toEqual({ error: expect.stringContaining('引用符で囲んでください') as unknown });
   });
 });
 
@@ -302,24 +232,5 @@ describe('sudo の設定の読み取り', () => {
     expect(decide(entries, { name: 'sato', groups: ['sato', 'ops'] }, '/usr/bin/a')).toMatchObject({ line: 2, nopasswd: false });
     expect(decide(entries, { name: 'sato', groups: ['sato'] }, '/usr/bin/b')).toBeUndefined();
     expect(decide(entries, { name: 'suzuki', groups: ['suzuki'] }, '/usr/bin/a')).toBeUndefined();
-  });
-});
-
-describe('観測イベントとやり取りの説明', () => {
-  it('計測した値のまま説明し、知らない種類は説明しない', () => {
-    expect(describeEvent({ type: 'sudo.decision', data: { user: 'sato', command: '/usr/bin/a', runAs: 'root', decision: 'deny', reason: '許可する設定がない' } })).toBe(
-      'sudo の判断：拒否（許可する設定がない）・利用者 sato・コマンド /usr/bin/a・実行する利用者 root',
-    );
-    expect(describeEvent({ type: 'sudo.decision', data: { decision: 'allow' } })).toContain('sudo の判断：許可（null）');
-    expect(describeEvent({ type: 'shell.exec', data: { program: '/usr/bin/a', user: 'sato', runAs: 'root' } })).toBe('プログラムの実行：/usr/bin/a・利用者 sato・実行した権限 root');
-    expect(describeEvent({ type: 'file.changed', data: { path: '/etc/a', line: 2, user: 'ito', runAs: 'root' } })).toBe('ファイルの変更：/etc/a の 2 行目・利用者 ito・実行した権限 root');
-    expect(describeEvent({ type: 'unknown', data: {} })).toBeNull();
-  });
-
-  it('コマンド行のやり取りは、端末に打った形で示す', () => {
-    expect(describeRequest({ method: 'POST', path: '/sh', body: { line: 'sudo -l', cwd: '/home/sato' } })).toBe('$ sudo -l');
-    expect(describeRequest({ method: 'GET', path: '/sh' })).toBeNull();
-    expect(describeRequest({ method: 'POST', path: '/sh', body: { line: 1 } })).toBeNull();
-    expect(describeRequest({ method: 'POST', path: '/sh', body: ['sudo -l'] })).toBeNull();
   });
 });
