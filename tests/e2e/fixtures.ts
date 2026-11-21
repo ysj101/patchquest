@@ -183,9 +183,9 @@ export async function expectWorkbench(page: Page): Promise<void> {
   await expect(page.locator('#exercise-title')).toBeFocused();
 }
 
+/** 開始前チェックに合格すると、ボタンを押さずに演習画面へ進む */
 async function beginExercise(page: Page): Promise<void> {
-  await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
-  await expect(page.locator('.exercise')).toBeVisible();
+  await expect(page.locator('.exercise')).toBeVisible({ timeout: 15_000 });
 }
 
 async function finishBriefing(page: Page): Promise<void> {

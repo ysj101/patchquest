@@ -73,13 +73,13 @@ test('練習課題を始め直しても導入を表示し、閉じると導入�
   await page.keyboard.press('Escape');
   await expectWorkbench(page);
   const guide = page.getByRole('complementary', { name: '操作ガイド' });
-  await expect(guide.locator('.guide-count')).toHaveText('1 / 6');
+  await expect(guide.locator('.guide-count')).toHaveText('1 / 5');
   await expect(guide.getByRole('heading', { level: 3 })).toHaveText('こわしてみよう');
   await expect(guide.getByRole('list', { name: '練習の手順' })).toContainText('何が起きたか読んでみよう：済み');
   await page.getByRole('button', { name: '導入をもう一度見る' }).click();
   await page.keyboard.press('Escape');
   await expectWorkbench(page);
-  await expect(guide.locator('.guide-count')).toHaveText('1 / 6');
+  await expect(guide.locator('.guide-count')).toHaveText('1 / 5');
   await expect(guide.getByRole('heading', { level: 3 })).toHaveText('こわしてみよう');
 });
 
@@ -97,7 +97,7 @@ test('再現を達成した練習を再読み込みして続きから始める�
   await openMission(page, 'onboarding', { resume: true });
   await expectWorkbench(page);
   const guide = page.getByRole('complementary', { name: '操作ガイド' });
-  await expect(guide.locator('.guide-count')).toHaveText('2 / 6');
+  await expect(guide.locator('.guide-count')).toHaveText('2 / 5');
   await expect(guide.getByRole('heading', { level: 3 })).toHaveText('なおし方を選ぼう');
 });
 

@@ -1,5 +1,5 @@
-// 開始前チェック（spec §10）。互換性・注入・事前検証の結果を示す。事前検証はプレイヤーの達成に数えない
-import { isInExercise } from '../contract';
+// 開始前チェック（spec §10）。互換性・注入・事前検証の結果を示す。事前検証はプレイヤーの達成に数えない。
+// 合格したら学習UIがそのまま演習画面へ進めるので、この画面に残るのは点検中と開始できないときだけ
 import type { ExerciseSnapshot, PreflightStep } from '../orchestrator/orchestrator';
 import { status, type StatusKind } from './components';
 import { fill, h } from './dom';
@@ -9,7 +9,6 @@ const STEPS: PreflightStep[] = ['compatibility', 'baseline', 'inject', 'prepare'
 const ENTRY_STATUS = { running: ['running', '確認中'], passed: ['passed', '合格'], failed: ['failed', '不合格'] } as const;
 
 export interface PreflightActions {
-  begin(): void;
   retry(): void;
   back(): void;
 }
@@ -58,21 +57,7 @@ export class PreflightView {
       }),
     );
 
-    // 続きから始めると、前回の対策を適用し直した状態（Prepared より先）で準備が終わる
-    if (isInExercise(attempt.state)) {
-      const resumed = pack.manifest.defenses.find((d) => d.id === attempt.appliedDefense);
-      fill(
-        this.outcome,
-        h(
-          'p',
-          { class: 'banner banner-ok', role: 'status' },
-          resumed
-            ? `準備ができました。データは演習開始時の状態に戻し、前回の対策「${resumed.label}」を適用し直しました。`
-            : '準備ができました。脆弱性を注入した状態から、まっさらなデータで演習を始めます。',
-        ),
-        h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button button-primary button-chunky', 'data-autofocus': true, on: { click: this.actions.begin } }, '演習を始める')),
-      );
-    } else if (attempt.state === 'Blocked' && blocked) {
+    if (attempt.state === 'Blocked' && blocked) {
       fill(
         this.outcome,
         h(
@@ -89,8 +74,8 @@ export class PreflightView {
         ),
       );
     } else {
+      // 合格した直後も、演習画面へ切り替わるまでは点検中として見せる
       fill(this.outcome, h('p', { class: 'muted' }, status('running', `点検しています…（${passed} / ${STEPS.length}）`)));
     }
-    (this.outcome.querySelector('[data-autofocus]') as HTMLElement | null)?.focus();
   }
 }

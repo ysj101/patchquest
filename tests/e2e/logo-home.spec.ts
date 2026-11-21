@@ -58,8 +58,9 @@ test('演習画面・準備画面・記録ページからロゴで課題一覧�
   await expect(missionHeading(page)).toBeFocused();
   await expect(page.getByRole('navigation', { name: 'ページ' }).getByRole('button', { name: '課題' })).toHaveAttribute('aria-current', 'page');
 
+  // 点検の途中でも、ロゴで一覧へ戻れる
   await testPack(page).getByRole('button', { name: 'この課題を始める' }).click();
-  await expect(page.getByRole('button', { name: '演習を始める' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeVisible();
   await logo(page).click();
   await expect(missionHeading(page)).toBeFocused();
 

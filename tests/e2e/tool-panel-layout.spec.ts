@@ -28,9 +28,11 @@ async function box(page: Page, selector: string): Promise<{ x: number; y: number
   return value;
 }
 
-/** 対策タブの適用と検証が、参考コードを閉じたままパネル内スクロールなしに画面へ入っている */
+/** 対策タブの適用と検証が、参考コードを閉じたままパネル内スクロールなしに画面へ入っている。
+ * ページのスクロールは許すので、道具パネルを画面の上端まで送ってから確かめる */
 async function expectRepairActionsInView(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
+  await page.locator('.tools').evaluate((el) => el.scrollIntoView({ block: 'start' }));
   await expect(page.locator('.reference-code')).not.toHaveAttribute('open');
   await expectNoPanelScroll(page);
   await expect(page.getByRole('button', { name: 'この対策を適用する' })).toBeInViewport();

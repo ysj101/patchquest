@@ -1,4 +1,4 @@
-// 練習の全6項目で、操作ガイドと案内先が画面サイズやスクロールに隠れないことを確かめる。
+// 練習の全5項目で、操作ガイドと案内先が画面サイズやスクロールに隠れないことを確かめる。
 import type { Page } from '@playwright/test';
 import { expectGuide } from '../../.cursor/skills/verify-patchquest/guide-visibility.mjs';
 import { expect, launchButton, openHome, test, ticketSeals } from './fixtures';
@@ -12,14 +12,13 @@ async function readGuide(page: Page, title: string, anchor: string): Promise<voi
 }
 
 for (const viewport of [{ width: 1280, height: 800 }, { width: 1024, height: 600 }, { width: 390, height: 844 }]) {
-  test(`${viewport.width}×${viewport.height} で練習の案内を全6項目読み、案内先を操作できる`, async ({ page }) => {
+  test(`${viewport.width}×${viewport.height} で練習の案内を全5項目読み、案内先を操作できる`, async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize(viewport);
     await openHome(page);
     await page.getByRole('button', { name: 'まずは練習（3 分）' }).click();
-    await readGuide(page, '準備ができたら始めよう', 'preflight');
-    await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 15_000 });
-
+    // 開始前チェックに合格すると、ボタンを押さずに導入へ進む
+    await expect(page.locator('[data-anchor="briefing"]')).toBeVisible({ timeout: 15_000 });
     await readGuide(page, '何が起きたか読んでみよう', 'briefing');
     await launchButton(page).click();
 

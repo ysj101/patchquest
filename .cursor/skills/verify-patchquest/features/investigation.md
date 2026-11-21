@@ -11,7 +11,7 @@ The investigate tab shows preset actions. The raw request editor starts closed u
 
 ## How to get to it (user POV)
 
-- Start `まずは練習（3 分）`, choose `演習を始める`, then `ミッション開始`.
+- Start `まずは練習（3 分）`, wait for preflight, then choose `ミッション開始`.
 - Choose the `調査` tab.
 
 ## Driving it with drive.ts

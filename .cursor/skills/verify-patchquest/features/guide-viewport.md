@@ -10,7 +10,7 @@ The practice guide remains readable through all six items at 1280×800, 1024×60
 ## How to get to it (user POV)
 
 1. Choose `まずは練習（3 分）` from the mission list.
-2. Read `準備ができたら始めよう`, then choose `演習を始める`.
+2. Wait for preflight. When it passes, the briefing opens on its own.
 3. Read `何が起きたか読んでみよう`, then choose `ミッション開始`.
 4. Read `こわしてみよう`, open `調査`, and choose `送る` with the supplied long title.
 5. Read `なおし方を選ぼう`, open `対策`, select `保存するときに文字数を確かめる`, and choose `この対策を適用する`.

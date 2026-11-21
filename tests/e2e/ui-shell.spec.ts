@@ -95,20 +95,17 @@ test('課題は練習を先頭に難易度順に並び、難易度と進捗を�
   await tabTo(page, card(page, 'idor').getByRole('button', { name: 'この課題を始める' }), 3);
 });
 
-test('キーボードだけで課題一覧から開始前チェックを経て演習を始められる', async ({ page }) => {
+test('キーボードだけで課題一覧から始めると、開始前チェックに合格したところでそのまま導入へ進む', async ({ page }) => {
   await tabTo(page, 'この課題を始める');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeVisible();
   // 点検の内容はふだん畳んである
   await expect(page.locator('.preflight-details summary')).toContainText('点検の内容');
 
-  // 合格すると「演習を始める」にフォーカスが移る
-  const begin = page.getByRole('button', { name: '演習を始める' });
-  await expect(begin).toBeFocused({ timeout: 15_000 });
+  // 合格すると、ボタンを押さずに導入へ進み、「ミッション開始」にフォーカスが移る
+  await expect(launchButton(page)).toBeFocused({ timeout: 15_000 });
   await expect(page.locator('.check .status-passed')).toHaveCount(4);
-  await page.keyboard.press('Enter');
-
-  await expect(launchButton(page)).toBeFocused();
+  await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeHidden();
   await page.keyboard.press('Enter');
   await expect(page.locator('#exercise-title')).toBeFocused();
   await expect(page.getByText('学習用に脆弱性を注入した架空のサービスです。', { exact: true })).toBeVisible();
