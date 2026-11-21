@@ -1,6 +1,6 @@
-// 調査パネル（spec §10）。定型の操作とリクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
+// 調査パネル（spec §10）。調べ方と定型の操作・リクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, errorMessage, type ActionDef, type AppRequest, type AppResponse, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
+import { HTTP_METHODS, errorMessage, type ActionDef, type ApproachDef, type AppRequest, type AppResponse, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
 import { expandRequest, type Scope } from '../evaluator/scenario';
 import { status } from './components';
 import { fill, h } from './dom';
@@ -113,16 +113,21 @@ export class InvestigationPanel {
     this.editorMessage,
   );
   private readonly actionList = h('div', { class: 'action-list' });
+  /** パックが調べ方を持つときだけ、操作より先に見せる */
+  private readonly approach = h('section', { class: 'tool-section approach', 'aria-labelledby': 'approach-title', hidden: true });
   private count = 0;
   private refs: Scope = {};
   private describers: AppDescribers = DESCRIBES_NOTHING;
 
-  constructor(private readonly actions: InvestigationActions) {
+  /** footer は調査タブの末尾に置く要素（ヒントなど） */
+  constructor(private readonly actions: InvestigationActions, footer: HTMLElement) {
     this.element = h(
       'div',
       { class: 'investigation' },
+      this.approach,
       h('section', { class: 'tool-section', 'aria-labelledby': 'actions-title', 'data-anchor': 'actions' }, h('h3', { id: 'actions-title' }, '操作'), this.actionList),
       this.editor,
+      footer,
     );
     this.logSection = h(
       'section',
@@ -133,8 +138,10 @@ export class InvestigationPanel {
     );
   }
 
-  /** 演習を始めたときに、操作の定義・fixture の値・アプリによる観測ログと調査タブの見せ方を受け取る */
-  setup(actions: ActionDef[], refs: Scope, describers: AppDescribers): void {
+  /** 演習を始めたときに、調べ方・操作の定義・fixture の値・アプリによる観測ログと調査タブの見せ方を受け取る */
+  setup({ approach, actions }: { approach?: ApproachDef; actions: ActionDef[] }, refs: Scope, describers: AppDescribers): void {
+    this.approach.hidden = !approach;
+    if (approach) fill(this.approach, h('h3', { id: 'approach-title' }, '調べ方'), h('p', {}, approach.intro), h('ol', { class: 'approach-steps' }, ...approach.steps.map((step) => h('li', {}, step))));
     this.refs = refs;
     this.describers = describers;
     fill(this.actionList, ...actions.map((a) => this.actionForm(a)));

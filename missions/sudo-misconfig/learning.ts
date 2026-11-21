@@ -1,5 +1,5 @@
-// sudo の設定ミスのパックのヒント・解法・理解確認・振り返り。点検と絞り込み（最小権限）の水準にとどめ、現実の権限昇格の手口は書かない
-import type { DebriefDef, HintDef, TransferQuestion, WorkedExample } from '../../platform/contract';
+// sudo の設定ミスのパックの調べ方・ヒント・解法・理解確認・振り返り。点検と絞り込み（最小権限）の水準にとどめ、現実の権限昇格の手口は書かない
+import type { ApproachDef, DebriefDef, HintDef, TransferQuestion, WorkedExample } from '../../platform/contract';
 
 /** 仕組みだけを示す例。直し方には触れない（どう直すかは学習者が考える） */
 export const WORKED_EXAMPLE: WorkedExample = {
@@ -12,14 +12,26 @@ export const WORKED_EXAMPLE: WorkedExample = {
   takeaway: 'sudo は設定に書かれたとおりに許可するので、必要以上の行が 1 つあるだけで、その操作を root の権限で実行できてしまう。',
 };
 
+/** sudo を知らない人が、何から始めるかを知るための調べ方。直し方（設定を絞る操作）には触れない */
+export const APPROACH: ApproachDef = {
+  intro:
+    'sudo は、許可された利用者が、コマンドを管理者（root）の権限で実行するための仕組みです。誰がどのコマンドを実行してよいかは sudo の設定ファイルに 1 行ずつ書かれていて、sudo は書かれたとおりに許可します。',
+  steps: [
+    '端末は運用担当（operator）として開いています。まず help と入力して、使えるコマンドを確かめます。',
+    'cat runbook.txt で運用メモを読み、運用担当の日常の仕事と、管理者だけが行う操作を確かめます。',
+    'sudo -l で、運用担当が sudo で実行できるコマンドの一覧を見ます。「(root) NOPASSWD: パス」の行は、そのプログラムを root の権限で、パスワードなしで実行できるという意味です。',
+    '運用メモと許可の一覧を比べ、運用担当の仕事に必要な範囲を超えて許可されている操作がないかを探します。',
+  ],
+};
+
 export const HINTS: HintDef[] = [
   {
     level: 1,
-    text: '運用担当は、sudo で何を実行できることになっているでしょうか。運用メモに書かれた日常の操作と、実際に許可されている操作を比べてみましょう。',
+    text: '運用メモで「管理者だけが行う」とされている操作が、sudo -l の一覧に入っていないでしょうか。入っていれば、それが運用担当の仕事に必要な範囲を超えた許可です。',
   },
   {
     level: 2,
-    text: '運用担当（operator）の端末で cat runbook.txt と sudo -l を実行し、許可の一覧に、運用メモでは「管理者だけが行う」とされている操作がないかを確かめます。見つけたら sudo に続けてそのパスを実行し、観測ログの「プログラムの実行」で、どの権限で動いたかを見ましょう。',
+    text: '見つけた保守の操作を、運用担当（operator）の端末で sudo に続けてパスごと実行してみましょう。実行できたら、観測ログの「プログラムの実行」で、どの権限で動いたかを確かめます。',
   },
   {
     level: 3,

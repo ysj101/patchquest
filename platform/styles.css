@@ -338,7 +338,7 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .worked-example summary { cursor: pointer; display: grid; gap: 4px; }
 .worked-example summary h3 { display: inline; }
 .worked-example[open] summary { margin-bottom: 6px; }
-.worked-example-steps { padding-left: 1.4em; display: grid; gap: 6px; }
+.worked-example-steps, .approach-steps { padding-left: 1.4em; display: grid; gap: 6px; }
 .incident { border-left: 3px solid var(--warn); padding-left: 12px; }
 
 /* 利用者の切り替え */

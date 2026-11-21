@@ -116,8 +116,9 @@ export class RepairPanel {
   private record: RepairDef | null = null;
   private describeRequest: RequestDescriber = () => null;
 
-  constructor(private readonly actions: RepairActions) {
-    this.element = h('div', { class: 'repair' }, this.choice, this.verifySection(), this.resetSection());
+  /** footer は対策タブの末尾に置く要素（ヒントなど） */
+  constructor(private readonly actions: RepairActions, footer: HTMLElement) {
+    this.element = h('div', { class: 'repair' }, this.choice, this.verifySection(), this.resetSection(), footer);
   }
 
   /** 演習を始めたときに、修正の方式に合わせて ① の区画を組み直す。教材アプリによるリクエストの説明は、加えた変更の表示に使う */

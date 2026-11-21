@@ -72,3 +72,32 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await answerTransferCheck(page, CORRECT_CHOICES);
   await expect(page.locator('.state-stamp')).toHaveText('解決');
 });
+
+test('調査タブの先頭に、sudo の仕組みと最初に打つコマンドを示す調べ方が出て、直し方はヒントとして対策タブからも開ける', async ({ page }) => {
+  await startMission(page, 'sudo-misconfig');
+  await page.getByRole('tab', { name: '調査' }).click();
+  const approach = page.getByRole('region', { name: '調べ方' });
+  await expect(approach).toContainText('sudo は、許可された利用者が、コマンドを管理者（root）の権限で実行するための仕組みです');
+  await expect(approach.locator('.approach-steps li')).toHaveCount(4);
+  for (const command of ['help', 'cat runbook.txt', 'sudo -l']) await expect(approach).toContainText(command);
+  await expect(approach).not.toContainText('visudo');
+
+  // 調べ方を読んでもヒントの利用には数えず、ヒントは調査タブからも開ける
+  const hints = page.getByRole('tabpanel', { name: '調査' }).getByRole('region', { name: 'ヒント' });
+  await expect(hints.locator('.hint')).toHaveCount(0);
+  await hints.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
+  await expect(hints.locator('.hint')).toContainText('sudo -l の一覧に入っていないでしょうか');
+
+  // 直し方のヒント（修正方針）は対策タブからも開ける
+  const repairHints = page.getByRole('tabpanel', { name: '対策' }).getByRole('region', { name: 'ヒント' });
+  await page.getByRole('tab', { name: '対策' }).click();
+  await repairHints.getByRole('button', { name: 'ヒント 2（調査方法）を見る' }).click();
+  await repairHints.getByRole('button', { name: 'ヒント 3（修正方針）を見る' }).click();
+  await expect(repairHints.locator('.hint').last()).toContainText('sudo visudo -f /etc/sudoers.d/operators');
+
+  // 調べ方のとおりに打つと、比べる 2 つが端末に出る
+  await typeCommand(page, 'cat runbook.txt');
+  await expect(terminalOutput(page)).toContainText('は管理者だけが行う');
+  await typeCommand(page, 'sudo -l');
+  await expect(terminalOutput(page)).toContainText('(root) NOPASSWD: /usr/local/sbin/');
+});

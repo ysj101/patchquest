@@ -160,6 +160,12 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     }, 'name');
   });
 
+  if (m.approach !== undefined) {
+    const approach = c.obj('approach', m.approach);
+    c.text('approach.intro', approach.intro);
+    c.texts('approach.steps', approach.steps, true);
+  }
+
   // 修正の方式。record（操作で直す）の課題は、学習画面に出す対策候補を持たず、解ける対策は出荷前検証で確かめる
   const isRecord = isObj(m.repair) && m.repair.kind === 'record';
   if (m.repair !== undefined) {

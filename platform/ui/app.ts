@@ -49,15 +49,15 @@ export async function startApp(root: HTMLElement): Promise<void> {
   });
   /** プレビューと調査パネルで、いま操作している利用者 */
   let viewer: ActorKey = ANONYMOUS;
-  const repair = new RepairPanel({
-    apply: (defenseId) => applyDefense(defenseId),
-    verify: () => verify(),
-    reset: () => resetToInitial(),
-  });
   const hints = new HintsPanel({
     openHint: (level) => orchestrator.openHint(level),
     viewSolution: () => orchestrator.viewSolution(),
   });
+  const repair = new RepairPanel({
+    apply: (defenseId) => applyDefense(defenseId),
+    verify: () => verify(),
+    reset: () => resetToInitial(),
+  }, hints.repair.element);
   const debrief = new DebriefPanel({
     answer: (answers) => {
       const correct = orchestrator.answerTransfer(answers);
@@ -90,7 +90,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
         { id: 'repair', label: '対策', panel: repair.element },
         { id: 'debrief', label: '振り返り', panel: debrief.element },
       ],
-      storyFooter: hints.element,
+      storyFooter: hints.story.element, investigationFooter: hints.investigation.element,
       callout: resultEffects.element,
     },
     say,

@@ -18,22 +18,32 @@ export interface HintActions {
   viewSolution(): void;
 }
 
+/** ヒントの置き場所 1 つ。見出しの id は置き場所ごとに分ける */
+const hintsPlace = (titleId: string) => ({ titleId, element: h('section', { class: 'tool-section hints', 'data-anchor': 'hints', 'aria-labelledby': titleId }) });
+
+/** 同じヒントを状況タブ（story）・調査タブ（investigation）・対策タブ（repair）に置く。開いた段階は演習の記録で共有する */
 export class HintsPanel {
-  readonly element = h('section', { class: 'tool-section hints', 'data-anchor': 'hints', 'aria-labelledby': 'hints-title' });
+  readonly story = hintsPlace('story-hints-title');
+  readonly investigation = hintsPlace('investigation-hints-title');
+  readonly repair = hintsPlace('repair-hints-title');
   private readonly guard = renderGuard();
 
   constructor(private readonly actions: HintActions) {}
 
   update(snapshot: ExerciseSnapshot): void {
-    const { attempt, pack } = snapshot;
+    const { attempt } = snapshot;
     if (!this.guard.changed(`${attempt.attemptId}|${attempt.hintsOpened.join()}|${attempt.solutionViewed}`)) return;
-    const hadFocus = this.element.contains(document.activeElement);
+    for (const place of [this.story, this.investigation, this.repair]) this.render(place, snapshot);
+  }
+
+  private render({ titleId, element }: ReturnType<typeof hintsPlace>, { attempt, pack }: ExerciseSnapshot): void {
+    const hadFocus = element.contains(document.activeElement);
     const hints = [...pack.manifest.hints].sort((a, b) => a.level - b.level);
     const opened = hints.filter((hint) => attempt.hintsOpened.includes(hint.level));
     const next = hints.find((hint) => !attempt.hintsOpened.includes(hint.level));
     fill(
-      this.element,
-      h('h3', { id: 'hints-title' }, 'ヒント'),
+      element,
+      h('h3', { id: titleId }, 'ヒント'),
       h('p', { class: 'note' }, '行き詰まったら順に開けます。使っても減点はありません。'),
       ...opened.map((hint) => h('div', { class: 'hint' }, h('p', { class: 'eyebrow' }, `ヒント ${hint.level}：${HINT_LABEL[hint.level]}`), h('p', {}, hint.text))),
       next
@@ -43,7 +53,7 @@ export class HintsPanel {
           : h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.revealSolution() } }, '解法を見る'),
     );
     // 開いた内容のすぐ後ろ（次のボタン）へフォーカスを移す
-    if (hadFocus) this.element.querySelector<HTMLElement>('button')?.focus();
+    if (hadFocus) element.querySelector<HTMLElement>('button')?.focus();
   }
 
   private async revealSolution(): Promise<void> {

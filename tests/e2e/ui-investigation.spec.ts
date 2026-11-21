@@ -120,3 +120,29 @@ test('教材由来の文字列は観測ログでも文字のまま表示され�
   await expect(page.locator('.log img, .log b')).toHaveCount(0);
   expect(dialogs).toEqual([]);
 });
+
+test('調べ方を持たない課題では調査タブに調べ方を出さず、ヒントは状況・調査・対策のどのタブから開いてもすべてに出る', async ({ page }) => {
+  const story = page.getByRole('tabpanel', { name: '状況' });
+  const investigation = page.getByRole('tabpanel', { name: '調査' });
+  await page.getByRole('tab', { name: '調査' }).click();
+  await expect(investigation.getByRole('heading', { name: '調べ方' })).toHaveCount(0);
+  await expect(investigation.getByRole('region', { name: 'ヒント' })).toBeVisible();
+
+  await investigation.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
+  await expect(investigation.locator('.hint')).toHaveCount(1);
+  await expect(investigation.getByRole('button', { name: 'ヒント 2（調査方法）を見る' })).toBeFocused();
+
+  await page.getByRole('tab', { name: '状況' }).click();
+  await expect(story.locator('.hint')).toHaveCount(1);
+  await story.getByRole('button', { name: 'ヒント 2（調査方法）を見る' }).click();
+  await page.getByRole('tab', { name: '調査' }).click();
+  await expect(investigation.locator('.hint')).toHaveCount(2);
+
+  const repair = page.getByRole('tabpanel', { name: '対策' });
+  await page.getByRole('tab', { name: '対策' }).click();
+  await expect(repair.locator('.hint')).toHaveCount(2);
+  await repair.getByRole('button', { name: 'ヒント 3（修正方針）を見る' }).click();
+  await expect(repair.locator('.hint')).toHaveCount(3);
+  await page.getByRole('tab', { name: '状況' }).click();
+  await expect(story.locator('.hint')).toHaveCount(3);
+});

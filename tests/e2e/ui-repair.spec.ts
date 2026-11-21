@@ -65,7 +65,7 @@ test('キーボードで対策を選び、適用して検証できる', async ({
 });
 
 test('ヒントは段階的に開け、解法は確認してから表示する', async ({ page }) => {
-  const hints = page.locator('[data-anchor="hints"]');
+  const hints = page.getByRole('tabpanel', { name: '状況' }).locator('[data-anchor="hints"]');
   await hints.getByRole('button', { name: 'ヒント 1（着眼点）を見る' }).click();
   await expect(hints).toContainText('ID を変えると何が返るか');
   await expect(hints.getByRole('button', { name: 'ヒント 2（調査方法）を見る' })).toBeFocused();

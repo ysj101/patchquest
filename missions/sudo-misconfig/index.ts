@@ -3,7 +3,7 @@
 import { STATE_CHANGING_COMMAND } from '../../apps/shell/scenario';
 import type { MissionPack } from '../../platform/contract';
 import { IMPLEMENTATIONS } from './implementations';
-import { DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './learning';
+import { APPROACH, DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './learning';
 import { CASES, PROBES, TARGET_CASES } from './tests';
 
 const HOOKS = [{ id: 'shell.sudoers.provision', contract: 1 }];
@@ -13,7 +13,7 @@ export const sudoMisconfigPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sudo-misconfig',
-    version: '1.1.0',
+    version: '1.2.0',
     kind: 'mission',
     title: '広すぎる sudo の許可を絞る',
     summary:
@@ -60,6 +60,7 @@ export const sudoMisconfigPack: MissionPack = {
     ],
     // 調べるのも直すのも、ターミナルにコマンドを打って行う。同じ操作を送る定型の操作は置かない
     actions: [],
+    approach: APPROACH,
     defenses: [],
     // 状態を変えた操作（visudo で書き換えて保存した）だけを記録する。調べるだけの操作や、断られた操作は記録しない
     repair: { kind: 'record', record: STATE_CHANGING_COMMAND, noun: '加えた変更' },
