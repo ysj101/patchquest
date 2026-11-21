@@ -4,7 +4,7 @@ import type { AppRequest, AppResponse, ExchangeDescription, JsonValue, ObservedE
 type JsonObject = Record<string, JsonValue>;
 
 /** 計測した値を、そのまま文字にする */
-const shown = (value: JsonValue | undefined): string => (typeof value === 'string' ? value : JSON.stringify(value ?? null));
+export const shown = (value: JsonValue | undefined): string => (typeof value === 'string' ? value : JSON.stringify(value ?? null));
 
 const asObject = (value: JsonValue | undefined): JsonObject | null => (typeof value === 'object' && value !== null && !Array.isArray(value) ? value : null);
 

@@ -1,0 +1,131 @@
+#!/bin/sh
+# シリアル回線から 1 行 1 要求を受け、結果を 1 行で返す（PID 1 として動く）。
+#   要求: 操作 番号 本文（base64。空は -）
+#     provision … 本文のスクリプトを root として実行し、初期データを置く。置いたものが、以後の「初期状態」になる
+#     run       … 本文（1 行目 利用者・2 行目 場所・3 行目 コマンド行・4 行目以降 書き換える行）を、利用者として実行する
+#     reset     … 機械のファイルを初期状態へ戻す
+#   応答: \002PQ 番号 各値のバイト数（, 区切り） 各値をつないだもの（base64）
+#     provision: 終了コード・標準出力・標準エラー
+#     run: 終了コード・標準出力・標準エラー・場所・エディタで開いた内容・エディタの結果・実行の記録・sudo の記録・変わったファイル
+#     reset: 終了コード
+#
+# ファイルシステムは 3 層の重ね合わせ（overlayfs）にする。下から、起動したときの /、初期データ（provisioned）、
+# 利用者の操作（session）。利用者のコマンドは、重ね合わせた $R を / として実行する。初期状態へ戻すには session の層を捨てる
+L=/run/layers
+Q=$L/agent
+R=/mnt/root
+BASE=/mnt/base
+UPPER=$L/session/upper
+# 重ね合わせの中で、利用者のコマンドと係がファイルを受け渡す場所
+SHARED=$R/run/pq
+# コマンド行 1 つにかけられる秒数。超えたら止める
+LIMIT=3
+# 返す出力の上限（バイト）
+OUT_MAX=32768
+# 変わったかどうかを確かめる場所（/ からの相対パス）。ここにないもの（/tmp や /run など）の変化は、機械の状態の変化として数えない
+TRACKED="etc home root usr/local opt srv var/log"
+
+payload() { if [ "$1" = - ]; then : > "$Q/request"; else printf %s "$1" | base64 -d > "$Q/request"; fi; }
+
+# 値のファイルを並べて、1 行の応答にする
+reply() {
+  id=$1
+  shift
+  printf '\002PQ %s %s %s\n' "$id" "$(stat -c %s "$@" | tr '\n' ,)" "$(cat "$@" | base64 -w 0)"
+}
+
+# 中身（ハッシュ）と、種類・所有者・許可の一覧
+listing() {
+  find $TRACKED -xdev -type f -exec sha256sum {} + 2>/dev/null
+  find $TRACKED -xdev -exec stat -c '%n // %F %a %u %g' {} + 2>/dev/null
+}
+
+# 初期状態との違い。session の層にあるもののうち、初期状態と中身や許可が違うもの（消したものは、消した印のファイルとして残る）。
+# 開いただけで層に写されたファイルは、初期状態と同じなので現れない
+delta() { (cd "$UPPER" && listing) | grep -vxFf "$Q/base" | sort; }
+
+mount_session() {
+  mkdir -p "$UPPER" "$L/session/work"
+  mount -t overlay overlay -o "lowerdir=$L/provisioned:/,upperdir=$UPPER,workdir=$L/session/work" "$R"
+  mount --rbind /dev "$R/dev"
+  mount -t proc proc "$R/proc"
+  mkdir -p "$SHARED"
+  : > "$Q/delta"
+}
+
+unmount_session() {
+  umount "$R/proc" 2>/dev/null
+  umount -l "$R/dev" 2>/dev/null
+  umount "$R" 2>/dev/null
+  rm -rf "$L/session"
+}
+
+provision() {
+  payload "$2"
+  # 動いている機械へ別の初期データを置き直すときは、前の層を捨ててから始める
+  unmount_session
+  umount "$BASE" 2>/dev/null
+  rm -rf "$L/provisioned" "$L/provisioned.work"
+  mkdir -p "$L/provisioned" "$L/provisioned.work"
+  mount -t overlay overlay -o "lowerdir=/,upperdir=$L/provisioned,workdir=$L/provisioned.work" "$R"
+  mount --rbind /dev "$R/dev"
+  chroot "$R" sh < "$Q/request" > "$Q/stdout" 2> "$Q/stderr"
+  printf %s "$?" > "$Q/status"
+  umount -l "$R/dev"
+  umount "$R"
+  # 初期状態（下の 2 層を重ねたもの）を読み取り専用で見られるようにし、比べる基準を取る
+  mount -t overlay overlay -o "lowerdir=$L/provisioned:/" "$BASE"
+  (cd "$BASE" && listing) > "$Q/base"
+  mount_session
+  reply "$1" "$Q/status" "$Q/stdout" "$Q/stderr"
+}
+
+run() {
+  payload "$2"
+  for name in editor.dump editor.result exec.log sudo.log trailer; do : > "$SHARED/$name"; done
+  chmod 600 "$SHARED/exec.log" "$SHARED/sudo.log"
+  {
+    IFS= read -r user
+    IFS= read -r cwd
+    IFS= read -r line
+    cat > "$SHARED/edits"
+  } < "$Q/request"
+  printf '%s\n' "$cwd" > "$SHARED/cwd"
+  printf '%s\n' "$line" > "$SHARED/line"
+  if [ -s "$SHARED/edits" ]; then chmod 600 "$SHARED/edits"; else rm -f "$SHARED/edits"; fi
+  timeout -s KILL "$LIMIT" chroot "$R" su -l "$user" -c /usr/lib/pq/run </dev/null > "$Q/stdout.all" 2> "$Q/stderr.all" 3> "$SHARED/trailer"
+  # 置き去りのプロセスを残さない（PID 1 である自分には届かない）
+  kill -KILL -1 2>/dev/null
+  head -c "$OUT_MAX" "$Q/stdout.all" > "$Q/stdout"
+  head -c "$OUT_MAX" "$Q/stderr.all" > "$Q/stderr"
+  # 終了コードと終わったときの場所は、コマンド行を実行したシェルが書き残す。時間切れで止めたときは残らない
+  if [ -s "$SHARED/trailer" ]; then
+    { IFS= read -r status; IFS= read -r cwd; } < "$SHARED/trailer"
+  else
+    status=124
+    echo "sh: ${LIMIT} 秒以内に終わらなかったので止めました" >> "$Q/stderr"
+  fi
+  printf %s "$status" > "$Q/status"
+  printf %s "$cwd" > "$Q/cwd"
+  delta > "$Q/delta.new"
+  # 前回の違いと今回の違いを比べ、変わった行のパス（ハッシュの行と、種類・許可の行の両方）を取り出す
+  diff "$Q/delta" "$Q/delta.new" | sed -n 's/^[+-][0-9a-f]\{64\}  \(.*\)$/\/\1/p; s/^[+-]\([^+-].*\) \/\/ .*$/\/\1/p' | sort -u > "$Q/changed"
+  mv "$Q/delta.new" "$Q/delta"
+  reply "$1" "$Q/status" "$Q/stdout" "$Q/stderr" "$Q/cwd" "$SHARED/editor.dump" "$SHARED/editor.result" "$SHARED/exec.log" "$SHARED/sudo.log" "$Q/changed"
+}
+
+reset() {
+  unmount_session
+  mount_session
+  printf %s "$?" > "$Q/status"
+  reply "$1" "$Q/status"
+}
+
+printf '\002PQ ready\n'
+while IFS=' ' read -r op id body; do
+  case "$op" in
+    provision) provision "$id" "$body" ;;
+    run) run "$id" "$body" ;;
+    reset) reset "$id" ;;
+  esac
+done

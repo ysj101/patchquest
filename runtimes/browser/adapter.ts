@@ -31,6 +31,10 @@ export interface RuntimeLimits {
 
 export const DEFAULT_LIMITS: RuntimeLimits = { timeoutMs: 5000, maxInputBytes: 4096 };
 
+/** 準備・リセットの上限は、1 回の呼び出しの上限の何倍か。演習用の機械（本物の Linux）は、起動と初期データの反映に時間がかかる */
+const PREPARE_FACTOR = { standard: 2, machine: 6 } as const;
+const prepareFactor = (app: AppModule): number => (app.machine ? PREPARE_FACTOR.machine : PREPARE_FACTOR.standard);
+
 /** 検証の描画では、画像のエラーなど描画後に非同期で起きる事象も集めるため少し待つ */
 const RENDER_SETTLE_MS = 150;
 
@@ -78,15 +82,14 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     this.assertAlive();
     const app = findApp(options.app.id, options.app.version);
     const { view } = splitByRealm(app, options.implementations);
-    this.terminateWorker('stopped');
     this.frame?.detach();
-    this.worker = new Worker(new URL('runtime-worker.js', this.assetsBase), { type: 'module', name: 'patchquest-runtime' });
-    this.worker.addEventListener('message', (e: MessageEvent<WorkerReply>) => this.receive(e.data));
-    this.worker.addEventListener('error', () => this.terminateWorker('crashed'));
+    // 演習用の機械（本物の Linux）は起動直後の動きが遅いので、同じアプリを準備し直すときは Worker ごと使い回す
+    // （初期データの置き直しは Worker の中で行う）。それ以外は、前の状態を残さないよう Worker を作り直す
+    if (!(app.machine && this.worker && this.prepared?.app === app)) this.startWorker();
     this.prepared = { options, app };
     this.viewSelection = view;
     this.sessionActors.clear();
-    return (await this.call({ op: 'prepare', options }, `prepare:${options.attemptId}`, this.limits.timeoutMs * 2)) as FixtureData;
+    return (await this.call({ op: 'prepare', options }, `prepare:${options.attemptId}`, this.limits.timeoutMs * prepareFactor(app))) as FixtureData;
   }
 
   async start(): Promise<void> {
@@ -130,10 +133,10 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   }
 
   async reset(): Promise<FixtureData> {
-    this.requirePrepared();
+    const { app } = this.requirePrepared();
     this.frame?.detach();
     this.sessionActors.clear();
-    return (await this.call({ op: 'reset' }, 'reset', this.limits.timeoutMs * 2)) as FixtureData;
+    return (await this.call({ op: 'reset' }, 'reset', this.limits.timeoutMs * prepareFactor(app))) as FixtureData;
   }
 
   async stop(): Promise<void> {
@@ -208,6 +211,13 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     this.pending.delete(reply.callId);
     if (reply.ok) pending.resolve(reply.result);
     else pending.reject(new RuntimeError(reply.error.code, reply.error.message));
+  }
+
+  private startWorker(): void {
+    this.terminateWorker('stopped');
+    this.worker = new Worker(new URL('runtime-worker.js', this.assetsBase), { type: 'module', name: 'patchquest-runtime' });
+    this.worker.addEventListener('message', (e: MessageEvent<WorkerReply>) => this.receive(e.data));
+    this.worker.addEventListener('error', () => this.terminateWorker('crashed'));
   }
 
   private terminateWorker(code: 'stopped' | 'crashed'): void {

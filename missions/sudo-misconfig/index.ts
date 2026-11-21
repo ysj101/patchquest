@@ -1,23 +1,25 @@
 // ミッション「広すぎる sudo の許可を絞る」（設定ミスによる過剰な権限）。運用担当に、管理者だけが行う保守の操作まで sudo で
-// 許可されているサーバを点検し、ターミナルの操作で設定を絞る。対策を選ぶのではなく、操作そのものが修正になる（repair: record）
+// 許可されているサーバを点検し、ターミナルの操作で設定を絞る。対策を選ぶのではなく、操作そのものが修正になる（repair: record）。
+// 端末の中身は本物の Linux（教材アプリ「Linux 端末」。WASM のエミュレータで動く）で、sudo の判断も本物の sudo が行う
+import { PROVISION_HOOK } from '../../apps/shell/linux/hooks';
 import { STATE_CHANGING_COMMAND } from '../../apps/shell/scenario';
 import type { MissionPack } from '../../platform/contract';
 import { IMPLEMENTATIONS } from './implementations';
 import { APPROACH, DEBRIEF, HINTS, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './learning';
 import { CASES, PROBES, TARGET_CASES } from './tests';
 
-const HOOKS = [{ id: 'shell.sudoers.provision', contract: 1 }];
-const TARGET_APP = { appId: 'shell', versions: '^2.0.0' };
+const HOOKS = [{ id: PROVISION_HOOK, contract: 1 }];
+const TARGET_APP = { appId: 'linux', versions: '^1.0.0' };
 const RECIPE = 'excess-sudo-grant';
 export const sudoMisconfigPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sudo-misconfig',
-    version: '1.2.0',
+    version: '2.0.0',
     kind: 'mission',
     title: '広すぎる sudo の許可を絞る',
     summary:
-      '運用担当が、管理者だけのはずの保守の操作まで実行できたという報告を調べます。ターミナルで sudo の設定を点検し、不要な許可だけを外して、普段の運用操作は残します。',
+      '運用担当が、管理者だけのはずの保守の操作まで実行できたという報告を調べます。ターミナルで sudo の設定を点検し、不要な許可だけを外して、普段の運用操作は残します。端末の中では、本物の Linux と本物の sudo が動きます。',
     learningObjectives: [
       'ターミナルで、利用者が sudo で実行できる操作を調べ、仕事に必要な範囲を超えた許可を見つけられる',
       '手順書を直すことと、設定そのものを絞ることの違いを説明できる',
@@ -43,17 +45,17 @@ export const sudoMisconfigPack: MissionPack = {
       normalUse: ['運用担当は、日常の運用操作を sudo で実行できる', '管理者は、保守の操作と sudo の設定の変更ができる'],
     },
     appCompatibility: TARGET_APP,
-    runtime: { adapter: 'browser', capabilities: ['sqlite', 'dom-preview'] },
+    runtime: { adapter: 'browser', capabilities: ['sqlite', 'dom-preview', 'linux-vm'] },
     prerequisites: { features: ['terminal', 'sudo'] },
     hooks: HOOKS,
     conflicts: [],
-    fixtures: { generator: 'shell.default', variants: [{ id: 'default', label: '標準', recipe: RECIPE }] },
+    fixtures: { generator: 'linux.default', variants: [{ id: 'default', label: '標準', recipe: RECIPE }] },
     mutationRecipes: [
       {
         id: RECIPE,
         version: '1.0.0',
         appliesTo: { ...TARGET_APP, hooks: HOOKS },
-        apply: [{ hook: 'shell.sudoers.provision', implementation: 'sudo-misconfig/grant-maintenance-too' }],
+        apply: [{ hook: PROVISION_HOOK, implementation: 'sudo-misconfig/grant-maintenance-too' }],
         verify: { probes: PROBES.map((probe) => probe.id) },
         revert: 'baseline',
       },

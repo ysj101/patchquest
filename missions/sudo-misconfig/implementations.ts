@@ -1,6 +1,7 @@
 // sudo の設定ミスのパックの実装。注入するのは、配備時に運用担当へ許可するコマンドを決める処理（初期データ生成器が呼ぶ）。
 // 設定ミスはコードのバグではないので、安全な状態との差は、この処理が作る初期データ（設定ファイルの中身）の差として入る
 import type { ProvisionSudoers } from '../../apps/shell/hooks';
+import { PROVISION_HOOK } from '../../apps/shell/linux/hooks';
 import type { ImplementationRegistry } from '../../platform/contract';
 
 /**
@@ -13,5 +14,5 @@ const grantMaintenanceToo: ProvisionSudoers = ({ operator, operations, maintenan
 ];
 
 export const IMPLEMENTATIONS: ImplementationRegistry = {
-  'sudo-misconfig/grant-maintenance-too': { hook: 'shell.sudoers.provision', run: grantMaintenanceToo },
+  'sudo-misconfig/grant-maintenance-too': { hook: PROVISION_HOOK, run: grantMaintenanceToo },
 };

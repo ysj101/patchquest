@@ -11,45 +11,45 @@ describe('sudo の設定の編集（visudo）', () => {
   let refs: FixtureData['refs'];
   beforeEach(async () => ({ refs } = await engine.prepare(shellOptions(13))));
 
-  it('保存する内容を付けずに実行すると、ファイルを開くだけで状態は変えない', () => {
-    const opened = sh(engine, 'admin', `sudo visudo -f ${OPERATORS}`);
+  it('保存する内容を付けずに実行すると、ファイルを開くだけで状態は変えない', async () => {
+    const opened = await sh(engine, 'admin', `sudo visudo -f ${OPERATORS}`);
     expect(opened).toMatchObject({ exit: 0, changed: false, stdout: '' });
     expect(opened.editor?.path).toBe(OPERATORS);
-    expect(opened.editor?.lines).toEqual(sh(engine, 'admin', `sudo cat ${OPERATORS}`).stdout.split('\n'));
-    expect(sh(engine, 'admin', 'sudo visudo').editor?.path).toBe('/etc/sudoers');
-    expect(sh(engine, 'admin', 'sudo visudo -f operators', '/etc/sudoers.d').editor?.path).toBe(OPERATORS);
+    expect(opened.editor?.lines).toEqual((await sh(engine, 'admin', `sudo cat ${OPERATORS}`)).stdout.split('\n'));
+    expect((await sh(engine, 'admin', 'sudo visudo')).editor?.path).toBe('/etc/sudoers');
+    expect((await sh(engine, 'admin', 'sudo visudo -f operators', '/etc/sudoers.d')).editor?.path).toBe(OPERATORS);
   });
 
-  it('書き換えた行だけを保存し、変えた行を観測イベントに記録する', () => {
-    const saved = save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 点検済み' }, { line: 2, text: '' }]);
+  it('書き換えた行だけを保存し、変えた行を観測イベントに記録する', async () => {
+    const saved = await save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 点検済み' }, { line: 2, text: '' }]);
     expect(saved).toMatchObject({ exit: 0, changed: true, stdout: `visudo: ${OPERATORS} の 1・2 行目を保存しました` });
     expect(saved.editor).toBeUndefined();
     expect(saved.events.at(-1)).toEqual({ type: 'file.changed', data: { path: OPERATORS, lines: [1, 2], user: refs['accounts.admin.name'], runAs: 'root' } });
-    expect(sh(engine, 'admin', `sudo cat ${OPERATORS}`).stdout.split('\n')).toEqual(['# 点検済み', '']);
+    expect((await sh(engine, 'admin', `sudo cat ${OPERATORS}`)).stdout.split('\n')).toEqual(['# 点検済み', '']);
   });
 
-  it('同じ内容での保存は、状態を変えたことにしない', () => {
-    save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 同じ' }]);
-    const again = save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 同じ' }]);
+  it('同じ内容での保存は、状態を変えたことにしない', async () => {
+    await save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 同じ' }]);
+    const again = await save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 同じ' }]);
     expect(again).toMatchObject({ exit: 0, changed: false, stdout: `visudo: ${OPERATORS} unchanged` });
     expect(again.events.filter((event) => event.type === 'file.changed')).toEqual([]);
   });
 
-  it('root 以外・使い方の誤り・存在しないファイル・範囲外の行を断る', () => {
-    expect(sh(engine, 'admin', `visudo -f ${OPERATORS}`)).toMatchObject({ exit: 1, stderr: `visudo: ${OPERATORS}: Permission denied` });
-    expect(sh(engine, 'operator', 'sudo visudo').stderr).toContain("is not allowed to execute '/usr/sbin/visudo' as root");
-    expect(sh(engine, 'admin', 'sudo visudo -f')).toMatchObject({ exit: 2, stderr: 'usage: visudo [-f ファイル]' });
-    expect(sh(engine, 'admin', `sudo visudo ${OPERATORS}`).exit).toBe(2);
-    expect(sh(engine, 'admin', 'sudo visudo -f /etc/none').stderr).toBe('visudo: /etc/none: No such file or directory');
-    expect(sh(engine, 'admin', 'sudo visudo -f /etc').stderr).toContain('編集できるのは通常のファイルだけです');
-    expect(save(engine, 'admin', OPERATORS, [{ line: 9, text: 'x' }])).toMatchObject({ exit: 2, changed: false, stderr: 'visudo: 行番号は 1〜2 で指定してください（指定：9）' });
+  it('root 以外・使い方の誤り・存在しないファイル・範囲外の行を断る', async () => {
+    expect(await sh(engine, 'admin', `visudo -f ${OPERATORS}`)).toMatchObject({ exit: 1, stderr: `visudo: ${OPERATORS}: Permission denied` });
+    expect((await sh(engine, 'operator', 'sudo visudo')).stderr).toContain("is not allowed to execute '/usr/sbin/visudo' as root");
+    expect(await sh(engine, 'admin', 'sudo visudo -f')).toMatchObject({ exit: 2, stderr: 'usage: visudo [-f ファイル]' });
+    expect((await sh(engine, 'admin', `sudo visudo ${OPERATORS}`)).exit).toBe(2);
+    expect((await sh(engine, 'admin', 'sudo visudo -f /etc/none')).stderr).toBe('visudo: /etc/none: No such file or directory');
+    expect((await sh(engine, 'admin', 'sudo visudo -f /etc')).stderr).toContain('編集できるのは通常のファイルだけです');
+    expect(await save(engine, 'admin', OPERATORS, [{ line: 9, text: 'x' }])).toMatchObject({ exit: 2, changed: false, stderr: 'visudo: 行番号は 1〜2 で指定してください（指定：9）' });
   });
 
-  it('構文を確かめてから保存し、読めない内容では保存しない', () => {
-    const rejected = save(engine, 'admin', OPERATORS, [{ line: 2, text: `${refs['accounts.operator.name']} ALL=(root) NOPASSWD: backup` }]);
+  it('構文を確かめてから保存し、読めない内容では保存しない', async () => {
+    const rejected = await save(engine, 'admin', OPERATORS, [{ line: 2, text: `${refs['accounts.operator.name']} ALL=(root) NOPASSWD: backup` }]);
     expect(rejected).toMatchObject({ exit: 1, changed: false });
     expect(rejected.stderr).toBe(`visudo: ${OPERATORS}:2: 構文エラー：コマンド「backup」は絶対パスか ALL で書いてください\nvisudo: 変更は保存していません`);
-    expect(sh(engine, 'admin', `sudo cat ${OPERATORS}`).stdout).toContain(String(refs['programs.operation.path']));
+    expect((await sh(engine, 'admin', `sudo cat ${OPERATORS}`)).stdout).toContain(String(refs['programs.operation.path']));
   });
 
   it.each([
@@ -59,14 +59,14 @@ describe('sudo の設定の編集（visudo）', () => {
     ['改行を含む内容', { line: 'sudo visudo', edits: [{ line: 1, text: 'a\nb' }] }, '1 件以上入れてください'],
     ['オブジェクトでない要素', { line: 'sudo visudo', edits: ['x'] }, '1 件以上入れてください'],
     ['同じ行番号が 2 回', { line: 'sudo visudo', edits: [{ line: 1, text: 'a' }, { line: 1, text: 'b' }] }, '同じ行番号を 2 回入れることはできません'],
-  ])('書き換えた行の形が違う要求（%s）は、実行せずに断る', (_name, body, message) => {
-    const { response } = send(engine, 'admin', { method: 'POST', path: '/sh', body });
+  ])('書き換えた行の形が違う要求（%s）は、実行せずに断る', async (_name, body, message) => {
+    const { response } = await send(engine, 'admin', { method: 'POST', path: '/sh', body });
     expect(response.status).toBe(400);
     expect((response.body as { error: string }).error).toContain(message);
   });
 
-  it('利用者の切り替えは端末ではできないので、切り替える場所を案内する', () => {
-    expect(sh(engine, 'operator', 'su admin')).toMatchObject({ exit: 1, stderr: expect.stringContaining('「表示する利用者」で切り替えてください') as unknown });
+  it('利用者の切り替えは端末ではできないので、切り替える場所を案内する', async () => {
+    expect(await sh(engine, 'operator', 'su admin')).toMatchObject({ exit: 1, stderr: expect.stringContaining('「表示する利用者」で切り替えてください') as unknown });
   });
 });
 describe('観測イベントとやり取りの説明', () => {

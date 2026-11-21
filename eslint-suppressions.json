@@ -413,7 +413,7 @@
   },
   "scripts/check-external-refs.mjs": {
     "id-length": {
-      "count": 4
+      "count": 3
     },
     "sonarjs/super-linear-regex": {
       "count": 1
@@ -609,7 +609,7 @@
   },
   "tests/support/engine-runtime.ts": {
     "@typescript-eslint/require-await": {
-      "count": 2
+      "count": 1
     }
   },
   "tests/support/request-only.ts": {
@@ -681,7 +681,7 @@
       "count": 4
     },
     "@typescript-eslint/require-await": {
-      "count": 3
+      "count": 1
     },
     "id-length": {
       "count": 4

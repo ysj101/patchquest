@@ -1,0 +1,18 @@
+#!/bin/sh
+# visudo が呼ぶエディタ。画面は持たない。書き換える行（行番号<TAB>内容）が届いていれば当てはめ、
+# 届いていなければ中身を学習画面の編集画面へ渡して、何も変えずに閉じる。結果（opened・applied・same・range）を書き残す
+Q=/run/pq
+for file; do :; done
+if [ ! -f "$Q/edits" ]; then
+  { readlink -f "${file%.tmp}"; cat "$file"; } > "$Q/editor.dump"
+  printf opened > "$Q/editor.result"
+  exit 0
+fi
+awk -v edits="$Q/edits" '
+  BEGIN { while ((getline row < edits) > 0) { tab = index(row, "\t"); text[substr(row, 1, tab - 1) + 0] = substr(row, tab + 1) } }
+  { print (FNR in text) ? text[FNR] : $0 }
+  END { for (n in text) if (n + 0 > NR) { printf "visudo: 行番号は 1〜%d で指定してください（指定：%d）\n", NR, n > "/dev/stderr"; exit 2 } }
+' "$file" > "$file.pq" || { rm -f "$file.pq"; printf range > "$Q/editor.result"; exit 2; }
+if cmp -s "$file" "$file.pq"; then printf same > "$Q/editor.result"; else printf applied > "$Q/editor.result"; fi
+cat "$file.pq" > "$file"
+rm -f "$file.pq"

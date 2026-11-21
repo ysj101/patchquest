@@ -1,0 +1,123 @@
+// 教材アプリ「Linux 端末」（本物の Linux を WASM のエミュレータで動かす）が、擬似シェルと同じ共通テストを通すこと（spec A01）と、
+// 本物の sudo・visudo での一連の操作、機械の状態の変化の検出を確かめる
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { linuxApp } from '../../apps/shell/linux';
+import { visudoSave } from '../../apps/shell/scenario';
+import type { AppRequest, FixtureData, ObservedEvent, PrepareOptions } from '../../platform/contract';
+import { AppEngine } from '../../runtimes/browser/engine';
+import { machineEvaluator } from '../support/engine-runtime';
+import { readMachineAsset } from '../support/machine-assets';
+import { OPERATORS, type Result } from '../support/shell-terminal';
+
+/** 機械を起動し直すテストは時間がかかる */
+const SLOW = 600_000;
+
+const options = (seed: number, implementations: PrepareOptions['implementations'] = {}): PrepareOptions => ({
+  attemptId: `linux-${seed}`,
+  app: { id: 'linux', version: linuxApp.descriptor.version },
+  fixture: { generator: 'linux.default', seed },
+  implementations,
+});
+
+it('共通テストがすべて通る', { timeout: SLOW }, async () => {
+  const evaluator = machineEvaluator();
+  const report = await evaluator.runSuite(options(42), linuxApp.tests, [], 'linux-42', '');
+  await evaluator.dispose();
+  expect(report.outcomes.filter((outcome) => !outcome.passed)).toEqual([]);
+  expect(report.outcomes).toHaveLength(linuxApp.tests.length);
+});
+
+describe('本物の Linux の端末', { timeout: SLOW }, () => {
+  const engine = new AppEngine(readMachineAsset);
+  let refs: FixtureData['refs'];
+
+  async function send(actor: string, request: AppRequest): Promise<Result & { events: ObservedEvent[]; status: number }> {
+    const { session } = await engine.invoke({ kind: 'session', actor });
+    const { response, events } = await engine.invoke({ kind: 'request', session: session ?? null, request });
+    if (!response) throw new Error('応答がない');
+    return { ...(response.body as unknown as Result), events, status: response.status };
+  }
+  const sh = (actor: string, line: string, cwd?: string) => send(actor, { method: 'POST', path: '/sh', body: cwd === undefined ? { line } : { line, cwd } });
+
+  beforeAll(async () => {
+    ({ refs } = await engine.prepare(options(7)));
+  }, SLOW);
+  afterAll(() => engine.dispose());
+
+  it('初期データの利用者・ホスト名・ファイルが、機械の中に実在する', async () => {
+    const name = String(refs['accounts.operator.name']);
+    expect(await sh('operator', 'whoami; hostname; pwd')).toMatchObject({ exit: 0, stdout: [name, refs['host.name'], refs['accounts.operator.home']].join('\n') });
+    expect((await sh('operator', 'id -Gn')).stdout.split(' ').sort()).toEqual([name, 'operators'].sort());
+    expect((await sh('operator', 'uname -s; ls -l /etc/sudoers.d/operators 2>&1')).stdout).toMatch(/^Linux\n/);
+    expect((await sh('admin', `sudo stat -c '%a %U' ${OPERATORS} /etc/sudoers`)).stdout).toBe('440 root\n440 root');
+  });
+
+  it('パイプ・リダイレクト・移動など、本物のシェルの機能を使える', async () => {
+    expect((await sh('operator', 'cat runbook.txt | grep -c sudo')).stdout).toBe('2');
+    expect(await sh('operator', 'cd /etc && pwd')).toMatchObject({ stdout: '/etc', cwd: '/etc' });
+    expect(await sh('operator', 'cd /nowhere')).toMatchObject({ exit: 2, cwd: refs['accounts.operator.home'] });
+    expect(await sh('operator', 'pwd', '/nowhere')).toMatchObject({ exit: 1, changed: false });
+    expect(await sh('operator', 'exit 7')).toMatchObject({ exit: 7 });
+  });
+
+  it('sudo の判断と root での実行は、機械の中の記録から観測イベントになる', async () => {
+    const maintenance = String(refs['programs.maintenance.path']);
+    const denied = await sh('operator', `sudo ${maintenance}`);
+    expect(denied).toMatchObject({ exit: 1, changed: false });
+    expect(denied.stderr).toContain(`is not allowed to execute '${maintenance}' as root`);
+    expect(denied.events).toEqual([{ type: 'sudo.decision', data: { user: refs['accounts.operator.name'], command: maintenance, runAs: 'root', decision: 'deny', reason: 'command not allowed' } }]);
+
+    const allowed = await sh('admin', `sudo ${maintenance}`);
+    expect(allowed).toMatchObject({ exit: 0, stdout: '保守操作を実行しました（root の権限）', changed: false });
+    expect(allowed.events.map((event) => event.type)).toEqual(['sudo.decision', 'shell.exec']);
+    expect(allowed.events[1]?.data).toEqual({ program: maintenance, user: refs['accounts.admin.name'], runAs: 'root' });
+    expect(allowed.events.map((event) => linuxApp.describeEvent?.(event)).join('\n')).toContain(maintenance);
+  });
+
+  it('visudo は編集画面へ中身を渡し、書き換えた行を本物の構文確認を通して保存する', async () => {
+    const opened = await sh('admin', 'sudo visudo -f operators', '/etc/sudoers.d');
+    expect(opened).toMatchObject({ exit: 0, changed: false, stderr: '', editor: { path: OPERATORS } });
+    expect(opened.editor?.lines).toEqual((await sh('admin', `sudo cat ${OPERATORS}`)).stdout.split('\n'));
+
+    const rejected = await send('admin', visudoSave(OPERATORS, [{ line: 2, text: 'これは設定ではない' }]));
+    expect(rejected).toMatchObject({ exit: 1, changed: false, stdout: '' });
+    expect(rejected.stderr).toContain('syntax error');
+    expect(await send('admin', visudoSave(OPERATORS, [{ line: 9, text: '# x' }]))).toMatchObject({ exit: 2, changed: false, stderr: expect.stringContaining('行番号は 1〜2 で指定してください（指定：9）') as unknown });
+    expect(await send('operator', visudoSave(OPERATORS, [{ line: 1, text: '# x' }]))).toMatchObject({ exit: 1, changed: false });
+    expect(await send('admin', { method: 'POST', path: '/sh', body: { line: 'true', edits: [{ line: 1, text: '# x' }] } })).toMatchObject({ exit: 1, stderr: expect.stringContaining('エディタが開かれなかった') as unknown });
+
+    const saved = await send('admin', visudoSave(OPERATORS, [{ line: 1, text: '# 点検済み' }]));
+    expect(saved).toMatchObject({ exit: 0, changed: true });
+    expect(saved.events.at(-1)).toEqual({ type: 'file.changed', data: { path: OPERATORS, user: refs['accounts.admin.name'] } });
+    expect(saved.events.map((event) => linuxApp.describeEvent?.(event)).at(-1)).toBe(`ファイルの変更：${OPERATORS}・利用者 ${String(refs['accounts.admin.name'])}`);
+    expect(await send('admin', visudoSave(OPERATORS, [{ line: 1, text: '# 点検済み' }]))).toMatchObject({ exit: 0, changed: false });
+  });
+
+  it('ファイルを変えたコマンドだけが、機械の状態を変えたことになる', async () => {
+    expect(await sh('operator', 'echo memo > note.txt')).toMatchObject({ exit: 0, changed: true });
+    expect(await sh('operator', 'cat note.txt; echo x > /tmp/scratch')).toMatchObject({ stdout: 'memo', changed: false });
+    expect(await sh('operator', 'chmod 600 note.txt')).toMatchObject({ changed: true });
+  });
+
+  it('終わらないコマンドは止め、画面を持つエディタは入力を受け取れない', async () => {
+    const stopped = await sh('operator', 'sleep 60');
+    expect(stopped).toMatchObject({ exit: 124, stderr: expect.stringContaining('止めました') as unknown });
+    expect((await sh('operator', 'vi note.txt')).exit).not.toBe(0);
+    expect(await sh('operator', 'whoami')).toMatchObject({ exit: 0 });
+  });
+
+  it('形の違う要求と長すぎる入力は、機械へ渡さずに断る', async () => {
+    expect((await send('operator', { method: 'POST', path: '/sh', body: { line: 'pwd', cwd: 'relative' } })).status).toBe(400);
+    expect((await send('operator', { method: 'PUT', path: '/sh' })).status).toBe(405);
+    expect((await send('operator', { method: 'GET', path: '/other' })).status).toBe(404);
+    expect((await send('anonymous', { method: 'GET', path: '/sh' })).status).toBe(401);
+    expect(await send('operator', { method: 'GET', path: '/sh' })).toMatchObject({ user: refs['accounts.operator.name'], host: refs['host.name'] });
+    expect(await sh('operator', `echo ${'x'.repeat(1100)}`)).toMatchObject({ exit: 2, stderr: 'sh: 入力が長すぎます（1024 文字まで）' });
+  });
+
+  it('リセットすると、機械は初期状態へ戻る', async () => {
+    await sh('operator', 'echo memo > kept.txt');
+    await engine.reset();
+    expect(await sh('operator', 'cat kept.txt')).toMatchObject({ exit: 1 });
+  });
+});

@@ -27,23 +27,23 @@ export interface Result {
 }
 
 /** 利用者としてやり取りを 1 回送る */
-export function send(engine: AppEngine, actor: string, request: { method: AppRequest['method']; path: string; body?: unknown }): { response: AppResponse; events: ObservedEvent[] } {
-  const session = engine.invoke({ kind: 'session', actor }).session ?? null;
-  const { response, events } = engine.invoke({ kind: 'request', session, request: request as never });
+export async function send(engine: AppEngine, actor: string, request: { method: AppRequest['method']; path: string; body?: unknown }): Promise<{ response: AppResponse; events: ObservedEvent[] }> {
+  const session = (await engine.invoke({ kind: 'session', actor })).session ?? null;
+  const { response, events } = await engine.invoke({ kind: 'request', session, request: request as never });
   if (!response) throw new Error('応答がない');
   return { response, events };
 }
 
 /** コマンド行を 1 つ実行し、端末の出力を返す */
-export function sh(engine: AppEngine, actor: string, line: string, cwd?: string): Result & { events: ObservedEvent[] } {
-  const { response, events } = send(engine, actor, { method: 'POST', path: '/sh', body: cwd === undefined ? { line } : { line, cwd } });
+export async function sh(engine: AppEngine, actor: string, line: string, cwd?: string): Promise<Result & { events: ObservedEvent[] }> {
+  const { response, events } = await send(engine, actor, { method: 'POST', path: '/sh', body: cwd === undefined ? { line } : { line, cwd } });
   expect(response.status).toBe(200);
   return { ...(response.body as unknown as Result), events };
 }
 
 /** visudo の編集画面で行を書き換えて保存する（端末の画面が保存のときに送るものと同じ形） */
-export function save(engine: AppEngine, actor: string, file: string, edits: LineEdit[]): Result & { events: ObservedEvent[] } {
-  const { response, events } = send(engine, actor, visudoSave(file, edits));
+export async function save(engine: AppEngine, actor: string, file: string, edits: LineEdit[]): Promise<Result & { events: ObservedEvent[] }> {
+  const { response, events } = await send(engine, actor, visudoSave(file, edits));
   expect(response.status).toBe(200);
   return { ...(response.body as unknown as Result), events };
 }
