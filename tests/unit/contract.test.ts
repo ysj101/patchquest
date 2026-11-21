@@ -141,6 +141,30 @@ describe('validatePack', () => {
     expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`story.workedExample.${path}:`)]);
   });
 
+  it('調べ方は省略でき、説明と手順が非空なら受け付ける', () => {
+    const pack = samplePack();
+    expect(pack.manifest.approach).toBeUndefined();
+    expect(validatePack(pack, { app })).toEqual([]);
+    pack.manifest.approach = { intro: '前提の仕組み', steps: ['最初に打つコマンド', '比べるもの'] };
+    expect(validatePack(pack, { app })).toEqual([]);
+  });
+
+  it.each([
+    ['intro', { intro: ' ', steps: ['手順'] }],
+    ['steps', { intro: '前提の仕組み', steps: [] }],
+    ['steps[0]', { intro: '前提の仕組み', steps: [''] }],
+  ])('調べ方の %s が空なら拒否する', (path, approach) => {
+    const pack = samplePack();
+    pack.manifest.approach = approach;
+    expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`approach.${path}:`)]);
+  });
+
+  it.each([null, '手順', ['手順']])('調べ方がオブジェクトでなければ拒否する', (approach) => {
+    const pack = samplePack();
+    Object.assign(pack.manifest, { approach });
+    expect(validatePack(pack, { app }).some((error) => error.startsWith('approach'))).toBe(true);
+  });
+
   it.each([null, '例', { title: '例' }])('仕組みの例がオブジェクトでなければ拒否する', (example) => {
     const pack = samplePack();
     Object.assign(pack.manifest.story, { workedExample: example });

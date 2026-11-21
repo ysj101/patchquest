@@ -78,8 +78,8 @@ export class ExerciseView {
 
   constructor(
     private readonly actions: ExerciseActions,
-    /** 状況・調査に続けて並べるタブと、状況タブの末尾に置く要素（ヒントなど） */
-    extras: { tabs: TabSpec[]; storyFooter: HTMLElement; callout: HTMLElement },
+    /** 状況・調査に続けて並べるタブと、状況タブ・調査タブの末尾に置く要素（ヒントなど） */
+    extras: { tabs: TabSpec[]; storyFooter: HTMLElement; investigationFooter: HTMLElement; callout: HTMLElement },
     announce: (message: string) => void,
   ) {
     this.xp = new XpBadge(announce);
@@ -87,7 +87,7 @@ export class ExerciseView {
     this.stages = new StageProgress(announce);
     this.stages.header.append(this.xp.element, this.achievements.element);
     this.storyFooter = extras.storyFooter;
-    this.investigation = new InvestigationPanel({ send: actions.send });
+    this.investigation = new InvestigationPanel({ send: actions.send }, extras.investigationFooter);
     this.toolTabs = tabs('演習の道具', [
       { id: 'story', label: '状況', panel: this.storySlot },
       { id: 'investigate', label: '調査', panel: this.investigation.element },
@@ -159,7 +159,7 @@ export class ExerciseView {
     );
     this.setBriefingVisible(showBriefing);
     this.showNow(snapshot);
-    this.investigation.setup(snapshot.pack.manifest.actions, snapshot.refs, describersOf(app));
+    this.investigation.setup(snapshot.pack.manifest, snapshot.refs, describersOf(app));
     this.investigation.setViewer(actorLabel(viewer));
     this.toolTabs.select('story');
   }
