@@ -6,7 +6,7 @@ import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
 import { verdictKind, whyDefenseFailed } from './verdict';
-import { radioOption, status } from './components';
+import { approachNodes, radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
 import { describersOf, type DescribingApp } from './investigation';
 import { GROUP_LABEL, STALE_VERIFICATION, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
@@ -106,6 +106,8 @@ export class RepairPanel {
   private readonly results = h('div', { class: 'results' });
   private readonly resultsTitle = h('h3', { tabIndex: -1 }, 'テストの結果');
   private readonly resultsGuard = renderGuard();
+  /** パックが操作のしかたを持つときだけ、① より先に見せる */
+  private readonly guide = h('section', { class: 'tool-section repair-guide', 'aria-labelledby': 'repair-guide-title', hidden: true });
   /** ① の区画。対策を選ぶ課題では候補、操作で直す課題では加えた変更の一覧を置く */
   private readonly choice = h('section', { class: 'tool-section', 'data-anchor': 'defense-panel' });
   private readonly changes = h('div', {});
@@ -118,7 +120,7 @@ export class RepairPanel {
 
   /** footer は対策タブの末尾に置く要素（ヒントなど） */
   constructor(private readonly actions: RepairActions, footer: HTMLElement) {
-    this.element = h('div', { class: 'repair' }, this.choice, this.verifySection(), this.resetSection(), footer);
+    this.element = h('div', { class: 'repair' }, this.guide, this.choice, this.verifySection(), this.resetSection(), footer);
   }
 
   /** 演習を始めたときに、修正の方式に合わせて ① の区画を組み直す。教材アプリによるリクエストの説明は、加えた変更の表示に使う */
@@ -129,6 +131,8 @@ export class RepairPanel {
     this.defenses = manifest.defenses;
     this.selected = snapshot.attempt.appliedDefense ?? this.defenses[0]?.id ?? null;
     this.reference.open = false;
+    this.guide.hidden = !manifest.repairGuide;
+    if (manifest.repairGuide) fill(this.guide, ...approachNodes('repair-guide-title', '操作のしかた', manifest.repairGuide));
     fill(this.choice, ...(this.record ? recordSection(this.record, this.changes) : this.choiceNodes()));
     const undone = this.record ? `${this.record.noun}を消し` : '使った対策を外し';
     this.resetNote.textContent = `${undone}、データも最初の状態に戻します。スタンプは残ります。`;

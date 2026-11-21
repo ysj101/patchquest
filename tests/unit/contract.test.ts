@@ -176,6 +176,17 @@ describe('validatePack', () => {
     expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`approach.${path}: コードは`)]);
   });
 
+  it('操作のしかたは省略でき、調べ方と同じ形で検証する', () => {
+    const pack = samplePack();
+    expect(pack.manifest.repairGuide).toBeUndefined();
+    pack.manifest.repairGuide = { intro: '`visudo` で編集する', steps: ['保存して閉じる'] };
+    expect(validatePack(pack, { app })).toEqual([]);
+    pack.manifest.repairGuide = { intro: '', steps: ['`閉じていない'] };
+    expect(validatePack(pack, { app })).toEqual([expect.stringContaining('repairGuide.intro:'), expect.stringContaining('repairGuide.steps[0]: コードは')]);
+    Object.assign(pack.manifest, { repairGuide: '手順' });
+    expect(validatePack(pack, { app })).toContain('repairGuide: オブジェクトが必要です');
+  });
+
   it.each([null, '手順', ['手順']])('調べ方がオブジェクトでなければ拒否する', (approach) => {
     const pack = samplePack();
     Object.assign(pack.manifest, { approach });

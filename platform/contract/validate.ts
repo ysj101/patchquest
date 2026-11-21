@@ -161,11 +161,8 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     }, 'name');
   });
 
-  if (m.approach !== undefined) {
-    const approach = c.obj('approach', m.approach);
-    checkInlineCode(c, 'approach.intro', c.text('approach.intro', approach.intro));
-    c.texts('approach.steps', approach.steps, true).forEach((step, i) => checkInlineCode(c, `approach.steps[${i}]`, step));
-  }
+  if (m.approach !== undefined) checkApproach(c, 'approach', m.approach);
+  if (m.repairGuide !== undefined) checkApproach(c, 'repairGuide', m.repairGuide);
 
   // 修正の方式。record（操作で直す）の課題は、学習画面に出す対策候補を持たず、解ける対策は出荷前検証で確かめる
   const isRecord = isObj(m.repair) && m.repair.kind === 'record';
@@ -287,6 +284,13 @@ function checkVulnerability(checker: Checker, value: unknown): void {
   checker.text('vulnerability.fullName', vulnerability.fullName);
   if (!CWE_ID.test(checker.text('vulnerability.cwe', vulnerability.cwe))) checker.fail('vulnerability.cwe', "'CWE-数字' の形式が必要です");
   checker.oneOf('vulnerability.category', vulnerability.category, VULNERABILITY_CATEGORIES);
+}
+
+/** 調べ方・操作のしかた。説明と手順が非空で、コードの囲みに書き誤りがないこと */
+function checkApproach(checker: Checker, path: string, value: unknown): void {
+  const approach = checker.obj(path, value);
+  checkInlineCode(checker, `${path}.intro`, checker.text(`${path}.intro`, approach.intro));
+  checker.texts(`${path}.steps`, approach.steps, true).forEach((step, i) => checkInlineCode(checker, `${path}.steps[${i}]`, step));
 }
 
 /** `…` で囲んだコードの書き誤り（閉じていない・中身が空）を止める */
