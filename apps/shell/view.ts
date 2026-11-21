@@ -59,6 +59,10 @@ class Terminal {
     this.cwd = session.cwd;
     // sandbox ではフォーム送信が禁止されているため、submit ではなく Enter キーで送る
     this.input.addEventListener('keydown', (event) => this.onKey(event));
+    // 端末のどこを押しても入力できるようにする（プロンプトの行や出力を押して打ち始める人が多い）。出力の文字を選んでいるときは邪魔しない
+    this.element.addEventListener('click', () => {
+      if (!this.entry.hidden && !this.input.disabled && window.getSelection()?.isCollapsed !== false) this.input.focus();
+    });
     this.prompt.textContent = this.promptText();
     this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。`);
   }
@@ -85,7 +89,8 @@ class Terminal {
       else this.history.newer();
       return;
     }
-    if (event.key !== 'Enter') return;
+    // 日本語入力の変換を確定する Enter では送らない
+    if (event.key !== 'Enter' || event.isComposing) return;
     const line = this.input.value;
     this.input.value = '';
     this.print('term-line', `${this.promptText()} ${line}`);
@@ -140,7 +145,8 @@ class Terminal {
         const result = await this.send(line, edits);
         if (result === null) return 'visudo: 保存できませんでした（端末の出力を確かめてください）';
         if (result.exit !== 0) return result.stderr;
-        close(result.stdout);
+        // 本物の visudo は、保存できたときに何も出力しない。保存できたことが分かるよう、出力がなければ知らせを出す
+        close(result.stdout || `${file.path} を保存しました`);
         return null;
       },
       close,

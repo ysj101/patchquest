@@ -122,6 +122,24 @@ test('キーボードだけでコマンドを送り、↑ で前のコマンド�
   await expect(commandInput(page)).toHaveValue('');
 });
 
+test('端末の出力やプロンプトを押しても打ち始められ、日本語入力の変換を確定する Enter では送らない', async ({ page }) => {
+  // 入力欄を正確に押さなくても、端末のどこかを押せば入力欄へフォーカスが移る
+  await page.locator('#exercise-title').focus();
+  await terminalOutput(page).click({ position: { x: 30, y: 10 } });
+  await expect(commandInput(page)).toBeFocused();
+  await page.locator('#exercise-title').focus();
+  await preview(page).locator('.term-prompt').click();
+  await page.keyboard.type('whoami');
+  await expect(commandInput(page)).toHaveValue('whoami');
+
+  // 変換中の Enter（isComposing）は確定の操作なので、コマンドとして送らない
+  await commandInput(page).dispatchEvent('keydown', { key: 'Enter', isComposing: true });
+  await expect(commandInput(page)).toHaveValue('whoami');
+  await expect(terminalOutput(page).locator('.term-line')).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(terminalOutput(page).locator('.term-out')).toHaveText(/^[a-z]+$/);
+});
+
 test('過剰な許可を調べて再現し、端末の操作で外すと、記録した操作が再生されて検証に合格する', async ({ page }) => {
   await type(page, 'sudo -l');
   await expect(terminalOutput(page)).toContainText('/usr/local/sbin/');

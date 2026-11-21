@@ -27,8 +27,8 @@ export const linuxApp: AppModule = {
   // 擬似シェルと同じテストが、本物の Linux でも通る
   tests: SHELL_TESTS,
   handle,
-  // 本物のシェルの help は組み込みコマンドの一覧を出すだけなので、勧めない
-  render: terminalView('本物の Linux です。ls・cat・grep などのコマンドやパイプ（|）がそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。'),
+  // 本物のシェルの help は組み込みコマンドの一覧を出すだけなので、よく使うコマンドの案内に差し替えてある（guest/help）
+  render: terminalView('本物の Linux です。help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。'),
   machine: { provision, reset },
   describeEvent,
   describeRequest,
