@@ -49,7 +49,7 @@ pnpm run test:dist      # ZIP を展開して localhost で開き、Chrome で�
 node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API を使っていないか（ビルドでも実行）
 ```
 
-演習用の機械（本物の Linux を動かす課題で使う）の配布物は、ビルドとユニットテストの前に `.machine/` へ自動で作ります（`node scripts/build-machine.mjs` でも作れます）。初回は、Alpine Linux の最小構成・sudo・カーネルと v86 の BIOS を、版とハッシュを固定して取得します（約 31MB。取得したものは `.machine/cache/` に残し、次からは取りに行きません）。取得するのはこのときだけで、配布物は実行時に外へ取りに行きません。
+演習用の機械（本物の Linux を動かす課題で使う）の配布物は、ビルドとユニットテストの前に `.machine/` へ自動で作ります（`node scripts/build-machine.mjs` でも作れます）。初回は、Alpine Linux の最小構成・sudo・カーネルと v86 の BIOS を、版とハッシュを固定して取得します（約 31MB。取得したものは `.machine/cache/` に残し、次からは取りに行きません）。取得元は、このリポジトリのリリース（[machine-sources-1](https://github.com/ysj101/patchquest/releases/tag/machine-sources-1)）に保管したものです。Alpine Linux の配布元から古い版が消えても、ビルドできます。版を上げる手順は [docs/machine-sources.md](docs/machine-sources.md) にあります。取得するのはこのときだけで、配布物は実行時に外へ取りに行きません。
 
 ### 品質ゲート
 

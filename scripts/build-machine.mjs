@@ -1,6 +1,7 @@
 // 演習用の機械（本物の Linux を WASM のエミュレータ v86 で動かす）の配布物を .machine/ に作る。
-// Alpine Linux の最小構成・sudo・カーネルと BIOS を、版とハッシュを固定して取得し、起動を済ませた状態を保存する。
-// 取得するのはビルドのときだけで、配布物は実行時に外へ取りに行かない（spec §12）
+// Alpine Linux の最小構成・sudo・カーネルと BIOS を、版とハッシュを固定して取得し（scripts/machine-sources.mjs）、起動を済ませた状態を保存する。
+// 取得するのはビルドのときだけで、配布物は実行時に外へ取りに行かない（spec §12）。
+// --sources を付けると、取得物を用意して、その場所を 1 行ずつ出す（保管場所へ置くときに使う。docs/machine-sources.md）
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -9,24 +10,12 @@ import { fileURLToPath } from 'node:url';
 import { constants, gunzipSync, zstdCompressSync } from 'node:zlib';
 import { V86 } from 'v86';
 import { cpioArchive, readTar } from './cpio.mjs';
+import { SOURCES, fetchSource } from './machine-sources.mjs';
 
 /** 配布物を置く場所。ビルド（scripts/build.mjs）とテスト（tests/support/machine-assets.ts）がここから読む */
 export const MACHINE_DIR = '.machine';
 /** 配布物のファイル名。runtimes/browser/machine.ts の MACHINE_ASSETS と同じ */
 export const MACHINE_FILES = ['v86.wasm', 'seabios.bin', 'vgabios.bin', 'linux.state.zst'];
-
-const ALPINE = 'https://dl-cdn.alpinelinux.org/alpine/v3.24';
-/** v86 の npm パッケージ（0.5.473）と同じコミットの BIOS */
-const V86_REPO = 'https://raw.githubusercontent.com/copy/v86/315b2b0b758703ef0e6cc7b4088d6068f83f3c20';
-/** 取得するもの。中身が変わっていたら（ハッシュが合わなければ）止める */
-const SOURCES = {
-  rootfs: { url: `${ALPINE}/releases/x86/alpine-minirootfs-3.24.4-x86.tar.gz`, sha256: 'df793865bf166c10acaad3a4d5d40498f9ee3f89fa405d39c7f540464fb3b0c1' },
-  zlib: { url: `${ALPINE}/main/x86/zlib-1.4-r0.apk`, sha256: '909b895b67a2de227c694764f697a8679570a603560100d050c3193154150396' },
-  sudo: { url: `${ALPINE}/community/x86/sudo-1.9.17_p2-r2.apk`, sha256: '19f34845b079844e8e1b0630e9748a197c1a4d350e87840bc9ebd02b32c257e1' },
-  kernel: { url: `${ALPINE}/main/x86/linux-virt-6.18.64-r0.apk`, sha256: '738a314414f3a9e7e7dd6f23dd480e86a35bb8d3a373c36ef29d2c110fcce5a3' },
-  seabios: { url: `${V86_REPO}/bios/seabios.bin`, sha256: '73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98' },
-  vgabios: { url: `${V86_REPO}/bios/vgabios.bin`, sha256: 'a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880' },
-};
 
 const GUEST_DIR = 'apps/shell/linux/guest';
 const V86_WASM = 'node_modules/v86/build/v86.wasm';
@@ -44,6 +33,9 @@ const BOOT_TIMEOUT_MS = 120_000;
 /** apk に入っている、パッケージ管理用のファイル。機械には置かない */
 const APK_METADATA = /^\.(?:PKGINFO|SIGN\.|pre-|post-|trigger)/;
 
+/** 取得したものを残しておく場所。次からは取りに行かない */
+const CACHE_DIR = join(MACHINE_DIR, 'cache');
+
 /**
  * 取得したもの（名前は SOURCES のキー）
  * @typedef {Record<keyof typeof SOURCES, Buffer>} Sources
@@ -55,30 +47,10 @@ const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 /** @type {(bytes: Buffer) => { buffer: ArrayBuffer }} */
 const image = (bytes) => ({ buffer: /** @type {ArrayBuffer} */ (bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)) });
 
-/**
- * 取得したものを .machine/cache に置き、次からは取りに行かない。ハッシュが合わなければ止める
- * @param {string} name
- * @param {{ url: string, sha256: string }} source
- * @returns {Promise<Buffer>}
- */
-async function fetchSource(name, { url, sha256: expected }) {
-  const cached = join(MACHINE_DIR, 'cache', `${name}-${expected.slice(0, 12)}`);
-  if (existsSync(cached)) {
-    const data = await readFile(cached);
-    if (sha256(data) === expected) return data;
-  }
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`${url} を取得できません（${response.status}）`);
-  const data = Buffer.from(await response.arrayBuffer());
-  if (sha256(data) !== expected) throw new Error(`${url} の中身が、固定したハッシュと合いません`);
-  await writeFile(cached, data);
-  return data;
-}
-
 /** @returns {Promise<Sources>} */
 async function fetchSources() {
   const names = /** @type {(keyof typeof SOURCES)[]} */ (Object.keys(SOURCES));
-  const fetched = await Promise.all(names.map((name) => fetchSource(name, SOURCES[name])));
+  const fetched = await Promise.all(names.map((name) => fetchSource(SOURCES[name], { cacheDir: CACHE_DIR })));
   return /** @type {Sources} */ (Object.fromEntries(names.map((name, index) => [name, fetched[index]])));
 }
 
@@ -161,7 +133,8 @@ async function bootAndSave(sources, kernel, initrd) {
 /** 配布物の中身を決めるもの（このスクリプト・cpio の組み立て・機械の中のスクリプト・エミュレータ）のハッシュ */
 async function inputsHash() {
   const guests = (await readdir(GUEST_DIR)).sort().map((name) => join(GUEST_DIR, name));
-  const files = [fileURLToPath(import.meta.url), fileURLToPath(new URL('cpio.mjs', import.meta.url)), V86_WASM, ...guests];
+  const scripts = ['build-machine.mjs', 'cpio.mjs', 'machine-sources.mjs'].map((name) => fileURLToPath(new URL(name, import.meta.url)));
+  const files = [...scripts, V86_WASM, ...guests];
   return sha256((await Promise.all(files.map(async (file) => sha256(await readFile(file))))).join('\n'));
 }
 
@@ -172,7 +145,7 @@ export async function ensureMachine() {
   const current = MACHINE_FILES.every((file) => existsSync(join(MACHINE_DIR, file))) && existsSync(stamp) && (await readFile(stamp, 'utf8')) === wanted;
   if (current) return false;
 
-  await mkdir(join(MACHINE_DIR, 'cache'), { recursive: true });
+  await mkdir(MACHINE_DIR, { recursive: true });
   const sources = await fetchSources();
   const kernelEntries = readTar(gunzipSync(sources.kernel));
   const state = await bootAndSave(sources, kernelFile(kernelEntries, KERNEL_PATH), await buildInitrd(sources, kernelEntries));
@@ -187,6 +160,11 @@ export async function ensureMachine() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  if (process.argv.includes('--sources')) {
+    await fetchSources();
+    for (const source of Object.values(SOURCES)) console.log(join(CACHE_DIR, source.file));
+    process.exit(0);
+  }
   const built = await ensureMachine();
   console.log(built ? `演習用の機械を作りました: ${MACHINE_DIR}/` : `演習用の機械は最新です: ${MACHINE_DIR}/`);
   // エミュレータのタイマーが残っていても終える

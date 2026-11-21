@@ -44,11 +44,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # 演習用の機械（本物の Linux）の元になるもの。版とハッシュを固定して取得するので、変わらない限り取りに行かない
+      # 演習用の機械（本物の Linux）の元になるもの。版とハッシュを固定して、このリポジトリのリリースから取得する（docs/machine-sources.md）。変わらない限り取りに行かない
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .machine/cache
-          key: machine-sources-${{ hashFiles('scripts/build-machine.mjs') }}
+          key: machine-sources-${{ hashFiles('scripts/machine-sources.mjs') }}
       # 重複コードを Code Scanning に送り、PR で増えた分を差分として表示する（止めるのは check の check:duplication）
       - run: pnpm exec jscpd --reporters sarif --silent
       - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
@@ -73,11 +73,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # 演習用の機械（本物の Linux）の元になるもの。版とハッシュを固定して取得するので、変わらない限り取りに行かない
+      # 演習用の機械（本物の Linux）の元になるもの。版とハッシュを固定して、このリポジトリのリリースから取得する（docs/machine-sources.md）。変わらない限り取りに行かない
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .machine/cache
-          key: machine-sources-${{ hashFiles('scripts/build-machine.mjs') }}
+          key: machine-sources-${{ hashFiles('scripts/machine-sources.mjs') }}
       # Chrome はランナーに入っているものを使う
       - run: pnpm run test:e2e
       - run: pnpm run test:dist
