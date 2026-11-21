@@ -74,6 +74,11 @@ export interface AppModule {
   render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
   /** アプリが記録する観測イベントの説明（調査パネルで表示する）。知らない種類は null */
   describeEvent?(event: ObservedEvent): string | null;
+  /**
+   * 観測ログの項目名（describeEvent が「名前：…」の形で出す名前）。課題パックの文章は「観測ログの「名前」」の形で、
+   * ここにある名前だけを名指しできる（全パック共通のテストが確かめる）。describeEvent と同じ定数から作る
+   */
+  eventLabels?: readonly string[];
   /** やり取りの見出しに使う、リクエストの短い表示（例：端末に打ったコマンド行）。説明しないものは null で、メソッドとパスを示す */
   describeRequest?(request: AppRequest): string | null;
   /** 観測ログでの、やり取りの結果の印と中身。説明しないものは null で、状態コードとリクエスト・応答をそのまま示す */
