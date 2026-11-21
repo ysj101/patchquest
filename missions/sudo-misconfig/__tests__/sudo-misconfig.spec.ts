@@ -29,6 +29,10 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await expect(card).toContainText('過剰な sudo 権限');
   await startMission(page, 'sudo-misconfig');
   await expect(terminalInput(page)).toBeVisible();
+  // 最初の案内は、本物の Linux では通じない help を勧めない
+  const note = terminalOutput(page).locator('.term-note').first();
+  await expect(note).toContainText('ls・cat・sudo などのコマンドをそのまま使えます');
+  await expect(note).not.toContainText('help');
 
   // 端末の中身は本物の Linux で、パイプも使える
   await typeCommand(page, 'uname -s | tr a-z A-Z');

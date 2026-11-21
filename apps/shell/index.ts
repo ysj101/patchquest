@@ -7,7 +7,7 @@ import { BASELINE, HOOKS } from './hooks';
 import { SCHEMA } from './schema';
 import { handle } from './server';
 import { SHELL_TESTS } from './tests';
-import { render } from './view';
+import { terminalView } from './view';
 
 export const shellApp: AppModule = {
   descriptor: {
@@ -23,7 +23,8 @@ export const shellApp: AppModule = {
   implementations: BASELINE,
   tests: SHELL_TESTS,
   handle,
-  render,
+  // help は擬似シェルが用意したコマンドで、使えるコマンドを一覧する
+  render: terminalView('help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。'),
   describeEvent,
   describeRequest,
   describeExchange,

@@ -2,7 +2,7 @@
 // エディタを開くコマンド（visudo）では、入力欄の代わりに編集画面を出し、保存するときに同じコマンド行へ書き換えた行を付けて送る。
 // 出力は textContent で表示し、端末のエスケープや HTML を解釈しない。キーボードだけで操作できる
 import type { AppResponse } from '../../platform/contract';
-import type { ViewContext } from '../../runtimes/browser/app-module';
+import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
 import { editorPanel } from './editor-view';
 import type { EditorFile, LineEdit } from './shell';
@@ -55,12 +55,13 @@ class Terminal {
   private readonly history = lineHistory(this.input);
   private cwd: string;
 
-  constructor(private readonly ctx: ViewContext, private readonly session: Session) {
+  /** note は、端末を開いたときに最初に出す案内（使えるコマンドの調べ方など。アプリごとに違う） */
+  constructor(private readonly ctx: ViewContext, private readonly session: Session, note: string) {
     this.cwd = session.cwd;
     // sandbox ではフォーム送信が禁止されているため、submit ではなく Enter キーで送る
     this.input.addEventListener('keydown', (event) => this.onKey(event));
     this.prompt.textContent = this.promptText();
-    this.print('term-note', 'help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。');
+    this.print('term-note', note);
   }
 
   private promptText(): string {
@@ -151,10 +152,16 @@ class Terminal {
   }
 }
 
-export async function render(root: HTMLElement, _route: string, ctx: ViewContext): Promise<void> {
-  root.append(el('p', { className: 'badge' }, '学習用の架空サーバ（ターミナル）'));
-  if (!ctx.viewer) return void root.append(el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
-  const res = await ctx.request({ method: 'GET', path: '/sh' });
-  if (res.status !== 200) return void root.append(el('p', { className: 'error' }, errorMessage(res)));
-  root.append(new Terminal(ctx, res.body as unknown as Session).element);
+/**
+ * 端末の画面。擬似シェルと Linux 端末が共有し、端末を開いたときの最初の案内（note）だけをアプリごとに渡す。
+ * 中身の違うアプリで、そのアプリでは通じない案内（例：本物のシェルでの help）を出さないため
+ */
+export function terminalView(note: string): AppModule['render'] {
+  return async (root, _route, ctx) => {
+    root.append(el('p', { className: 'badge' }, '学習用の架空サーバ（ターミナル）'));
+    if (!ctx.viewer) return void root.append(el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
+    const res = await ctx.request({ method: 'GET', path: '/sh' });
+    if (res.status !== 200) return void root.append(el('p', { className: 'error' }, errorMessage(res)));
+    root.append(new Terminal(ctx, res.body as unknown as Session, note).element);
+  };
 }

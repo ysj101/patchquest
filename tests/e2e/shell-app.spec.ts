@@ -14,6 +14,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('端末でコマンドを実行でき、未実装のコマンドや対応していない書き方は理由を示して断る', async ({ page }) => {
+  // 擬似シェルの最初の案内は、用意したコマンドを一覧する help を勧める
+  await expect(terminalOutput(page).locator('.term-note').first()).toHaveText('help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。');
   await type(page, 'whoami');
   await expect(terminalOutput(page).locator('.term-out')).toHaveText(/^[a-z]+$/);
   await type(page, 'cd /etc');
