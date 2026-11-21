@@ -42,17 +42,10 @@ export async function startApp(root: HTMLElement): Promise<void> {
   let orchestrator: Orchestrator;
   /** 練習用パックの操作ガイド。演習が始まるたびにそのパックのガイドで始め直し、課題一覧へ戻っても表示し続ける */
   const guide = new GuidePanel({ announce: say, finish: () => void showList() });
-  const preflightView = new PreflightView({
-    begin: () => void beginExercise(),
-    retry: () => void orchestrator.retryPreflight(),
-    back: () => void showList(),
-  });
+  const preflightView = new PreflightView({ retry: () => void orchestrator.retryPreflight().then(enterIfReady), back: () => void showList() });
   /** プレビューと調査パネルで、いま操作している利用者 */
   let viewer: ActorKey = ANONYMOUS;
-  const hints = new HintsPanel({
-    openHint: (level) => orchestrator.openHint(level),
-    viewSolution: () => orchestrator.viewSolution(),
-  });
+  const hints = new HintsPanel({ openHint: (level) => orchestrator.openHint(level), viewSolution: () => orchestrator.viewSolution() });
   const repair = new RepairPanel({
     apply: (defenseId) => applyDefense(defenseId),
     verify: () => verify(),
@@ -197,14 +190,21 @@ export async function startApp(root: HTMLElement): Promise<void> {
   let briefingAttemptId: string | null = null;
   async function begin(packId: string, resume?: AttemptRecord): Promise<void> {
     others = [];
-    // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の「演習を始める」を残さない）
+    // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の点検結果を残さない）
     const started = orchestrator.start(packId, { resume });
     show('preflight');
     say('開始前チェックを始めました');
     const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
     others = records.filter((record) => record.attemptId !== snapshot.attempt.attemptId);
     briefingAttemptId = resume ? null : snapshot.attempt.attemptId;
-    say(isInExercise(snapshot.attempt.state) ? '開始前チェックが終わりました。演習を始められます' : '開始前チェックで問題が見つかりました');
+    await enterIfReady(snapshot);
+  }
+
+  /** 開始前チェックに合格していれば、ボタンを待たずに演習画面へ進む。点検の間に一覧へ戻ったり別の演習を始めたりしていたら進まない */
+  async function enterIfReady(snapshot: ExerciseSnapshot): Promise<void> {
+    if (screen !== 'preflight' || orchestrator.snapshot?.attempt.attemptId !== snapshot.attempt.attemptId) return;
+    if (isInExercise(snapshot.attempt.state)) await beginExercise();
+    else say('開始前チェックで問題が見つかりました');
   }
 
   function updateExercise(snapshot: ExerciseSnapshot): void {

@@ -10,7 +10,7 @@ The situation screen is the exercise workbench with the `状況` tab open. The r
 
 ## How to get to it (user POV)
 
-- Choose `まずは練習（3 分）`, then `演習を始める`, then `ミッション開始`.
+- Choose `まずは練習（3 分）`, wait for preflight, then choose `ミッション開始`.
 - The `状況` tab is selected.
 
 ## Driving it with drive.ts
@@ -20,7 +20,7 @@ Preconditions:
 - Doctor reports `ready` at `http://127.0.0.1:4173`.
 - The catalog includes the practice mission. The test build does.
 
-- **Open the practice.** Step `click` on button `まずは練習（3 分）`, then `演習を始める`, then `ミッション開始` with `exact: true`.
+- **Open the practice.** Step `click` on button `まずは練習（3 分）`, then `ミッション開始` with `exact: true`.
 - **See one request.** Step `expectVisible` for heading `依頼`. Step `expectCount` with text `問い合わせ` and count `0`. Step `expectCount` with text `今やること：調査を開いて` and count `1`.
 - **Match the guide to the tab.** The guide heading is `こわしてみよう` and the lit target is the `調査` tab. Open `調査` and the lit target becomes the request actions.
 - **Proof.** Step `screenshot` with file `situation.png` and `fullPage: true`. The shot shows one request, the `今やること` line, and the guide bar along the top.

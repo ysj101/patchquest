@@ -12,7 +12,7 @@ After 攻撃と普段の使い方を検証する, the 対策 tab shows a few con
 ## How to get to it (user POV)
 
 - On the mission list, choose `この課題を始める` on the mission row.
-- Choose `演習を始める`, then `ミッション開始`.
+- Wait for preflight, then choose `ミッション開始`.
 - Open `対策`, choose a defense, choose `この対策を適用する`, then `攻撃と普段の使い方を検証する`.
 - To verify the unfixed app, choose `対策を取り消す`, then verify again.
 

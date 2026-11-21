@@ -5,9 +5,7 @@ test('キーボードだけで導入を飛ばし、動きをオフにして演�
   await openHome(page);
   await tabTo(page, page.locator('[data-mission="test-pack"]').getByRole('button', { name: 'この課題を始める' }));
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: '演習を始める' })).toBeFocused({ timeout: 15_000 });
-  await page.keyboard.press('Enter');
-  await expect(launchButton(page)).toBeFocused();
+  await expect(launchButton(page)).toBeFocused({ timeout: 15_000 });
   await page.keyboard.press('Escape');
   await expectWorkbench(page);
   await expect(preview(page).getByRole('heading', { name: 'ノート（alice）' })).toBeVisible();

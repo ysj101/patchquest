@@ -183,10 +183,10 @@ export async function expectWorkbench(page: Page): Promise<void> {
   await expect(page.locator('#exercise-title')).toBeFocused();
 }
 
+/** 開始前チェックに合格すると、ボタンを押さずに演習画面へ進む */
 async function beginExercise(page: Page): Promise<void> {
-  // 開始前チェックが終わるとボタンが出る。本物の Linux を起動する課題では、機械の起動と検証に十数秒かかる
-  await page.getByRole('button', { name: '演習を始める' }).click({ timeout: 60_000 });
-  await expect(page.locator('.exercise')).toBeVisible();
+  // 本物の Linux を起動する課題では、機械の起動と検証に十数秒かかる
+  await expect(page.locator('.exercise')).toBeVisible({ timeout: 60_000 });
 }
 
 async function finishBriefing(page: Page): Promise<void> {

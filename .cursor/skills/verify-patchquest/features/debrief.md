@@ -11,7 +11,7 @@ The 振り返り tab is the lesson after a defense passes. The first view shows 
 ## How to get to it (user POV)
 
 - On the mission list, choose `この課題を始める` on the `test-pack` row.
-- Choose `演習を始める`, then `ミッション開始`.
+- Wait for preflight, then choose `ミッション開始`.
 - Open `対策`, choose `所有者を照合する`, choose `この対策を適用する`, then `攻撃と普段の使い方を検証する`.
 - Open `振り返り`.
 
@@ -24,7 +24,7 @@ Preconditions:
 
 - **Open the lesson.** Step `click` tab `振り返り` after the defense above. Step `expectVisible` for heading `原因` and heading `持ち帰ること`. Step `expectCount` for `安全化状況` with count `0` and `within` `.debrief`.
 - **Answer the check.** Step `click` radio `取得時に所有者を照合する` with `exact: true`, then button `回答する`. Step `expectCount` for `正解` with count `1` and `within` `.debrief`.
-- **Retry.** Step `click` button `新しいデータで再挑戦する`. Button `演習を始める` is visible.
+- **Retry.** Step `click` button `新しいデータで再挑戦する`. Button `ミッション開始` is visible.
 - **Proof.** Step `screenshot` with file `debrief.png` after the tab opens and before scrolling. The shot shows 原因 and 持ち帰ること. It does not show the 安全化状況 panel in the debrief.
 
 ## Gotchas
