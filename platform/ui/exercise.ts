@@ -65,6 +65,8 @@ export class ExerciseView {
   private readonly ticket = h('p', { class: 'ticket-id' });
   private readonly request = h('div', { class: 'desk-request' });
   private readonly nowDoing = h('p', { class: 'now-doing' });
+  /** 続きから始めて前回の対策を適用し直したときに、作り直した内容を知らせる */
+  private readonly resumeNote = h('p', { class: 'banner banner-ok', hidden: true });
   private readonly state = h('p', { class: 'state-stamp' });
   private readonly stages: StageProgress;
   readonly xp: XpBadge;
@@ -80,7 +82,7 @@ export class ExerciseView {
     private readonly actions: ExerciseActions,
     /** 状況・調査に続けて並べるタブと、状況タブ・調査タブの末尾に置く要素（ヒントなど） */
     extras: { tabs: TabSpec[]; storyFooter: HTMLElement; investigationFooter: HTMLElement; callout: HTMLElement },
-    announce: (message: string) => void,
+    private readonly announce: (message: string) => void,
   ) {
     this.xp = new XpBadge(announce);
     this.achievements = new AchievementToast(announce);
@@ -112,6 +114,7 @@ export class ExerciseView {
         settingsButton(() => actions.openSettings()),
       ),
       this.nowDoing,
+      this.resumeNote,
       extras.callout,
       this.briefing,
       this.workbench,
@@ -158,6 +161,7 @@ export class ExerciseView {
       h('p', { class: 'note' }, 'Esc キーでも導入を飛ばして始められます。'),
     );
     this.setBriefingVisible(showBriefing);
+    this.showResumed(snapshot);
     this.showNow(snapshot);
     this.investigation.setup(snapshot.pack.manifest, snapshot.refs, describersOf(app));
     this.investigation.setViewer(actorLabel(viewer));
@@ -191,6 +195,16 @@ export class ExerciseView {
     this.setBriefingVisible(false);
     this.focus();
     this.actions.briefed();
+  }
+
+  /** 開始前チェックの直後に対策が付いているのは、続きから始めて前回の対策を適用し直したときだけ */
+  private showResumed({ attempt, pack }: ExerciseSnapshot): void {
+    const resumed = pack.manifest.defenses.find((defense) => defense.id === attempt.appliedDefense);
+    this.resumeNote.hidden = !resumed;
+    if (!resumed) return;
+    const message = `データは演習開始時の状態に戻し、前回の対策「${resumed.label}」を適用し直しました`;
+    this.resumeNote.textContent = `${message}。`;
+    this.announce(message);
   }
 
   private showNow({ attempt, defenseCurrent, pack }: ExerciseSnapshot): void {

@@ -11,7 +11,7 @@ The repair tab has a disclosure named `参考コードを見る`. Opening it sho
 ## How to get to it (user POV)
 
 - On the mission list, choose `この課題を始める` on a mission row.
-- Choose `演習を始める`, then `ミッション開始`.
+- Wait for preflight, then choose `ミッション開始`.
 - Choose the `対策` tab.
 - Choose a defense, then `参考コードを見る`.
 
@@ -22,7 +22,7 @@ Preconditions:
 - Doctor reports `ready` at `http://127.0.0.1:4173`.
 - The test catalog build is required for `test-pack`. The four shipped missions are in every build.
 
-- **Open one mission.** Step `click` button `この課題を始める` with `exact: true` and `within` `[data-mission="sqli"]`. Step `click` button `演習を始める`. Step `click` button `ミッション開始` with `exact: true`. Step `click` tab `対策`.
+- **Open one mission.** Step `click` button `この課題を始める` with `exact: true` and `within` `[data-mission="sqli"]`. Step `click` button `ミッション開始` with `exact: true`. Step `click` tab `対策`.
 - **Choose a defense.** Step `click` radio whose `namePattern` is the defense label, for example `検索語を値としてバインド`.
 - **Open the code.** Step `click` button `参考コードを見る` with `exact: true`. The summary has `role="button"`. Step `expectVisible` heading whose `namePattern` is `参考コード（閲覧専用）`.
 - **Proof.** Step `scroll` that heading, then `screenshot`. The shot shows both panes. Keyword text is blue, string text is gold, and comment text is muted. The pane grounds stay red and green.

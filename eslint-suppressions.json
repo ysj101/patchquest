@@ -265,14 +265,11 @@
     }
   },
   "platform/ui/preflight.ts": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
     "@typescript-eslint/unbound-method": {
-      "count": 3
+      "count": 2
     },
     "id-length": {
-      "count": 2
+      "count": 1
     }
   },
   "runtimes/browser/adapter.ts": {

@@ -141,8 +141,8 @@ test('対策を適用した演習を続きから始めると、開始前チェ�
   await backToList(page).click();
 
   await page.locator('[data-mission="test-pack"]').getByRole('button', { name: '続きから始める' }).click();
-  await expect(page.getByText('前回の対策「所有者を照合する」を適用し直しました')).toBeVisible({ timeout: 15_000 });
   await enterWorkbench(page);
+  await expect(page.locator('.exercise').getByText('前回の対策「所有者を照合する」を適用し直しました')).toBeVisible();
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(page.getByText('適用中の対策：所有者を照合する')).toBeVisible();
   // 記録の合格は、再検証するまで現在の合格として扱わない
