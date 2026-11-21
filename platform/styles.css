@@ -269,23 +269,22 @@ main > section > * + * { margin-top: 16px; }
 }
 .ticket-id { font-family: var(--font-mono); }
 
-/* 作業台：左に依頼とステージ、中央に教材アプリと観測ログ、右に道具。広い画面だけ 3 列にする */
-.workbench { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; margin-top: 12px; }
+/* 作業台：上の帯に依頼（重ねて出す）とステージ、左に教材アプリと観測ログ、右に道具。教材アプリに幅を残すため、依頼は列にしない */
+.workbench { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px 16px; align-items: start; margin-top: 8px; }
+/* 広い画面では教材アプリを道具と同じ幅まで広げる。狭い画面では道具の操作が切れないよう、道具を広く保つ */
+@media (min-width: 1400px) { .workbench { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .desk-brief {
-  grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 12px 24px; align-items: start;
-  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px;
+  grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 12px;
 }
-.desk-request { display: grid; gap: 4px; }
-.desk-request h2, .stage-count { font-size: 0.75rem; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; }
-.desk-request p { font-size: 0.9rem; }
-@media (min-width: 1400px) {
-  .workbench { grid-template-columns: 240px minmax(0, 2fr) minmax(0, 3fr); }
-  .desk-brief { grid-column: auto; grid-template-columns: 1fr; gap: 20px; position: sticky; top: 12px; }
-}
+.stage-count { font-size: 0.75rem; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; }
+.desk-request .info-label[aria-expanded='true'] { color: var(--primary); }
+/* ボタンから依頼の文へマウスを移す間に閉じないよう、すき間を空けずに重ねる */
+.desk-request .info-panel { top: 100%; font-size: 0.9rem; }
 .app-pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .preview-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .preview-slot { padding: 10px; }
-.preview-slot iframe { display: block; width: 100%; height: 440px; border: 0; border-radius: 6px; background: #fff; }
+.preview-slot iframe { display: block; width: 100%; height: clamp(440px, 56vh, 620px); border: 0; border-radius: 6px; background: #fff; }
 .log-section { border-top: 1px solid var(--line); padding: 12px; display: grid; gap: 6px; }
 .log-section h3 { font-size: 0.75rem; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; }
 .tools { display: grid; gap: 16px; }
@@ -302,7 +301,6 @@ main > section > * + * { margin-top: 16px; }
 
 @media (max-width: 960px) {
   .workbench { grid-template-columns: 1fr; }
-  .desk-brief { grid-template-columns: 1fr; }
 }
 
 /* 動きの抑制。browser-effects が設定と OS の設定から data-motion を決める。
@@ -510,21 +508,16 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .result-group[data-reveal='true']:nth-of-type(2) { animation-delay: 0.15s; }
 .result-group[data-reveal='true']:nth-of-type(3) { animation-delay: 0.3s; }
 
-/* 五つのステージは目標の一覧として示す。状態は色と文字で示し、新規到達だけを動かす。 */
-.stage-progress { display: grid; gap: 8px; }
+/* 五つのステージは一行に並べ、状態は色で示す（文字の状態は読み上げ用に残す）。新規到達だけを動かす。 */
+.stage-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; flex: 1 1 0; min-width: 0; }
 .stage-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
 .stage-count { margin: 0; }
 .stages { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.stages li { display: flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 0.82rem; color: var(--muted); }
+.stages li { display: flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 0.82rem; color: var(--muted); }
 .stage-number { font-family: var(--font-mono); font-weight: 700; }
-.stage-status { font-size: 0.72rem; }
 .stages [data-state='done'] { color: var(--ok); border-color: #22593c; background: var(--ok-bg); }
 .stages [data-state='current'] { color: var(--on-primary); border-color: var(--primary); background: var(--primary); font-weight: 700; }
 .stages .stage-arrived { animation: rise-in 0.3s ease-out; }
-@media (min-width: 1400px) {
-  .stages { display: grid; gap: 4px; }
-  .stages li { border-radius: 6px; }
-}
 
 /* 実測の比較は件数と言葉を主にし、色は補助に使う。 */
 .security-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }

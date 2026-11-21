@@ -1,4 +1,4 @@
-// ステージの表示を差分更新し、新しく到達した項目だけを演出・通知する。
+// ステージの表示を差分更新し（見た目は色、読み上げは文字で状態を示す）、新しく到達した項目だけを演出・通知する。
 import type { AttemptRecord } from '../contract';
 import { fill, h, renderGuard } from './dom';
 import { sealStates, stageStates } from '../progress/stages';
@@ -33,9 +33,10 @@ export class StageProgress {
       const visualState = stage.state === 'done' ? 'done' : pending;
       return h('li', {
         'data-state': visualState,
+        title: STATE_LABELS[visualState],
         'aria-current': stage.current ? 'step' : undefined,
         class: arrived.includes(index) ? 'stage-arrived' : undefined,
-      }, h('span', { class: 'stage-number' }, index + 1), h('span', {}, stage.label), h('span', { class: 'stage-status' }, STATE_LABELS[visualState]));
+      }, h('span', { class: 'stage-number' }, index + 1), h('span', {}, stage.label), h('span', { class: 'stage-status visually-hidden' }, STATE_LABELS[visualState]));
     }));
     if (arrived.length) {
       this.announce(states.flatMap((stage, index) => arrived.includes(index) ? [`ステージ ${index + 1}「${stage.label}」に到達しました`] : []).join('。'));
