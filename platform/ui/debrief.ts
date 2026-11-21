@@ -19,24 +19,36 @@ export interface HintActions {
 }
 
 /** ヒントの置き場所 1 つ。見出しの id は置き場所ごとに分ける */
-const hintsPlace = (titleId: string) => ({ titleId, element: h('section', { class: 'tool-section hints', 'data-anchor': 'hints', 'aria-labelledby': titleId }) });
+interface HintsPlace {
+  titleId: string;
+  element: HTMLElement;
+}
 
-/** 同じヒントを状況タブ（story）・調査タブ（investigation）・対策タブ（repair）に置く。開いた段階は演習の記録で共有する */
+/** 同じヒントを、作った置き場所のすべてに出す。開いた段階は演習の記録で共有する */
 export class HintsPanel {
-  readonly story = hintsPlace('story-hints-title');
-  readonly investigation = hintsPlace('investigation-hints-title');
-  readonly repair = hintsPlace('repair-hints-title');
+  private readonly places: HintsPlace[] = [];
   private readonly guard = renderGuard();
+  private last: ExerciseSnapshot | null = null;
 
   constructor(private readonly actions: HintActions) {}
 
-  update(snapshot: ExerciseSnapshot): void {
-    const { attempt } = snapshot;
-    if (!this.guard.changed(`${attempt.attemptId}|${attempt.hintsOpened.join()}|${attempt.solutionViewed}`)) return;
-    for (const place of [this.story, this.investigation, this.repair]) this.render(place, snapshot);
+  /** 置き場所を 1 つ作り、その要素を返す。titleId は見出しの id で、置き場所ごとに違う値にする */
+  place(titleId: string): HTMLElement {
+    if (this.places.some((place) => place.titleId === titleId)) throw new Error(`ヒントの置き場所「${titleId}」はすでにあります`);
+    const place = { titleId, element: h('section', { class: 'tool-section hints', 'data-anchor': 'hints', 'aria-labelledby': titleId }) };
+    this.places.push(place);
+    if (this.last) this.render(place, this.last);
+    return place.element;
   }
 
-  private render({ titleId, element }: ReturnType<typeof hintsPlace>, { attempt, pack }: ExerciseSnapshot): void {
+  update(snapshot: ExerciseSnapshot): void {
+    this.last = snapshot;
+    const { attempt } = snapshot;
+    if (!this.guard.changed(`${attempt.attemptId}|${attempt.hintsOpened.join()}|${attempt.solutionViewed}`)) return;
+    for (const place of this.places) this.render(place, snapshot);
+  }
+
+  private render({ titleId, element }: HintsPlace, { attempt, pack }: ExerciseSnapshot): void {
     const hadFocus = element.contains(document.activeElement);
     const hints = [...pack.manifest.hints].sort((a, b) => a.level - b.level);
     const opened = hints.filter((hint) => attempt.hintsOpened.includes(hint.level));
