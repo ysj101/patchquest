@@ -111,10 +111,19 @@ push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）�
 | SQLite（`@sqlite.org/sqlite-wasm` に同梱） | 教材アプリのデータベース（配布物に同梱） | パブリックドメイン |
 | `@sqlite.org/sqlite-wasm` | SQLite の WebAssembly 版ラッパー（配布物に同梱） | Apache License 2.0 |
 | v86 | 演習用の機械（x86 のエミュレータ。配布物に同梱） | BSD-2-Clause |
-| SeaBIOS・VGA BIOS（v86 のリポジトリから取得） | 演習用の機械の BIOS（配布物に同梱） | LGPL-3.0 / LGPL-2.1 |
-| Alpine Linux の最小構成（BusyBox・musl ほか）・Linux カーネル・sudo・zlib | 演習用の機械の中身（起動を済ませた状態として配布物に同梱） | GPL-2.0（カーネル・BusyBox）/ MIT（musl）/ ISC（sudo）/ Zlib ほか |
+| SeaBIOS rel-1.16.2 と、その VGA BIOS（v86 のリポジトリにあるビルド済みのもの） | 演習用の機械の BIOS（配布物に同梱） | LGPL-3.0 |
+| Linux カーネル 6.18.64（Alpine Linux の `linux-virt`） | 演習用の機械の中身（起動を済ませた状態として配布物に同梱。以下同じ） | GPL-2.0 |
+| BusyBox 1.37.0・apk-tools 3.0.9・pax-utils 1.3.9（scanelf）・alpine-baselayout 3.7.2 | Alpine Linux 3.24.4 の最小構成 | GPL-2.0 |
+| musl 1.2.6 | Alpine Linux 3.24.4 の最小構成 | MIT（musl-utils の一部は BSD-2-Clause・GPL-2.0 以降） |
+| OpenSSL 3.5.9（libcrypto・libssl） | Alpine Linux 3.24.4 の最小構成 | Apache License 2.0 |
+| ca-certificates 20261020・Alpine Linux の署名鍵とリリース情報 | Alpine Linux 3.24.4 の最小構成 | MPL-2.0 / MIT |
+| sudo 1.9.17p2・zlib 1.3.2 と 1.4 | 演習用の機械の中身（zlib 1.3.2 は最小構成、ほかは足したパッケージ） | ISC ほか（sudo）/ Zlib |
 | esbuild・Vitest・Playwright・TypeScript | 開発時のビルドとテスト（配布物には含まない） | MIT / Apache License 2.0 |
 | ESLint・typescript-eslint・eslint-plugin-import-x・eslint-import-resolver-typescript・globals・jscpd・knip | 開発時の静的検査（配布物には含まない） | MIT / ISC |
 | eslint-plugin-sonarjs | 開発時の静的検査（配布物には含まない） | LGPL-3.0 |
+
+演習用の機械に入っているソフトウェアの一覧は、実物（最小構成のパッケージのデータベースと、足したパッケージの情報）と照合してあります（`scripts/machine-licenses.mjs`。`tests/unit/machine-licenses.test.ts` が、版を上げたときの食い違いを止めます）。配布物には、この一覧・ソースコードの入手先・ライセンスの全文を `assets/linux-machine.LEGAL.txt` として同梱します。
+
+GPL・LGPL・MPL のソフトウェアに対応するソースコード（上流のソースと、Alpine Linux のビルド定義）は、このリポジトリのリリース [machine-sources-1](https://github.com/ysj101/patchquest/releases/tag/machine-sources-1) に、バイナリと一緒に置いてあります。
 
 効果音は初期値オフです。設定で音量とオン／オフを変更でき、同梱コードで合成するため外部通信は行いません。

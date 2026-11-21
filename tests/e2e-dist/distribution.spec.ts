@@ -25,3 +25,16 @@ test('演習に必要なファイルがすべて同梱され、検証用のペ�
   expect(wasm.headers()['content-type']).toBe('application/wasm');
   expect((await request.get('/test/runtime.html')).status()).toBe(404);
 });
+
+test('演習用の機械に入っているソフトウェアの一覧・ソースコードの入手先・ライセンスの全文が同梱されている', async ({ request }) => {
+  const legal = await request.get('/assets/linux-machine.LEGAL.txt');
+  expect(legal.status()).toBe(200);
+  const text = await legal.text();
+  expect(text).toContain('■ Linux カーネル 6.18.64（Alpine Linux の linux-virt）\n  ライセンス：GPL-2.0-only');
+  expect(text).toContain('https://github.com/ysj101/patchquest/releases/tag/machine-sources-1');
+  expect(text).toContain('GNU GENERAL PUBLIC LICENSE\n\t\t       Version 2, June 1991');
+  // README からも、同じ場所とファイルを案内する
+  const readme = await (await request.get('/README.md')).text();
+  expect(readme).toContain('assets/linux-machine.LEGAL.txt');
+  expect(readme).toContain('https://github.com/ysj101/patchquest/releases/tag/machine-sources-1');
+});

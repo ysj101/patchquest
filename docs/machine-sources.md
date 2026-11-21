@@ -28,7 +28,7 @@
 2. **`scripts/machine-sources.mjs` を書き換える。** `SOURCES` の `file`・`upstream`・`sha256` と、`MIRROR` の番号（`machine-sources-2` など）を上げる。ハッシュは、取得したファイルを `shasum -a 256` に通して求める。カーネルの版を上げたら、`scripts/build-machine.mjs` の `OVERLAY_MODULE`（モジュールのパスにカーネルの版が入っている）も替える。
 3. **機械を作る。** `node scripts/build-machine.mjs` を実行する。新しいリリースはまだないので、配布元から取得した旨の警告が出る。
 4. **動作を確かめる。** `pnpm run check`・`pnpm run test:e2e`・`pnpm run verify:packs` を通す。sudo や BusyBox の出力の文言が変わると、共通テスト（`apps/shell/tests.ts`）や課題パックの検証が落ちることがある。
-5. **対応するソースコードを集める。** GPL・LGPL・MPL の部品（カーネル・BusyBox・apk-tools・pax-utils・alpine-baselayout・musl・ca-certificates・SeaBIOS）について、上流のソースと Alpine Linux のビルド定義（aports）を取得する。ビルド定義のコミットは、最小構成の `lib/apk/db/installed` の `c:` の行と、apk の `.PKGINFO` の `commit` にある。上流のソースは、ビルド定義（`APKBUILD`）の `sha512sums` と一致することを確かめる。
+5. **対応するソースコードを集める。** GPL・LGPL・MPL の部品（カーネル・BusyBox・apk-tools・pax-utils・alpine-baselayout・musl・ca-certificates・SeaBIOS）について、上流のソースと Alpine Linux のビルド定義（aports）を取得する。ビルド定義のコミットは、最小構成の `lib/apk/db/installed` の `c:` の行と、apk の `.PKGINFO` の `commit` にある。上流のソースは、ビルド定義（`APKBUILD`）の `sha512sums` と一致することを確かめる。同梱するソフトウェアの一覧（`scripts/machine-licenses.mjs` の `COMPONENTS`）の版・ライセンス・ソースコードのファイル名と、ライセンス文（`scripts/machine-licenses/`。上流のソースから取り出したもの）も合わせて直す。一覧が実物と食い違うと、`tests/unit/machine-licenses.test.ts` が落ちる。
 6. **新しいリリースを作って置く。** 取得物の場所は `node scripts/build-machine.mjs --sources` が 1 行ずつ出す。
 
    ```sh
