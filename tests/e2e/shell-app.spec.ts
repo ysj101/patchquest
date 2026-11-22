@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 test('端末でコマンドを実行でき、未実装のコマンドや対応していない書き方は理由を示して断る', async ({ page }) => {
   // 最初の案内は、使えるコマンドを調べる help を勧める
-  await expect(terminalOutput(page).locator('.term-note')).toHaveText('help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。');
+  await expect(terminalOutput(page).locator('.term-note')).toHaveText('help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名を補完できます。');
   await type(page, 'whoami');
   await expect(terminalOutput(page).locator('.term-out')).toHaveText(/^[a-z]+$/);
   await type(page, 'cd /etc');
@@ -29,6 +29,55 @@ test('端末でコマンドを実行でき、未実装のコマンドや対応�
 
   await type(page, 'su admin');
   await expect(terminalOutput(page).locator('.term-err').last()).toContainText('「表示する利用者」で切り替えてください');
+});
+
+test('端末はプレビューの枠の高さいっぱいに広がり、編集画面を開いても下にすき間を残さない', async ({ page }) => {
+  /** 端末の下の端から、枠の下の端までのすき間（px）。body の余白（16px）だけが残る */
+  const gapBelow = () =>
+    preview(page)
+      .locator('.terminal')
+      .evaluate((terminal) => window.innerHeight - terminal.getBoundingClientRect().bottom);
+  expect(await gapBelow()).toBeCloseTo(16, 0);
+  // 出力が増えても端末は伸びず、出力の欄の中で送られて、入力欄は見えたまま
+  for (let count = 0; count < 12; count += 1) await type(page, 'help');
+  expect(await gapBelow()).toBeCloseTo(16, 0);
+  await expect(commandInput(page)).toBeInViewport();
+
+  await loginAs(page, 'admin');
+  await type(page, `sudo visudo -f ${OPERATORS}`);
+  await expect(editor(page)).toBeVisible();
+  // 行が多くて枠に収まらないときは下へ伸びる（枠ごと縦に送れる）。枠より短くはならない
+  expect(await gapBelow()).toBeLessThanOrEqual(16.5);
+});
+
+test('Tab キーでコマンド名を補完でき、候補が複数あれば並べて見せる。何も打っていなければ Tab は次の項目へ移る', async ({ page }) => {
+  const input = commandInput(page);
+  // 候補が 1 つなら、名前と空白まで補う。sudo の直後もコマンド名として補う
+  await input.focus();
+  await page.keyboard.type('sudo vis');
+  await page.keyboard.press('Tab');
+  await expect(input).toHaveValue('sudo visudo ');
+  await expect(input).toBeFocused();
+  // 引数の位置では補わない（フォーカスも動かさない）
+  await page.keyboard.type('-f /etc/sudoers.d/ope');
+  await page.keyboard.press('Tab');
+  await expect(input).toHaveValue('sudo visudo -f /etc/sudoers.d/ope');
+  await expect(input).toBeFocused();
+
+  // 候補が複数あって補えないときは、候補を端末に並べ、入力は残す。観測ログには何も残さない
+  await input.fill('c');
+  await page.keyboard.press('Tab');
+  await expect(terminalOutput(page).locator('.term-out').last()).toHaveText('cat  cd');
+  await expect(input).toHaveValue('c');
+  await page.keyboard.type('a');
+  await page.keyboard.press('Tab');
+  await expect(input).toHaveValue('cat ');
+  await expect(page.locator('.log-section .log-entry')).toHaveCount(1);
+
+  // 何も打っていないときの Tab は、補完に使わず、フォーカスを端末の外へ出せる
+  await input.fill('');
+  await page.keyboard.press('Tab');
+  await expect(input).not.toBeFocused();
 });
 
 test('観測ログと調査タブは、HTTP のリクエストではなく端末の言葉で示す', async ({ page }) => {
@@ -54,7 +103,7 @@ test('観測ログと調査タブは、HTTP のリクエストではなく端末
   // 端末にコマンドを打てば足りるので、リクエストを手で組む欄は出さない
   await page.getByRole('tab', { name: '調査' }).click();
   const investigation = page.getByRole('tabpanel', { name: '調査' });
-  await expect(investigation).toContainText('この課題には、決まった操作がありません。教材アプリの画面を操作して調べます。');
+  await expect(investigation.getByRole('heading', { name: '操作', exact: true })).toBeHidden();
   await expect(investigation.getByRole('button', { name: '上級者向け' })).toBeHidden();
 });
 

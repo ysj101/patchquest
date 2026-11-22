@@ -22,6 +22,9 @@ export interface ProgressActionDeps {
 }
 
 export function progressActions({ store, view, guide, refresh, announce }: ProgressActionDeps) {
+  /** いま出している読み込みの注記。次の読み込みで入れ替える */
+  let note: HTMLElement | null = null;
+
   async function exportProgress(): Promise<void> {
     await downloadProgress(store);
     announce('進捗を書き出しました');
@@ -31,8 +34,9 @@ export function progressActions({ store, view, guide, refresh, announce }: Progr
   async function importProgress(file: File): Promise<void> {
     const result = await store.importJson(await file.text());
     await refresh(importMessage(result));
-    const banner = importBanner(result);
-    if (banner) view.querySelector('.progress-tools')?.append(banner);
+    note?.remove();
+    note = importBanner(result);
+    if (note) view.querySelector('.progress-tools')?.append(note);
   }
 
   async function clearProgress(): Promise<void> {

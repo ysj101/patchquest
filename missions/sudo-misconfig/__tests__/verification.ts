@@ -7,7 +7,7 @@ import type { PackVerificationData } from '../../../tests/support/verification-d
 const COMMENT = '# 許可を外した';
 
 /** 管理者として、運用担当向けの設定の行をコメントに書き換えて保存する。3 行目が注入された保守の操作の許可、2 行目が日常の運用操作の許可 */
-export const disableLines = (...lines: number[]): ReplayEntry => ({ as: 'admin', request: visudoSave('/etc/sudoers.d/operators', lines.map((line) => ({ line, text: COMMENT }))) });
+const disableLines = (...lines: number[]): ReplayEntry => ({ as: 'admin', request: visudoSave('/etc/sudoers.d/operators', lines.map((line) => ({ line, text: COMMENT }))) });
 
 export const sudoMisconfigVerification: PackVerificationData = {
   packId: 'sudo-misconfig',

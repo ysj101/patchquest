@@ -4,9 +4,10 @@ import { HTTP_METHODS, errorMessage, type ActionDef, type ApproachDef, type AppR
 import { expandRequest, type Scope } from '../evaluator/scenario';
 import { approachNodes, status } from './components';
 import { fill, h } from './dom';
+import { headingWithInfo } from './info-popover';
 
 /** 操作履歴の上限（初期案 1000 件、spec §14） */
-export const MAX_LOG_ENTRIES = 1000;
+const MAX_LOG_ENTRIES = 1000;
 
 export interface InvestigationActions {
   /** 現在の閲覧者として、ブラウザ内の呼び出しを送る。失敗したら理由を返す */
@@ -17,7 +18,7 @@ const pretty = (value: unknown) => (value === undefined ? '（なし）' : JSON.
 const block = (title: string, text: string) => h('div', { class: 'log-block' }, h('h4', {}, title), h('pre', { class: 'mono' }, text));
 
 /** 観測イベントの説明。アプリが説明できない種類は、基盤が記録する事象か、種類と値をそのまま示す */
-export type EventDescriber = (event: ObservedEvent) => string | null;
+type EventDescriber = (event: ObservedEvent) => string | null;
 
 /** 教材アプリによる、観測イベント・リクエスト・やり取りの説明。説明しないものは null を返す */
 export interface AppDescribers {
@@ -113,6 +114,8 @@ export class InvestigationPanel {
     this.editorMessage,
   );
   private readonly actionList = h('div', { class: 'action-list' });
+  /** 定型の操作の区画。操作も編集欄もない課題（教材アプリの画面だけで調べる課題）では出さない */
+  private readonly actionSection = h('section', { class: 'tool-section', 'aria-labelledby': 'actions-title', 'data-anchor': 'actions' }, h('h3', { id: 'actions-title' }, '操作'), this.actionList);
   /** パックが調べ方を持つときだけ、操作より先に見せる */
   private readonly approach = h('section', { class: 'tool-section approach', 'aria-labelledby': 'approach-title', hidden: true });
   private count = 0;
@@ -125,15 +128,14 @@ export class InvestigationPanel {
       'div',
       { class: 'investigation' },
       this.approach,
-      h('section', { class: 'tool-section', 'aria-labelledby': 'actions-title', 'data-anchor': 'actions' }, h('h3', { id: 'actions-title' }, '操作'), this.actionList),
+      this.actionSection,
       this.editor,
       footer,
     );
     this.logSection = h(
       'section',
       { class: 'log-section', 'aria-labelledby': 'log-title', 'data-anchor': 'investigation-log' },
-      h('h3', { id: 'log-title' }, '観測ログ'),
-      h('p', { class: 'note' }, '教材アプリへ送った呼び出しと、そのとき起きたことの記録です。本物の通信ではありません。'),
+      headingWithInfo(h('h3', { id: 'log-title' }, '観測ログ'), h('p', {}, '教材アプリへ送った呼び出しと、そのとき起きたことの記録です。本物の通信ではありません。')),
       this.log,
     );
   }
@@ -146,7 +148,8 @@ export class InvestigationPanel {
     this.describers = describers;
     fill(this.actionList, ...actions.map((a) => this.actionForm(a)));
     this.editor.hidden = !describers.requestEditor;
-    if (actions.length === 0) fill(this.actionList, h('p', { class: 'muted' }, `この課題には、決まった操作がありません。${describers.requestEditor ? '下の編集欄からリクエストを送れます。' : '教材アプリの画面を操作して調べます。'}`));
+    this.actionSection.hidden = actions.length === 0 && !describers.requestEditor;
+    if (actions.length === 0) fill(this.actionList, h('p', { class: 'muted' }, 'この課題には、決まった操作がありません。下の編集欄からリクエストを送れます。'));
     this.log.replaceChildren();
     this.count = 0;
   }
@@ -239,7 +242,7 @@ function workedExample(example: WorkedExample): HTMLElement {
   return h(
     'details',
     { class: 'worked-example tool-section' },
-    h('summary', {}, h('h3', {}, '仕組みの例'), h('span', { class: 'note' }, '試す前に、何が起きるかを読みたいときに開きます')),
+    h('summary', {}, h('h3', {}, '仕組みの例')),
     h('p', { class: 'eyebrow' }, example.title),
     h('ol', { class: 'worked-example-steps' }, ...example.steps.map((step) => h('li', {}, step))),
     h('p', {}, h('strong', {}, 'ここから分かること：'), example.takeaway),

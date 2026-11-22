@@ -148,7 +148,7 @@ function verificationFacts(checker: Checker, path: string, record: Record<string
   };
 }
 
-/** 修正の記録を読む。本文は 4KB 以内の JSON に限り、超えた記録や上限超過分は捨てる（spec §13・§14） */
+/** 修正の記録を読む。本文が 4KB を超える記録があればファイルごと拒否し、件数の上限を超えた古い記録は捨てる（spec §13・§14） */
 function repairLog(checker: Checker, path: string, value: unknown, version: number): ReplayEntry[] {
   if (value === undefined && version < REPAIR_LOG_SINCE_SCHEMA_VERSION) return [];
   const records = checker.list(path, value);

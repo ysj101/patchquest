@@ -38,7 +38,7 @@ export const GROUP_LABEL: Record<ResultGroup, string> = {
   regression: 'ほかの守りが壊れていないか',
 };
 
-/** 脆弱性の分類の表示名。一覧・マップ・習熟度で共用する */
+/** 脆弱性の分類の表示名。一覧と習熟度で共用する */
 export const VULNERABILITY_CATEGORY_LABEL: Record<VulnerabilityCategory, string> = {
   authorization: '持ち主の確認',
   'output-encoding': '画面への表示',

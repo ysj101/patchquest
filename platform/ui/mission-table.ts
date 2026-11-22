@@ -37,7 +37,7 @@ const difficultyRank = (entry: MissionEntry): number => {
 };
 
 /** 表の並び：練習 → 入門 → 基本 → 応用。同じ難易度ではカタログの順 */
-export function tableOrder(entries: MissionEntry[]): MissionEntry[] {
+function tableOrder(entries: MissionEntry[]): MissionEntry[] {
   return [...entries].sort((first, second) => difficultyRank(first) - difficultyRank(second));
 }
 
@@ -64,7 +64,7 @@ function infoFor(manifest: MissionPack['manifest'], vulnerability: Vulnerability
     h('p', { class: 'eyebrow' }, 'この課題でできるようになること'),
     h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((objective) => h('li', {}, objective))),
     h('p', { class: 'eyebrow' }, '用語'),
-    vulnerabilityTerms(vulnerability),
+    vulnerabilityTerms(vulnerability, 'inline'),
   );
 }
 

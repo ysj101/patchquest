@@ -4,7 +4,7 @@ import type { SealState } from '../progress/stages';
 import { h } from './dom';
 import { BADGE_HINT, BADGE_LABEL } from './labels';
 
-export type StatusKind = 'alert' | 'idle' | 'running' | 'passed' | 'failed' | 'blocked' | 'error';
+export type StatusKind = 'alert' | 'idle' | 'running' | 'passed' | 'failed' | 'error';
 
 const STATUS_MARK: Record<StatusKind, string> = {
   alert: '⚠',
@@ -12,7 +12,6 @@ const STATUS_MARK: Record<StatusKind, string> = {
   running: '◌',
   passed: '✓',
   failed: '✕',
-  blocked: '⊘',
   error: '⚠',
 };
 
