@@ -1,12 +1,13 @@
 // 擬似シェルの教材ロジック。コマンド行 1 つを 1 回のやり取り（POST /sh）として受け、端末の出力と終了コードを返す。
-// エディタ（visudo）だけは、開くやり取りと、書き換えた行（edits）を付けて保存するやり取りの 2 回になる。
+// エディタ（visudo）だけは、開くやり取りと、編集（edits。行の書き換え・削除・追加）を付けて保存するやり取りの 2 回になる。
 // 主体はセッションから解決する。カレントディレクトリは要求に載せて受け取り、記録した操作だけを再生しても同じ場所を指すようにする
 import type { AppRequest, AppResponse } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
 import { json } from '../shared/http';
 import { COMMANDS, resolveTarget, runTarget } from './exec';
 import { PATH_DIRS, currentAccount, findNode, hostname, type Account } from './model';
-import { MAX_LINE_LENGTH, fail, ok, tokenize, type Env, type LineEdit, type Output } from './shell';
+import { parseEdits, type LineEdit } from './edits';
+import { MAX_LINE_LENGTH, fail, ok, tokenize, type Env, type Output } from './shell';
 import { SUDO_USAGE, sudo } from './sudo';
 
 const HELP_USAGE = { usage: 'help', summary: '使えるコマンドを一覧する' };
@@ -30,27 +31,8 @@ export function runLine(env: Env, line: string): Output {
   return target ? runTarget(env, target, args) : fail(`sh: ${name}: command not found`, 127);
 }
 
-/** エディタを開くコマンド行（sudo を付けた形も含む）。書き換えた行は、このコマンド行にだけ付けられる */
+/** エディタを開くコマンド行（sudo を付けた形も含む）。編集は、このコマンド行にだけ付けられる */
 const EDITOR_LINE = /^\s*(?:sudo\s+)?(?:\/usr\/sbin\/)?visudo(?:\s|$)/;
-/** 1 回の保存で書き換えられる行の数 */
-const MAX_EDITS = 100;
-
-const isLineEdit = (value: unknown): value is LineEdit => {
-  if (typeof value !== 'object' || value === null) return false;
-  const { line, text } = value as Partial<LineEdit>;
-  return Number.isInteger(line) && Number(line) >= 1 && typeof text === 'string' && text.length <= MAX_LINE_LENGTH && !/[\r\n]/.test(text);
-};
-
-/** 書き換えた行（edits）を読む。付いていなければ edits は null。形が違えば理由を返す */
-function parseEdits(edits: unknown): { edits: LineEdit[] | null } | { error: string } {
-  if (edits === undefined) return { edits: null };
-  if (!Array.isArray(edits) || edits.length === 0 || edits.length > MAX_EDITS || !edits.every(isLineEdit)) {
-    return { error: 'edits には、{ "line": 行番号, "text": "1 行の内容" } を 1 件以上入れてください' };
-  }
-  if (new Set(edits.map((edit) => edit.line)).size !== edits.length) return { error: 'edits に、同じ行番号を 2 回入れることはできません' };
-  return { edits };
-}
-
 export interface Input {
   line: string;
   cwd: string;

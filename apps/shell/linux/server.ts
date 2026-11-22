@@ -4,6 +4,7 @@
 import type { AppRequest, AppResponse } from '../../../platform/contract';
 import type { ServerContext } from '../../../runtimes/browser/app-module';
 import { json } from '../../shared/http';
+import type { LineEdit } from '../edits';
 import { terminalRequest, type Input } from '../server';
 import { MAX_LINE_LENGTH, type EditorFile } from '../shell';
 import { emitChanges, emitExecutions, emitSudoDecisions } from './events';
@@ -37,14 +38,14 @@ function openedFile(dump: string): EditorFile {
 }
 
 /**
- * 書き換える行を付けた要求の終了コード。visudo は、保存しなかったときも 0 で終わることがあるので、エディタの結果と実際の変化から決める。
+ * 編集を付けた要求の終了コード。visudo は、保存しなかったときも 0 で終わることがあるので、エディタの結果と実際の変化から決める。
  * 範囲外の行は 2。書き換えたのに保存されなかった（構文エラー）、エディタが開かれなかった（断られた）ときは失敗にする
  */
 function saveExit(ran: Ran): { exit: number; note?: string } {
   if (ran.editorResult === 'range') return { exit: 2 };
   if (ran.editorResult === 'same' || ran.changed.length > 0) return { exit: ran.exit };
   if (ran.editorResult === 'applied') return { exit: ran.exit || 1, note: 'visudo: 構文を読めないので、保存していません' };
-  return { exit: ran.exit || 1, note: 'エディタが開かれなかったので、書き換えた行は保存していません' };
+  return { exit: ran.exit || 1, note: 'エディタが開かれなかったので、編集は保存していません' };
 }
 
 function respond(ran: Ran, input: Input): AppResponse {
@@ -55,11 +56,17 @@ function respond(ran: Ran, input: Input): AppResponse {
   return json(200, opened ? { ...result, editor: openedFile(ran.editorDump) } : result);
 }
 
+/** 編集 1 件を、機械の中のエディタ（guest/editor）へ渡す 1 行にする（操作<TAB>行番号<TAB>内容。操作は r 書き換え・d 削除・a 下に追加） */
+function editRow(edit: LineEdit): string {
+  if ('after' in edit) return `a\t${edit.after}\t${edit.text}`;
+  return 'text' in edit ? `r\t${edit.line}\t${edit.text}` : `d\t${edit.line}\t`;
+}
+
 /** コマンド行を機械の中で実行し、記録を観測イベントにする */
 async function run(ctx: ServerContext, user: string, input: Input): Promise<Ran> {
   if (!ctx.machine) throw new Error('演習用の機械がありません');
-  const edits = (input.edits ?? []).map((edit) => `${edit.line}\t${edit.text}\n`).join('');
-  // 本文は、1 行目が利用者、2 行目が場所、3 行目がコマンド行、4 行目以降が書き換える行（guest/agent の run）
+  const edits = (input.edits ?? []).map((edit) => `${editRow(edit)}\n`).join('');
+  // 本文は、1 行目が利用者、2 行目が場所、3 行目がコマンド行、4 行目以降が編集（guest/agent の run）
   const payload = `${[user, input.cwd, input.line].join('\n')}\n${edits}`;
   const [status = '', stdout = '', stderr = '', cwd = '', editorDump = '', editorResult = '', executions = '', sudoLog = '', changedPaths = ''] = await ctx.machine.call('run', payload, RUN_TIMEOUT_MS);
   const exit = Number(status);

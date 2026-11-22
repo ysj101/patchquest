@@ -2,7 +2,8 @@
 import { expect } from 'vitest';
 import { shellApp } from '../../apps/shell';
 import { visudoSave } from '../../apps/shell/scenario';
-import type { EditorFile, LineEdit } from '../../apps/shell/shell';
+import type { LineEdit } from '../../apps/shell/edits';
+import type { EditorFile } from '../../apps/shell/shell';
 import type { AppRequest, AppResponse, ObservedEvent, PrepareOptions } from '../../platform/contract';
 import type { AppEngine } from '../../runtimes/browser/engine';
 

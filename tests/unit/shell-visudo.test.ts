@@ -28,6 +28,26 @@ describe('sudo の設定の編集（visudo）', () => {
     expect((await sh(engine, 'admin', `sudo cat ${OPERATORS}`)).stdout.split('\n')).toEqual(['# 点検済み', '']);
   });
 
+  it('行を消す・足す編集を、開いたときの行番号で当てはめて保存し、観測イベントに記録する', async () => {
+    const [first = '', second = ''] = (await sh(engine, 'admin', `sudo cat ${OPERATORS}`)).stdout.split('\n');
+    const saved = await save(engine, 'admin', OPERATORS, [{ line: 2, remove: true }, { after: 0, text: '# 先頭に足した' }, { after: 1, text: '# 1 行目の下 A' }, { after: 1, text: '# 1 行目の下 B' }, { after: 2, text: '# 末尾に足した' }]);
+    expect(saved).toMatchObject({ exit: 0, changed: true, stdout: `visudo: ${OPERATORS} を保存しました（2 行目を削除、4 行を追加）` });
+    expect(saved.events.at(-1)).toEqual({ type: 'file.changed', data: { path: OPERATORS, lines: [], removed: [2], addedAfter: [0, 1, 1, 2], user: refs['accounts.admin.name'], runAs: 'root' } });
+    expect((await sh(engine, 'admin', `sudo cat ${OPERATORS}`)).stdout.split('\n')).toEqual(['# 先頭に足した', first, '# 1 行目の下 A', '# 1 行目の下 B', '# 末尾に足した']);
+    expect(second).not.toBe('');
+
+    const mixed = await save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 書き換えた' }, { line: 5, remove: true }, { after: 5, text: '# 足した' }]);
+    expect(mixed.stdout).toBe(`visudo: ${OPERATORS} を保存しました（1 行目を書き換え、5 行目を削除、1 行を追加）`);
+    expect(await save(engine, 'admin', OPERATORS, [{ after: 6, text: 'x' }])).toMatchObject({ exit: 2, changed: false, stderr: 'visudo: 行番号は 1〜5 で指定してください（指定：6）' });
+  });
+
+  it('足した行も構文を確かめ、読めない内容では保存しない', async () => {
+    const rejected = await save(engine, 'admin', OPERATORS, [{ after: 2, text: 'これは設定ではない' }]);
+    expect(rejected).toMatchObject({ exit: 1, changed: false });
+    expect(rejected.stderr).toContain(`visudo: ${OPERATORS}:3: 構文エラー`);
+    expect((await sh(engine, 'admin', `sudo cat ${OPERATORS}`)).stdout.split('\n')).toHaveLength(2);
+  });
+
   it('同じ内容での保存は、状態を変えたことにしない', async () => {
     await save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 同じ' }]);
     const again = await save(engine, 'admin', OPERATORS, [{ line: 1, text: '# 同じ' }]);
@@ -59,7 +79,13 @@ describe('sudo の設定の編集（visudo）', () => {
     ['改行を含む内容', { line: 'sudo visudo', edits: [{ line: 1, text: 'a\nb' }] }, '1 件以上入れてください'],
     ['オブジェクトでない要素', { line: 'sudo visudo', edits: ['x'] }, '1 件以上入れてください'],
     ['同じ行番号が 2 回', { line: 'sudo visudo', edits: [{ line: 1, text: 'a' }, { line: 1, text: 'b' }] }, '同じ行番号を 2 回入れることはできません'],
-  ])('書き換えた行の形が違う要求（%s）は、実行せずに断る', async (_name, body, message) => {
+    ['同じ行の書き換えと削除', { line: 'sudo visudo', edits: [{ line: 1, text: 'a' }, { line: 1, remove: true }] }, '同じ行番号を 2 回入れることはできません'],
+    ['削除に内容が付いている', { line: 'sudo visudo', edits: [{ line: 1, remove: true, text: 'a' }] }, '1 件以上入れてください'],
+    ['remove が true でない', { line: 'sudo visudo', edits: [{ line: 1, remove: false }] }, '1 件以上入れてください'],
+    ['追加に行番号も付いている', { line: 'sudo visudo', edits: [{ line: 1, after: 1, text: 'a' }] }, '1 件以上入れてください'],
+    ['追加する場所が負の数', { line: 'sudo visudo', edits: [{ after: -1, text: 'a' }] }, '1 件以上入れてください'],
+    ['追加に内容がない', { line: 'sudo visudo', edits: [{ after: 1 }] }, '1 件以上入れてください'],
+  ])('編集の形が違う要求（%s）は、実行せずに断る', async (_name, body, message) => {
     const { response } = await send(engine, 'admin', { method: 'POST', path: '/sh', body });
     expect(response.status).toBe(400);
     expect((response.body as { error: string }).error).toContain(message);
@@ -77,12 +103,18 @@ describe('観測イベントとやり取りの説明', () => {
     expect(describeEvent({ type: 'sudo.decision', data: { decision: 'allow' } })).toContain('sudo の判断：許可（null）');
     expect(describeEvent({ type: 'shell.exec', data: { program: '/usr/bin/a', user: 'sato', runAs: 'root' } })).toBe('プログラムの実行：/usr/bin/a・利用者 sato・実行した権限 root');
     expect(describeEvent({ type: 'file.changed', data: { path: '/etc/a', lines: [2, 3], user: 'ito', runAs: 'root' } })).toBe('ファイルの変更：/etc/a の 2・3 行目・利用者 ito・実行した権限 root');
+    expect(describeEvent({ type: 'file.changed', data: { path: '/etc/a', lines: [], removed: [4], addedAfter: [0, 2], user: 'ito', runAs: 'root' } })).toBe(
+      'ファイルの変更：/etc/a の 4 行目（削除）・先頭・2 行目の下（追加）・利用者 ito・実行した権限 root',
+    );
+    expect(describeEvent({ type: 'file.changed', data: { path: '/etc/a', lines: [1], removed: [4], user: 'ito', runAs: 'root' } })).toContain('/etc/a の 1 行目・4 行目（削除）・利用者');
     expect(describeEvent({ type: 'unknown', data: {} })).toBeNull();
   });
 
   it('コマンド行のやり取りは、端末に打った形で示す', () => {
     expect(describeRequest({ method: 'POST', path: '/sh', body: { line: 'sudo -l', cwd: '/home/sato' } })).toBe('$ sudo -l');
-    expect(describeRequest(visudoSave('/etc/a', [{ line: 2, text: '# 外した' }, { line: 3, text: '' }]))).toBe('$ sudo visudo -f /etc/a（2 行目を「# 外した」に、3 行目を「」に書き換えて保存）');
+    expect(describeRequest(visudoSave('/etc/a', [{ line: 2, text: '# 外した' }, { line: 3, text: '' }]))).toBe('$ sudo visudo -f /etc/a（2 行目を「# 外した」に書き換え、3 行目を「」に書き換えて保存）');
+    expect(describeRequest(visudoSave('/etc/a', [{ line: 2, text: '# 外した' }, { line: 3, remove: true }]))).toBe('$ sudo visudo -f /etc/a（2 行目を「# 外した」に書き換え、3 行目を削除して保存）');
+    expect(describeRequest(visudoSave('/etc/a', [{ after: 0, text: '# 見出し' }, { after: 3, text: 'x' }]))).toBe('$ sudo visudo -f /etc/a（先頭に「# 見出し」を追加、3 行目の下に「x」を追加して保存）');
     expect(describeRequest({ method: 'GET', path: '/sh' })).toBe('端末を開く');
     expect(describeRequest({ method: 'GET', path: '/other' })).toBeNull();
     expect(describeRequest({ method: 'PUT', path: '/sh', body: { line: 'sudo -l' } })).toBeNull();
@@ -102,12 +134,14 @@ describe('観測イベントとやり取りの説明', () => {
     expect(describeExchange(request, { status: 200, body: { stdout: '', stderr: '', exit: 0, cwd: '/', changed: false } })?.blocks.at(-1)).toEqual({ title: '端末の出力', text: '（出力なし）' });
   });
 
-  it('エディタを開いたやり取りと保存したやり取りは、開いたファイルと書き換えた行で示す', () => {
+  it('エディタを開いたやり取りと保存したやり取りは、開いたファイルと変えた行で示す', () => {
     const opened = describeExchange({ method: 'POST', path: '/sh', body: { line: 'sudo visudo' } }, { status: 200, body: { stdout: '', stderr: '', exit: 0, cwd: '/', changed: false, editor: { path: '/etc/sudoers', lines: ['a'] } } });
     expect(opened?.blocks.at(-1)).toEqual({ title: '端末の出力', text: '（/etc/sudoers を編集画面で開きました）' });
     const saved = describeExchange(visudoSave('/etc/a', [{ line: 2, text: '# 外した' }]), { status: 200, body: { stdout: '保存', stderr: '', exit: 0, cwd: '/', changed: true } });
     expect(saved?.mark).toEqual({ ok: true, text: '終了コード 0' });
-    expect(saved?.blocks[1]).toEqual({ title: 'エディタで書き換えた行', text: '2 行目：# 外した' });
+    expect(saved?.blocks[1]).toEqual({ title: 'エディタで変えた行', text: '2 行目：# 外した' });
+    const reshaped = describeExchange(visudoSave('/etc/a', [{ line: 3, remove: true }, { after: 0, text: '# 見出し' }, { after: 1, text: 'x' }]), { status: 200, body: { stdout: '保存', stderr: '', exit: 0, cwd: '/', changed: true } });
+    expect(reshaped?.blocks[1]?.text).toBe('3 行目：（削除）\n先頭に追加：# 見出し\n1 行目の下に追加：x');
   });
 
   it('端末を開いたやり取りはプロンプトで示し、コマンドを解釈できなかったやり取りは説明しない', () => {

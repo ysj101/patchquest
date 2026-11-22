@@ -100,6 +100,24 @@ describe('本物の Linux の端末', { timeout: SLOW }, () => {
     expect(await send('admin', visudoSave(OPERATORS, [{ line: 1, text: '# 点検済み' }]))).toMatchObject({ exit: 0, changed: false });
   });
 
+  it('visudo の編集画面で行を消す・足す編集も、開いたときの行番号で当てはめ、本物の構文確認を通して保存する', async () => {
+    const before = (await sh('admin', `sudo cat ${OPERATORS}`)).stdout.split('\n');
+    const [first = '', second = ''] = before;
+    expect(before).toHaveLength(2);
+
+    const rejected = await send('admin', visudoSave(OPERATORS, [{ after: 2, text: 'これは設定ではない' }]));
+    expect(rejected).toMatchObject({ exit: 1, changed: false });
+    expect(rejected.stderr).toContain('syntax error');
+    expect(await send('admin', visudoSave(OPERATORS, [{ after: 3, text: '# x' }]))).toMatchObject({ exit: 2, changed: false, stderr: expect.stringContaining('行番号は 1〜2 で指定してください（指定：3）') as unknown });
+
+    const saved = await send('admin', visudoSave(OPERATORS, [{ line: 1, remove: true }, { after: 0, text: '# 先頭に足した' }, { after: 2, text: '# 末尾 A' }, { after: 2, text: '# 末尾\tB' }]));
+    expect(saved).toMatchObject({ exit: 0, changed: true });
+    expect((await sh('admin', `sudo cat ${OPERATORS}`)).stdout.split('\n')).toEqual(['# 先頭に足した', second, '# 末尾 A', '# 末尾\tB']);
+    expect(first).not.toBe('');
+    // 同じ編集をもう一度送ると、行番号は書き換わったあとのファイルに当てはまる（再生は、同じ初期状態から行う）
+    expect(await send('admin', visudoSave(OPERATORS, [{ line: 1, text: '# 先頭に足した' }]))).toMatchObject({ exit: 0, changed: false });
+  });
+
   it('ファイルを変えたコマンドだけが、機械の状態を変えたことになる', async () => {
     expect(await sh('operator', 'echo memo > note.txt')).toMatchObject({ exit: 0, changed: true });
     expect(await sh('operator', 'cat note.txt; echo x > /tmp/scratch')).toMatchObject({ stdout: 'memo', changed: false });
@@ -109,7 +127,8 @@ describe('本物の Linux の端末', { timeout: SLOW }, () => {
   it('終わらないコマンドは止め、画面を持つエディタは入力を受け取れない', async () => {
     const stopped = await sh('operator', 'sleep 60');
     expect(stopped).toMatchObject({ exit: 124, stderr: expect.stringContaining('止めました') as unknown });
-    expect((await sh('operator', 'vi note.txt')).exit).not.toBe(0);
+    // 画面を描く制御文字を出さずに、使えないことと代わりの方法を伝える
+    expect(await sh('operator', 'vi note.txt')).toMatchObject({ exit: 1, stdout: '', stderr: expect.stringContaining('画面全体を使うプログラムは動きません') as unknown });
     expect(await sh('operator', 'whoami')).toMatchObject({ exit: 0 });
   });
 
