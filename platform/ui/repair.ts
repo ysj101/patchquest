@@ -200,7 +200,7 @@ export class RepairPanel {
       return;
     }
     const applied = this.defenses.find((defense) => defense.id === attempt.appliedDefense);
-    const label = applied ? `使っている対策：${applied.label}` : '対策は使っていません（弱点が残った状態）';
+    const label = applied ? `使っている対策：${applied.label}` : '対策は使っていません（セキュリティホールが残った状態）';
     fill(this.applied, status('idle', label));
   }
 

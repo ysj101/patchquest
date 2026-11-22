@@ -17,9 +17,9 @@ test('調査で再現し、不十分な対策から防御成功へ進むと結�
   await page.getByLabel('メモの ID').fill(String(memo.id));
   await page.getByRole('button', { name: '送る', exact: true }).nth(1).click();
   const callout = page.locator('.result-callout');
-  await expect(callout).toContainText('弱点を再現できました');
+  await expect(callout).toContainText('セキュリティホールを再現できました');
   // 読み上げは常設の live 領域で行う
-  await expect(page.locator('[aria-live="polite"]')).toContainText('弱点を再現できました');
+  await expect(page.locator('[aria-live="polite"]')).toContainText('セキュリティホールを再現できました');
   await expect(ticketSeals(page)).toContainText('再現：達成');
   await verifyWith(page, '画面のリンクだけを隠す');
   await expect(callout).toContainText('まだ合格ではありません', { timeout: 15_000 });

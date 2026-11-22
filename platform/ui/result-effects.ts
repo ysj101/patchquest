@@ -10,7 +10,7 @@ import { VERDICT_TITLE } from './labels';
 import { ResultSound } from './result-sound';
 
 const TITLES: Record<ResultEffectKind, string> = {
-  reproduced: '弱点を再現できました', ...VERDICT_TITLE,
+  reproduced: 'セキュリティホールを再現できました', ...VERDICT_TITLE,
 };
 
 const STATUS: Record<ResultEffectKind, StatusKind> = { reproduced: 'alert', secured: 'passed', insufficient: 'failed' };

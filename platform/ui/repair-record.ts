@@ -25,5 +25,5 @@ export function recordedChanges(repair: RepairDef, log: readonly ReplayEntry[], 
 
 /** 検証する対象の表示 */
 export function recordedSummary(repair: RepairDef, log: readonly ReplayEntry[]): HTMLElement {
-  return status('idle', log.length === 0 ? `${repair.noun}はありません（弱点が残った状態）` : `${repair.noun}：${log.length} 件`);
+  return status('idle', log.length === 0 ? `${repair.noun}はありません（セキュリティホールが残った状態）` : `${repair.noun}：${log.length} 件`);
 }
