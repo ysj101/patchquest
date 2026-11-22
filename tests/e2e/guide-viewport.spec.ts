@@ -1,6 +1,6 @@
 // 練習の全5項目で、操作ガイドと案内先が画面サイズやスクロールに隠れないことを確かめる。
 import type { Page } from '@playwright/test';
-import { expectGuide } from '../../.cursor/skills/verify-patchquest/guide-visibility.mjs';
+import { expectGuide } from '../support/guide-visibility.mjs';
 import { expect, launchButton, openHome, test, ticketSeals } from './fixtures';
 
 /** 案内文を読み、案内先を表示しても同じ文が読めることを確かめる。 */
