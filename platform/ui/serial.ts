@@ -1,7 +1,7 @@
 // 非同期の処理を 1 件ずつ順に実行し、待機中に新しい要求が来たら古い要求は飛ばして最後だけ実行する。同じ鍵の要求が実行中なら合流する
 
 /** 直列化した関数。実行して結果を返すか、後続の要求に追い越されて飛ばされたら undefined を返す */
-export type Serialized<T, R> = (arg: T) => Promise<R | undefined>;
+type Serialized<T, R> = (arg: T) => Promise<R | undefined>;
 
 /**
  * task を直列に実行する関数を返す。前の実行が終わってから次を始めるので処理が重ならず、

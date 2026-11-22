@@ -37,7 +37,7 @@ const difficultyRank = (entry: MissionEntry): number => {
 };
 
 /** 表の並び：練習 → 入門 → 基本 → 応用。同じ難易度ではカタログの順 */
-export function tableOrder(entries: MissionEntry[]): MissionEntry[] {
+function tableOrder(entries: MissionEntry[]): MissionEntry[] {
   return [...entries].sort((first, second) => difficultyRank(first) - difficultyRank(second));
 }
 

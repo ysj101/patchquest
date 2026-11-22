@@ -18,7 +18,7 @@ function help(): Output {
 }
 
 /** コマンド行を解釈して実行する。未実装のコマンドは command not found を返し、黙って無視しない */
-export function runLine(env: Env, line: string): Output {
+function runLine(env: Env, line: string): Output {
   if (line.length > MAX_LINE_LENGTH) return fail(`sh: 入力が長すぎます（${MAX_LINE_LENGTH} 文字まで）`, 2);
   const tokens = tokenize(line);
   if ('error' in tokens) return fail(tokens.error, 2);

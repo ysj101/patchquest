@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TestOutcome, VerificationReport } from '../../platform/contract';
 import { summarizeVerification } from '../../platform/contract';
-import { securityLine, groupLine, historyVerdict } from '../../platform/ui/security-status';
+import { groupLine, historyVerdict } from '../../platform/ui/security-status';
 
 function report(outcomes: Partial<TestOutcome>[]): VerificationReport {
   return { runId: '検証', attemptId: '演習', configHash: '', passed: false, startedAt: '', elapsedMs: 0,
@@ -17,18 +17,15 @@ describe('どれだけ守れたか', () => {
     });
   });
   it('実行したテストがなければ割合を出さない', () => {
-    const summary = summarizeVerification(report([]));
-    expect(summary.percent).toBeNull();
-    expect(securityLine('修正後', summary)).toBe('修正後 実行したテストがありません');
+    expect(summarizeVerification(report([])).percent).toBeNull();
   });
   it('不十分な対策では攻撃阻止が増えず、全面停止では正常系が落ちる', () => {
     const before = summarizeVerification(report([{ group: 'normal', passed: true }, {}]));
     const insufficient = summarizeVerification(report([{ group: 'normal', passed: true }, {}]));
     const stopped = summarizeVerification(report([{ group: 'normal' }, { passed: true }]));
-    expect(securityLine('修正前', before)).toBe('修正前 1/2 件（50%）');
     expect(groupLine('attack', insufficient.groups)).toBe('攻撃を防げたか 0/1 件合格');
     expect(groupLine('normal', stopped.groups)).toBe('ふだんの使い方ができるか 0/1 件合格');
-    expect(insufficient.groups.attack.passed).toBe(before.groups.attack.passed);
+    expect(insufficient.groups.attack.passed).toBe(0);
     expect(stopped.groups.normal.passed).toBeLessThan(before.groups.normal.passed);
   });
 });

@@ -1,4 +1,4 @@
-/* PatchQuest 学習UI。調査デスクの形で、暗い地に道具を並べる。演習は「事故票」として扱い、達成は検印（再現・防御・理解）で示す */
+/* PatchQuest 学習UI。調査デスクの形で、暗い地に道具を並べる。演習は「演習票」として扱い、達成は検印（再現・防御・理解）で示す */
 :root {
   color-scheme: dark;
   --paper: #0e1217;
@@ -120,7 +120,7 @@ main > section > * + * { margin-top: 16px; }
 .banner-title { font-weight: 700; }
 .banner-ok { background: var(--ok-bg); border-color: #22593c; color: var(--ink); }
 .banner-error { background: var(--fail-bg); border-color: #5c2b2b; color: var(--ink); }
-.banner-warn, .banner-notice { background: var(--warn-bg); border-color: #5a4718; color: var(--ink); }
+.banner-warn { background: var(--warn-bg); border-color: #5a4718; color: var(--ink); }
 
 /* 状態の表示（記号・言葉・色） */
 .status {
@@ -134,7 +134,7 @@ main > section > * + * { margin-top: 16px; }
 .status-running .status-mark { display: inline-block; animation: spin 1.2s linear infinite; }
 .status-passed { color: var(--ok); background: var(--ok-bg); }
 .status-failed, .status-alert { color: var(--fail); background: var(--fail-bg); }
-.status-blocked, .status-error { color: var(--warn); background: var(--warn-bg); }
+.status-error { color: var(--warn); background: var(--warn-bg); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* 検印（再現・防御・理解） */
@@ -146,7 +146,7 @@ main > section > * + * { margin-top: 16px; }
   border: 2px solid var(--line); color: var(--muted); background: var(--surface);
 }
 .seals-small { gap: 4px; }
-.seals-small .seal-stamp { --size: 36px; border-width: 2px; }
+.seals-small .seal-stamp { --size: 36px; }
 .seal-mark { font-size: 1.1rem; font-weight: 700; }
 .seal-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; }
 .seals-small .seal-mark { font-size: 0.8rem; }
@@ -227,9 +227,7 @@ main > section > * + * { margin-top: 16px; }
   .mission-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
-/* 取り組み（課題一覧）と記録ページの区画。高さの違う 2 列にすると横に空白が開くので、読み順の 1 列に積む。幅 900px 以下も同じ順 */
-.xp-summary { font-family: var(--font-mono); font-size: 0.87rem; color: var(--muted); }
-.engagement { display: grid; gap: 12px; }
+/* 記録ページの区画。高さの違う 2 列にすると横に空白が開くので、読み順の 1 列に積む。幅 900px 以下も同じ順 */
 .records-grid { display: grid; gap: 12px; }
 .records-grid > section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 0; }
 .section-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
@@ -314,7 +312,7 @@ main > section > * + * { margin-top: 16px; }
   }
 }
 
-/* 画面の切り替えで見出しへ移したフォーマスは枠を出さない（キーボードでの移動先はボタンなどに枠が出る） */
+/* 画面の切り替えで見出しへ移したフォーカスは枠を出さない（キーボードでの移動先はボタンなどに枠が出る） */
 h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 
 /* 演習の道具（タブ） */
@@ -356,7 +354,7 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .action { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 8px; background: var(--surface-2); }
 .action h4 { font-size: 0.95rem; }
 .field { display: grid; gap: 4px; font-weight: 600; font-size: 0.87rem; }
-.field input, .field textarea, .field select, .request-line input, .request-line select, .investigation textarea, .review-form select {
+.field input, .field textarea, .field select, .request-line input, .request-line select, .investigation textarea {
   border: 1px solid var(--control); border-radius: 6px; padding: 6px 8px; background: var(--sunken); color: var(--ink); width: 100%;
 }
 .request-line { display: grid; grid-template-columns: 110px 1fr; gap: 8px; }
@@ -414,7 +412,7 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .hint { border-left: 3px solid var(--link); padding: 4px 0 4px 12px; display: grid; gap: 2px; }
 .hint-solution { border-left-color: var(--seal); }
 .transfer { display: grid; gap: 12px; }
-/* 道具パネルが広いときは、原因と理由、理解確認の設問を横に並べて「回答する」までを短くする */
+/* 道具パネルが広いときは、原因と理由、理解確認の設問を横に並べて「答える」までを短くする */
 @container tools (min-width: 40rem) {
   .transfer { grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); align-items: start; }
   .transfer > .actions { grid-column: 1 / -1; }
@@ -501,7 +499,6 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 
 /* 結果は最初から読み取れる。移動だけを段階的に付け、動きの設定で停止できる。 */
 .result-callout { padding: 14px 18px; margin-top: 12px; border: 1px solid var(--fail); border-radius: 8px; background: var(--fail-bg); animation: rise-in 0.3s ease-out; }
-.result-callout[data-result='reproduced'] { border-color: var(--fail); border-style: solid; }
 .result-callout[data-result='secured'] { border-color: var(--ok); background: var(--ok-bg); }
 .result-callout[data-result='insufficient'] { border-color: var(--fail); border-style: dashed; }
 .result-callout h2 { font-size: 1.05rem; }
@@ -520,12 +517,6 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .stages [data-state='current'] { color: var(--on-primary); border-color: var(--primary); background: var(--primary); font-weight: 700; }
 .stages .stage-arrived { animation: rise-in 0.3s ease-out; }
 
-/* 実測の比較は件数と言葉を主にし、色は補助に使う。 */
-.security-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
-.security-row { padding: 12px; border-radius: var(--radius); background: var(--warn-bg); }
-.security-row[data-complete='true'] { background: var(--ok-bg); }
-.security-row[data-phase='before'] { background: var(--fail-bg); }
-.security-count { font-weight: 700; }
 .security-history ol { display: grid; gap: 16px; padding-left: 24px; }
 .security-history time { font-size: 0.8rem; overflow-wrap: anywhere; }
 
@@ -545,12 +536,6 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .mastery-consolidated { font-size: 0.82rem; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
 .mastery-evidence summary { cursor: pointer; color: var(--link); font-size: 0.82rem; }
 .mastery-evidence-list { margin: 6px 0 0; padding-left: 1.4em; font-size: 0.82rem; color: var(--muted); }
-.review-quest, .weekly-goal { display: grid; gap: 10px; }
-.review-form { display: grid; gap: 12px; }
-.review-result { display: grid; gap: 8px; }
-.weekly-goal-options { display: flex; flex-wrap: wrap; gap: 8px 16px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
-.weekly-goal-options legend { font-weight: 700; padding: 0 4px; }
-.weekly-goal-options input { accent-color: var(--primary); }
 .achievements time { overflow-wrap: anywhere; }
 
 /* 発言と話者は動きを付けず、文字と同梱の顔で示す。 */
@@ -576,7 +561,7 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 /* ux-collapse-raw-request */
 .raw-request summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }
 
-/* ux-reflect-first。広い道具パネルでは既存の2列の先頭を「原因」と「持ち帰ること」にし、理由は次の行に置く。検証画面と同じ安全化状況は振り返りに出さない。 */
+/* ux-reflect-first。広い道具パネルでは既存の2列の先頭を「原因」と「覚えておくこと」にし、理由は次の行に置く。検証画面と同じ安全化状況は振り返りに出さない。 */
 @container tools (min-width: 40rem) {
   .debrief:has(.transfer) > .banner { grid-column: 1 / -1; }
   .debrief:has(.transfer) > .debrief-cause,
