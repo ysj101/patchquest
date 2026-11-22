@@ -94,7 +94,7 @@ test('最初の状態に戻すと対策とデータが戻り、新しいデー�
   await page.getByRole('dialog').getByRole('button', { name: '最初の状態に戻す' }).click();
   // 戻した直後に画面を開き直すので、「調査を始められます」か「調査中」になる
   await expect(page.locator('.state-stamp')).toHaveText(/調査/);
-  await expect(page.getByText('対策は使っていません（弱点が残った状態）')).toBeVisible();
+  await expect(page.getByText('対策は使っていません（セキュリティホールが残った状態）')).toBeVisible();
   await expect(preview(page).getByRole('heading', { name: 'ノート（alice）' })).toBeVisible();
   await expect(preview(page).getByText('あとで消えるノート')).toHaveCount(0);
 

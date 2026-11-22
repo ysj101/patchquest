@@ -32,7 +32,7 @@
   | - | - |
   | 事件を確認 | `milestones.briefedAt` が null でない |
   | 手がかりを探す | `milestones.firstRequestAt` が null でない |
-  | 弱点を再現 | `badges.reproduction.achieved` |
+  | セキュリティホールを再現 | `badges.reproduction.achieved` |
   | 対策する | `milestones.firstDefenseAt` が null でない |
   | 最終テスト | `badges.defense.achieved` かつ `badges.understanding.achieved` |
 
@@ -100,7 +100,7 @@ pnpm run metrics --missions idor,stored-xss,sqli <...>    # 集計する課題�
 | 指標 | Phase 1 前（版・人数） | Phase 1 後（版・人数） |
 | - | - | - |
 | 初回開始率 | | |
-| ステージ到達率：事件を確認 / 手がかりを探す / 弱点を再現 / 対策する / 最終テスト（課題ごと） | | |
+| ステージ到達率：事件を確認 / 手がかりを探す / セキュリティホールを再現 / 対策する / 最終テスト（課題ごと） | | |
 | ミッション完了率（課題ごと） | | |
 | 再挑戦率（課題ごと） | | |
 | 理解確認の正答率（課題ごと） | | |

@@ -17,7 +17,7 @@ export interface MissionListActions {
 /** トップの紹介。脆弱性の名前は表の各行が示すので、ここでは列挙しない */
 const HOME_INTRO = {
   title: 'PatchQuest',
-  catchphrase: '弱点のあるアプリを、自分でこわして、なおしてみよう。',
+  catchphrase: 'セキュリティホールがあるアプリを、自分でこわして、なおしてみよう。',
   steps: ['体験する', '直す', 'テストで確かめる'],
   safety: 'すべてこのブラウザの中で動きます。本物のサービスには触れません。',
 } as const;
