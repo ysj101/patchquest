@@ -4,7 +4,7 @@ import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '.
 import { sealStates, stageStates } from '../progress/stages';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, seals, settingsButton, tabs, type TabSpec } from './components';
-import { fill, h } from './dom';
+import { fill, h, renderGuard } from './dom';
 import { labelPopover } from './info-popover';
 import { InvestigationPanel, describersOf, storyPanel, type DescribingApp } from './investigation';
 import { STATE_LABEL } from './labels';
@@ -73,6 +73,7 @@ export class ExerciseView {
   readonly xp: XpBadge;
   readonly achievements: AchievementToast;
   private readonly sealSlot = h('div', { class: 'ticket-seals' });
+  private readonly sealGuard = renderGuard();
   private readonly toolTabs: ReturnType<typeof tabs>;
   private readonly storyFooter: HTMLElement;
   private readonly workbench = h('div', { class: 'workbench' });
@@ -230,6 +231,8 @@ export class ExerciseView {
     this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}`;
     this.state.textContent = STATE_LABEL[attempt.state];
     this.state.dataset.state = attempt.state;
-    fill(this.sealSlot, seals(sealStates(attempt, defenseCurrent), 'small'));
+    // 押印の動きを通知のたびに繰り返さないよう、変わったときだけ描き直す
+    const states = sealStates(attempt, defenseCurrent);
+    if (this.sealGuard.changed(JSON.stringify(states))) fill(this.sealSlot, seals(states, 'small'));
   }
 }

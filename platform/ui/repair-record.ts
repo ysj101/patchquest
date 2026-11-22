@@ -3,15 +3,15 @@ import type { RepairDef, ReplayEntry } from '../contract';
 import { status } from './components';
 import { h } from './dom';
 import { actorLabel } from './exercise';
+import { headingWithInfo } from './info-popover';
 import { requestLabel, type AppDescribers } from './investigation';
 
 export type RequestDescriber = AppDescribers['request'];
 
-/** 「① 操作で直す」の見出しと説明。changes は recordedChanges で描き直す入れ物 */
+/** 「① 操作で直す」の見出しと、ⓘ に畳んだ説明。changes は recordedChanges で描き直す入れ物 */
 export function recordSection(repair: RepairDef, changes: HTMLElement): HTMLElement[] {
   return [
-    h('h3', { id: 'defense-title' }, '① 操作で直す'),
-    h('p', { class: 'note' }, `対策は選びません。教材アプリを操作して直します。直した操作は「${repair.noun}」に並びます。`),
+    headingWithInfo(h('h3', { id: 'defense-title' }, '① 操作で直す'), h('p', {}, `対策は選びません。教材アプリを操作して直します。直した操作は「${repair.noun}」に並びます。`)),
     h('h4', {}, `あなたが${repair.noun}`),
     changes,
   ];

@@ -148,3 +148,29 @@ test('対策を適用した演習を続きから始めると、開始前チェ�
   // 記録の合格は、再検証するまで現在の合格として扱わない
   await expect(seals(page)).toContainText('防御：記録あり（もう一度テストすると確定）');
 });
+
+test('区画の補足は ⓘ に畳んであり、キーボードで開いて読め、Esc で閉じる', async ({ page }) => {
+  await page.getByRole('tab', { name: '対策' }).click();
+  const panel = page.getByRole('tabpanel', { name: '対策' });
+  await expect(panel).not.toContainText('困ったら、順番に開けます。', { useInnerText: true });
+  await expect(panel).not.toContainText('自動で確かめます', { useInnerText: true });
+  await expect(panel).not.toContainText('スタンプは残ります', { useInnerText: true });
+
+  const hint = panel.getByRole('button', { name: 'ヒント の説明' });
+  await hint.focus();
+  await page.keyboard.press('Enter');
+  await expect(panel.getByRole('note').filter({ hasText: '困ったら、順番に開けます。見ても減点はありません。' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(panel.getByRole('note').filter({ hasText: '困ったら、順番に開けます。' })).toBeHidden();
+  await expect(hint).toBeFocused();
+
+  await panel.getByRole('button', { name: '② テストする の説明' }).click();
+  await expect(panel.getByRole('note').filter({ hasText: '攻撃を防げたか、ふだんの使い方ができるかを、自動で確かめます。' })).toBeVisible();
+  await panel.getByRole('button', { name: 'やり直す の説明' }).click();
+  await expect(panel.getByRole('note').filter({ hasText: '使った対策を外し、データも最初の状態に戻します。スタンプは残ります。' })).toBeVisible();
+
+  const log = page.locator('[data-anchor="investigation-log"]');
+  await expect(log).not.toContainText('本物の通信ではありません', { useInnerText: true });
+  await log.getByRole('button', { name: '観測ログ の説明' }).click();
+  await expect(log.getByRole('note')).toContainText('本物の通信ではありません');
+});

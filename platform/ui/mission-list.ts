@@ -8,8 +8,6 @@ import type { MasterySummary } from '../progress/mastery';
 import { h } from './dom';
 import { storageWarningBanner } from './progress-feedback';
 
-export type { MissionEntry } from './mission-table';
-
 export interface MissionListActions {
   openSettings(): void;
   start(packId: string): void;

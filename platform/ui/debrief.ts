@@ -7,6 +7,7 @@ import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { confirmDialog, radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
+import { headingWithInfo } from './info-popover';
 import { securityHistory } from './security-history';
 import { HINT_LABEL, STALE_VERIFICATION } from './labels';
 import type { MasterySummary } from '../progress/mastery';
@@ -55,8 +56,7 @@ export class HintsPanel {
     const next = hints.find((hint) => !attempt.hintsOpened.includes(hint.level));
     fill(
       element,
-      h('h3', { id: titleId }, 'ヒント'),
-      h('p', { class: 'note' }, '困ったら、順番に開けます。見ても減点はありません。'),
+      headingWithInfo(h('h3', { id: titleId }, 'ヒント'), h('p', {}, '困ったら、順番に開けます。見ても減点はありません。')),
       ...opened.map((hint) => h('div', { class: 'hint' }, h('p', { class: 'eyebrow' }, `ヒント ${hint.level}：${HINT_LABEL[hint.level]}`), h('p', {}, hint.text))),
       next
         ? h('button', { type: 'button', class: 'button', on: { click: () => this.actions.openHint(next.level) } }, `ヒント ${next.level}（${HINT_LABEL[next.level]}）を見る`)
@@ -65,7 +65,7 @@ export class HintsPanel {
           : h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.revealSolution() } }, '解法を見る'),
     );
     // 開いた内容のすぐ後ろ（次のボタン）へフォーカスを移す
-    if (hadFocus) element.querySelector<HTMLElement>('button')?.focus();
+    if (hadFocus) element.querySelector<HTMLElement>('button.button')?.focus();
   }
 
   private async revealSolution(): Promise<void> {
@@ -80,7 +80,7 @@ export class HintsPanel {
 
 /** 学び終えた時点で、体験した問題を正式な名前と結びつける。一覧の ⓘ と同じ言い方で出す */
 function termsNote(vulnerability: VulnerabilityDef): HTMLElement {
-  return h('div', { class: 'terms-note' }, h('p', { class: 'eyebrow' }, `いま直した問題は「${vulnerability.name}」といいます`), vulnerabilityTerms(vulnerability));
+  return h('div', { class: 'terms-note' }, h('p', { class: 'eyebrow' }, `いま直した問題は「${vulnerability.name}」といいます`), vulnerabilityTerms(vulnerability, 'info'));
 }
 
 /** この課題の分類の習熟度と判定の根拠。分類のないパックでは出さない */

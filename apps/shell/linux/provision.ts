@@ -118,7 +118,7 @@ function fileCommands(db: Database): string[] {
 }
 
 /** 初期データを機械へ反映するスクリプト。途中で失敗したら止まる */
-export function provisionScript(db: Database): string {
+function provisionScript(db: Database): string {
   const host = hostname(db);
   const hosts = `127.0.0.1 localhost ${host}`;
   return [

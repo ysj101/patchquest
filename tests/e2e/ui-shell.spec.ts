@@ -171,6 +171,8 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   // 書き出したファイルを読み込めば元に戻る
   await dialog.locator('input[type=file]').setInputFiles({ name: 'progress.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(exported)) });
   await expectTestPackButton(page, '続きから始める');
+  // 前の読み込みの失敗の注記は残さない
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
 });
 
 test('ブラウザに保存できないときは、書き出しを促す', async ({ page }) => {

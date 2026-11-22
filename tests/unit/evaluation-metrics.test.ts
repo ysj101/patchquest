@@ -31,7 +31,7 @@ const completedIdor = (attemptId: string, seed: number) =>
 describe('parseProgressExport', () => {
   it('製品の進捗形式と同じ版の範囲・ステージ定義を使う', () => {
     expect(PROGRESS_SCHEMA_VERSIONS.newest).toBe(PROGRESS_SCHEMA_VERSION);
-    expect(SCRIPT_STAGES.map((stage) => stage.id)).toEqual(STAGES.map((stage) => stage.id));
+    expect(SCRIPT_STAGES.map(({ id, label }) => ({ id, label }))).toEqual(STAGES);
   });
 
   it('集計に使う項目だけを取り出し、milestones のない旧版は未到達として読む', () => {
