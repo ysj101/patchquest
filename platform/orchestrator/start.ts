@@ -1,9 +1,9 @@
 // 演習開始時に固定する版・seed・構成と、再開時に引き継ぐ記録を組み立てる。
-import { initialAttemptProgress, type AttemptRecord, type ChallengeInfo, type MissionPack } from '../contract';
+import { initialAttemptProgress, type AttemptRecord, type MissionPack } from '../contract';
 import { compatibleApp, type Current, type OrchestratorDeps } from './types';
 import { withChanges } from './subject';
 
-export type StartOptions = { variantId?: string; seed?: number; resume?: AttemptRecord; challenge?: ChallengeInfo };
+export type StartOptions = { seed?: number; resume?: AttemptRecord };
 type Sources = { newId: () => string; now: () => Date; randomSeed: () => number };
 
 function carried(resume: AttemptRecord | undefined) {
@@ -18,7 +18,7 @@ function carried(resume: AttemptRecord | undefined) {
 }
 
 function startRecipe({ manifest }: MissionPack, options: StartOptions) {
-  const variantId = options.resume?.variantId ?? options.variantId ?? manifest.fixtures.variants[0]?.id;
+  const variantId = options.resume?.variantId ?? manifest.fixtures.variants[0]?.id;
   const variant = manifest.fixtures.variants.find((candidate) => candidate.id === variantId);
   const recipe = manifest.mutationRecipes.find((candidate) => candidate.id === variant?.recipe);
   return { variant, recipe };
@@ -31,7 +31,7 @@ function newAttempt({ manifest }: MissionPack, app: Current['app'], options: Sta
     appId: manifest.appCompatibility.appId, appVersion: app?.descriptor.version ?? '',
     seed: options.resume?.seed ?? options.seed ?? sources.randomSeed(), fixtureHash: '',
     createdAt: sources.now().toISOString(), state: 'Selected', configHash: '',
-    ...initialAttemptProgress(), challenge: options.challenge ?? null, ...carried(options.resume),
+    ...initialAttemptProgress(), ...carried(options.resume),
   };
 }
 

@@ -19,7 +19,7 @@ Issue #3。保存型 XSS を実 DOM で再現しながら、プラットフォ�
 | 端末 | Apple M2、macOS 27.0.1 |
 | ブラウザ | Google Chrome 154.0.8037.98、Microsoft Edge 155.0.4283.45 |
 | 静的サーバ | Python 3.14.6 `http.server`（`--bind 127.0.0.1`） |
-| 再現手順 | `pnpm run test:e2e tests/e2e/poc-xss.spec.ts`（検証ページは `tests/pages/poc-xss*`） |
+| 再現手順 | PoC の検証ページと E2E（`tests/pages/poc-xss*`・`tests/e2e/poc-xss.spec.ts`）は、製品の実装に置き換わったあとで削除した。当時のものは git の履歴にある |
 
 ## 確定した設定
 

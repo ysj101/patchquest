@@ -70,7 +70,7 @@ bash を動かすのではなく、固定のコマンド集合を機械の状態
 
 ## Linux 端末（`linux/`）
 
-同じ端末の画面・同じ初期データで、中身だけを本物の Linux に替えた教材アプリ（ID は `linux`）。WASM のエミュレータ（[v86](https://github.com/copy/v86)）の中で Alpine Linux を起動し、コマンド行をその中で実行する。sudo も visudo も本物が動く（spec §14、Issue #158）。擬似シェルのコードはそのまま残してあり、共通テスト（`tests.ts`）は両方で通る。
+同じ端末の画面・同じ初期データで、中身だけを本物の Linux に替えた教材アプリ（ID は `linux`）。WASM のエミュレータ（[v86](https://github.com/copy/v86)）の中で Alpine Linux を起動し、コマンド行をその中で実行する。sudo も visudo も本物が動く（spec §14、Issue #158）。擬似シェルのコードはそのまま残してあり、共通テスト（`tests.ts`）は両方で通る。擬似シェルを対象にする同梱パックはないので、製品のカタログには登録せず、テスト用のカタログ（`tests/support/catalog.ts`）にだけ登録している。
 
 | ファイル | 内容 |
 | - | - |
