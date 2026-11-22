@@ -32,9 +32,9 @@
   | - | - |
   | 事件を確認 | `milestones.briefedAt` が null でない |
   | 手がかりを探す | `milestones.firstRequestAt` が null でない |
-  | 脆弱性を再現 | `badges.reproduction.achieved` |
+  | 弱点を再現 | `badges.reproduction.achieved` |
   | 対策する | `milestones.firstDefenseAt` が null でない |
-  | 最終検証 | `badges.defense.achieved` かつ `badges.understanding.achieved` |
+  | 最終テスト | `badges.defense.achieved` かつ `badges.understanding.achieved` |
 
   `milestones` のない旧版（schemaVersion 1）の記録は、どのマイルストーンにも到達していないものとして読む。
 - **再挑戦**は「新しいデータで再挑戦する」（別 seed）だけを数える。同じ seed のやり直し（「最初から始める」で同じ演習票を作り直した場合や「続きから始める」）は数えない。spec §5.4 の「データだけが違う再挑戦を新しい脆弱性として表示しない」のとおり、再挑戦は同じ課題の中の回数として扱う。
@@ -100,7 +100,7 @@ pnpm run metrics --missions idor,stored-xss,sqli <...>    # 集計する課題�
 | 指標 | Phase 1 前（版・人数） | Phase 1 後（版・人数） |
 | - | - | - |
 | 初回開始率 | | |
-| ステージ到達率：事件を確認 / 手がかりを探す / 脆弱性を再現 / 対策する / 最終検証（課題ごと） | | |
+| ステージ到達率：事件を確認 / 手がかりを探す / 弱点を再現 / 対策する / 最終テスト（課題ごと） | | |
 | ミッション完了率（課題ごと） | | |
 | 再挑戦率（課題ごと） | | |
 | 理解確認の正答率（課題ごと） | | |

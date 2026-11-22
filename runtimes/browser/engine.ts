@@ -97,7 +97,13 @@ export class AppEngine {
       }
     }
     const machine = await Machine.boot(this.loadAsset);
-    await spec.provision(machine, db);
+    try {
+      await spec.provision(machine, db);
+    } catch (error) {
+      // 用意に失敗した機械を、動かしたまま残さない
+      await machine.destroy();
+      throw error;
+    }
     return { machine, key };
   }
 

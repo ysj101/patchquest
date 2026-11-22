@@ -5,7 +5,11 @@
 | ファイル | 役割 |
 | - | - |
 | `adapter.ts` | Host 側の `BrowserRuntimeAdapter`。Worker とプレビューを持ち、呼び出しに attemptId・runId を付けて照合する。タイムアウト時は Worker を破棄する |
-| `worker.ts` | 教材ロジックと SQLite（メモリ DB）を動かす Worker。セッションは演習ハーネスの `session` 呼び出しでだけ発行する |
+| `worker.ts` | 教材ロジックを動かす Worker の入口。Host からの呼び出しを `engine.ts` へ渡し、初期化後に `lockdown.ts` で外への手段を塞ぐ |
+| `engine.ts` | 教材ロジックと SQLite（メモリ DB）を動かす本体（`AppEngine`）。セッションは演習ハーネスの `session` 呼び出しでだけ発行する。Worker に依存しないので Node のテストでも使う |
+| `machine.ts` | 演習用の機械（v86 で動かす本物の Linux）の起動と、シリアル回線越しのやり取り |
+| `sqlite.ts` | SQLite（wasm）のメモリ DB を開く |
+| `protocol.ts` | Host・Worker・プレビューの間で交わすメッセージの型 |
 | `preview/` | 教材アプリの画面を動かす隔離 iframe（`sandbox="allow-scripts"`）。CSP は自身のスクリプトと `pqMarker()` だけをハッシュで許可する |
 | `preview-host.ts` | プレビューとのメッセージを送信元ウィンドウ・スキーマ・runId で照合する |
 | `registry.ts` | カタログに登録された教材アプリと実装の解決 |

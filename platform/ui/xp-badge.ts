@@ -1,9 +1,9 @@
-// 演習票と一覧に報酬を表示し、新しく増えた XP だけを通知する。
+// 演習票に報酬を表示し、新しく増えた XP だけを通知する。
 import type { XpSummary } from '../progress/xp';
 import { h } from './dom';
 import { RewardNotice } from './reward-notice';
 
-export function xpLabel(summary: XpSummary): string {
+function xpLabel(summary: XpSummary): string {
   return `Lv.${summary.level} ・ ${summary.total} XP`;
 }
 

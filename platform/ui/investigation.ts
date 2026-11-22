@@ -7,7 +7,7 @@ import { fill, h } from './dom';
 import { headingWithInfo } from './info-popover';
 
 /** 操作履歴の上限（初期案 1000 件、spec §14） */
-export const MAX_LOG_ENTRIES = 1000;
+const MAX_LOG_ENTRIES = 1000;
 
 export interface InvestigationActions {
   /** 現在の閲覧者として、ブラウザ内の呼び出しを送る。失敗したら理由を返す */
@@ -18,7 +18,7 @@ const pretty = (value: unknown) => (value === undefined ? '（なし）' : JSON.
 const block = (title: string, text: string) => h('div', { class: 'log-block' }, h('h4', {}, title), h('pre', { class: 'mono' }, text));
 
 /** 観測イベントの説明。アプリが説明できない種類は、基盤が記録する事象か、種類と値をそのまま示す */
-export type EventDescriber = (event: ObservedEvent) => string | null;
+type EventDescriber = (event: ObservedEvent) => string | null;
 
 /** 教材アプリによる、観測イベント・リクエスト・やり取りの説明。説明しないものは null を返す */
 export interface AppDescribers {

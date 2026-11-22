@@ -103,10 +103,6 @@ export class PreviewFrame {
     (container ?? document.body).append(this.element);
   }
 
-  get route(): string | null {
-    return this.current?.route ?? null;
-  }
-
   /** 画面を描画し、描画中に観測した事象を返す。以前の runId のメッセージはこれ以降破棄する */
   async render(params: RenderParams): Promise<ObservedEvent[]> {
     await this.ready;
