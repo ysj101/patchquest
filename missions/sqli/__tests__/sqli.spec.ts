@@ -2,7 +2,7 @@
 // 登録済みの検索語で他人のメモが返り（A10）、値としてバインドすると日本語・引用符・該当なしも守れる（A11）。
 // UNION という語だけを止めても不合格、検索を止めると正常系が壊れる
 import type { Page } from '@playwright/test';
-import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from './fixtures';
+import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from '../../../tests/e2e/fixtures';
 
 /** 理解確認の正解の選択肢（設問 ID → ラベル） */
 const CORRECT_CHOICES: Record<string, string> = {

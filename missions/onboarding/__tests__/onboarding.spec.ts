@@ -1,7 +1,7 @@
 // オンボーディング（練習用パック）。一覧の「まずは練習」から、操作ガイドに沿って
 // こわす → なおす → たしかめる → ふりかえる を最後まで進められる
 import type { Page } from '@playwright/test';
-import { backToList, expect, launchButton, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from './fixtures';
+import { backToList, expect, launchButton, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from '../../../tests/e2e/fixtures';
 
 const guide = (page: Page) => page.getByRole('complementary', { name: '操作ガイド' });
 const target = (page: Page) => page.locator('[data-guide-target]');

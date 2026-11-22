@@ -1,14 +1,14 @@
 // ミッション3「検索条件からの情報漏えいを防ぐ」（SQL インジェクション、Issue #19）。
 // 検索のテストはリクエストだけなので、Node の実行環境で複数の seed の出荷前検証まで確かめる（A10・A11）
 import { describe, expect, it } from 'vitest';
-import { memoApp } from '../../apps/memo';
-import { sqliPack } from '../../missions/sqli';
-import type { Exchange } from '../../platform/contract';
-import { detectReproduction } from '../../platform/evaluator/evaluator';
-import type { CatalogApp } from '../../platform/orchestrator/orchestrator';
-import { VERIFICATION_SEEDS, verifyPack } from '../../platform/orchestrator/pack-verification';
-import { nodeEvaluator } from '../support/engine-runtime';
-import { requestOnly } from '../support/request-only';
+import { memoApp } from '../../../apps/memo';
+import { sqliPack } from '..';
+import type { Exchange } from '../../../platform/contract';
+import { detectReproduction } from '../../../platform/evaluator/evaluator';
+import type { CatalogApp } from '../../../platform/orchestrator/orchestrator';
+import { VERIFICATION_SEEDS, verifyPack } from '../../../platform/orchestrator/pack-verification';
+import { nodeEvaluator } from '../../../tests/support/engine-runtime';
+import { requestOnly } from '../../../tests/support/request-only';
 
 const app: CatalogApp = { ...memoApp, tests: requestOnly(memoApp.tests) };
 
