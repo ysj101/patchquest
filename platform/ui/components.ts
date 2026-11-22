@@ -195,3 +195,8 @@ function withCode(text: string): (HTMLElement | string)[] {
 export function approachNodes(titleId: string, title: string, approach: ApproachDef): HTMLElement[] {
   return [h('h3', { id: titleId }, title), h('p', {}, ...withCode(approach.intro)), h('ol', { class: 'approach-steps' }, ...approach.steps.map((step) => h('li', {}, ...withCode(step))))];
 }
+
+/** テストの「正しい結果」と「実際の結果」を、見出しと値を分けて並べる */
+export function expectedActual(expected: string, actual: string): HTMLElement {
+  return h('dl', { class: 'outcome-detail' }, h('dt', {}, '正しい結果'), h('dd', { class: 'mono' }, expected), h('dt', {}, '実際の結果'), h('dd', { class: 'mono' }, actual));
+}

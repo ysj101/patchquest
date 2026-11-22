@@ -2,7 +2,7 @@
 import type { StoryDef } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { characterVoice, guideVoice, requesterVoice } from './characters';
-import { status, type StatusKind } from './components';
+import { expectedActual, status, type StatusKind } from './components';
 import { fill, h, renderGuard } from './dom';
 import type { EffectSettingsStore } from './effect-settings';
 import type { ResultEffect, ResultEffectKind } from './result-effect-model';
@@ -12,6 +12,13 @@ import { ResultSound } from './result-sound';
 const TITLES: Record<ResultEffectKind, string> = {
   reproduced: '弱点を再現できました', ...VERDICT_TITLE,
 };
+
+/** 結果の中身。不合格は、失敗を 1 件ずつ分け、理由と題名・正しい結果・実際の結果を行を分けて示す。それ以外は 1 文 */
+function detailBody(effect: ResultEffect): HTMLElement[] {
+  if (!effect.failures) return [h('p', {}, effect.detail)];
+  const items = effect.failures.map((failure) => h('li', {}, h('p', { class: 'callout-failure-title' }, `${failure.reason}：${failure.title}`), expectedActual(failure.expected, failure.actual)));
+  return [h('ul', { class: 'callout-failures' }, ...items), ...(effect.more ? [h('p', { class: 'muted' }, `ほか ${effect.more} 件`)] : [])];
+}
 
 const STATUS: Record<ResultEffectKind, StatusKind> = { reproduced: 'alert', secured: 'passed', insufficient: 'failed' };
 
@@ -52,7 +59,7 @@ export class ResultEffects {
     this.element.hidden = false;
     fill(this.element,
       h('h2', {}, status(STATUS[kind], title)),
-      h('p', {}, detail),
+      ...detailBody(effect),
       kind === 'insufficient' ? null : guideVoice(kind, true),
       voice ? characterVoice(voice) : null,
       h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.clear() } }, '結果を閉じる'),

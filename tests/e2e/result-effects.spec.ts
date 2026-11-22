@@ -25,6 +25,9 @@ test('調査で再現し、不十分な対策から防御成功へ進むと結�
   await expect(callout).toContainText('まだ合格ではありません', { timeout: 15_000 });
   await expect(callout).toContainText('攻撃をまだ防げていません');
   await expect(callout).toContainText('別の利用者のメモは読めない');
+  // 失敗は 1 件ずつ分け、理由と題名・正しい結果・実際の結果を行を分けて示す
+  await expect(callout.locator('.callout-failures li').first().locator('.callout-failure-title')).toHaveText(/^攻撃をまだ防げていません：/);
+  await expect(callout.locator('.callout-failures li').first().locator('dt')).toHaveText(['正しい結果', '実際の結果']);
   await expect(ticketSeals(page)).toContainText('防御：未達成');
   await verifyWith(page, ownerDefense);
   await expect(callout).toContainText('防御できました', { timeout: 15_000 });
