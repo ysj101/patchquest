@@ -136,6 +136,8 @@ it('最初の検証で合格した事実も101件後に残り、報告のない�
   vi.spyOn(evaluator, 'runSuite').mockRejectedValueOnce(new Error('基盤停止'));
   await orchestrator.verify();
   expect(snapshot.attempt.verifications).toBe(0);
+  // 合格していない演習は、対策を選ぶ状態に戻る
+  expect(snapshot.attempt.state).toBe('Repairing');
   const passed = await orchestrator.verify();
   if (!passed) throw new Error('検証報告がありません');
   const first = structuredClone(snapshot.attempt.firstPass);
@@ -144,4 +146,18 @@ it('最初の検証で合格した事実も101件後に残り、報告のない�
   expect(snapshot.attempt.firstPass).toEqual(first);
   expect(first).toMatchObject({ verifications: 1, normalBroken: false });
   expect(snapshot.attempt.verifications).toBe(102);
+});
+
+it('合格済みの演習をテストし直して基盤エラーになっても、合格のまま残す', async () => {
+  const { evaluator, orchestrator } = setup();
+  const snapshot = await orchestrator.start('test-pack');
+  const request = { method: 'GET' as const, path: `/notes/${snapshot.refs['notes.alice.id']}` };
+  await orchestrator.onExchange({ runId: orchestrator.newRunId(), actor: 'bob', kind: 'request', request, response: { status: 200, body: { note: { owner: 'alice' } } }, events: [] });
+  await orchestrator.applyDefense('owner-only');
+  await orchestrator.verify();
+  orchestrator.answerTransfer({ q1: 'owner' });
+  expect(snapshot.attempt.state).toBe('Passed');
+  vi.spyOn(evaluator, 'runSuite').mockRejectedValueOnce(new Error('基盤停止'));
+  expect(await orchestrator.verify()).toBeNull();
+  expect(snapshot).toMatchObject({ platformError: '基盤停止', defenseCurrent: true, attempt: { state: 'Passed' } });
 });

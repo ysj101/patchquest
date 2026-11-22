@@ -1,5 +1,4 @@
 // 手順データ（Step）を実行し、期待との差を判定する。テスト・probe・プレイヤー操作の判定で共通に使う
-import { errorMessage } from '../contract';
 import type {
   ActorKey,
   AppRequest,
@@ -168,15 +167,6 @@ function describeRequest(step: Extract<Step, { kind: 'request' }>, request: AppR
   return `${step.as} が ${request.method} ${request.path}${want}`;
 }
 
-/** テンプレートを展開する。未定義の参照は不合格の実測文にする */
-function tryExpand<T>(value: T, scope: Scope): { value: T } | { error: string } {
-  try {
-    return { value: expandAs(value, scope) };
-  } catch (e) {
-    return { error: errorMessage(e) };
-  }
-}
-
 /** 利用者ごとのセッションを 1 回だけ発行し、同じ手順の中で使い回す */
 function sessionsOf(invoker: ScenarioInvoker): (actor: ActorKey) => Promise<SessionToken | null> {
   const sessions = new Map<ActorKey, SessionToken | null>();
@@ -192,27 +182,36 @@ export async function replay(entries: readonly ReplayEntry[], invoker: ScenarioI
   for (const entry of entries) await invoker.request(await sessionFor(entry.as), entry.request);
 }
 
-/** 手順を順に実行する。最初に期待と違った手順で止め、その差を返す */
+/**
+ * 手順を順に実行する。最初に期待と違った手順で止め、その差を返す。
+ * 手順や期待値が未定義の {{キー}} を参照していたら、その手順の不合格にする
+ */
 export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvoker): Promise<ScenarioResult> {
+  try {
+    return await runExpanded(steps, refs, invoker);
+  } catch (error) {
+    if (error instanceof ScenarioError) return { passed: false, expected: '手順の展開', actual: error.message };
+    throw error;
+  }
+}
+
+async function runExpanded(steps: Step[], refs: Scope, invoker: ScenarioInvoker): Promise<ScenarioResult> {
   const scope: Scope = { ...refs };
   const sessionFor = sessionsOf(invoker);
   let last: ScenarioResult = { passed: true, expected: '手順なし', actual: '—' };
 
   for (const step of steps) {
     if (step.kind === 'render') {
-      const view = tryExpand(step.view, scope);
-      if ('error' in view) return { passed: false, expected: '手順の展開', actual: view.error };
-      const expected = `${step.as} が画面 ${view.value.route} を表示`;
-      const { events } = await invoker.render(await sessionFor(step.as), view.value);
+      const view = expandAs(step.view, scope);
+      const expected = `${step.as} が画面 ${view.route} を表示`;
+      const { events } = await invoker.render(await sessionFor(step.as), view);
       const failures = checkEvents(events, step.events ?? [], scope);
       if (failures.length) return { passed: false, expected, actual: failures.join(' / ') };
       last = { passed: true, expected, actual: `観測イベント ${events.length} 件` };
       continue;
     }
 
-    const expanded = tryExpand(step.request, scope);
-    if ('error' in expanded) return { passed: false, expected: '手順の展開', actual: expanded.error };
-    const request = expanded.value;
+    const request = expandAs(step.request, scope);
     const expected = describeRequest(step, request);
     const { response, events } = await invoker.request(await sessionFor(step.as), request);
     const failures = [...checkResponse(response, step.expect ?? {}, scope), ...checkEvents(events, step.events ?? [], scope)];

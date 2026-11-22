@@ -52,7 +52,7 @@ export function configHash(config: {
   recipeVersion: string;
   app: { id: string; version: string };
   implementations: ImplementationSelection;
-  /** 再生するやり取り。空なら渡さない（渡さないときのハッシュは、この項目を足す前と同じ） */
+  /** 再生するやり取り。演習では、記録がなくても空の配列を渡す（省いたときのハッシュは、この項目を足す前と同じ） */
   replay?: ReplayEntry[];
 }): Promise<string> {
   return hashJson(config as unknown as JsonValue);

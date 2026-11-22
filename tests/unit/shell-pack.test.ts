@@ -87,6 +87,19 @@ describe('操作で直す課題の進行', () => {
     expect((await type('operator', `sudo ${snapshot.refs['programs.maintenance.path']}`)).body.exit).toBe(1);
   });
 
+  it('検証の間に届いた修正の操作は記録に残すが、確かめたのは前の構成なので、現在の合格にはしない', async () => {
+    const { orchestrator, snapshot, commentOut } = await setup();
+    await commentOut('admin', 3);
+    const verifying = orchestrator.verify();
+    expect(snapshot.attempt.state).toBe('Verifying');
+    await commentOut('admin', 2);
+    expect(snapshot.attempt.repairLog).toHaveLength(2);
+    const report = await verifying;
+    expect(report?.passed).toBe(true);
+    expect(report?.configHash).not.toBe(snapshot.attempt.configHash);
+    expect(snapshot).toMatchObject({ defenseCurrent: false, attempt: { state: 'Repairing' } });
+  });
+
   it('移動してから相対パスで直しても、記録に場所が残るので再生で同じファイルを直せる', async () => {
     const { orchestrator, snapshot, type, commentOut } = await setup();
     const { body } = await type('admin', 'cd /etc/sudoers.d');
