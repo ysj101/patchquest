@@ -137,8 +137,16 @@ describe('本物の Linux の端末', { timeout: SLOW }, () => {
     expect((await send('operator', { method: 'PUT', path: '/sh' })).status).toBe(405);
     expect((await send('operator', { method: 'GET', path: '/other' })).status).toBe(404);
     expect((await send('anonymous', { method: 'GET', path: '/sh' })).status).toBe(401);
-    expect(await send('operator', { method: 'GET', path: '/sh' })).toMatchObject({ user: refs['accounts.operator.name'], host: refs['host.name'] });
     expect(await sh('operator', `echo ${'x'.repeat(1100)}`)).toMatchObject({ exit: 2, stderr: 'sh: 入力が長すぎます（1024 文字まで）' });
+  });
+
+  it('端末を開くと、利用者・ホスト名と、機械の PATH にあるコマンド名（補完に使う）が分かる。観測イベントは残さない', async () => {
+    const opened = await send('operator', { method: 'GET', path: '/sh' });
+    expect(opened).toMatchObject({ user: refs['accounts.operator.name'], host: refs['host.name'], events: [] });
+    const { commands } = opened as unknown as { commands: string[] };
+    const maintenance = String(refs['programs.maintenance.path']).split('/').at(-1);
+    expect(commands).toEqual(expect.arrayContaining(['cat', 'cd', 'grep', 'help', 'ls', 'sudo', 'visudo', 'whoami', maintenance]));
+    expect(commands).toEqual([...new Set(commands)].sort());
   });
 
   it('リセットすると、機械は初期状態へ戻る', async () => {

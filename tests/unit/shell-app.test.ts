@@ -53,9 +53,16 @@ describe('コマンドの解釈', () => {
     home = String(refs['accounts.operator.home']);
   });
 
-  it('端末を開くと、利用者・ホスト名・ホームが分かる', async () => {
+  it('端末を開くと、利用者・ホスト名・ホームと、補完に使うコマンド名が分かる', async () => {
     const { response } = await send(engine, 'operator', { method: 'GET', path: '/sh' });
-    expect(response).toEqual({ status: 200, body: { user: refs['accounts.operator.name'], host: refs['host.name'], cwd: home } });
+    const programs = ['maintenance', 'operation', 'public'].map((key) => String(refs[`programs.${key}.path`]).split('/').at(-1));
+    const commands = ['cat', 'cd', 'help', 'id', 'ls', 'pwd', 'sudo', 'visudo', 'whoami', ...programs];
+    expect(response).toMatchObject({ status: 200, body: { user: refs['accounts.operator.name'], host: refs['host.name'], cwd: home } });
+    const listed = (response.body as { commands: string[] }).commands;
+    expect(listed).toEqual(expect.arrayContaining(commands));
+    // 名前だけでは実行できないもの（置き場所の名前や su）は入れない。名前順に並べる
+    expect(listed).not.toContain('su');
+    expect(listed).toEqual([...listed].sort());
   });
 
   it('whoami・id・pwd は、いまの利用者と場所を表示する', async () => {
