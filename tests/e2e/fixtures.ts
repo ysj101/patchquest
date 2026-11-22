@@ -1,8 +1,26 @@
 // E2E の通信制限と、演習の共通操作を提供する
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
+import { MACHINE_TAG } from '../../playwright.config';
+
+/** 演習用の機械（本物の Linux）を起動するテストに付ける印。付けたテストは、ほかのテストと並べずに 1 件ずつ走る（playwright.config.ts） */
+export const MACHINE = { tag: MACHINE_TAG };
+/** 機械を起動するときに読み込まれる配布物 */
+const MACHINE_STATE = /\/linux\.state\.zst$/;
 
 // すべてのE2Eテストで、localhost以外への通信を遮断し、発生したら失敗にする（spec §12, A19）
-export const test = base.extend<{ externalRequests: string[] }>({
+export const test = base.extend<{ externalRequests: string[]; machineTag: undefined }>({
+  // 印のないテストが機械を起動したら失敗にする（並べて走ると、ほかのテストを巻き込んで時間切れになる）
+  machineTag: [
+    async ({ context }, use, testInfo) => {
+      let booted = false;
+      context.on('request', (request) => {
+        if (MACHINE_STATE.test(new URL(request.url()).pathname)) booted = true;
+      });
+      await use(undefined);
+      if (!testInfo.tags.includes(MACHINE_TAG)) expect(booted, `演習用の機械を起動するテストには、MACHINE（${MACHINE_TAG}）の印を付ける`).toBe(false);
+    },
+    { auto: true },
+  ],
   externalRequests: [
     async ({ context, baseURL }, use) => {
       const origin = new URL(baseURL!).origin;

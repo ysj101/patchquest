@@ -42,7 +42,7 @@ pnpm run build          # dist/ に静的成果物を生成する（DOM 安全�
 pnpm run serve          # http://127.0.0.1:8000/ で dist/ を配信
 pnpm run typecheck      # 型検査
 pnpm test               # ユニットテスト
-pnpm run test:e2e       # ビルドしてから Chrome で E2E テスト
+pnpm run test:e2e       # ビルドしてから Chrome で E2E テスト（本物の Linux を起動するテストは、ほかのテストのあとに 1 件ずつ）
 pnpm run verify:packs   # 同梱パックの出荷前検証（基準・レシピ・対策が期待どおりか）
 pnpm run package        # 配布用の ZIP を release/ に作る
 pnpm run test:dist      # ZIP を展開して localhost で開き、Chrome で確かめる

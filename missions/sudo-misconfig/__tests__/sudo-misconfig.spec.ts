@@ -2,7 +2,7 @@
 // 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。調べるのも直すのも、
 // ターミナルにコマンドを打って行う（visudo の編集画面で行をコメントにする）
 import type { Page } from '@playwright/test';
-import { answerTransferCheck, commentOutWithVisudo, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, commentOutWithVisudo, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'backup-cause': 'バックアップに必要な分をこえて、すべてのコマンドが許可されている',
@@ -21,7 +21,7 @@ async function verify(page: Page): Promise<void> {
   await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
 }
 
-test('ターミナルで過剰な許可を見つけて再現し、絞りすぎでは不合格、保守の操作の許可だけを外すと合格する', async ({ page }) => {
+test('ターミナルで過剰な許可を見つけて再現し、絞りすぎでは不合格、保守の操作の許可だけを外すと合格する', MACHINE, async ({ page }) => {
   // 本物の Linux を起動し、検証のたびに機械の中でコマンドを実行するので、擬似シェルより時間がかかる
   test.setTimeout(240_000);
   await openHome(page);
@@ -83,7 +83,7 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await expect(page.locator('.state-stamp')).toHaveText('解決');
 });
 
-test('調査タブの先頭に、sudo の仕組みと最初に打つコマンドを示す調べ方が出て、直し方はヒントとして対策タブからも開ける', async ({ page }) => {
+test('調査タブの先頭に、sudo の仕組みと最初に打つコマンドを示す調べ方が出て、直し方はヒントとして対策タブからも開ける', MACHINE, async ({ page }) => {
   // 開始前チェックで本物の Linux を起動するので、既定の上限（30 秒）では足りないことがある
   test.setTimeout(120_000);
   await startMission(page, 'sudo-misconfig');

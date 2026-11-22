@@ -1,7 +1,7 @@
 // パック出荷前検証（pnpm run verify:packs）。カタログのすべてのパックが、どの seed でも基準・レシピ・対策の期待どおりかを確かめる
-import { expect, openTestPage, test } from './fixtures';
+import { MACHINE, expect, openTestPage, test } from './fixtures';
 
-test('カタログのすべてのパックが出荷前検証に合格する', async ({ page }) => {
+test('カタログのすべてのパックが出荷前検証に合格する', MACHINE, async ({ page }) => {
   test.setTimeout(600_000);
   await openTestPage(page, 'pack-verification');
   const results = await page.evaluate(() => window.verifyAllPacks());
