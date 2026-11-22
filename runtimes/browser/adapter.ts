@@ -89,7 +89,13 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     this.prepared = { options, app };
     this.viewSelection = view;
     this.sessionActors.clear();
-    return (await this.call({ op: 'prepare', options }, `prepare:${options.attemptId}`, this.limits.timeoutMs * prepareFactor(app))) as FixtureData;
+    try {
+      return (await this.call({ op: 'prepare', options }, `prepare:${options.attemptId}`, this.limits.timeoutMs * prepareFactor(app))) as FixtureData;
+    } catch (error) {
+      // 準備に失敗した Worker は使い回さない（途中まで進んだ状態や、読めなかった配布物を次の準備へ持ち越さない）
+      this.terminateWorker('stopped');
+      throw error;
+    }
   }
 
   async start(): Promise<void> {

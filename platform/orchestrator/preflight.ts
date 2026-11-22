@@ -1,5 +1,5 @@
 // 互換性、基準状態、注入後の実測、演習環境の準備を順に実行する。
-import { failedOutcomes, summarizeVerification, type ImplementationSelection, type VerificationReport } from '../contract';
+import { failedOutcomes, summarizeVerification, type ImplementationSelection, type TestOutcome, type VerificationReport } from '../contract';
 import type { EvaluationSubject } from '../evaluator/evaluator';
 import { Blocked, validateForApp, type BlockedReason, type Current, type OrchestratorDeps, type PreflightStep } from './types';
 
@@ -24,9 +24,19 @@ function compatibility({ current, deps }: Context): string {
   return `${app.descriptor.id}@${app.descriptor.version} とパック ${pack.manifest.id}@${pack.manifest.version} は互換`;
 }
 
+/** 基盤エラーで止まったテストの理由。同じ理由は 1 つにまとめ、件数を添える。基盤エラーがなければ空文字 */
+function errorReasons(outcomes: readonly TestOutcome[]): string {
+  const counts = new Map<string, number>();
+  for (const outcome of outcomes) if (outcome.error !== undefined) counts.set(outcome.actual, (counts.get(outcome.actual) ?? 0) + 1);
+  return [...counts].map(([reason, count]) => `${reason}（${count} 件）`).join('、');
+}
+
 async function baseline({ current, deps, subject, newRunId }: Context): Promise<string> {
   const report = await deps.evaluator.runSuite(subject({}), current.tests, [], newRunId(), '');
   const failed = failedOutcomes(report);
+  // 実行環境が動かなかったテストは、題名を並べても原因が分からない。止まった理由を、同じものはまとめて示す
+  const reasons = errorReasons(failed);
+  if (reasons) throw new Blocked({ kind: 'platform-error', message: `安全な基準状態のテストを実行できませんでした: ${reasons}` });
   if (failed.length) throw new Blocked({ kind: 'platform-error', message: `安全な基準状態で失敗したテストがあります: ${failed.map((outcome) => outcome.title).join('、')}` });
   return `基準状態で ${report.outcomes.length} 件のテストがすべて通過`;
 }

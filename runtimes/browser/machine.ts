@@ -50,8 +50,12 @@ const loaded = new WeakMap<AssetLoader, Map<MachineAsset, Promise<ArrayBuffer>>>
 function asset(load: AssetLoader, name: MachineAsset): Promise<ArrayBuffer> {
   const cache = loaded.get(load) ?? new Map<MachineAsset, Promise<ArrayBuffer>>();
   loaded.set(load, cache);
-  const bytes = cache.get(name) ?? load(name);
+  const cached = cache.get(name);
+  if (cached) return cached;
+  const bytes = load(name);
   cache.set(name, bytes);
+  // 読めなかった結果は覚えない（一時的な失敗のあと、次の起動で読み直せるようにする）
+  bytes.catch(() => cache.delete(name));
   return bytes;
 }
 
