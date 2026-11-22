@@ -1,5 +1,5 @@
 // 実装の選択と検証対象を組み立てる。Orchestrator とパック出荷前検証で共有する
-import type { ImplementationChange, ImplementationSelection, MissionPack, ReplayEntry } from '../contract';
+import { timeScaleFor, type ImplementationChange, type ImplementationSelection, type MissionPack, type ReplayEntry } from '../contract';
 import type { EvaluationSubject } from '../evaluator/evaluator';
 import type { CatalogApp } from './orchestrator';
 
@@ -16,11 +16,13 @@ export function buildSubject(
   implementations: ImplementationSelection,
   replay: readonly ReplayEntry[] = [],
 ): EvaluationSubject {
+  const timeScale = timeScaleFor(pack.manifest.runtime.capabilities);
   return {
     attemptId,
     app: { id: app.descriptor.id, version: app.descriptor.version },
     fixture: { generator: pack.manifest.fixtures.generator, seed },
     implementations,
     ...(replay.length > 0 ? { replay: [...replay] } : {}),
+    ...(timeScale === 1 ? {} : { timeScale }),
   };
 }

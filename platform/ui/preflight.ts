@@ -5,6 +5,9 @@ import { status, type StatusKind } from './components';
 import { fill, h } from './dom';
 import { BLOCKED_LABEL, STEP_LABEL } from './labels';
 
+/** 本物の Linux を動かす課題で、点検の間に出す案内 */
+const MACHINE_WAIT_NOTE = 'この課題は、ブラウザの中で本物の Linux を動かします。準備に 10〜30 秒ほどかかります。';
+
 const STEPS: PreflightStep[] = ['compatibility', 'baseline', 'inject', 'prepare'];
 const ENTRY_STATUS = { running: ['running', '確認中'], passed: ['passed', '合格'], failed: ['failed', '不合格'] } as const;
 
@@ -75,7 +78,12 @@ export class PreflightView {
       );
     } else {
       // 合格した直後も、演習画面へ切り替わるまでは点検中として見せる
-      fill(this.outcome, h('p', { class: 'muted' }, status('running', `確かめています…（${passed} / ${STEPS.length}）`)));
+      fill(
+        this.outcome,
+        h('p', { class: 'muted' }, status('running', `確かめています…（${passed} / ${STEPS.length}）`)),
+        // 本物の Linux を起動する課題は、ほかの課題より長く待つ。止まっているように見えないよう、先に伝える
+        pack.manifest.runtime.capabilities.includes('linux-vm') ? h('p', { class: 'note' }, MACHINE_WAIT_NOTE) : null,
+      );
     }
   }
 }

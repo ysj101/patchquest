@@ -25,10 +25,12 @@ export interface EvaluationSubject {
   implementations: ImplementationSelection;
   /** 各テストの前、初期データへ戻した直後に再生するやり取り（操作で直す課題の修正の記録） */
   replay?: ReplayEntry[];
+  /** 時間の上限に掛ける倍率。省くと 1。本物の Linux を動かす構成では広げる（contract の timeScaleFor） */
+  timeScale?: number;
 }
 
 export interface EvaluatorLimits {
-  /** テスト 1 件（全手順の合計）の上限（初期案 5 秒、spec §14） */
+  /** テスト 1 件（全手順の合計）の上限（初期案 5 秒、spec §14）。構成の倍率（timeScale）を掛けて使う */
   testTimeoutMs: number;
   /** スイート全体の上限（初期案 60 秒） */
   suiteTimeoutMs: number;
@@ -151,8 +153,9 @@ export class Evaluator {
     const outcomes: TestOutcome[] = [];
     for (const test of tests) {
       this.assertCurrent(generation);
-      if (performance.now() - started > this.limits.suiteTimeoutMs) {
-        throw new RuntimeError('timeout', `検証が ${this.limits.suiteTimeoutMs / 1000} 秒以内に終わりませんでした`);
+      const { suiteTimeoutMs } = this.limitsFor(subject);
+      if (performance.now() - started > suiteTimeoutMs) {
+        throw new RuntimeError('timeout', `検証が ${suiteTimeoutMs / 1000} 秒以内に終わりませんでした`);
       }
       const result = await this.run(subject, test.steps, runId);
       this.assertCurrent(generation);
@@ -175,9 +178,10 @@ export class Evaluator {
       const runtime = await this.ensureRuntime(subject);
       const { refs } = await runtime.reset();
       // 呼び出しごとの上限もテスト全体の上限と同じにし、テスト全体（再生を含む）はさらに withTimeout で抑える
-      const invoker = invokerFor(runtime, runId, this.limits.testTimeoutMs);
+      const { testTimeoutMs } = this.limitsFor(subject);
+      const invoker = invokerFor(runtime, runId, testTimeoutMs);
       const work = replay(subject.replay ?? [], invoker).then(() => runSteps(steps, refs, invoker));
-      return await this.withTimeout(work, runtime);
+      return await this.withTimeout(work, runtime, testTimeoutMs);
     } catch (e) {
       if (!(e instanceof RuntimeError)) throw e;
       // 実行環境が止まったので、次のテストの前に準備し直す
@@ -186,14 +190,20 @@ export class Evaluator {
     }
   }
 
-  private async withTimeout<T>(work: Promise<T>, runtime: RuntimeAdapter): Promise<T> {
+  /** この構成での時間の上限。構成が倍率を持っていれば、その分だけ広げる */
+  private limitsFor(subject: EvaluationSubject): EvaluatorLimits {
+    const scale = subject.timeScale ?? 1;
+    return { testTimeoutMs: this.limits.testTimeoutMs * scale, suiteTimeoutMs: this.limits.suiteTimeoutMs * scale };
+  }
+
+  private async withTimeout<T>(work: Promise<T>, runtime: RuntimeAdapter, testTimeoutMs: number): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
         // 先に結果を確定させてから、実行中の処理を止める（停止による stopped を結果にしない）
-        reject(new RuntimeError('timeout', `テストが ${this.limits.testTimeoutMs / 1000} 秒以内に終わりませんでした`));
+        reject(new RuntimeError('timeout', `テストが ${testTimeoutMs / 1000} 秒以内に終わりませんでした`));
         void runtime.stop();
-      }, this.limits.testTimeoutMs);
+      }, testTimeoutMs);
     });
     try {
       return await Promise.race([work, timeout]);

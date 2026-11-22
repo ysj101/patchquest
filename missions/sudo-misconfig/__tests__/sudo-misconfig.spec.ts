@@ -2,7 +2,7 @@
 // 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。調べるのも直すのも、
 // ターミナルにコマンドを打って行う（visudo の編集画面で行をコメントにする）
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, commentOutWithVisudo, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'backup-cause': 'バックアップに必要な分をこえて、すべてのコマンドが許可されている',
@@ -28,7 +28,14 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   const card = page.locator('[data-mission="sudo-misconfig"]');
   await expect(card.getByRole('heading', { name: '広すぎる sudo の許可を絞る' })).toBeVisible();
   await expect(card).toContainText('過剰な sudo 権限');
-  await startMission(page, 'sudo-misconfig');
+  // 開始前チェックの間は、ほかの課題より長く待つことを先に伝える
+  const started = Date.now();
+  await card.getByRole('button', { name: /この課題を始める|最初から始める/ }).click();
+  await expect(page.locator('[data-anchor="preflight"]')).toContainText('この課題は、ブラウザの中で本物の Linux を動かします。準備に 10〜30 秒ほどかかります。');
+  await expect(page.locator('.exercise')).toBeVisible({ timeout: 60_000 });
+  // 所要時間を記録に残す（Issue #171。CI のログで見る）
+  console.log(`sudo-misconfig の開始前チェック：${((Date.now() - started) / 1000).toFixed(1)} 秒`);
+  await enterWorkbench(page);
   await expect(terminalInput(page)).toBeVisible();
 
   // 最初の案内は、本物の Linux で通じる内容。案内どおりに help と打つと、調べるのに使うコマンドが分かる

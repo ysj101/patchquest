@@ -17,6 +17,15 @@ export const ANONYMOUS: ActorKey = 'anonymous';
 export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm'] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
+/**
+ * 本物の Linux を動かす構成（linux-vm）で、検証の時間の上限（テスト 1 件・スイート全体）に掛ける倍率。
+ * 機械の中でコマンドを 1 つ実行するたびに時間がかかり、起動した直後は特に遅い。遅い端末で、時間切れを理由に判定できなくなるのを避ける（spec §14）
+ */
+export const MACHINE_TIME_SCALE = 4;
+
+/** 必要機能から決まる、検証の時間の上限の倍率 */
+export const timeScaleFor = (capabilities: readonly Capability[]): number => (capabilities.includes('linux-vm') ? MACHINE_TIME_SCALE : 1);
+
 /** server は Worker 内の教材ロジック、view は隔離 iframe 内の表示で実行される */
 export type HookRealm = 'server' | 'view';
 

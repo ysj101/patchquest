@@ -31,7 +31,7 @@ payload() { if [ "$1" = - ]; then : > "$Q/request"; else printf %s "$1" | base64
 reply() {
   id=$1
   shift
-  printf '\002PQ %s %s %s\n' "$id" "$(stat -c %s "$@" | tr '\n' ,)" "$(cat "$@" | base64 -w 0)"
+  printf '\002PQ %s %s %s\n' "$id" "$(printf '%s,' $(stat -c %s "$@"))" "$(cat "$@" | base64 -w 0)"
 }
 
 # 中身（ハッシュ）と、種類・所有者・許可の一覧
@@ -44,12 +44,35 @@ listing() {
 # 開いただけで層に写されたファイルは、初期状態と同じなので現れない
 delta() { (cd "$UPPER" && listing) | grep -vxFf "$Q/base" | sort; }
 
+# session の層に、変化を確かめる場所が 1 つでもできているか。できていなければ、初期状態との違いはない（調べるだけのコマンドでは、できない）
+touched() {
+  for dir in $TRACKED; do
+    if [ -e "$UPPER/$dir" ]; then return 0; fi
+  done
+  return 1
+}
+
+# 前回のコマンドのあとから変わったパスを $Q/changed に書く。機械の中ではプログラムを 1 つ起こすのに数ミリ秒かかるので、
+# 層に何もなく、前回も違いがなかったとき（調べるだけのコマンドが続いているとき）は、比べる処理を起こさない
+detect_changes() {
+  if ! touched && [ ! -s "$Q/delta" ]; then
+    : > "$Q/changed"
+    return
+  fi
+  delta > "$Q/delta.new"
+  # 前回の違いと今回の違いを比べ、変わった行のパス（ハッシュの行と、種類・許可の行の両方）を取り出す
+  diff "$Q/delta" "$Q/delta.new" | sed -n 's/^[+-][0-9a-f]\{64\}  \(.*\)$/\/\1/p; s/^[+-]\([^+-].*\) \/\/ .*$/\/\1/p' | sort -u > "$Q/changed"
+  mv "$Q/delta.new" "$Q/delta"
+}
+
 mount_session() {
   mkdir -p "$UPPER" "$L/session/work"
   mount -t overlay overlay -o "lowerdir=$L/provisioned:/,upperdir=$UPPER,workdir=$L/session/work" "$R"
   mount --rbind /dev "$R/dev"
   mount -t proc proc "$R/proc"
   mkdir -p "$SHARED"
+  # プログラムの実行と sudo の記録は、root だけが読み書きできるようにして置く（コマンドごとには、中身を空にするだけ）
+  (umask 077; : > "$SHARED/exec.log"; : > "$SHARED/sudo.log")
   : > "$Q/delta"
 }
 
@@ -83,17 +106,23 @@ provision() {
 run() {
   payload "$2"
   for name in editor.dump editor.result exec.log sudo.log trailer; do : > "$SHARED/$name"; done
-  chmod 600 "$SHARED/exec.log" "$SHARED/sudo.log"
+  rm_edits=0
+  if [ -e "$SHARED/edits" ]; then rm_edits=1; fi
   {
     IFS= read -r user
     IFS= read -r cwd
     IFS= read -r line
-    cat > "$SHARED/edits"
+    # 4 行目以降（エディタでの編集）があるときだけ、編集のファイルを作る
+    if IFS= read -r first; then
+      rm_edits=0
+      (umask 077; { printf '%s\n' "$first"; cat; } > "$SHARED/edits")
+    fi
   } < "$Q/request"
+  if [ "$rm_edits" = 1 ]; then rm -f "$SHARED/edits"; fi
   printf '%s\n' "$cwd" > "$SHARED/cwd"
   printf '%s\n' "$line" > "$SHARED/line"
-  if [ -s "$SHARED/edits" ]; then chmod 600 "$SHARED/edits"; else rm -f "$SHARED/edits"; fi
-  timeout -s KILL "$LIMIT" chroot "$R" su -l "$user" -c /usr/lib/pq/run </dev/null > "$Q/stdout.all" 2> "$Q/stderr.all" 3> "$SHARED/trailer"
+  # run は、ログインシェルの中へ読み込む（シェルをもう 1 つ起こさない）
+  timeout -s KILL "$LIMIT" chroot "$R" su -l "$user" -c '. /usr/lib/pq/run' </dev/null > "$Q/stdout.all" 2> "$Q/stderr.all" 3> "$SHARED/trailer"
   # 置き去りのプロセスを残さない（PID 1 である自分には届かない）
   kill -KILL -1 2>/dev/null
   head -c "$OUT_MAX" "$Q/stdout.all" > "$Q/stdout"
@@ -107,10 +136,7 @@ run() {
   fi
   printf %s "$status" > "$Q/status"
   printf %s "$cwd" > "$Q/cwd"
-  delta > "$Q/delta.new"
-  # 前回の違いと今回の違いを比べ、変わった行のパス（ハッシュの行と、種類・許可の行の両方）を取り出す
-  diff "$Q/delta" "$Q/delta.new" | sed -n 's/^[+-][0-9a-f]\{64\}  \(.*\)$/\/\1/p; s/^[+-]\([^+-].*\) \/\/ .*$/\/\1/p' | sort -u > "$Q/changed"
-  mv "$Q/delta.new" "$Q/delta"
+  detect_changes
   reply "$1" "$Q/status" "$Q/stdout" "$Q/stderr" "$Q/cwd" "$SHARED/editor.dump" "$SHARED/editor.result" "$SHARED/exec.log" "$SHARED/sudo.log" "$Q/changed"
 }
 
