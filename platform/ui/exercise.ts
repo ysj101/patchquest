@@ -111,7 +111,7 @@ export class ExerciseView {
         { class: 'ticket' },
         h('button', { type: 'button', class: 'button button-quiet ticket-back', on: { click: actions.back } }, '課題一覧へ戻る'),
         h('div', { class: 'ticket-main' }, this.title, this.state),
-        h('p', { class: 'fictional-label', role: 'note' }, h('strong', {}, '学習用に、わざと弱点を入れた架空のサービスです。')),
+        h('p', { class: 'fictional-label', role: 'note' }, h('strong', {}, '学習用に、わざとセキュリティホールを入れた架空のサービスです。')),
         this.sealSlot,
         settingsButton(() => actions.openSettings()),
       ),

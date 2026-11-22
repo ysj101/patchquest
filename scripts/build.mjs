@@ -91,16 +91,10 @@ if (testMode) {
   tasks.push(
     build({
       ...common,
-      entryPoints: files.filter((f) => f.endsWith('.ts') && !f.endsWith('.inline.ts')).map((f) => `${pages}/${f}`),
+      entryPoints: files.filter((f) => f.endsWith('.ts')).map((f) => `${pages}/${f}`),
       outdir: `${outdir}/test`,
     }),
-    ...files
-      .filter((f) => f.endsWith('.sandbox.html'))
-      .map((f) => buildSandboxDocument(`${pages}/${f}`, `${outdir}/test/${f.replace('.sandbox.html', '.html')}`)),
-    ...files
-      .filter((f) => f.endsWith('.html') && !f.endsWith('.sandbox.html'))
-      .map((f) => cp(`${pages}/${f}`, `${outdir}/test/${f}`)),
-    cp(sqliteWasm, `${outdir}/test/sqlite3.wasm`),
+    ...files.filter((f) => f.endsWith('.html')).map((f) => cp(`${pages}/${f}`, `${outdir}/test/${f}`)),
   );
 }
 

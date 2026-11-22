@@ -132,10 +132,10 @@
       "count": 1
     },
     "id-length": {
-      "count": 19
+      "count": 18
     },
     "sonarjs/cognitive-complexity": {
-      "count": 2
+      "count": 1
     },
     "sonarjs/function-return-type": {
       "count": 1
@@ -371,7 +371,7 @@
       "count": 1
     },
     "id-length": {
-      "count": 6
+      "count": 4
     }
   },
   "scripts/check-boundaries.mjs": {
@@ -468,28 +468,6 @@
       "count": 2
     }
   },
-  "tests/e2e/poc-sqlite.spec.ts": {
-    "id-length": {
-      "count": 7
-    }
-  },
-  "tests/e2e/poc-xss.spec.ts": {
-    "@typescript-eslint/no-deprecated": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 3
-    },
-    "id-length": {
-      "count": 10
-    }
-  },
   "tests/e2e/progress.spec.ts": {
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 1
@@ -535,50 +513,6 @@
   "tests/pages/evaluator.ts": {
     "id-length": {
       "count": 1
-    }
-  },
-  "tests/pages/poc-sqlite.ts": {
-    "@typescript-eslint/no-confusing-void-expression": {
-      "count": 2
-    },
-    "id-length": {
-      "count": 7
-    }
-  },
-  "tests/pages/poc-sqlite.worker.ts": {
-    "@typescript-eslint/no-misused-promises": {
-      "count": 1
-    },
-    "id-length": {
-      "count": 2
-    },
-    "sonarjs/post-message": {
-      "count": 1
-    }
-  },
-  "tests/pages/poc-xss-frame.inline.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 2
-    },
-    "id-length": {
-      "count": 3
-    },
-    "sonarjs/post-message": {
-      "count": 2
-    }
-  },
-  "tests/pages/poc-xss.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 3
-    },
-    "id-length": {
-      "count": 6
-    },
-    "sonarjs/post-message": {
-      "count": 5
     }
   },
   "tests/pages/progress.ts": {

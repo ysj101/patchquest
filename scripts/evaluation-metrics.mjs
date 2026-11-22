@@ -27,7 +27,7 @@ export const MAX_PROGRESS_BYTES = 1024 * 1024;
 export const STAGES = [
   { id: 'briefed', label: '事件を確認', reached: (attempt) => attempt.milestones.briefedAt !== null },
   { id: 'investigated', label: '手がかりを探す', reached: (attempt) => attempt.milestones.firstRequestAt !== null },
-  { id: 'reproduced', label: '弱点を再現', reached: (attempt) => attempt.badges.reproduction },
+  { id: 'reproduced', label: 'セキュリティホールを再現', reached: (attempt) => attempt.badges.reproduction },
   { id: 'repaired', label: '対策する', reached: (attempt) => attempt.milestones.firstDefenseAt !== null },
   { id: 'verified', label: '最終テスト', reached: (attempt) => attempt.badges.defense && attempt.badges.understanding },
 ];

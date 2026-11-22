@@ -16,7 +16,7 @@ export const STATE_LABEL: Record<ExerciseState, string> = {
 export const STEP_LABEL: Record<PreflightStep, string> = {
   compatibility: '教材アプリと課題が合っているか',
   baseline: '安全な状態でテストが通るか',
-  inject: '弱点を入れると、攻撃が通るか',
+  inject: 'セキュリティホールを入れると、攻撃が通るか',
   prepare: '演習の準備',
 };
 
@@ -55,7 +55,7 @@ export const VULNERABILITY_CATEGORY_NOTE: Record<VulnerabilityCategory, string> 
 };
 
 /** CWE が何かの説明。略語を初回の説明なしに出さないために、CWE の番号には必ず添える */
-export const CWE_NOTE = 'ソフトウェアの弱点に、共通の番号をつけた一覧です（Common Weakness Enumeration）。あとで調べるときに役立ちます';
+export const CWE_NOTE = 'ソフトウェアのセキュリティホールに、共通の番号をつけた一覧です（Common Weakness Enumeration）。あとで調べるときに役立ちます';
 
 export const HINT_LABEL = { 1: '見るところ', 2: '調べ方', 3: '直し方' } as const;
 

@@ -1,8 +1,9 @@
-// 別条件での挑戦（チャレンジ）の演習が、選んだ設問だけで理解を判定し、出題の条件と seed を記録に残すことを確かめる。
+// 別条件での挑戦（チャレンジ）の記録が残る演習を続きから始めると、記録の設問だけで理解を判定することを確かめる。
 import { expect, it } from 'vitest';
 import type { MissionPack } from '../../platform/contract';
 import { Evaluator } from '../../platform/evaluator/evaluator';
 import { Orchestrator } from '../../platform/orchestrator/orchestrator';
+import { makeAttempt } from '../support/attempt';
 import { EngineRuntime } from '../support/engine-runtime';
 import { nodePack } from '../support/node-pack';
 import { testApp } from '../support/test-app';
@@ -19,13 +20,11 @@ const twoQuestions: MissionPack = {
   },
 };
 
-it('別条件での挑戦は選んだ設問だけで理解を判定し、記録に出題の条件と渡した seed を残す', async () => {
+it('別条件での挑戦の記録を続きから始めると、記録の設問だけで理解を判定し、出題の条件と seed を保つ', async () => {
   const orchestrator = new Orchestrator({ evaluator: new Evaluator(() => new EngineRuntime()), exercise: new EngineRuntime(), apps: [testApp], packs: [twoQuestions] });
-  const { attempt } = await orchestrator.start('test-pack', { seed: 7, challenge: { questionIds: ['q2'], repeatsPrevious: false } });
+  const { attempt } = await orchestrator.start('test-pack', { resume: makeAttempt('挑戦', { seed: 7, challenge: { questionIds: ['q2'], repeatsPrevious: false } }) });
   expect(attempt.seed).toBe(7);
   expect(attempt.challenge).toEqual({ questionIds: ['q2'], repeatsPrevious: false });
-  // 新しい演習票なので、ヒントは閉じた状態から始まる
-  expect(attempt.hintsOpened).toEqual([]);
   // 出していない q1 の回答は求めず、q2 だけで判定する
   expect(orchestrator.answerTransfer({ q2: 'ban' })).toBe(false);
   expect(orchestrator.answerTransfer({ q2: 'bind' })).toBe(true);

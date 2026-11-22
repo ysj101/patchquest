@@ -10,7 +10,7 @@ import { VERDICT_TITLE } from './labels';
 import { ResultSound } from './result-sound';
 
 const TITLES: Record<ResultEffectKind, string> = {
-  reproduced: '弱点を再現できました', ...VERDICT_TITLE,
+  reproduced: 'セキュリティホールを再現できました', ...VERDICT_TITLE,
 };
 
 /** 結果の中身。不合格は、失敗を 1 件ずつ分け、理由と題名・正しい結果・実際の結果を行を分けて示す。それ以外は 1 文 */

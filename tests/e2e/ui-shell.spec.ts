@@ -37,7 +37,7 @@ test('一覧の行は通称と一言だけで、正式名・CWE・分類は ⓘ 
   await expect(card(page, 'onboarding').locator('.vulnerability')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true })).toBeVisible();
-  await expect(page.locator('.hero-catch')).toContainText('弱点のあるアプリ');
+  await expect(page.locator('.hero-catch')).toContainText('セキュリティホールがあるアプリを、自分でこわして、なおしてみよう。');
   await expect(page.locator('.hero-catch')).toContainText('自分でこわして');
   await expect(page.getByRole('list', { name: '練習の流れ' }).getByRole('listitem')).toHaveText(['体験する', '直す', 'テストで確かめる']);
   await expect(page.locator('.hero-safe')).toContainText('本物のサービスには触れません');
@@ -57,7 +57,7 @@ test('ⓘ はクリックとキーボード（Enter・Space・Esc）で開閉し
   await expect(panel.locator('.terms')).toContainText('IDOR（安全でない直接オブジェクト参照）');
   await expect(panel.locator('.terms')).toContainText('持ち主の確認');
   await expect(panel.locator('.terms')).toContainText('CWE-639');
-  await expect(panel.locator('.terms')).toContainText('ソフトウェアの弱点に、共通の番号をつけた一覧');
+  await expect(panel.locator('.terms')).toContainText('ソフトウェアのセキュリティホールに、共通の番号をつけた一覧');
   await info.click();
   await expect(panel).toBeHidden();
 
@@ -108,7 +108,7 @@ test('キーボードだけで課題一覧から始めると、開始前チェ�
   await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeHidden();
   await page.keyboard.press('Enter');
   await expect(page.locator('#exercise-title')).toBeFocused();
-  await expect(page.getByText('学習用に、わざと弱点を入れた架空のサービスです。', { exact: true })).toBeVisible();
+  await expect(page.getByText('学習用に、わざとセキュリティホールを入れた架空のサービスです。', { exact: true })).toBeVisible();
   await expect(page.getByRole('list', { name: 'スタンプ' })).toContainText('再現：未達成');
 });
 
@@ -117,7 +117,7 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
   const alert = page.getByRole('alert');
   await expect(alert).toContainText('開始できません（あなたの不合格には数えません）', { timeout: 15_000 });
   await expect(alert).toContainText('注入後に攻撃が成立しませんでした');
-  await expect(page.locator('.check').filter({ hasText: '弱点を入れると' }).locator('.status')).toHaveText(/不合格/);
+  await expect(page.locator('.check').filter({ hasText: 'セキュリティホールを入れると' }).locator('.status')).toHaveText(/不合格/);
   await page.getByRole('button', { name: 'もう一度チェックする' }).click();
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
   await backToList(page).click();

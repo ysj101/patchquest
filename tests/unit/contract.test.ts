@@ -8,10 +8,18 @@ import {
   type AppDescriptor,
   type ExerciseState,
   type MissionManifest,
+  type MissionPack,
 } from '../../platform/contract';
 
 import { noop, sampleApp as app, samplePack, withManifest } from '../support/sample-pack';
 
+
+/** パックの最初の注入レシピ */
+function firstRecipe(pack: MissionPack) {
+  const [recipe] = pack.manifest.mutationRecipes;
+  if (!recipe) throw new Error('注入レシピがありません');
+  return recipe;
+}
 
 describe('validatePack', () => {
   it('正しいパックはエラーなしで通る', () => {
@@ -203,6 +211,18 @@ describe('validatePack', () => {
     const pack = samplePack();
     Object.assign(pack.manifest.story, { requester });
     expect(validatePack(pack, { app }).some((error) => error.startsWith('story.requester'))).toBe(true);
+  });
+
+  it('レシピが対象にするアプリの版が、実際のアプリの版と合わなければ拒否する', () => {
+    const pack = samplePack();
+    Object.assign(firstRecipe(pack).appliesTo, { versions: '^2.0.0' });
+    expect(validatePack(pack, { app })).toEqual([expect.stringMatching(/^mutationRecipes\[0\]\.appliesTo\.versions: アプリの版 .+ が範囲外/)]);
+  });
+
+  it('レシピが、パックの宣言していないフックを対象にしていたら拒否する', () => {
+    const pack = samplePack();
+    Object.assign(firstRecipe(pack).appliesTo, { hooks: [{ id: 'memo.unknown' }] });
+    expect(validatePack(pack, { app })).toEqual([expect.stringMatching(/^mutationRecipes\[0\]\.appliesTo\.hooks\[0\]: hooks の宣言と一致しません/)]);
   });
 
   it('アプリとの非互換（版・フック契約・機能）を拒否する', () => {

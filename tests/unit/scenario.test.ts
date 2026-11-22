@@ -96,6 +96,16 @@ describe('runSteps', () => {
     expect(result).toMatchObject({ passed: false, actual: expect.stringMatching(/未定義の値/) });
   });
 
+  it('期待値が未定義の値を参照する手順も、検証を止めずに不合格にする', async () => {
+    const inv = invoker({ 'GET /api/memos/101': { status: 200, body: { id: 101 } } });
+    const result = await runSteps(
+      [{ kind: 'request', as: 'alice', request: { method: 'GET', path: '/api/memos/101' }, expect: { body: [{ path: 'id', is: { equals: '{{nope}}' } }] } }],
+      scope,
+      inv,
+    );
+    expect(result).toEqual({ passed: false, expected: '手順の展開', actual: '未定義の値 {{nope}} を参照しています' });
+  });
+
   it('画面の route に含まれる {{キー}} を展開してから描画する', async () => {
     const inv = invoker({});
     const result = await runSteps(

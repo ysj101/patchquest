@@ -31,7 +31,6 @@
     "tests",
     "scripts",
     "*.config.ts",
-    "*.config.mjs",
-    ".cursor/skills/verify-patchquest/drive.ts"
+    "*.config.mjs"
   ]
 }

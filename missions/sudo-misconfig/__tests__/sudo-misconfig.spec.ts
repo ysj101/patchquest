@@ -137,3 +137,18 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   await typeCommand(page, 'sudo -l');
   await expect(terminalOutput(page)).toContainText('(root) NOPASSWD: /usr/local/sbin/');
 });
+
+test('機械の配布物を一度読めなくても、止まった理由が示され、「もう一度チェックする」で始められる', MACHINE, async ({ page }) => {
+  test.setTimeout(180_000);
+  // 最初の 1 回だけ、機械の状態の取得を失敗させる（配信の入れ替え中や、通信が一瞬切れたとき）
+  await page.route('**/linux.state.zst', (route) => route.fulfill({ status: 404, body: '' }), { times: 1 });
+  await openHome(page);
+  await page.locator('[data-mission="sudo-misconfig"]').getByRole('button', { name: /この課題を始める|最初から始める/ }).click();
+  const preflight = page.locator('[data-anchor="preflight"]');
+  await expect(preflight.getByRole('alert')).toContainText('安全な基準状態のテストを実行できませんでした: 演習用の機械の配布物 linux.state.zst を読めません（404）', { timeout: 60_000 });
+  // 題名を並べるのではなく、理由を 1 つにまとめて示す
+  await expect(preflight.getByRole('alert')).not.toContainText('ログインした利用者として端末を使える');
+
+  await preflight.getByRole('button', { name: 'もう一度チェックする' }).click();
+  await expect(page.locator('.exercise')).toBeVisible({ timeout: 90_000 });
+});

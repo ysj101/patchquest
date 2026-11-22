@@ -1,5 +1,6 @@
-// テスト用ビルド（--test）のカタログ。同梱分にテスト専用のアプリとパックを加え、
+// テスト用ビルド（--test）のカタログ。同梱分にテスト専用のアプリとパック（同梱パックが対象にしていない擬似シェルを含む）を加え、
 // 各パックの開発用の検証データ（missions/<課題>/__tests__/verification.ts）の実装を登録する
+import { shellApp } from '../../apps/shell';
 import { catalog as bundled } from '../../catalog';
 import { idorVerification } from '../../missions/idor/__tests__/verification';
 import { sudoMisconfigVerification } from '../../missions/sudo-misconfig/__tests__/verification';
@@ -28,6 +29,6 @@ const withVerification = (pack: MissionPack): MissionPack => {
 };
 
 export const catalog: Catalog = {
-  apps: [...bundled.apps, testApp],
+  apps: [...bundled.apps, shellApp, testApp],
   packs: [...bundled.packs.map(withVerification), testPack, shellTestPack, brokenPack],
 };

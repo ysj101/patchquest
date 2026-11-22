@@ -1,4 +1,4 @@
-// 復習の回答と週間目標の保存・検証・取り込みを確かめる。記録から導けない項目なので、XP の照合で消えずに残る。
+// 進捗ファイルに残る復習の回答と週間目標の検証・取り込み・保存を確かめる。記録から導けない項目なので、XP の照合で消えずに残る。
 import { describe, expect, it } from 'vitest';
 import type { ReviewEntry } from '../../platform/progress/review';
 import { MAX_REVIEWS, REVIEW_XP } from '../../platform/progress/review';
@@ -40,31 +40,20 @@ describe('進捗ファイルの検証', () => {
 });
 
 describe('ProgressStore の復習と週間目標', () => {
-  it('回答を追記すると XP に反映し、記録の照合で消えずに書き出しへ残る', async () => {
+  it('読み込んだ回答は XP に反映し、記録の照合で消えずに書き出しへ残る', async () => {
     const store = ProgressStore.inMemory();
     await store.save(reached());
-    const summary = await store.recordReview(review(12));
-    expect(summary.reviews).toEqual([review(12)]);
+    await store.importJson(json({ reviews: [review(12), review(12, 'q2')] }));
+    const summary = await store.profile(await store.list());
     expect(summary.xp).toMatchObject({ total: 10 + REVIEW_XP, review: REVIEW_XP });
-    await store.recordReview(review(12, 'q2'));
-    const after = await store.profile(await store.list());
-    expect(after.xp.total).toBe(10 + REVIEW_XP);
-    expect(after.reviews).toHaveLength(2);
-    expect(parseProgress(await store.exportJson()).profile).toEqual({ xp: { total: 10 + REVIEW_XP }, achievements: {}, reviews: after.reviews });
-  });
-
-  it('週間目標を選ぶと保存し、設定しないに戻すと項目ごと消える', async () => {
-    const store = ProgressStore.inMemory();
-    expect((await store.setWeeklyGoal('once')).weeklyGoal).toBe('once');
-    expect(parseProgress(await store.exportJson()).profile).toEqual({ xp: { total: 0 }, achievements: {}, weeklyGoal: 'once' });
-    expect((await store.setWeeklyGoal(null)).weeklyGoal).toBeNull();
-    expect(parseProgress(await store.exportJson()).profile).toEqual({ xp: { total: 0 }, achievements: {} });
+    expect(summary.reviews).toEqual([review(12), review(12, 'q2')]);
+    expect(parseProgress(await store.exportJson()).profile).toEqual({ xp: { total: 10 + REVIEW_XP }, achievements: {}, reviews: summary.reviews });
   });
 
   it('書き出したファイルの XP は復習の分を含み、取り込んでも計算し直しにならない', async () => {
     const store = ProgressStore.inMemory();
     await store.save(reached());
-    await store.recordReview(review(12));
+    await store.importJson(json({ reviews: [review(12)] }));
     const restored = ProgressStore.inMemory();
     expect(await restored.importJson(await store.exportJson())).toEqual({ ok: true, imported: 1, profileRecomputed: false });
     const summary = await restored.profile(await restored.list());
@@ -73,8 +62,7 @@ describe('ProgressStore の復習と週間目標', () => {
 
   it('取り込みでは回答を重ねずに合わせ、週間目標は手元の選択を優先する', async () => {
     const store = ProgressStore.inMemory();
-    await store.recordReview(review(13, 'q2'));
-    await store.setWeeklyGoal('few');
+    await store.importJson(json({ reviews: [review(13, 'q2')], weeklyGoal: 'few' }));
     const result = await store.importJson(json({ reviews: [review(12), review(13, 'q2')], weeklyGoal: 'once' }));
     expect(result).toEqual({ ok: true, imported: 0, profileRecomputed: false });
     const summary = await store.profile(await store.list());
@@ -90,8 +78,7 @@ describe('ProgressStore の復習と週間目標', () => {
 
   it('削除すると回答と週間目標も消える', async () => {
     const store = ProgressStore.inMemory();
-    await store.recordReview(review(12));
-    await store.setWeeklyGoal('once');
+    await store.importJson(json({ reviews: [review(12)], weeklyGoal: 'once' }));
     await store.clear();
     expect(await store.profile(await store.list())).toMatchObject({ reviews: [], weeklyGoal: null, xp: { total: 0 } });
   });

@@ -4,8 +4,7 @@ import { byCreatedAt, completeAttempt, canonicalJson, errorMessage, type Attempt
 import { PROGRESS_FORMAT, PROGRESS_SCHEMA_VERSION, parseProgress, type ProgressFile, type ProgressProfile } from './schema';
 
 import { profileFromAttempts, storedProfile, type KeptProfile, type ProfileOptions, type ProfileSummary } from './profile';
-import { MAX_REVIEWS, type ReviewEntry } from './review';
-import type { WeeklyGoalId } from './weekly-goal';
+import { MAX_REVIEWS } from './review';
 
 export interface ProgressBackend {
   getAll(): Promise<AttemptRecord[]>;
@@ -180,23 +179,6 @@ export class ProgressStore {
       await this.withBackend((backend) => backend.putProfile(profile));
     }
     return summary;
-  }
-
-  /** 復習の回答を追記し、XP を照合して保存する */
-  async recordReview(entry: ReviewEntry): Promise<ProfileSummary> {
-    return this.updateKept((kept) => ({ ...kept, reviews: [...(kept.reviews ?? []), entry].slice(-MAX_REVIEWS) }));
-  }
-
-  /** 週間目標を選ぶ（null で設定しない） */
-  async setWeeklyGoal(goal: WeeklyGoalId | null): Promise<ProfileSummary> {
-    return this.updateKept(({ reviews }) => ({ ...(reviews !== undefined && { reviews }), ...(goal !== null && { weeklyGoal: goal }) }));
-  }
-
-  private async updateKept(change: (kept: KeptProfile) => KeptProfile): Promise<ProfileSummary> {
-    const { reviews, weeklyGoal, ...derived } = await this.withBackend((backend) => backend.getProfile());
-    const kept: KeptProfile = { ...(reviews !== undefined && { reviews }), ...(weeklyGoal !== undefined && { weeklyGoal }) };
-    await this.withBackend((backend) => backend.putProfile({ ...derived, ...change(kept) }));
-    return this.profile(await this.list());
   }
 
   async exportJson(now = new Date()): Promise<string> {

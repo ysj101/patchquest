@@ -15,7 +15,7 @@ Issue #2。SQLi 演習と教材アプリのデータ層の前提として、ブ�
 | ブラウザ | Google Chrome 154.0.8037.98、Microsoft Edge 155.0.4283.45（Playwright の `channel` で起動） |
 | 静的サーバ | Python 3.14.6 `http.server`（`--bind 127.0.0.1`） |
 | SQLite WASM | `@sqlite.org/sqlite-wasm` 3.53.4-build2 |
-| 再現手順 | `pnpm run test:e2e tests/e2e/poc-sqlite.spec.ts`（検証ページは `tests/pages/poc-sqlite*`） |
+| 再現手順 | PoC の検証ページと E2E（`tests/pages/poc-sqlite*`・`tests/e2e/poc-sqlite.spec.ts`）は、製品の実装に置き換わったあとで削除した。当時のものは git の履歴にある |
 
 ## 結果
 
