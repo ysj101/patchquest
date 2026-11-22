@@ -91,7 +91,9 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   const approach = page.getByRole('region', { name: '調べ方' });
   await expect(approach).toContainText('sudo は、許可された利用者が、コマンドを管理者（root）の権限で動かすための仕組みです');
   await expect(approach.locator('.approach-steps li')).toHaveCount(4);
-  for (const command of ['whoami', 'cat runbook.txt', 'sudo -l']) await expect(approach).toContainText(command);
+  // 端末に打つコマンドは、地の文と区別したコードとして出る
+  await expect(approach.locator('code')).toHaveText(['whoami', 'cat runbook.txt', 'sudo -l', '(root) NOPASSWD: パス']);
+  await expect(approach.locator('code').first()).toHaveCSS('font-family', /monospace/);
   await expect(approach).not.toContainText('visudo');
 
   // 調べ方を読んでもヒントの利用には数えず、ヒントは調査タブからも開ける
@@ -100,9 +102,16 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   await hints.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
   await expect(hints.locator('.hint')).toContainText('sudo -l の一覧に入っていないでしょうか');
 
+  // 対策タブの先頭には、編集する道具の使い方が出る（答えを書いていないことは、全パック共通の tests/unit/pack-guides.test.ts で確かめる）
+  await page.getByRole('tab', { name: '対策' }).click();
+  const guide = page.getByRole('region', { name: '操作のしかた' });
+  await expect(guide.locator('code')).toContainText(['visudo', 'sudo visudo -f ファイルのパス']);
+  // 名指ししているボタンは、対策タブに同じ名前で実在する
+  await expect(guide).toContainText('「最初の状態に戻す」');
+  await expect(page.getByRole('tabpanel', { name: '対策' }).getByRole('button', { name: '最初の状態に戻す' })).toBeVisible();
+
   // 直し方のヒント（直し方）は対策タブからも開ける
   const repairHints = page.getByRole('tabpanel', { name: '対策' }).getByRole('region', { name: 'ヒント' });
-  await page.getByRole('tab', { name: '対策' }).click();
   await repairHints.getByRole('button', { name: 'ヒント 2（調べ方）を見る' }).click();
   await repairHints.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
   await expect(repairHints.locator('.hint').last()).toContainText('sudo visudo -f /etc/sudoers.d/operators');

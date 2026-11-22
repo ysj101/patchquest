@@ -11,15 +11,18 @@ const asObject = (value: JsonValue | undefined): JsonObject | null => (typeof va
 /** 書き換えた行番号の並び（例：2・3） */
 const lineNumbers = (lines: JsonValue | undefined): string => (Array.isArray(lines) ? lines.map(shown).join('・') : shown(lines));
 
+/** 観測ログの項目名。表示と、課題パックの文章が名指しできる名前（AppModule.eventLabels）の両方に使う */
+export const EVENT_LABELS = { 'sudo.decision': 'sudo の判断', 'shell.exec': 'プログラムの実行', 'file.changed': 'ファイルの変更' } as const;
+
 export function describeEvent(event: ObservedEvent): string | null {
   const data = event.data;
   switch (event.type) {
     case 'sudo.decision':
-      return `sudo の判断：${data.decision === 'allow' ? '許可' : '拒否'}（${shown(data.reason)}）・利用者 ${shown(data.user)}・コマンド ${shown(data.command)}・実行する利用者 ${shown(data.runAs)}`;
+      return `${EVENT_LABELS['sudo.decision']}：${data.decision === 'allow' ? '許可' : '拒否'}（${shown(data.reason)}）・利用者 ${shown(data.user)}・コマンド ${shown(data.command)}・実行する利用者 ${shown(data.runAs)}`;
     case 'shell.exec':
-      return `プログラムの実行：${shown(data.program)}・利用者 ${shown(data.user)}・実行した権限 ${shown(data.runAs)}`;
+      return `${EVENT_LABELS['shell.exec']}：${shown(data.program)}・利用者 ${shown(data.user)}・実行した権限 ${shown(data.runAs)}`;
     case 'file.changed':
-      return `ファイルの変更：${shown(data.path)} の ${lineNumbers(data.lines)} 行目・利用者 ${shown(data.user)}・実行した権限 ${shown(data.runAs)}`;
+      return `${EVENT_LABELS['file.changed']}：${shown(data.path)} の ${lineNumbers(data.lines)} 行目・利用者 ${shown(data.user)}・実行した権限 ${shown(data.runAs)}`;
     default:
       return null;
   }

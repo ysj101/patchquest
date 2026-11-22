@@ -3,6 +3,7 @@ import {
   TRANSITIONS,
   canTransition,
   satisfies,
+  splitInlineCode,
   validatePack,
   type AppDescriptor,
   type ExerciseState,
@@ -159,6 +160,33 @@ describe('validatePack', () => {
     expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`approach.${path}:`)]);
   });
 
+  it('調べ方の説明と手順は、バッククォートで囲んだコードを含めても受け付ける', () => {
+    const pack = samplePack();
+    pack.manifest.approach = { intro: '`sudo` は権限を切り替える', steps: ['`sudo -l` で一覧を見る', '囲まない手順'] };
+    expect(validatePack(pack, { app })).toEqual([]);
+  });
+
+  it.each([
+    ['intro', { intro: '`sudo は閉じていない', steps: ['手順'] }],
+    ['steps[1]', { intro: '前提の仕組み', steps: ['手順', '空の `` がある'] }],
+    ['steps[0]', { intro: '前提の仕組み', steps: ['空白だけの ` ` がある'] }],
+  ])('調べ方の %s のコードの囲みが閉じていないか空なら拒否する', (path, approach) => {
+    const pack = samplePack();
+    pack.manifest.approach = approach;
+    expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`approach.${path}: コードは`)]);
+  });
+
+  it('操作のしかたは省略でき、調べ方と同じ形で検証する', () => {
+    const pack = samplePack();
+    expect(pack.manifest.repairGuide).toBeUndefined();
+    pack.manifest.repairGuide = { intro: '`visudo` で編集する', steps: ['保存して閉じる'] };
+    expect(validatePack(pack, { app })).toEqual([]);
+    pack.manifest.repairGuide = { intro: '', steps: ['`閉じていない'] };
+    expect(validatePack(pack, { app })).toEqual([expect.stringContaining('repairGuide.intro:'), expect.stringContaining('repairGuide.steps[0]: コードは')]);
+    Object.assign(pack.manifest, { repairGuide: '手順' });
+    expect(validatePack(pack, { app })).toContain('repairGuide: オブジェクトが必要です');
+  });
+
   it.each([null, '手順', ['手順']])('調べ方がオブジェクトでなければ拒否する', (approach) => {
     const pack = samplePack();
     Object.assign(pack.manifest, { approach });
@@ -248,3 +276,28 @@ describe('演習状態の遷移', () => {
     expect(canTransition('Selected', 'Prepared')).toBe(false);
   });
 });
+
+describe('splitInlineCode', () => {
+  it('バッククォートで囲んだ部分をコード、残りを地の文として、出てくる順に返す', () => {
+    expect(splitInlineCode('まず `sudo -l` を実行し、`cat a.txt` と比べる')).toEqual([
+      { code: false, text: 'まず ' },
+      { code: true, text: 'sudo -l' },
+      { code: false, text: ' を実行し、' },
+      { code: true, text: 'cat a.txt' },
+      { code: false, text: ' と比べる' },
+    ]);
+  });
+
+  it('囲みのない文は、地の文 1 つとして返す', () => {
+    expect(splitInlineCode('囲みのない文')).toEqual([{ code: false, text: '囲みのない文' }]);
+  });
+
+  it('文の先頭と末尾のコードの外側に、空の地の文を作らない', () => {
+    expect(splitInlineCode('`whoami`')).toEqual([{ code: true, text: 'whoami' }]);
+  });
+
+  it.each(['`閉じていない', '前 `a` 後 `', '空の `` がある', '空白だけの `  ` がある'])('書き誤り「%s」は null を返す', (text) => {
+    expect(splitInlineCode(text)).toBeNull();
+  });
+});
+

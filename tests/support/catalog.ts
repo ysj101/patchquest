@@ -18,6 +18,9 @@ const verifications: PackVerificationData[] = [idorVerification, sudoMisconfigVe
 export const verificationCandidates = (packId: string): VerificationCandidate[] =>
   verifications.filter((data) => data.packId === packId).flatMap((data) => data.candidates);
 
+/** パックの答えを示す語（調べ方・操作のしかたに出てはいけない語）。検証データがなければ undefined */
+export const answerTerms = (packId: string): string[] | undefined => verifications.find((data) => data.packId === packId)?.answerTerms;
+
 /** 実装の登録簿はカタログから作られるため、検証専用の実装は対応するパックの実装に加える */
 const withVerification = (pack: MissionPack): MissionPack => {
   const extra = verifications.filter((data) => data.packId === pack.manifest.id).map((data) => data.implementations);

@@ -130,7 +130,7 @@ test('教材由来の文字列は観測ログでも文字のまま表示され�
   expect(dialogs).toEqual([]);
 });
 
-test('調べ方を持たない課題では調査タブに調べ方を出さず、ヒントは状況・調査・対策のどのタブから開いてもすべてに出る', async ({ page }) => {
+test('調べ方・操作のしかたを持たない課題では調査タブ・対策タブに出さず、ヒントは状況・調査・対策のどのタブから開いてもすべてに出る', async ({ page }) => {
   const story = page.getByRole('tabpanel', { name: '状況' });
   const investigation = page.getByRole('tabpanel', { name: '調査' });
   await page.getByRole('tab', { name: '調査' }).click();
@@ -149,6 +149,7 @@ test('調べ方を持たない課題では調査タブに調べ方を出さず�
 
   const repair = page.getByRole('tabpanel', { name: '対策' });
   await page.getByRole('tab', { name: '対策' }).click();
+  await expect(repair.getByRole('heading', { name: '操作のしかた' })).toHaveCount(0);
   await expect(repair.locator('.hint')).toHaveCount(2);
   await repair.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
   await expect(repair.locator('.hint')).toHaveCount(3);

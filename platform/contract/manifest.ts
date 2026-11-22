@@ -63,6 +63,11 @@ export interface MissionManifest {
   actions: ActionDef[];
   /** 調査タブの先頭に常に出す調べ方（任意）。前提の知識が要る課題で、何から始めるかを示す */
   approach?: ApproachDef;
+  /**
+   * 対策タブの先頭に常に出す操作のしかた（任意）。直すのに使う道具の使い方（開き方・保存・やり直し方）だけを書き、
+   * どこをどう直すかは書かない（ヒント 3 と solution に任せる）
+   */
+  repairGuide?: ApproachDef;
   defenses: DefenseDef[];
   probes: ProbeDef[];
   tests: {
@@ -118,13 +123,14 @@ export interface WorkedExample {
 }
 
 /**
- * 調べ方。前提の仕組みと、最初に何をするかの手順だけを書く。修正方針は書かない（ヒント 3 と solution に任せる）。
- * 常に表示するので、見てもヒントの利用には数えない
+ * 調べ方（approach）と操作のしかた（repairGuide）の形。前提の仕組みと手順だけを書き、修正方針は書かない
+ * （ヒント 3 と solution に任せる）。常に表示するので、見てもヒントの利用には数えない。
+ * `…` で囲んだ部分は、等幅のコードとして表示する
  */
 export interface ApproachDef {
   /** 前提となる仕組みの短い説明。例：sudo とは何か */
   intro: string;
-  /** 調べる手順。各 1〜2 文 */
+  /** 手順。各 1〜2 文 */
   steps: string[];
 }
 
