@@ -51,6 +51,14 @@ test('不十分な対策・全面停止・正しい対策の結論と、改善�
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(history).toHaveText(saved, { useInnerText: true });
   await expect(page.locator('.debrief .security-status')).toHaveCount(0);
+  // 道具パネルが広くても、原因・覚えておくこと・理由は横に並べず、読む順に縦に並べる
+  await page.setViewportSize({ width: 1800, height: 900 });
+  const boxes = await page.locator('.debrief').locator('.debrief-cause, .debrief-takeaway, .debrief-reason').evaluateAll((sections) => sections.map((section) => section.getBoundingClientRect().toJSON() as { top: number; bottom: number; left: number }));
+  expect(boxes).toHaveLength(3);
+  for (const [index, box] of boxes.entries()) {
+    expect(box.left).toBe(boxes[0]?.left);
+    if (index > 0) expect(box.top).toBeGreaterThanOrEqual(boxes[index - 1]?.bottom ?? Infinity);
+  }
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(verifyResults(page).locator('.verify-conclusions')).toContainText('合格');
   await expect(verifyResults(page)).not.toContainText('%');
