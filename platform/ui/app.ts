@@ -344,6 +344,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     }
   }
 
+  // 進捗を読み込む・削除すると記録が変わるので、演習の途中でも演習を止めて課題一覧へ戻す（消えた記録の演習を続けさせない）
   const progress = progressActions({ store, view: document.body, guide, refresh: (message) => screen === 'records' ? showRecords(message) : showList(message), announce: say });
 
   await showList();
