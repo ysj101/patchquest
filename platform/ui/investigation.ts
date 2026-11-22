@@ -1,8 +1,8 @@
 // 調査パネル（spec §10）。調べ方と定型の操作・リクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, errorMessage, splitInlineCode, type ActionDef, type ApproachDef, type AppRequest, type AppResponse, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
+import { HTTP_METHODS, errorMessage, type ActionDef, type ApproachDef, type AppRequest, type AppResponse, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
 import { expandRequest, type Scope } from '../evaluator/scenario';
-import { status } from './components';
+import { approachNodes, status } from './components';
 import { fill, h } from './dom';
 
 /** 操作履歴の上限（初期案 1000 件、spec §14） */
@@ -46,13 +46,6 @@ export function describersOf(app: DescribingApp): AppDescribers {
     exchange: (request, response) => app.describeExchange?.(request, response) ?? null,
     requestEditor: app.requestEditor ?? true,
   };
-}
-
-/** `…` で囲んだ部分を等幅のコードにした、文の部品。パックは読み込み時に検証済みなので、書き誤りは例外にする */
-function withCode(text: string): (HTMLElement | string)[] {
-  const parts = splitInlineCode(text);
-  if (!parts) throw new Error(`コードの囲みが閉じていません：${text}`);
-  return parts.map((part) => (part.code ? h('code', { class: 'inline-code' }, part.text) : part.text));
 }
 
 /** リクエストの短い表示。アプリが説明しないものは、メソッドとパスを示す */
@@ -148,7 +141,7 @@ export class InvestigationPanel {
   /** 演習を始めたときに、調べ方・操作の定義・fixture の値・アプリによる観測ログと調査タブの見せ方を受け取る */
   setup({ approach, actions }: { approach?: ApproachDef; actions: ActionDef[] }, refs: Scope, describers: AppDescribers): void {
     this.approach.hidden = !approach;
-    if (approach) fill(this.approach, h('h3', { id: 'approach-title' }, '調べ方'), h('p', {}, ...withCode(approach.intro)), h('ol', { class: 'approach-steps' }, ...approach.steps.map((step) => h('li', {}, ...withCode(step)))));
+    if (approach) fill(this.approach, ...approachNodes('approach-title', '調べ方', approach));
     this.refs = refs;
     this.describers = describers;
     fill(this.actionList, ...actions.map((a) => this.actionForm(a)));
