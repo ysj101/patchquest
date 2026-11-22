@@ -2,7 +2,7 @@
 // 検証済みの固定ペイロードを保存し、別の利用者が開くと実行マーカーで再現する（A08）。
 // script タグの削除では不合格、コメントの非表示は正常系が壊れ、文字としての表示で合格する（A09）。
 // ペイロードは隔離 iframe の外の Host では要素にならない（A17）
-import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from './fixtures';
+import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from '../../../tests/e2e/fixtures';
 
 /** 理解確認の正解の選択肢（設問 ID → ラベル） */
 const CORRECT_CHOICES: Record<string, string> = {

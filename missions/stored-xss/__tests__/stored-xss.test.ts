@@ -1,11 +1,11 @@
 // ミッション2「コメントからのスクリプト実行を防ぐ」（保存型 XSS、Issue #18）。
 // Node では画面を描画しないため、描画関数の切り替えと再現の判定をここで確かめ、出荷前検証は E2E で行う
 import { describe, expect, it } from 'vitest';
-import type { RenderComment } from '../../apps/memo/hooks';
-import { storedXssPack } from '../../missions/stored-xss';
-import { ATTACK_COMMENT } from '../../missions/stored-xss/tests';
-import type { Exchange } from '../../platform/contract';
-import { detectReproduction } from '../../platform/evaluator/evaluator';
+import type { RenderComment } from '../../../apps/memo/hooks';
+import { storedXssPack } from '..';
+import { ATTACK_COMMENT } from '../tests';
+import type { Exchange } from '../../../platform/contract';
+import { detectReproduction } from '../../../platform/evaluator/evaluator';
 
 const { manifest } = storedXssPack;
 

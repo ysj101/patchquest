@@ -36,7 +36,7 @@ export default defineConfig({
     {
       name: 'chrome-quiet',
       use: { channel: 'chrome', contextOptions: { reducedMotion: 'reduce' } },
-      testMatch: ['missions/idor/__tests__/idor.spec.ts', 'tests/e2e/stored-xss.spec.ts', 'tests/e2e/sqli.spec.ts', 'tests/e2e/onboarding.spec.ts'],
+      testMatch: ['missions/idor/__tests__/idor.spec.ts', 'missions/stored-xss/__tests__/stored-xss.spec.ts', 'missions/sqli/__tests__/sqli.spec.ts', 'missions/onboarding/__tests__/onboarding.spec.ts'],
     },
   ],
   // 配布物と同じく、ビルド成果物をlocalhost限定の静的サーバで配信する
