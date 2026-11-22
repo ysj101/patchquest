@@ -17,7 +17,7 @@ it.each([-1, 0.5, '100', null, undefined])('XP合計が非負整数でない%s�
   expect(() => parseProgress(json({ xp: { total } }))).toThrow(ProgressFormatError);
 });
 
-it('記録から計算した値だけを返し、v7を往復して照合する', async () => {
+it('記録から計算した値だけを返し、現在の版で往復して照合する', async () => {
   const store = ProgressStore.inMemory();
   await store.save(makeAttempt('到達', { milestones: { briefedAt: '時刻', firstRequestAt: null, firstDefenseAt: null } }));
   expect(await store.profile(await store.list())).toMatchObject({ xp: { total: 10 } });

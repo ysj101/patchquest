@@ -32,7 +32,7 @@ it.each([1, 2, 3, 4, 5, 6])('v%sは最初の合格までの事実を履歴から
   });
 });
 
-it('旧IndexedDBとJSONは同じ補完を使い、補完後のv7を往復しても初回合格を保つ', async () => {
+it('旧IndexedDBとJSONは同じ補完を使い、補完後の現在の版を往復しても初回合格を保つ', async () => {
   const record = legacy();
   vi.spyOn(MemoryBackend.prototype, 'getAll').mockResolvedValue([record as ReturnType<typeof makeAttempt>]);
   const store = ProgressStore.inMemory();
@@ -68,6 +68,6 @@ it.each([
   { firstPass: { at, verifications: 1, normalBroken: '不正', hintsUsed: false } },
   { firstPass: { at, verifications: 1, normalBroken: false, hintsUsed: 1 } },
   { firstPass: undefined }, { verifications: -1 }, { normalBroken: 1 },
-])('v7の不正な検証記録を拒否する（%s）', (override) => {
+])('現在の版の不正な検証記録を拒否する（%s）', (override) => {
   expect(() => parseProgress(source({ ...makeAttempt('不正'), ...override }))).toThrow();
 });

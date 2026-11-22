@@ -8,7 +8,7 @@ type Content = (Node | string | null)[];
 
 /**
  * 説明を畳んだ ⓘ ボタンと、その説明の入れ物を返す。label はボタンの読み上げ名（例：「IDOR の説明」）。
- * フォーカスが移っただけでは閉じず、Esc か再度の押下、またはマウスが離れたときに閉じる
+ * フォーカスが移っただけでは閉じず、Esc か再度の押下で閉じる。マウスを乗せて開いただけなら、マウスが離れたときにも閉じる
  */
 export function infoPopover(label: string, ...content: Content): HTMLElement {
   return popover(h('button', { type: 'button', class: 'info-button', 'aria-label': label }, h('span', { 'aria-hidden': true }, 'i')), content);
