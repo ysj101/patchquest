@@ -30,8 +30,8 @@ export default defineConfig({
         'runtimes/browser/worker.ts',
         'runtimes/browser/preview/**',
       ],
-      // 導入時点の値。下がったら失敗する。上がったら数字を引き上げる
-      thresholds: { statements: 87, branches: 78, functions: 87, lines: 92 },
+      // 下がったら失敗する。上がったら数字を引き上げる（2026-11-23 時点の実測は 95.0・90.9・95.0・97.5）
+      thresholds: { statements: 94, branches: 90, functions: 94, lines: 97 },
     },
   },
 });
