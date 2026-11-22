@@ -132,10 +132,10 @@
       "count": 1
     },
     "id-length": {
-      "count": 19
+      "count": 18
     },
     "sonarjs/cognitive-complexity": {
-      "count": 2
+      "count": 1
     },
     "sonarjs/function-return-type": {
       "count": 1

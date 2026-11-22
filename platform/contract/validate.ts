@@ -130,10 +130,12 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
     if (!isVersion(c.text(`${at}.version`, r.version))) c.fail(`${at}.version`, 'x.y.z 形式が必要です');
     const applies = c.obj(`${at}.appliesTo`, r.appliesTo);
     if (applies.appId !== compat.appId) c.fail(`${at}.appliesTo.appId`, 'appCompatibility.appId と一致しません');
-    if (!isVersionRange(c.text(`${at}.appliesTo.versions`, applies.versions))) c.fail(`${at}.appliesTo.versions`, "'x.y.z' か '^x.y.z' が必要です");
+    const versions = c.text(`${at}.appliesTo.versions`, applies.versions);
+    if (!isVersionRange(versions)) c.fail(`${at}.appliesTo.versions`, "'x.y.z' か '^x.y.z' が必要です");
+    else if (app && !satisfies(app.version, versions)) c.fail(`${at}.appliesTo.versions`, `アプリの版 ${app.version} が範囲外です`);
     c.list(`${at}.appliesTo.hooks`, applies.hooks, true).forEach((raw, i) => {
       const h = c.obj(`${at}.appliesTo.hooks[${i}]`, raw);
-      if (hookContracts.get(h.id as string) !== h.contract) c.fail(`${at}.appliesTo.hooks[${i}]`, 'hooks の宣言と一致しません');
+      if (!hookContracts.has(h.id as string) || hookContracts.get(h.id as string) !== h.contract) c.fail(`${at}.appliesTo.hooks[${i}]`, 'hooks の宣言と一致しません');
     });
     checkChanges(`${at}.apply`, r.apply);
     c.list(`${at}.verify.probes`, c.obj(`${at}.verify`, r.verify).probes, true).forEach((id, i) =>

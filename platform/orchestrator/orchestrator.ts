@@ -165,10 +165,10 @@ export class Orchestrator {
     try {
       report = await this.deps.evaluator.runSuite(this.subject(c.snapshot.implementations), c.tests, c.snapshot.pack.manifest.tests.target, this.newRunId('verify'), attempt.configHash);
     } catch (e) {
-      // 基盤エラーは学習上の不合格に数えない
+      // 基盤エラーは学習上の不合格に数えない。合格済みの演習をテストし直していたなら、合格のままにする
       if (this.current !== c) return null;
       c.snapshot.platformError = errorMessage(e);
-      this.transition('Repairing');
+      this.transition(this.allBadges() ? 'Passed' : 'Repairing');
       this.emit();
       return null;
     }
@@ -177,8 +177,9 @@ export class Orchestrator {
     if (report.passed) {
       attempt.badges.defense = { achieved: true, runId: report.runId, configHash: report.configHash, at: this.now().toISOString() };
     }
-    c.snapshot.defenseCurrent = report.passed;
-    this.transition(report.passed && this.allBadges() ? 'Passed' : 'Repairing');
+    // 検証の間に修正の記録が増えていたら、確かめたのは古い構成なので、現在の合格としては扱わない（spec §5.3）
+    c.snapshot.defenseCurrent = report.passed && report.configHash === attempt.configHash;
+    this.transition(this.allBadges() ? 'Passed' : 'Repairing');
     this.emit();
     return report;
   }
