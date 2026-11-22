@@ -19,6 +19,14 @@ export function labelPopover(label: string, ...content: Content): HTMLElement {
   return popover(h('button', { type: 'button', class: 'button button-quiet info-label' }, label), content);
 }
 
+/**
+ * 見出しと、その区画の補足を畳んだ ⓘ を横に並べる。補足は、読まなくても操作できる内容にだけ使う
+ * （次の一歩を決めるのに要る文は、畳まずに本文へ置く）
+ */
+export function headingWithInfo(heading: HTMLElement, ...content: Content): HTMLElement {
+  return h('div', { class: 'heading-info' }, heading, infoPopover(`${heading.textContent} の説明`, ...content));
+}
+
 function popover(button: HTMLElement, content: Content): HTMLElement {
   const id = `info-${++sequence}`;
   const panel = h('div', { id, class: 'info-panel', role: 'note', hidden: true }, ...content);

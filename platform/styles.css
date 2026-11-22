@@ -206,6 +206,7 @@ main > section > * + * { margin-top: 16px; }
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); font-size: 0.85rem; font-weight: 400; display: grid; gap: 6px; text-align: left;
 }
 .info-panel .eyebrow { margin-top: 4px; }
+.heading-info { display: flex; align-items: center; gap: 8px; }
 .terms { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 0.85rem; }
 .terms dt { color: var(--muted); }
 .terms dd { margin: 0; display: grid; gap: 2px; }
