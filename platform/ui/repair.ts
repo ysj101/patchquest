@@ -6,7 +6,7 @@ import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
 import { verdictKind, whyDefenseFailed } from './verdict';
-import { approachNodes, radioOption, status } from './components';
+import { approachNodes, expectedActual, radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
 import { headingWithInfo } from './info-popover';
 import { describersOf, type DescribingApp } from './investigation';
@@ -46,7 +46,7 @@ function outcomeItem(outcome: TestOutcome): HTMLElement {
     'li',
     { class: 'outcome' },
     h('div', { class: 'outcome-head' }, status(kind, text), h('span', {}, outcome.title)),
-    h('dl', { class: 'outcome-detail' }, h('dt', {}, '正しい結果'), h('dd', { class: 'mono' }, outcome.expected), h('dt', {}, '実際の結果'), h('dd', { class: 'mono' }, outcome.actual)),
+    expectedActual(outcome.expected, outcome.actual),
   );
 }
 

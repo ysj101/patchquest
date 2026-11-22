@@ -503,6 +503,10 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .result-callout[data-result='secured'] { border-color: var(--ok); background: var(--ok-bg); }
 .result-callout[data-result='insufficient'] { border-color: var(--fail); border-style: dashed; }
 .result-callout h2 { font-size: 1.05rem; }
+/* 不合格の内訳。失敗を 1 件ずつ分け、理由・正しい結果・実際の結果を行を分けて示す */
+.callout-failures { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.callout-failure-title { margin: 0 0 2px; font-weight: 700; }
+.callout-failures .outcome-detail { font-size: 0.9rem; }
 .result-group[data-reveal='true'] { animation: rise-in 0.3s ease-out backwards; }
 .result-group[data-reveal='true']:nth-of-type(2) { animation-delay: 0.15s; }
 .result-group[data-reveal='true']:nth-of-type(3) { animation-delay: 0.3s; }
