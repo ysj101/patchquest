@@ -21,7 +21,7 @@ export const onboardingPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'onboarding',
-    version: '1.6.0',
+    version: '1.7.0',
     kind: 'tutorial',
     title: '練習：はじめての修正',
     summary: 'わざと壊したメモアプリで「こわす → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
@@ -80,7 +80,7 @@ export const onboardingPack: MissionPack = {
         description: '画面のタイトル入力欄に上限を付けます。',
         apply: [{ hook: 'memo.title.input', implementation: 'memo/title-input-max-length' }],
         referenceDiff: {
-          file: 'apps/memo/view.ts',
+          file: 'apps/memo/hooks.ts',
           language: 'ts',
           before: 'const prepareTitleInput = (input) => {};',
           after: 'const prepareTitleInput = (input) => {\n  input.maxLength = 40;\n};',
@@ -99,7 +99,7 @@ export const onboardingPack: MissionPack = {
           before: NO_TITLE_CHECK,
           after: "const validateTitle = (title) => ({ ok: false, message: 'メモは保存できません' });",
         },
-        whyItFails: '長いタイトルは止まりましたが、普通のメモも保存できなくなりました。',
+        whyItFails: '長いタイトルは止まりましたが、ふつうのメモも保存できなくなりました。',
         expected: 'breaks-normal',
       },
       {

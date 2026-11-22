@@ -6,7 +6,7 @@ import type { DebriefDef, HintDef, TransferQuestion, WorkedExample } from '../..
 export const WORKED_EXAMPLE: WorkedExample = {
   title: '検索語が、条件式の一部になってしまう',
   steps: [
-    "入力：alice（利用者 ID 1）が「週報」で検索する。処理は検索語を文字としてつないで、SQL を作る：… WHERE owner_id = 1 AND (title LIKE '%週報%' OR body LIKE '%週報%')",
+    "入力：alice（たとえば利用者 ID 1）が「週報」で検索する。処理は検索語を文字としてつないで、SQL を作る：… WHERE owner_id = 1 AND (title LIKE '%週報%' OR body LIKE '%週報%')",
     "入力を変える：検索語を ') OR 2=2 -- にする。",
     "処理：同じようにつなぐと … WHERE owner_id = 1 AND (title LIKE '%') OR 2=2 --%' OR body LIKE … になる。検索語の中の ') がかっこと文字列を閉じ、-- から後ろはコメントとして無視される。",
     "結果：残る条件は (owner_id = 1 AND title LIKE '%') OR 2=2。2=2 はいつも正しいので、持ち主の条件が効かなくなり、bob や carol のメモまで結果に出る。",
@@ -17,11 +17,11 @@ export const WORKED_EXAMPLE: WorkedExample = {
 export const HINTS: HintDef[] = [
   {
     level: 1,
-    text: '検索語は、実行された SQL のどこに入っているでしょうか。観測ログのクエリ形・バインド値・返却行の所有者を見くらべ、結果が検索した人のメモだけかを確かめましょう。',
+    text: '検索語は、実行された SQL のどこに入っているでしょうか。観測ログの「SQL」で、実行された文・バインド値・返却行の所有者を見くらべ、結果が検索した人のメモだけかを確かめましょう。',
   },
   {
     level: 2,
-    text: '「調査」で、登録済みの検索語を送ってみます。「週報」と、持ち主の条件を広げる検索語とで、クエリ形・バインド値・返却行の所有者がどう変わるかを見ましょう。画面の「検索」からも同じ検索ができます。',
+    text: '「調査」で、登録済みの検索語を送ってみます。「週報」と、持ち主の条件を広げる検索語とで、観測ログの「SQL」に出る文・バインド値・返却行の所有者がどう変わるかを見ましょう。画面の「検索」からも同じ検索ができます。',
   },
   {
     level: 3,

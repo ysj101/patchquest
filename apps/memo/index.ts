@@ -1,6 +1,6 @@
 // 教材アプリ「メモ帳」。非公開メモの CRUD と、演習ハーネスによる利用者の切り替えを持つ
 import type { AppModule } from '../../runtimes/browser/app-module';
-import { describeEvent } from './events';
+import { EVENT_LABELS, describeEvent } from './events';
 import { USERS, memoFixture } from './fixtures';
 import { BASELINE, HOOKS } from './hooks';
 import { SCHEMA } from './schema';
@@ -24,4 +24,5 @@ export const memoApp: AppModule = {
   handle,
   render,
   describeEvent,
+  eventLabels: Object.values(EVENT_LABELS),
 };
