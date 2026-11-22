@@ -141,10 +141,15 @@ test('visudo の編集画面は、キーボードだけで開いて書き換え�
   await expect(editor(page).getByRole('alert')).toContainText(`visudo: ${OPERATORS}:2: 構文エラー`);
   await expect(editor(page).getByRole('alert')).toContainText('変更は保存していません');
 
-  // 直して Ctrl+S で保存すると閉じ、加えた変更に 1 件だけ残る
+  // 直して Ctrl+S で保存すると閉じ、加えた変更に 1 件だけ残る。保存を送っている間の Ctrl+S と Esc は受け付けない
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type('# 外した');
-  await page.keyboard.press('Control+s');
+  await editor(page).evaluate((element) => {
+    const press = (key: string, ctrlKey: boolean) => element.dispatchEvent(new KeyboardEvent('keydown', { key, ctrlKey, bubbles: true, cancelable: true }));
+    press('s', true);
+    press('s', true);
+    press('Escape', false);
+  });
   await expect(editor(page)).toHaveCount(0);
   await expect(terminalOutput(page)).toContainText(`visudo: ${OPERATORS} の 2 行目を保存しました`);
   await expect(commandInput(page)).toBeFocused();

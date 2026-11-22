@@ -33,6 +33,8 @@ test('再現・正しい対策・理解確認をそろえると解決になり�
   await page.getByRole('radio', { name: '一覧のリンクを隠す' }).check();
   await page.getByRole('button', { name: '答える' }).click();
   await expect(page.locator('.question')).toContainText('不正解');
+  // 設問を描き直しても、フォーカスは設問の見出しに残る
+  await expect(page.getByRole('heading', { name: '理解の確認' })).toBeFocused();
   await expect(page.locator('.question')).toContainText('直接の要求は防げない');
   await page.getByRole('radio', { name: '取得時に所有者を照合する' }).check();
   await page.getByRole('button', { name: '答える' }).click();
@@ -75,6 +77,8 @@ test('ヒントは段階的に開け、解法は確認してから表示する',
   await expect(page.getByRole('dialog')).toContainText('記録に残ります');
   await page.getByRole('dialog').getByRole('button', { name: '解法を見る' }).click();
   await expect(hints).toContainText('note.read で所有者を照合する');
+  // 押したボタンがなくなっても、フォーカスは開いた解法に残る
+  await expect(hints.locator('.hint-solution')).toBeFocused();
 });
 
 test('最初の状態に戻すと対策とデータが戻り、新しいデータで再挑戦すると新しい演習票になる', async ({ page }) => {

@@ -51,7 +51,7 @@ export function renderGuard(): { changed(key: string): boolean } {
 
 const pendingAnnouncements = new WeakMap<HTMLElement, string[]>();
 
-/** 同じ領域へ次のフレームまでに届いた通知をまとめ、空にするフレームを挟んで読み上げる。 */
+/** 同じ領域へ、文を入れるフレームまでに届いた通知をまとめ、空にするフレームを挟んで読み上げる。 */
 export function announce(region: HTMLElement, message: string): void {
   const pending = pendingAnnouncements.get(region);
   if (pending) {
@@ -62,7 +62,10 @@ export function announce(region: HTMLElement, message: string): void {
   pendingAnnouncements.set(region, messages);
   requestAnimationFrame(() => {
     region.textContent = '';
-    pendingAnnouncements.delete(region);
-    requestAnimationFrame(() => (region.textContent = messages.join('。')));
+    // 空にしたあと文を入れるまでに届いた通知も、同じ文にまとめる（別にすると、先の文が描かれる前に消える）
+    requestAnimationFrame(() => {
+      pendingAnnouncements.delete(region);
+      region.textContent = messages.join('。');
+    });
   });
 }
