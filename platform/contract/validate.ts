@@ -15,6 +15,7 @@ import { ANONYMOUS, CAPABILITIES, HTTP_METHODS, type AppDescriptor, type Impleme
 import { STEP_KINDS, TEST_CATEGORIES } from './scenario';
 import { Checker, isObj, type Obj } from './checker';
 import { isVersion, isVersionRange, satisfies } from './version';
+import { splitInlineCode } from './inline-code';
 
 export interface ValidationContext {
   /** 対応する教材アプリ。与えるとフック・機能・利用者・版の整合も確かめる */
@@ -162,8 +163,8 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
 
   if (m.approach !== undefined) {
     const approach = c.obj('approach', m.approach);
-    c.text('approach.intro', approach.intro);
-    c.texts('approach.steps', approach.steps, true);
+    checkInlineCode(c, 'approach.intro', c.text('approach.intro', approach.intro));
+    c.texts('approach.steps', approach.steps, true).forEach((step, i) => checkInlineCode(c, `approach.steps[${i}]`, step));
   }
 
   // 修正の方式。record（操作で直す）の課題は、学習画面に出す対策候補を持たず、解ける対策は出荷前検証で確かめる
@@ -286,4 +287,9 @@ function checkVulnerability(checker: Checker, value: unknown): void {
   checker.text('vulnerability.fullName', vulnerability.fullName);
   if (!CWE_ID.test(checker.text('vulnerability.cwe', vulnerability.cwe))) checker.fail('vulnerability.cwe', "'CWE-数字' の形式が必要です");
   checker.oneOf('vulnerability.category', vulnerability.category, VULNERABILITY_CATEGORIES);
+}
+
+/** `…` で囲んだコードの書き誤り（閉じていない・中身が空）を止める */
+function checkInlineCode(checker: Checker, path: string, text: string): void {
+  if (splitInlineCode(text) === null) checker.fail(path, 'コードは `…` で囲み、閉じ忘れや空の `` がないようにしてください');
 }

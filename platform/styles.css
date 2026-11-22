@@ -351,6 +351,7 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 
 /* 操作とリクエスト編集 */
 .mono { font-family: var(--font-mono); font-size: 0.85rem; }
+.inline-code { font-family: var(--font-mono); font-size: 0.9em; padding: 1px 5px; border-radius: 4px; background: var(--sunken); border: 1px solid var(--line); }
 .action-list { display: grid; gap: 12px; }
 .action { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 8px; background: var(--surface-2); }
 .action h4 { font-size: 0.95rem; }
