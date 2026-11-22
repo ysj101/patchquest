@@ -23,7 +23,7 @@ export const sqliPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sqli',
-    version: '1.8.0',
+    version: '1.9.0',
     kind: 'mission',
     title: '検索から他人のメモがもれるのを防ぐ',
     estimatedMinutes: 15,
@@ -78,16 +78,16 @@ export const sqliPack: MissionPack = {
         id: 'search-verified',
         label: '登録済みの検索語で検索する',
         description:
-          '自分のメモを探す検索を実行します。送れるのは登録済みの検索語だけで、SQL を自由に書く欄はありません。この教材が使うデータベースは SQLite です。',
+          '自分のメモを探す検索を実行します。この操作で送れるのは、登録済みの検索語だけです。この教材が使うデータベースは SQLite です。',
         request: { method: 'GET', path: '/api/search?q={{field.q}}' },
         fields: [
           {
             name: 'q',
             label: '登録済みの検索語',
             input: 'select',
-            help: '「週報」はふつうの検索です。ほかの 3 つは、持ち主の条件をすり抜けられる検索語です。観測ログのクエリ形・バインド値・返却行の所有者を見ます。',
+            help: '「週報」はふつうの検索です。ほかの 3 つは、持ち主の条件をすり抜けられる検索語です。観測ログの「SQL」で、実行された文・バインド値・返却行の所有者を見ます。',
             options: [
-              { value: '週報', label: '普通の検索（週報）' },
+              { value: '週報', label: 'ふつうの検索（週報）' },
               { value: OR_TITLE, label: '持ち主の条件を広げる（タイトル）' },
               { value: OR_TRUE, label: '持ち主の条件を広げる（いつも正しい）' },
               { value: UNION_TITLES, label: 'UNION でメモの一覧を足す' },

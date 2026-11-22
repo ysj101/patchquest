@@ -1,5 +1,5 @@
 // SQL インジェクションパックの攻撃の成立条件とテスト。
-// 合否はクエリ形・バインド値・返却行の所有者で決め、選んだ対策の ID では決めない。
+// 合否は実行された文・バインド値・返却行の所有者で決め、選んだ対策の ID では決めない。
 // 正常系はバインドの有無を求めない（注入した状態でも、自分のメモの検索は通る必要がある）
 import type { ActorKey, ProbeDef, TestCase } from '../../platform/contract';
 import { USERS } from '../../apps/memo/fixtures';

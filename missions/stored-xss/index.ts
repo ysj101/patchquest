@@ -16,7 +16,7 @@ export const storedXssPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'stored-xss',
-    version: '1.8.0',
+    version: '1.9.0',
     kind: 'mission',
     title: 'コメントが勝手に動くのを防ぐ',
     summary:
@@ -75,7 +75,7 @@ export const storedXssPack: MissionPack = {
             help: '攻撃コメントは、画像の読み込み失敗（onerror）を使って、教材用の実行マーカーを呼びます。ふつうのコメントは、日本語・記号・角括弧の例です。',
             options: [
               { value: ATTACK_COMMENT, label: '攻撃コメント（画像の onerror）' },
-              { value: PLAIN_COMMENT, label: '普通のコメント（日本語・記号・角括弧）' },
+              { value: PLAIN_COMMENT, label: 'ふつうのコメント（日本語・記号・角括弧）' },
             ],
           },
         ],

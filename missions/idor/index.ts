@@ -26,7 +26,7 @@ export const idorPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'idor',
-    version: '1.8.0',
+    version: '1.9.0',
     kind: 'mission',
     title: '非公開メモを守る',
     summary:
@@ -46,7 +46,7 @@ export const idorPack: MissionPack = {
         reactions: {
           reproduced: 'ほかの人のメモまで読めちゃうんだね。自分のメモも心配だよ。',
           secured: '守ってくれてありがとう。自分のメモはこれまでどおり読めるね。',
-          closing: '誰のメモかを確かめることが大切なんだね。',
+          closing: 'だれのメモかを確かめることが大切なんだね。',
         },
       },
       incident:
@@ -99,7 +99,7 @@ export const idorPack: MissionPack = {
         description: '「前のメモ」「次のメモ」で、自分のメモだけを行き来するようにします。他人のメモへのリンクは画面に出なくなります。',
         apply: [{ hook: 'memo.detail.neighbors', implementation: 'memo/neighbors-own' }],
         referenceDiff: {
-          file: 'apps/memo/view.ts',
+          file: 'apps/memo/hooks.ts',
           language: 'ts',
           before: 'const pickNeighbors = ({ id }) => ({ prev: id - 1, next: id + 1 });',
           after:
