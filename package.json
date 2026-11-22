@@ -7,7 +7,6 @@
   "packageManager": "pnpm@11.28.2",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check:external": "node scripts/check-external-refs.mjs dist",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
