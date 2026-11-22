@@ -6,8 +6,9 @@ import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
 import { verdictKind, whyDefenseFailed } from './verdict';
-import { approachNodes, radioOption, status } from './components';
+import { approachNodes, expectedActual, radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
+import { headingWithInfo } from './info-popover';
 import { describersOf, type DescribingApp } from './investigation';
 import { GROUP_LABEL, STALE_VERIFICATION, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
 import { recordSection, recordedChanges, recordedSummary, type RequestDescriber } from './repair-record';
@@ -45,7 +46,7 @@ function outcomeItem(outcome: TestOutcome): HTMLElement {
     'li',
     { class: 'outcome' },
     h('div', { class: 'outcome-head' }, status(kind, text), h('span', {}, outcome.title)),
-    h('dl', { class: 'outcome-detail' }, h('dt', {}, '正しい結果'), h('dd', { class: 'mono' }, outcome.expected), h('dt', {}, '実際の結果'), h('dd', { class: 'mono' }, outcome.actual)),
+    expectedActual(outcome.expected, outcome.actual),
   );
 }
 
@@ -111,7 +112,7 @@ export class RepairPanel {
   /** ① の区画。対策を選ぶ課題では候補、操作で直す課題では加えた変更の一覧を置く */
   private readonly choice = h('section', { class: 'tool-section', 'data-anchor': 'defense-panel' });
   private readonly changes = h('div', {});
-  private readonly resetNote = h('p', { class: 'note' });
+  private readonly resetNote = h('p', {});
   private defenses: DefenseDef[] = [];
   private selected: string | null = null;
   /** 操作で直す課題の修正方式。対策を選ぶ課題では null */
@@ -162,8 +163,7 @@ export class RepairPanel {
 
   private choiceNodes(): HTMLElement[] {
     return [
-      h('h3', { id: 'defense-title' }, '① 対策を選んで使う'),
-      h('p', { class: 'note' }, '選んだ対策に、教材アプリの中身が切り替わります。'),
+      headingWithInfo(h('h3', { id: 'defense-title' }, '① 対策を選んで使う'), h('p', {}, '選んだ対策に、教材アプリの中身が切り替わります。')),
       this.choices,
       this.reference,
       h('div', { class: 'actions' }, this.applyButton, this.revertButton),
@@ -174,12 +174,11 @@ export class RepairPanel {
     return h(
       'section',
       { class: 'tool-section' },
-      h('h3', {}, '② テストする'),
+      headingWithInfo(h('h3', {}, '② テストする'), h('p', {}, '攻撃を防げたか、ふだんの使い方ができるかを、自動で確かめます。')),
       this.applied,
       h('div', { class: 'actions' }, this.verifyButton),
       this.verifyNote,
       h('section', { class: 'tool-section', 'data-anchor': 'results' }, this.resultsTitle, this.results),
-      h('p', { class: 'note' }, '攻撃を防げたか、ふだんの使い方ができるかを、自動で確かめます。'),
     );
   }
 
@@ -187,8 +186,7 @@ export class RepairPanel {
     return h(
       'section',
       { class: 'tool-section', 'data-anchor': 'reset' },
-      h('h3', {}, 'やり直す'),
-      this.resetNote,
+      headingWithInfo(h('h3', {}, 'やり直す'), this.resetNote),
       h('div', { class: 'actions' }, this.resetButton),
     );
   }

@@ -35,7 +35,7 @@ function withGroups(db: Database, row: Omit<Account, 'groups'> | undefined): Acc
   return { ...row, groups: db.selectValues('SELECT grp FROM memberships WHERE account = ? ORDER BY grp', [row.name]) as string[] };
 }
 
-export function findAccount(db: Database, name: string): Account | null {
+function findAccount(db: Database, name: string): Account | null {
   return withGroups(db, db.selectObject('SELECT name, uid, home FROM accounts WHERE name = ?', [name]) as Omit<Account, 'groups'> | undefined);
 }
 

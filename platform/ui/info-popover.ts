@@ -8,7 +8,7 @@ type Content = (Node | string | null)[];
 
 /**
  * 説明を畳んだ ⓘ ボタンと、その説明の入れ物を返す。label はボタンの読み上げ名（例：「IDOR の説明」）。
- * フォーカスが移っただけでは閉じず、Esc か再度の押下、またはマウスが離れたときに閉じる
+ * フォーカスが移っただけでは閉じず、Esc か再度の押下で閉じる。マウスを乗せて開いただけなら、マウスが離れたときにも閉じる
  */
 export function infoPopover(label: string, ...content: Content): HTMLElement {
   return popover(h('button', { type: 'button', class: 'info-button', 'aria-label': label }, h('span', { 'aria-hidden': true }, 'i')), content);
@@ -17,6 +17,14 @@ export function infoPopover(label: string, ...content: Content): HTMLElement {
 /** 文字のボタンに畳んだ説明と、その入れ物を返す。開閉の操作は ⓘ と同じ */
 export function labelPopover(label: string, ...content: Content): HTMLElement {
   return popover(h('button', { type: 'button', class: 'button button-quiet info-label' }, label), content);
+}
+
+/**
+ * 見出しと、その区画の補足を畳んだ ⓘ を横に並べる。補足は、読まなくても操作できる内容にだけ使う
+ * （次の一歩を決めるのに要る文は、畳まずに本文へ置く）
+ */
+export function headingWithInfo(heading: HTMLElement, ...content: Content): HTMLElement {
+  return h('div', { class: 'heading-info' }, heading, infoPopover(`${heading.textContent} の説明`, ...content));
 }
 
 function popover(button: HTMLElement, content: Content): HTMLElement {

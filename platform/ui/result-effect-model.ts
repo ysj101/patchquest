@@ -4,7 +4,17 @@ import type { EffectSettings } from './effect-settings';
 import { VERDICT_REASON, VERDICT_SUCCESS } from './labels';
 
 export type ResultEffectKind = 'reproduced' | 'secured' | 'insufficient';
-export interface ResultEffect { kind: ResultEffectKind; detail: string }
+/** 不合格のときに示す、失敗したテスト 1 件 */
+export interface FailureDetail { reason: string; title: string; expected: string; actual: string }
+export interface ResultEffect {
+  kind: ResultEffectKind;
+  /** 読み上げに使う 1 文。画面でも、failures がなければこれを示す */
+  detail: string;
+  /** 不合格のとき、画面に 1 件ずつ分けて示す失敗（先頭二件まで） */
+  failures?: FailureDetail[];
+  /** failures に入れなかった失敗の件数 */
+  more?: number;
+}
 
 /** エラーを含む失敗は演出しない。通常の失敗はパックの文言を二件まで使う。 */
 export function verificationEffect(report: VerificationReport | null, allSealsDone: boolean): ResultEffect | null {
@@ -15,9 +25,11 @@ export function verificationEffect(report: VerificationReport | null, allSealsDo
   }
   const failed = failedOutcomes(report);
   if (failed.some((outcome) => outcome.error !== undefined)) return null;
-  const details = failed.slice(0, 2).map((outcome) => `${VERDICT_REASON[outcome.group]}：${outcome.title}（正しい結果「${outcome.expected}」、実際の結果「${outcome.actual}」）`);
-  if (failed.length > 2) details.push(`ほか ${failed.length - 2} 件`);
-  return { kind: 'insufficient', detail: details.join('。') };
+  const failures = failed.slice(0, 2).map((outcome) => ({ reason: VERDICT_REASON[outcome.group], title: outcome.title, expected: outcome.expected, actual: outcome.actual }));
+  const more = failed.length - failures.length;
+  const details = failures.map((failure) => `${failure.reason}：${failure.title}（正しい結果「${failure.expected}」、実際の結果「${failure.actual}」）`);
+  if (more > 0) details.push(`ほか ${more} 件`);
+  return { kind: 'insufficient', detail: details.join('。'), failures, more };
 }
 
 /** 音の種類と音量を設定から決める。最大振幅を抑えた短い音のみを合成する。 */

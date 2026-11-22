@@ -1,7 +1,7 @@
 // 学習UIの DOM を組み立てる補助。文字列は常にテキストノードとして入り、HTML として解釈されない（spec §6, §14）
 type Child = Node | string | number | null | undefined | false;
 type Handlers = { [K in keyof HTMLElementEventMap]?: (event: HTMLElementEventMap[K]) => void };
-export type Attrs = { [key: string]: unknown; on?: Handlers };
+type Attrs = { [key: string]: unknown; on?: Handlers };
 
 /** HTML として解釈される・スクリプトを実行しうるプロパティは設定させない */
 const FORBIDDEN_PROPERTIES = new Set(['innerHTML', 'outerHTML', 'srcdoc']);
@@ -14,7 +14,9 @@ function nodes(children: Child[]): (Node | string)[] {
 export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ...children: Child[]): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
-    if (value === undefined || value === null || value === false) continue;
+    if (value === undefined || value === null) continue;
+    // false は「付けない」の意味。ただし真偽値のプロパティ（spellcheck など）には、false をそのまま入れる
+    if (value === false && typeof (el as unknown as Record<string, unknown>)[key] !== 'boolean') continue;
     if (key === 'on') {
       for (const [type, handler] of Object.entries(value as Handlers)) el.addEventListener(type, handler as EventListener);
     } else if (key === 'class') {

@@ -9,7 +9,7 @@ function stars(mastery: CategoryMastery): HTMLElement {
   return h('span', { class: 'mastery-stars', 'aria-hidden': true }, '★'.repeat(mastery.stars) + '☆'.repeat(MASTERY_MAX - mastery.stars));
 }
 
-/** 1 行の表示。課題のカードと演習票で使う */
+/** 1 行の表示。課題の行の詳細・振り返り・記録ページで使う */
 export function masteryLine(mastery: CategoryMastery): HTMLElement {
   return h(
     'p',
@@ -49,7 +49,7 @@ export function masteryEvidence(mastery: CategoryMastery): HTMLElement {
   );
 }
 
-/** 一覧の先頭に置く、分類ごとの習熟度。カタログにある分類だけを並べる */
+/** 記録ページに置く、分類ごとの習熟度。カタログにある分類だけを並べる */
 export function masteryList(summary: MasterySummary, categories: readonly VulnerabilityCategory[]): HTMLElement | null {
   if (categories.length === 0) return null;
   return h(

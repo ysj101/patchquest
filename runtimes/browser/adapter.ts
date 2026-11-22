@@ -29,7 +29,7 @@ export interface RuntimeLimits {
   maxInputBytes: number;
 }
 
-export const DEFAULT_LIMITS: RuntimeLimits = { timeoutMs: 5000, maxInputBytes: 4096 };
+const DEFAULT_LIMITS: RuntimeLimits = { timeoutMs: 5000, maxInputBytes: 4096 };
 
 /** 準備・リセットの上限は、1 回の呼び出しの上限の何倍か。演習用の機械（本物の Linux）は、起動と初期データの反映に時間がかかる */
 const PREPARE_FACTOR = { standard: 2, machine: 6 } as const;

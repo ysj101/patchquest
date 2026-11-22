@@ -101,10 +101,10 @@ function build(db: Database, { host, operator, admin, operations, maintenance, p
 }
 
 /** 設定ファイルと、調べる手がかりになるファイルを置く。granted は運用担当への sudo の許可（交換点が決めた行） */
-function writeFiles(db: Database, { host, operator, operations, maintenance }: Cast, granted: string[]): string {
+function writeFiles(db: Database, { host, operator, operations, maintenance }: Cast, granted: string[], provisionHook: string): string {
   const operatorsSudoers = ['# 運用担当に sudo で許可する操作', ...granted].join('\n');
   const broken = parseSudoers(operatorsSudoers).errors[0];
-  if (broken) throw new Error(`shell.sudoers.provision が返した設定を読めません（${broken.line} 行目：${broken.message}）`);
+  if (broken) throw new Error(`${provisionHook} が返した設定を読めません（${broken.line} 行目：${broken.message}）`);
 
   put(db, { path: '/etc/hostname', kind: 'file', owner: ROOT, readable: 'all', content: host });
   put(db, { path: SUDOERS_FILE, kind: 'file', owner: ROOT, readable: 'owner', content: ['# 管理者グループはすべてのコマンドを実行できる', '%admin ALL=(ALL) NOPASSWD: ALL'].join('\n') });
@@ -132,7 +132,7 @@ export const machineFixture = (provisionHook: string): FixtureGenerator => (db, 
   build(db, machine);
   // 運用担当への許可は交換点が決める。レシピが注入した実装なら、ここで過剰な許可が初期データに入る
   const granted = hook<ProvisionSudoers>(provisionHook)({ operator: operator.name, operations, maintenance: [maintenance] });
-  const runbook = writeFiles(db, machine, granted);
+  const runbook = writeFiles(db, machine, granted, provisionHook);
   const refs: Record<string, JsonPrimitive> = {
     'host.name': machine.host,
     'accounts.operator.name': operator.name,

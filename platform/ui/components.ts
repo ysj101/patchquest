@@ -4,7 +4,7 @@ import type { SealState } from '../progress/stages';
 import { h } from './dom';
 import { BADGE_HINT, BADGE_LABEL } from './labels';
 
-export type StatusKind = 'alert' | 'idle' | 'running' | 'passed' | 'failed' | 'blocked' | 'error';
+export type StatusKind = 'alert' | 'idle' | 'running' | 'passed' | 'failed' | 'error';
 
 const STATUS_MARK: Record<StatusKind, string> = {
   alert: '⚠',
@@ -12,7 +12,6 @@ const STATUS_MARK: Record<StatusKind, string> = {
   running: '◌',
   passed: '✓',
   failed: '✕',
-  blocked: '⊘',
   error: '⚠',
 };
 
@@ -194,4 +193,9 @@ function withCode(text: string): (HTMLElement | string)[] {
 /** 調べ方・操作のしかたの中身（見出し・説明・番号つきの手順） */
 export function approachNodes(titleId: string, title: string, approach: ApproachDef): HTMLElement[] {
   return [h('h3', { id: titleId }, title), h('p', {}, ...withCode(approach.intro)), h('ol', { class: 'approach-steps' }, ...approach.steps.map((step) => h('li', {}, ...withCode(step))))];
+}
+
+/** テストの「正しい結果」と「実際の結果」を、見出しと値を分けて並べる */
+export function expectedActual(expected: string, actual: string): HTMLElement {
+  return h('dl', { class: 'outcome-detail' }, h('dt', {}, '正しい結果'), h('dd', { class: 'mono' }, expected), h('dt', {}, '実際の結果'), h('dd', { class: 'mono' }, actual));
 }
