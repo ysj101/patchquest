@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { memoApp } from '../../apps/memo';
 import type { Exchange, TestCase } from '../../platform/contract';
-import { configHash, detectReproduction, groupOf, isCurrent, type EvaluationSubject } from '../../platform/evaluator/evaluator';
-import { nodeEvaluator } from '../support/engine-runtime';
+import { Evaluator, configHash, detectReproduction, groupOf, isCurrent, type EvaluationSubject } from '../../platform/evaluator/evaluator';
+import { EngineRuntime, nodeEvaluator } from '../support/engine-runtime';
 import { requestOnly } from '../support/request-only';
 import { testPack } from '../support/test-pack';
 
@@ -23,6 +23,34 @@ const packSubject = (implementations: Record<string, string>): EvaluationSubject
 const { manifest } = testPack;
 const memoTests = requestOnly(memoApp.tests);
 const packTests: TestCase[] = requestOnly(manifest.tests.cases);
+
+/** 呼び出しのたびに決まった時間だけ待つ実行環境（遅い端末の代わり） */
+class SlowRuntime extends EngineRuntime {
+  override async invoke(...args: Parameters<EngineRuntime['invoke']>) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    return super.invoke(...args);
+  }
+}
+
+describe('時間の上限', () => {
+  const slowEvaluator = () => new Evaluator(() => new SlowRuntime(), { testTimeoutMs: 100, suiteTimeoutMs: 10_000 });
+  const first = packTests.slice(0, 1);
+
+  it('上限を超えたテストは、不合格ではなく時間切れ（基盤エラー）として返す', async () => {
+    const evaluator = slowEvaluator();
+    const report = await evaluator.runSuite(packSubject({}), first, [], 'run-slow', 'h');
+    await evaluator.dispose();
+    expect(report.outcomes).toEqual([expect.objectContaining({ passed: false, error: 'timeout', actual: 'テストが 0.1 秒以内に終わりませんでした' })]);
+  });
+
+  it('構成が倍率を持っていれば、その分だけ上限を広げる（本物の Linux を動かす構成）', async () => {
+    const evaluator = slowEvaluator();
+    const report = await evaluator.runSuite({ ...packSubject({}), timeScale: 20 }, first, [], 'run-scaled', 'h');
+    await evaluator.dispose();
+    expect(report.outcomes.map((outcome) => outcome.error)).toEqual([undefined]);
+    expect(report.passed).toBe(true);
+  });
+});
 
 describe('Evaluator', () => {
   it('基準アプリの全テストを検証インスタンスで実行して合格する（A01）', async () => {
