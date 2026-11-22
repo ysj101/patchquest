@@ -102,11 +102,10 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   await hints.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
   await expect(hints.locator('.hint')).toContainText('sudo -l の一覧に入っていないでしょうか');
 
-  // 対策タブの先頭には、編集する道具の使い方が出て、どのファイルのどの行をどう直すかは書かれていない
+  // 対策タブの先頭には、編集する道具の使い方が出る（答えを書いていないことは、全パック共通の tests/unit/pack-guides.test.ts で確かめる）
   await page.getByRole('tab', { name: '対策' }).click();
   const guide = page.getByRole('region', { name: '操作のしかた' });
   await expect(guide.locator('code')).toContainText(['visudo', 'sudo visudo -f ファイルのパス']);
-  for (const answer of ['/etc/sudoers.d/operators', 'admin', 'コメント', '行目']) await expect(guide).not.toContainText(answer);
   // 名指ししているボタンは、対策タブに同じ名前で実在する
   await expect(guide).toContainText('「最初の状態に戻す」');
   await expect(page.getByRole('tabpanel', { name: '対策' }).getByRole('button', { name: '最初の状態に戻す' })).toBeVisible();
