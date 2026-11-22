@@ -27,6 +27,17 @@ it('共通テストがすべて通る', { timeout: SLOW }, async () => {
   expect(report.outcomes).toHaveLength(linuxApp.tests.length);
 });
 
+it('配布物を一度読めなくても、次の準備では読み直して機械を起動できる', { timeout: SLOW }, async () => {
+  let failures = 1;
+  const engine = new AppEngine(async (name) => {
+    if (name === 'linux.state.zst' && failures-- > 0) throw new Error('読めません');
+    return readMachineAsset(name);
+  });
+  await expect(engine.prepare(options(7))).rejects.toThrow('読めません');
+  await expect(engine.prepare(options(7))).resolves.toHaveProperty('refs');
+  await engine.dispose();
+});
+
 describe('本物の Linux の端末', { timeout: SLOW }, () => {
   const engine = new AppEngine(readMachineAsset);
   let refs: FixtureData['refs'];
