@@ -61,11 +61,11 @@ export class HintsPanel {
       next
         ? h('button', { type: 'button', class: 'button', on: { click: () => this.actions.openHint(next.level) } }, `ヒント ${next.level}（${HINT_LABEL[next.level]}）を見る`)
         : attempt.solutionViewed
-          ? h('div', { class: 'hint hint-solution' }, h('p', { class: 'eyebrow' }, '解法'), h('p', {}, pack.manifest.solution))
+          ? h('div', { class: 'hint hint-solution', tabIndex: -1 }, h('p', { class: 'eyebrow' }, '解法'), h('p', {}, pack.manifest.solution))
           : h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.revealSolution() } }, '解法を見る'),
     );
-    // 開いた内容のすぐ後ろ（次のボタン）へフォーカスを移す
-    if (hadFocus) element.querySelector<HTMLElement>('button.button')?.focus();
+    // 開いた内容のすぐ後ろ（次のボタン）へフォーカスを移す。解法まで開いてボタンがなくなったら、解法へ移す
+    if (hadFocus) (element.querySelector<HTMLElement>('button.button') ?? element.querySelector<HTMLElement>('.hint-solution'))?.focus();
   }
 
   private async revealSolution(): Promise<void> {
@@ -130,6 +130,8 @@ export class DebriefPanel {
       );
       return;
     }
+    // 「答える」を押すと設問ごと描き直すので、設問の中にあったフォーカスを見出しへ移す（結果を上から読める）
+    const answering = this.element.querySelector('form.transfer')?.contains(document.activeElement) === true;
     const form = this.transferForm(snapshot);
     const kind = transferKind(attempt.challenge);
     const closing = requesterVoice(pack.manifest.story.requester, 'closing');
@@ -150,13 +152,14 @@ export class DebriefPanel {
       h(
         'section',
         { class: 'tool-section', 'aria-labelledby': 'transfer-title' },
-        h('h3', { id: 'transfer-title' }, '理解の確認'),
+        h('h3', { id: 'transfer-title', tabIndex: -1 }, '理解の確認'),
         h('p', { class: 'note', 'data-transfer-note': kind }, TRANSFER_NOTE[kind]),
         attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '「理解」達成です')) : null,
         form,
       ),
       retry,
     );
+    if (answering) this.element.querySelector<HTMLElement>('#transfer-title')?.focus();
   }
 
   private transferForm(snapshot: ExerciseSnapshot): HTMLFormElement {

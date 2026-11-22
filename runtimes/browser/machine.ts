@@ -52,6 +52,10 @@ function asset(load: AssetLoader, name: MachineAsset): Promise<ArrayBuffer> {
   loaded.set(load, cache);
   const bytes = cache.get(name) ?? load(name);
   cache.set(name, bytes);
+  // 読めなかった結果は残さない（次の準備で読み直せるようにする）
+  bytes.catch(() => {
+    if (cache.get(name) === bytes) cache.delete(name);
+  });
   return bytes;
 }
 

@@ -67,9 +67,10 @@ detect_changes() {
 
 mount_session() {
   mkdir -p "$UPPER" "$L/session/work"
-  mount -t overlay overlay -o "lowerdir=$L/provisioned:/,upperdir=$UPPER,workdir=$L/session/work" "$R"
-  mount --rbind /dev "$R/dev"
-  mount -t proc proc "$R/proc"
+  # 重ね合わせを作れなかったら、失敗として返す（空の $R でコマンドを実行させない）
+  mount -t overlay overlay -o "lowerdir=$L/provisioned:/,upperdir=$UPPER,workdir=$L/session/work" "$R" || return 1
+  mount --rbind /dev "$R/dev" || return 1
+  mount -t proc proc "$R/proc" || return 1
   mkdir -p "$SHARED"
   # プログラムの実行と sudo の記録は、root だけが読み書きできるようにして置く（コマンドごとには、中身を空にするだけ）
   (umask 077; : > "$SHARED/exec.log"; : > "$SHARED/sudo.log")
@@ -99,7 +100,10 @@ provision() {
   # 初期状態（下の 2 層を重ねたもの）を読み取り専用で見られるようにし、比べる基準を取る
   mount -t overlay overlay -o "lowerdir=$L/provisioned:/" "$BASE"
   (cd "$BASE" && listing) > "$Q/base"
-  mount_session
+  if ! mount_session; then
+    printf %s 70 > "$Q/status"
+    echo "agent: 利用者の操作を重ねる層を用意できませんでした" >> "$Q/stderr"
+  fi
   reply "$1" "$Q/status" "$Q/stdout" "$Q/stderr"
 }
 

@@ -113,6 +113,41 @@ function lineList(file: EditorFile) {
   return { list, first, rows };
 }
 
+/**
+ * 保存する操作と、保存せずに閉じる操作。保存を送っている間は、もう一度の保存も、閉じる操作も受け付けない
+ * （二重に送ったり、閉じたあとで保存が成り立ったりしないように）
+ */
+function editorCommands(
+  file: EditorFile,
+  rows: readonly Row[],
+  actions: EditorActions,
+  { message, saveButton, cancelButton }: { message: HTMLElement; saveButton: HTMLButtonElement; cancelButton: HTMLButtonElement },
+): { save: () => Promise<void>; cancel: () => void } {
+  let saving = false;
+  const setSaving = (value: boolean) => {
+    saving = value;
+    saveButton.disabled = value;
+    cancelButton.disabled = value;
+  };
+  const cancel = () => {
+    if (!saving) actions.close(`visudo: ${file.path} は変更していません（保存せずに閉じました）`);
+  };
+  const save = async () => {
+    if (saving) return;
+    const edits = editsOf(file, rows);
+    if (edits.length === 0) return void actions.close(`visudo: ${file.path} unchanged`);
+    setSaving(true);
+    message.textContent = '';
+    try {
+      const error = await actions.save(edits);
+      if (error !== null) message.textContent = error;
+    } finally {
+      setSaving(false);
+    }
+  };
+  return { save, cancel };
+}
+
 /** 編集画面を作る。高さを合わせて最初の行にフォーカスを移すのは、画面に置いたあとで呼び出し側が focus で行う */
 export function editorPanel(file: EditorFile, actions: EditorActions): { element: HTMLElement; focus(): void } {
   const { list, first, rows } = lineList(file);
@@ -120,19 +155,7 @@ export function editorPanel(file: EditorFile, actions: EditorActions): { element
   const saveButton = el('button', { type: 'button', className: 'term-button' }, '保存して閉じる（Ctrl+S）');
   const cancelButton = el('button', { type: 'button', className: 'term-button' }, '保存せずに閉じる（Esc）');
 
-  const cancel = () => actions.close(`visudo: ${file.path} は変更していません（保存せずに閉じました）`);
-  const save = async () => {
-    const edits = editsOf(file, rows);
-    if (edits.length === 0) return void actions.close(`visudo: ${file.path} unchanged`);
-    saveButton.disabled = true;
-    message.textContent = '';
-    try {
-      const error = await actions.save(edits);
-      if (error !== null) message.textContent = error;
-    } finally {
-      saveButton.disabled = false;
-    }
-  };
+  const { save, cancel } = editorCommands(file, rows, actions, { message, saveButton, cancelButton });
   saveButton.addEventListener('click', () => void save());
   cancelButton.addEventListener('click', cancel);
 
