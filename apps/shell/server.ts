@@ -5,7 +5,7 @@ import type { AppRequest, AppResponse } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
 import { json } from '../shared/http';
 import { COMMANDS, resolveTarget, runTarget } from './exec';
-import { PATH_DIRS, currentAccount, findNode, hostname, type Account } from './model';
+import { PATH_DIRS, baseName, childrenOf, currentAccount, findNode, hostname, type Account } from './model';
 import { parseEdits, type LineEdit } from './edits';
 import { MAX_LINE_LENGTH, fail, ok, tokenize, type Env, type Output } from './shell';
 import { SUDO_USAGE, sudo } from './sudo';
@@ -52,25 +52,38 @@ function parseBody(body: AppRequest['body'], home: string, validCwd: (cwd: strin
   return 'error' in parsed ? parsed : { line, cwd, edits: parsed.edits };
 }
 
+/** 端末を開いたときの応答。プロンプトの表示と、Tab キーでの補完に使うコマンド名（commands）を返す */
+export function sessionResponse(ctx: ServerContext, account: Account, commands: string[]): AppResponse {
+  return json(200, { user: account.name, host: hostname(ctx.db), cwd: account.home, commands });
+}
+
 /**
- * 端末の要求の入口。コマンド行の要求（POST /sh）なら、ログインした利用者と入力を返す。
- * それ以外（端末を開く問い合わせ・未ログイン・形の違う要求）は、その場で返す応答を返す
+ * 端末の要求の入口。ログインした利用者と、コマンド行の要求（POST /sh）の入力を返す。端末を開く問い合わせ（GET /sh）は input が null。
+ * それ以外（未ログイン・形の違う要求）は、その場で返す応答を返す
  */
-export function terminalRequest(ctx: ServerContext, req: AppRequest, validCwd: (cwd: string) => boolean): { response: AppResponse } | { account: Account; input: Input } {
+export function terminalRequest(ctx: ServerContext, req: AppRequest, validCwd: (cwd: string) => boolean): { response: AppResponse } | { account: Account; input: Input | null } {
   if (req.path !== '/sh') return { response: json(404, { error: '見つかりません' }) };
   const account = currentAccount(ctx);
   if (!account) return { response: json(401, { error: 'ログインが必要です' }) };
-  // 端末を開いたときの表示（プロンプト）に使う
-  if (req.method === 'GET') return { response: json(200, { user: account.name, host: hostname(ctx.db), cwd: account.home }) };
+  if (req.method === 'GET') return { account, input: null };
   if (req.method !== 'POST') return { response: json(405, { error: '許可されていない操作です' }) };
   const input = parseBody(req.body, account.home, validCwd);
   return 'error' in input ? { response: json(400, { error: input.error }) } : { account, input };
+}
+
+/** 名前だけで実行できるもの（登録したコマンド・sudo・help と、PATH_DIRS にあるプログラム）。名前順 */
+function commandNames(ctx: ServerContext): string[] {
+  const programs = PATH_DIRS.flatMap((dir) => childrenOf(ctx.db, dir)).filter((node) => node.kind === 'program');
+  const names = [...Object.keys(COMMANDS), 'sudo', 'help', ...programs.map((node) => baseName(node.path))];
+  names.sort();
+  return names;
 }
 
 export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
   const opened = terminalRequest(ctx, req, (cwd) => findNode(ctx.db, cwd)?.kind === 'dir');
   if ('response' in opened) return opened.response;
   const { account, input } = opened;
+  if (!input) return sessionResponse(ctx, account, commandNames(ctx));
   if (input.edits && !EDITOR_LINE.test(input.line)) return json(400, { error: 'edits は、visudo のコマンド行にだけ付けられます' });
   const output = runLine({ ctx, user: account, as: account, cwd: input.cwd, edits: input.edits }, input.line);
   const result = { stdout: output.stdout, stderr: output.stderr, exit: output.exit, cwd: output.cwd ?? input.cwd, changed: output.changed ?? false };

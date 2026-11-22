@@ -5,7 +5,8 @@ import type { AppRequest, AppResponse } from '../../../platform/contract';
 import type { ServerContext } from '../../../runtimes/browser/app-module';
 import { json } from '../../shared/http';
 import type { LineEdit } from '../edits';
-import { terminalRequest, type Input } from '../server';
+import type { Account } from '../model';
+import { sessionResponse, terminalRequest, type Input } from '../server';
 import { MAX_LINE_LENGTH, type EditorFile } from '../shell';
 import { emitChanges, emitExecutions, emitSudoDecisions } from './events';
 
@@ -81,11 +82,27 @@ async function run(ctx: ServerContext, user: string, input: Input): Promise<Ran>
   return { exit, stdout, stderr, cwd: cwd || input.cwd, editorDump, editorResult: editorResult as EditorResult, changed };
 }
 
+/** シェルに組み込みで、PATH には実行ファイルがないもののうち、この端末で使うもの（help は guest/run が差し替えた案内） */
+const BUILTINS = ['cd', 'help'];
+/** PATH にあるものの名前を並べるコマンド行（補完の候補に使う） */
+const LIST_COMMANDS = 'IFS=:; for dir in $PATH; do ls "$dir" 2>/dev/null; done';
+
+/** 利用者が名前だけで実行できるコマンドの名前（名前順）。機械の PATH にあるものを、機械に聞く。観測イベントにはしない */
+async function commandNames(ctx: ServerContext, account: Account): Promise<string[]> {
+  if (!ctx.machine) throw new Error('演習用の機械がありません');
+  const [status = '', stdout = ''] = await ctx.machine.call('run', `${[account.name, account.home, LIST_COMMANDS].join('\n')}\n`, RUN_TIMEOUT_MS);
+  if (status !== '0') throw new Error(`機械からコマンドの一覧を受け取れません（終了コード ${status}）`);
+  const names = [...new Set([...BUILTINS, ...stdout.split('\n').filter((name) => name !== '')])];
+  names.sort();
+  return names;
+}
+
 export async function handle(ctx: ServerContext, req: AppRequest): Promise<AppResponse> {
   // 場所が実在するかどうかは機械が確かめる（なければ cd が失敗する）。ここでは形だけを確かめる
   const opened = terminalRequest(ctx, req, (cwd) => cwd.startsWith('/') && !/[\r\n]/.test(cwd));
   if ('response' in opened) return opened.response;
   const { account, input } = opened;
+  if (!input) return sessionResponse(ctx, account, await commandNames(ctx, account));
   if (input.line.length > MAX_LINE_LENGTH) return json(200, { stdout: '', stderr: `sh: 入力が長すぎます（${MAX_LINE_LENGTH} 文字まで）`, exit: 2, cwd: input.cwd, changed: false });
   return respond(await run(ctx, account.name, input), input);
 }

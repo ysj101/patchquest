@@ -14,7 +14,7 @@ import { handle } from './server';
 export const linuxApp: AppModule = {
   descriptor: {
     id: 'linux',
-    version: '1.1.0',
+    version: '1.2.0',
     features: ['terminal', 'sudo'],
     users: [...ACTORS],
     entryRoute: '/terminal',

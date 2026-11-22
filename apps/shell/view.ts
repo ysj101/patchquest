@@ -4,6 +4,7 @@
 import type { AppResponse } from '../../platform/contract';
 import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
+import { complete } from './completion';
 import { editorPanel } from './editor-view';
 import type { LineEdit } from './edits';
 import type { EditorFile } from './shell';
@@ -12,6 +13,8 @@ interface Session {
   user: string;
   host: string;
   cwd: string;
+  /** 名前だけで実行できるコマンドの名前（Tab キーでの補完の候補） */
+  commands: string[];
 }
 
 interface CommandResult {
@@ -22,6 +25,8 @@ interface CommandResult {
   /** エディタを開くコマンドのときの、開いたファイル */
   editor?: EditorFile;
 }
+
+const BADGE = '学習用の架空サーバ（ターミナル）';
 
 function errorMessage(res: AppResponse): string {
   const body = res.body as { error?: unknown } | null;
@@ -52,7 +57,9 @@ class Terminal {
   private readonly prompt = el('span', { className: 'term-prompt' });
   private readonly input = el('input', { className: 'term-input', ariaLabel: 'コマンド', autocomplete: 'off', autocapitalize: 'off', spellcheck: false });
   private readonly entry = el('label', { className: 'term-entry' }, this.prompt, this.input);
-  readonly element = el('div', { className: 'terminal' }, this.output, this.entry);
+  private readonly box = el('div', { className: 'terminal' }, this.output, this.entry);
+  /** 端末と、その上の札。プレビューの枠の高さいっぱいに広げる */
+  readonly element = el('div', { className: 'term-screen' }, el('p', { className: 'badge' }, BADGE), this.box);
   private readonly history = lineHistory(this.input);
   private cwd: string;
 
@@ -61,11 +68,11 @@ class Terminal {
     // sandbox ではフォーム送信が禁止されているため、submit ではなく Enter キーで送る
     this.input.addEventListener('keydown', (event) => this.onKey(event));
     // 端末のどこを押しても入力できるようにする（プロンプトの行や出力を押して打ち始める人が多い）。出力の文字を選んでいるときは邪魔しない
-    this.element.addEventListener('click', () => {
+    this.box.addEventListener('click', () => {
       if (!this.entry.hidden && !this.input.disabled && window.getSelection()?.isCollapsed !== false) this.input.focus();
     });
     this.prompt.textContent = this.promptText();
-    this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。`);
+    this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名を補完できます。`);
   }
 
   private promptText(): string {
@@ -83,7 +90,25 @@ class Terminal {
     if (!this.entry.hidden) this.input.focus();
   }
 
+  /**
+   * Tab キーで、カーソルの手前のコマンド名を補う。候補が複数あってそれ以上補えないときは、候補を端末に並べる。
+   * 何も打っていないときは補わず、Tab は次の項目へ移る（キーボードだけで端末の外へ出られるようにする）
+   */
+  private completeWord(event: KeyboardEvent): void {
+    if (event.isComposing || this.input.value.trim() === '') return;
+    event.preventDefault();
+    const done = complete(this.input.value, this.input.selectionStart ?? this.input.value.length, this.session.commands);
+    if (!done) return;
+    this.input.value = done.line;
+    this.input.setSelectionRange(done.cursor, done.cursor);
+    if (done.listed.length === 0) return;
+    this.print('term-line', `${this.promptText()} ${done.line}`);
+    this.print('term-out', done.listed.join('  '));
+    this.output.scrollTop = this.output.scrollHeight;
+  }
+
   private onKey(event: KeyboardEvent): void {
+    if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) return void this.completeWord(event);
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       event.preventDefault();
       if (event.key === 'ArrowUp') this.history.older();
@@ -127,8 +152,9 @@ class Terminal {
     this.ready();
   }
 
-  /** 編集している間は、端末の出力とコマンドの入力欄を隠す（エディタが画面を占める） */
+  /** 編集している間は、端末の出力とコマンドの入力欄を隠す（エディタが画面を占める）。行が多くて枠に収まらないときは、枠ごと縦に送れるようにする */
   private setEditing(editing: boolean): void {
+    this.element.classList.toggle('term-editing', editing);
     this.output.hidden = editing;
     this.entry.hidden = editing;
   }
@@ -153,7 +179,7 @@ class Terminal {
       close,
     });
     this.setEditing(true);
-    this.element.append(panel.element);
+    this.box.append(panel.element);
     panel.focus();
   }
 }
@@ -161,10 +187,10 @@ class Terminal {
 /** 端末の画面を作る。guide は、端末を開いたときに最初に出す案内のうち、アプリごとに違う部分（使えるコマンドの調べ方など） */
 export function terminalView(guide: string): AppModule['render'] {
   return async (root, _route, ctx) => {
-    root.append(el('p', { className: 'badge' }, '学習用の架空サーバ（ターミナル）'));
-    if (!ctx.viewer) return void root.append(el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
+    const badge = el('p', { className: 'badge' }, BADGE);
+    if (!ctx.viewer) return void root.append(badge, el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
     const res = await ctx.request({ method: 'GET', path: '/sh' });
-    if (res.status !== 200) return void root.append(el('p', { className: 'error' }, errorMessage(res)));
+    if (res.status !== 200) return void root.append(badge, el('p', { className: 'error' }, errorMessage(res)));
     root.append(new Terminal(ctx, res.body as unknown as Session, guide).element);
   };
 }
