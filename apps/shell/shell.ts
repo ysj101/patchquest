@@ -1,12 +1,10 @@
 // 擬似シェルの共通の型と、コマンド行の分解。bash を動かすのではなく、固定のコマンド集合へ振り分けるための最小限だけを持つ
 import type { ServerContext } from '../../runtimes/browser/app-module';
+import type { LineEdit } from './edits';
 import type { Account } from './model';
 
 /** 1 行に入力できる長さ（文字数） */
 export const MAX_LINE_LENGTH = 1024;
-
-/** エディタで書き換えた 1 行。line は 1 から数える行番号 */
-export type LineEdit = { line: number; text: string };
 
 /** エディタで開いたファイル（端末の画面が編集画面を出すのに使う） */
 export type EditorFile = { path: string; lines: string[] };
@@ -31,7 +29,7 @@ export interface Env {
   /** コマンドを実行する利用者。sudo を通すと root になる */
   as: Account;
   cwd: string;
-  /** エディタで書き換えて保存する行。エディタを開くだけのときと、エディタを使わないコマンドでは null */
+  /** エディタで保存する編集（行の書き換え・削除・追加）。エディタを開くだけのときと、エディタを使わないコマンドでは null */
   edits: LineEdit[] | null;
 }
 

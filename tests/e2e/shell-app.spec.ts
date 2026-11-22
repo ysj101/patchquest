@@ -109,6 +109,55 @@ test('visudo の編集画面は、キーボードだけで開いて書き換え�
   await expect(repairPanel(page).locator('.repair-log li')).toHaveCount(1);
 });
 
+test('visudo の編集画面で、行を足す・消すことができ、開いたときの行番号での編集として保存される', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await type(page, `sudo cat ${OPERATORS}`);
+  const before = (await terminalOutput(page).locator('.term-out').last().innerText()).split('\n');
+  expect(before).toHaveLength(3);
+
+  await type(page, `sudo visudo -f ${OPERATORS}`);
+  const rows = editor(page).getByRole('textbox');
+  await expect(editor(page)).toContainText('行の右の ＋（または Enter）で下に行を足し、×（または空にした行で Backspace）でその行を消します。');
+
+  // キーボード：1 行目で Enter を押すと下に空の行ができ、フォーカスが移る。行番号は画面の並びに合わせて付け直す
+  await page.keyboard.press('Enter');
+  await expect(rows).toHaveCount(4);
+  await expect(editor(page).getByRole('textbox', { name: '2 行目', exact: true })).toBeFocused();
+  await page.keyboard.type('# 足した行');
+  // 空の行で Backspace を押すと、その行が消えて前の行へ戻る
+  await page.keyboard.press('Enter');
+  await expect(rows).toHaveCount(5);
+  await page.keyboard.press('Backspace');
+  await expect(rows).toHaveCount(4);
+  await expect(editor(page).getByRole('textbox', { name: '2 行目', exact: true })).toBeFocused();
+  // Tab は、行ごとのボタンを挟まずに次の行へ移る
+  await page.keyboard.press('Tab');
+  await expect(editor(page).getByRole('textbox', { name: '3 行目', exact: true })).toBeFocused();
+
+  // マウス：最後の行（開いたときの 3 行目）を × で消し、先頭に行を足す
+  await editor(page).getByRole('button', { name: '4 行目を消す', exact: true }).click();
+  await expect(rows).toHaveCount(3);
+  await editor(page).getByRole('button', { name: '＋ 先頭に行を足す', exact: true }).click();
+  await expect(editor(page).getByRole('textbox', { name: '1 行目', exact: true })).toBeFocused();
+  await page.keyboard.type('# 見出し');
+  await expect(rows).toHaveCount(4);
+
+  await page.keyboard.press('Control+s');
+  await expect(editor(page)).toHaveCount(0);
+  await expect(terminalOutput(page)).toContainText(`visudo: ${OPERATORS} を保存しました（3 行目を削除、2 行を追加）`);
+  await type(page, `sudo cat ${OPERATORS}`);
+  await expect(terminalOutput(page).locator('.term-out').last()).toHaveText(['# 見出し', before[0], '# 足した行', before[1]].join('\n'));
+
+  // 加えた変更と観測ログは、開いたときの行番号で示す
+  await page.getByRole('tab', { name: '対策' }).click();
+  await expect(repairPanel(page).locator('.repair-log li')).toHaveText([`admin → $ sudo visudo -f ${OPERATORS}（3 行目を削除、先頭に「# 見出し」を追加、1 行目の下に「# 足した行」を追加して保存）`]);
+  const saved = page.locator('.log-section .log-entry').filter({ hasText: '追加して保存' });
+  await saved.locator('summary').click();
+  await expect(saved).toContainText('エディタで変えた行');
+  await expect(saved).toContainText('3 行目：（削除）');
+  await expect(saved).toContainText(`ファイルの変更：${OPERATORS} の 3 行目（削除）・先頭・1 行目の下（追加）`);
+});
+
 test('キーボードだけでコマンドを送り、↑ で前のコマンドを呼び出せる', async ({ page }) => {
   await commandInput(page).focus();
   await page.keyboard.type('pwd');

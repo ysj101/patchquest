@@ -5,7 +5,8 @@ import type { AppResponse } from '../../platform/contract';
 import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
 import { editorPanel } from './editor-view';
-import type { EditorFile, LineEdit } from './shell';
+import type { LineEdit } from './edits';
+import type { EditorFile } from './shell';
 
 interface Session {
   user: string;

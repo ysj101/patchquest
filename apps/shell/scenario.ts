@@ -1,6 +1,6 @@
 // 擬似シェルのテスト・攻撃の成立条件・修正の記録を、手順のデータとして書くための部品。アプリ共通のテストと課題パックで使う
 import type { AppRequest, EventExpectation, ExchangeMatcher, ResponseExpectation, Step } from '../../platform/contract';
-import type { LineEdit } from './shell';
+import type { LineEdit } from './edits';
 
 /** コマンドが成功した（終了コード 0） */
 export const SUCCEEDED: ResponseExpectation = { status: 200, body: [{ path: 'exit', is: { equals: 0 } }] };
