@@ -103,7 +103,7 @@ test('観測ログと調査タブは、HTTP のリクエストではなく端末
   // 端末にコマンドを打てば足りるので、リクエストを手で組む欄は出さない
   await page.getByRole('tab', { name: '調査' }).click();
   const investigation = page.getByRole('tabpanel', { name: '調査' });
-  await expect(investigation).toContainText('この課題には、決まった操作がありません。教材アプリの画面を操作して調べます。');
+  await expect(investigation.getByRole('heading', { name: '操作', exact: true })).toBeHidden();
   await expect(investigation.getByRole('button', { name: '上級者向け' })).toBeHidden();
 });
 

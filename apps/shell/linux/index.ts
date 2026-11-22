@@ -28,7 +28,7 @@ export const linuxApp: AppModule = {
   tests: SHELL_TESTS,
   handle,
   // 本物のシェルの help は組み込みコマンドの一覧を出すだけなので、よく使うコマンドの案内に差し替えてある（guest/help）
-  render: terminalView('本物の Linux です。help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。'),
+  render: terminalView('help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。'),
   machine: { provision, reset },
   describeEvent,
   // 観測イベントの種類と項目名は擬似シェルと同じ（ファイルの変更だけ、行番号を持たない説明にしている）

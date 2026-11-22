@@ -64,7 +64,7 @@ function infoFor(manifest: MissionPack['manifest'], vulnerability: Vulnerability
     h('p', { class: 'eyebrow' }, 'この課題でできるようになること'),
     h('ul', { class: 'objectives' }, ...manifest.learningObjectives.map((objective) => h('li', {}, objective))),
     h('p', { class: 'eyebrow' }, '用語'),
-    vulnerabilityTerms(vulnerability),
+    vulnerabilityTerms(vulnerability, 'inline'),
   );
 }
 

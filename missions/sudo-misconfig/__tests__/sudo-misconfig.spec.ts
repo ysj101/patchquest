@@ -10,7 +10,7 @@ const CORRECT_CHOICES: Record<string, string> = {
   'shared-folder-defense': 'フォルダを見て編集できる人を、経理の 3 人だけにする',
 };
 
-const GUIDE = '本物の Linux です。help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名を補完できます。';
+const GUIDE = 'help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名を補完できます。';
 const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
 
 /** 管理者の端末で、運用担当向けの設定の行を visudo でコメントにして保存する */
