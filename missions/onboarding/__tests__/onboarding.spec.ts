@@ -1,5 +1,5 @@
 // オンボーディング（練習用パック）。一覧の「まずは練習」から、操作ガイドに沿って
-// こわす → なおす → たしかめる → ふりかえる を最後まで進められる
+// 体験する → なおす → たしかめる → ふりかえる を最後まで進められる
 import type { Page } from '@playwright/test';
 import { backToList, expect, launchButton, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from '../../../tests/e2e/fixtures';
 
@@ -28,7 +28,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(page.locator('.now-doing')).toHaveText('今やること：調査を開いて、手がかりを集めます。');
 
   // 案内先が閉じたタブの中にあるときは、そのタブを指す。開くと中の案内先を指す
-  await expectStep(page, '1 / 5', 'こわしてみよう');
+  await expectStep(page, '1 / 5', '不具合を体験してみよう');
   await expect(guide(page)).toContainText('今回の依頼を確認できました！');
   await expect(target(page)).toHaveAttribute('role', 'tab');
   await expect(target(page)).toHaveText('調査');
@@ -105,11 +105,11 @@ test('「入力欄で 41 文字目を打てなくする」を適用すると、�
 
 test('ガイドのステップは飛ばせる。練習用でない課題を始めるとガイドは閉じる', async ({ page }) => {
   await startMission(page, 'onboarding');
-  await expectStep(page, '1 / 5', 'こわしてみよう');
+  await expectStep(page, '1 / 5', '不具合を体験してみよう');
   await guide(page).getByRole('button', { name: 'このステップを飛ばす' }).click();
   await expectStep(page, '2 / 5', 'なおし方を選ぼう');
   await expect(guide(page).locator('.guide-praise')).toHaveCount(0);
-  await expect(guide(page).getByRole('list', { name: '練習の手順' })).toContainText('こわしてみよう：飛ばした');
+  await expect(guide(page).getByRole('list', { name: '練習の手順' })).toContainText('不具合を体験してみよう：飛ばした');
 
   await backToList(page).click();
   await expect(guide(page)).toBeVisible();
