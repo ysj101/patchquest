@@ -1,5 +1,6 @@
-// 常に表示する説明（調べ方・操作のしかた）に、答えが書かれていないこと。全パック共通で、検証データの answerTerms で確かめる
+// 常に表示する説明（調べ方・操作のしかた）に、答えが書かれていないことと、理解確認の問数。全パック共通で確かめる（答えは検証データの answerTerms で確かめる）
 import { describe, expect, it } from 'vitest';
+import { catalog as bundled } from '../../catalog';
 import { answerTerms, catalog } from '../support/catalog';
 import { guideAnswerProblems } from '../support/verification-data';
 import { samplePack } from '../support/sample-pack';
@@ -35,5 +36,12 @@ describe('調べ方・操作のしかたに答えを書かない', () => {
     const { manifest } = samplePack();
     manifest.approach = { intro: '前提の仕組み', steps: ['手順'] };
     expect(guideAnswerProblems(manifest, ['関係のない語'])).toEqual(['answerTerms の「関係のない語」は、ヒント 3 にも solution にも出てきません']);
+  });
+});
+
+describe('理解確認の問数', () => {
+  // 同梱するパックだけを見る（テスト専用のパックは 1 問でよい）
+  it.each(bundled.packs.filter((pack) => pack.manifest.kind === 'mission'))('$manifest.id の理解確認は 2 問', (pack) => {
+    expect(pack.manifest.transferCheck).toHaveLength(2);
   });
 });

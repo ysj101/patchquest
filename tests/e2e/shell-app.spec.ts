@@ -272,6 +272,11 @@ test('過剰な許可を調べて再現し、端末の操作で外すと、記�
   await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
   await expect(verifyResults(page)).toContainText('防御できました', { timeout: 20_000 });
   await expect(seals(page)).toContainText('防御：達成');
+  // テストの結果の詳細も、HTTP の形（POST /sh・status 200）ではなく、コマンド行と終了コードで示す
+  await verifyResults(page).getByText('詳しく見る').click();
+  const denied = verifyResults(page).locator('.outcome', { hasText: '運用担当は、保守の操作を sudo で実行できない' });
+  await expect(denied.locator('dd')).toHaveText([`operator が $ sudo ${maintenance} → 終了コード 0 以外`, '終了コード 1']);
+  await expect(verifyResults(page).locator('.verify-details')).not.toContainText(/POST \/sh|status \d/);
 
   // 演習中の機械でも、同じ操作が拒否されるようになっている
   await loginAs(page, 'operator');
@@ -289,6 +294,11 @@ test('絞りすぎるとふだんの使い方の失敗で合格せず、最初�
   await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
   await expect(verifyResults(page)).toContainText('まだ合格ではありません ふだんの使い方が壊れています。', { timeout: 20_000 });
   await expect(seals(page)).toContainText('防御：未達成');
+  // 不合格の実測は、終了コードのあとに期待との差を続ける
+  await verifyResults(page).getByText('詳しく見る').click();
+  const broken = verifyResults(page).locator('.outcome', { hasText: '運用担当は、日常の運用操作を sudo で実行できる' });
+  await expect(broken.locator('dd').first()).toHaveText(/^operator が \$ sudo \S+ → 終了コード 0$/);
+  await expect(broken.locator('dd').last()).toHaveText(/^終了コード 1：exit が ＝ 0 ではない（実際は 1）/);
   // 選び直す対策はないので、選び直しのボタンは出ない
   await expect(page.getByRole('button', { name: /対策を選び直す/ })).toHaveCount(0);
 

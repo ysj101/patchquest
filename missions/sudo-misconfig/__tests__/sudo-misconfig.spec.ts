@@ -7,7 +7,6 @@ import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, exp
 const CORRECT_CHOICES: Record<string, string> = {
   'backup-cause': 'バックアップに必要な分をこえて、すべてのコマンドが許可されている',
   'deploy-defense': '利用者アカウントの管理の許可だけを外し、サービスの再起動の許可は残す',
-  'shared-folder-defense': 'フォルダを見て編集できる人を、経理の 3 人だけにする',
 };
 
 const GUIDE = 'help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名を補完できます。';
@@ -86,6 +85,10 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await expect(repairPanel(page).locator('.repair-log li')).toHaveText([new RegExp(`^admin → \\$ sudo visudo -f /etc/sudoers.d/operators（3 行目を「# [a-z]+ ALL=\\(root\\) NOPASSWD: ${maintenance}」に書き換えて保存）$`)]);
   await expect(results(page)).toContainText('防御できました', { timeout: 90_000 });
   await expect(seals(page)).toContainText('防御：達成');
+  // テストの結果の詳細は、HTTP の形ではなく、コマンド行と終了コードで示す
+  await results(page).getByText('詳しく見る').click();
+  await expect(results(page).locator('.outcome', { hasText: '運用担当の許可の一覧に、保守の操作が残っていない' }).locator('dd')).toHaveText(['operator が $ sudo -l', '終了コード 0']);
+  await expect(results(page).locator('.verify-details')).not.toContainText(/POST \/sh|status \d/);
 
   // 演習中の機械でも、運用担当の保守の操作は拒否され、許可の一覧からも消えている
   await loginToTerminal(page, 'operator');

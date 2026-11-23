@@ -12,6 +12,7 @@ import type {
   JsonValue,
   MissionPack,
   ObservedEvent,
+  ResponseExpectation,
   TestCase,
 } from '../../platform/contract';
 import type { Machine } from './machine';
@@ -81,7 +82,12 @@ export interface AppModule {
   eventLabels?: readonly string[];
   /** やり取りの見出しに使う、リクエストの短い表示（例：端末に打ったコマンド行）。説明しないものは null で、メソッドとパスを示す */
   describeRequest?(request: AppRequest): string | null;
-  /** 観測ログでの、やり取りの結果の印と中身。説明しないものは null で、状態コードとリクエスト・応答をそのまま示す */
+  /**
+   * テストの結果での、期待する結果の短い表示（例：終了コード 0）。describeRequest が説明したリクエストにだけ使う。
+   * 説明しないものは null で、リクエストの表示だけを示す
+   */
+  describeExpectation?(expectation: ResponseExpectation): string | null;
+  /** 観測ログとテストの結果での、やり取りの結果の印と中身。説明しないものは null で、状態コードとリクエスト・応答をそのまま示す */
   describeExchange?(request: AppRequest, response: AppResponse): ExchangeDescription | null;
   /**
    * false にすると、調査タブの「リクエストを編集して送る」を出さない。

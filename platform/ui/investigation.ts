@@ -1,7 +1,7 @@
 // 調査パネル（spec §10）。調べ方と定型の操作・リクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, errorMessage, type ActionDef, type ApproachDef, type AppRequest, type AppResponse, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
-import { expandRequest, type Scope } from '../evaluator/scenario';
+import { HTTP_METHODS, errorMessage, type ActionDef, type ApproachDef, type AppRequest, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
+import { expandRequest, type Scope, type StepDescriber } from '../evaluator/scenario';
 import { approachNodes, status } from './components';
 import { fill, h } from './dom';
 import { headingWithInfo } from './info-popover';
@@ -20,11 +20,9 @@ const block = (title: string, text: string) => h('div', { class: 'log-block' }, 
 /** 観測イベントの説明。アプリが説明できない種類は、基盤が記録する事象か、種類と値をそのまま示す */
 type EventDescriber = (event: ObservedEvent) => string | null;
 
-/** 教材アプリによる、観測イベント・リクエスト・やり取りの説明。説明しないものは null を返す */
-export interface AppDescribers {
+/** 教材アプリによる、観測イベント・リクエスト・期待する結果・やり取りの説明。説明しないものは null を返す */
+export interface AppDescribers extends StepDescriber {
   event: EventDescriber;
-  request: (request: AppRequest) => string | null;
-  exchange: (request: AppRequest, response: AppResponse) => ExchangeDescription | null;
   /** 「リクエストを編集して送る」を出すか */
   requestEditor: boolean;
 }
@@ -33,19 +31,30 @@ export interface AppDescribers {
 export interface DescribingApp {
   describeEvent?: EventDescriber;
   describeRequest?: AppDescribers['request'];
+  describeExpectation?: AppDescribers['expectation'];
   describeExchange?: AppDescribers['exchange'];
   requestEditor?: false;
 }
 
-const DESCRIBES_NOTHING: AppDescribers = { event: () => null, request: () => null, exchange: () => null, requestEditor: true };
+const DESCRIBES_NOTHING: AppDescribers = { event: () => null, request: () => null, expectation: () => null, exchange: () => null, requestEditor: true };
 
 /** 教材アプリが持つ説明を、説明しないものは null を返す形にそろえる */
 export function describersOf(app: DescribingApp): AppDescribers {
   return {
     event: (event) => app.describeEvent?.(event) ?? null,
     request: (request) => app.describeRequest?.(request) ?? null,
+    expectation: (expectation) => app.describeExpectation?.(expectation) ?? null,
     exchange: (request, response) => app.describeExchange?.(request, response) ?? null,
     requestEditor: app.requestEditor ?? true,
+  };
+}
+
+/** 検証する教材アプリ（ID で引く）の説明を返す関数。テストの結果の期待と実測を、そのアプリの言葉（端末ならコマンドと終了コード）で示すのに使う */
+export function describersFor(apps: readonly (DescribingApp & { descriptor: { id: string } })[]): (subject: { id: string }) => AppDescribers {
+  return ({ id }) => {
+    const app = apps.find((candidate) => candidate.descriptor.id === id);
+    if (!app) throw new Error(`教材アプリ ${id} がカタログにありません`);
+    return describersOf(app);
   };
 }
 

@@ -34,8 +34,6 @@ export async function secureByOwnerCheck(page: Page): Promise<void> {
 const CORRECT_CHOICES: Record<string, string> = {
   'invoice-cause': '請求書を取り出す処理が、頼んだ会社がその請求書の持ち主かを確かめていない',
   'comment-edit-defense': '編集する処理で、ログイン中の利用者がコメントを書いた人かを確かめる',
-  'photo-download-cause': '写真を取り出す処理が、頼んだ利用者がそのアルバムの持ち主かを確かめていない',
-  'orders-api-defense': 'だれの注文を返すかはトークンから決め、要求の userId は使わない（または同じかを確かめる）',
 };
 
 /** 振り返りを開き、表示されている設問すべてに正解して理解の達成印を得る。答えた設問 ID を返す */

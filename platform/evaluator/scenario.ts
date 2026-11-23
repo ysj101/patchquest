@@ -6,6 +6,7 @@ import type {
   Condition,
   EventExpectation,
   Exchange,
+  ExchangeDescription,
   ExchangeMatcher,
   JsonPrimitive,
   JsonValue,
@@ -161,10 +162,33 @@ export interface ScenarioResult {
   actual: string;
 }
 
-function describeRequest(step: Extract<Step, { kind: 'request' }>, request: AppRequest): string {
+/**
+ * 教材アプリによる、手順の表示。HTTP の形ではなく、そのアプリの言葉（例：端末のコマンドと終了コード）で期待と実測を示すときに渡す。
+ * 説明しないものは null を返し、メソッド・パス・状態コードで示す
+ */
+export interface StepDescriber {
+  request: (request: AppRequest) => string | null;
+  /** 期待する結果の短い表示（例：終了コード 0）。request が説明したリクエストにだけ使う */
+  expectation: (expectation: ResponseExpectation) => string | null;
+  exchange: (request: AppRequest, response: AppResponse) => ExchangeDescription | null;
+}
+
+export const DESCRIBES_NOTHING: StepDescriber = { request: () => null, expectation: () => null, exchange: () => null };
+
+function describeRequest(step: Extract<Step, { kind: 'request' }>, request: AppRequest, scope: Scope, describe: StepDescriber): string {
+  const described = describe.request(request);
+  if (described !== null) {
+    const result = step.expect ? describe.expectation(expandAs(step.expect, scope)) : null;
+    return [`${step.as} が ${described}`, ...(result === null ? [] : [result])].join(' → ');
+  }
   const status = step.expect?.status;
   const want = status === undefined ? '' : ` → status ${Array.isArray(status) ? status.join(' か ') : status}`;
   return `${step.as} が ${request.method} ${request.path}${want}`;
+}
+
+/** 不合格の実測。アプリが結果を説明できるときは、その言葉（例：終了コード 0）を先に示し、期待との差を続ける */
+function differences(result: string | undefined, failures: string[]): string {
+  return [...(result === undefined ? [] : [result]), failures.join(' / ')].join('：');
 }
 
 /** 利用者ごとのセッションを 1 回だけ発行し、同じ手順の中で使い回す */
@@ -186,16 +210,16 @@ export async function replay(entries: readonly ReplayEntry[], invoker: ScenarioI
  * 手順を順に実行する。最初に期待と違った手順で止め、その差を返す。
  * 手順や期待値が未定義の {{キー}} を参照していたら、その手順の不合格にする
  */
-export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvoker): Promise<ScenarioResult> {
+export async function runSteps(steps: Step[], refs: Scope, invoker: ScenarioInvoker, describe: StepDescriber = DESCRIBES_NOTHING): Promise<ScenarioResult> {
   try {
-    return await runExpanded(steps, refs, invoker);
+    return await runExpanded(steps, refs, invoker, describe);
   } catch (error) {
     if (error instanceof ScenarioError) return { passed: false, expected: '手順の展開', actual: error.message };
     throw error;
   }
 }
 
-async function runExpanded(steps: Step[], refs: Scope, invoker: ScenarioInvoker): Promise<ScenarioResult> {
+async function runExpanded(steps: Step[], refs: Scope, invoker: ScenarioInvoker, describe: StepDescriber): Promise<ScenarioResult> {
   const scope: Scope = { ...refs };
   const sessionFor = sessionsOf(invoker);
   let last: ScenarioResult = { passed: true, expected: '手順なし', actual: '—' };
@@ -212,10 +236,11 @@ async function runExpanded(steps: Step[], refs: Scope, invoker: ScenarioInvoker)
     }
 
     const request = expandAs(step.request, scope);
-    const expected = describeRequest(step, request);
+    const expected = describeRequest(step, request, scope, describe);
     const { response, events } = await invoker.request(await sessionFor(step.as), request);
+    const result = describe.exchange(request, response)?.mark.text;
     const failures = [...checkResponse(response, step.expect ?? {}, scope), ...checkEvents(events, step.events ?? [], scope)];
-    if (failures.length) return { passed: false, expected, actual: failures.join(' / ') };
+    if (failures.length) return { passed: false, expected, actual: differences(result, failures) };
     for (const [name, path] of Object.entries(step.capture ?? {})) {
       const value = select(response.body, path).values[0];
       if (value === undefined || (value !== null && typeof value === 'object')) {
@@ -223,7 +248,7 @@ async function runExpanded(steps: Step[], refs: Scope, invoker: ScenarioInvoker)
       }
       scope[`capture.${name}`] = value;
     }
-    last = { passed: true, expected, actual: `status ${response.status}` };
+    last = { passed: true, expected, actual: result ?? `status ${response.status}` };
   }
   return last;
 }

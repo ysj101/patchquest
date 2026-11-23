@@ -3,13 +3,14 @@
 import { describe, expect, it } from 'vitest';
 import { shellApp } from '../../apps/shell';
 import type { AppRequest, MissionPack } from '../../platform/contract';
-import { Evaluator } from '../../platform/evaluator/evaluator';
+import { DEFAULT_EVALUATOR_LIMITS, Evaluator } from '../../platform/evaluator/evaluator';
 import { Orchestrator, validateForApp } from '../../platform/orchestrator/orchestrator';
 import { VERIFICATION_SEEDS, verifyPack } from '../../platform/orchestrator/pack-verification';
 import { verificationCandidates } from '../support/catalog';
 import { EngineRuntime } from '../support/engine-runtime';
 import { shellTestPack } from '../support/shell-pack';
 import { visudoSave } from '../../apps/shell/scenario';
+import { describeExchange, describeExpectation, describeRequest } from '../../apps/shell/events';
 
 const OPERATORS = '/etc/sudoers.d/operators';
 
@@ -34,7 +35,8 @@ async function setup() {
   const exercise = new EngineRuntime();
   const orchestrator = new Orchestrator({
     apps: [shellApp], packs: [nodePack], exercise,
-    evaluator: new Evaluator(() => new EngineRuntime()),
+    // 学習UIと同じく、期待と実測を擬似シェルの言葉で示す
+    evaluator: new Evaluator(() => new EngineRuntime(), DEFAULT_EVALUATOR_LIMITS, () => ({ request: describeRequest, expectation: describeExpectation, exchange: describeExchange })),
     randomSeed: () => 4242, newId: () => 'attempt-1', now: () => new Date('2026-10-12T00:00:00Z'),
   });
   const snapshot = await orchestrator.start('shell-test-pack');
@@ -82,6 +84,10 @@ describe('操作で直す課題の進行', () => {
 
     const report = await orchestrator.verify();
     expect(report?.outcomes.filter((outcome) => !outcome.passed)).toEqual([]);
+    // 期待と実測は、HTTP の形（POST /sh・status 200）ではなく、コマンド行と終了コードで示す
+    const maintenance = String(snapshot.refs['programs.maintenance.path']);
+    expect(report?.outcomes.find((outcome) => outcome.testId === 'shell.maintenance-denied')).toMatchObject({ expected: `operator が $ sudo ${maintenance} → 終了コード 0 以外`, actual: '終了コード 1' });
+    expect(report?.outcomes.find((outcome) => outcome.testId === 'shell.whoami')).toMatchObject({ expected: 'operator が $ whoami → 終了コード 0', actual: '終了コード 0' });
     expect(snapshot.attempt.badges.defense.achieved).toBe(true);
     // 演習用の機械でも、同じ操作が拒否されるようになっている
     expect((await type('operator', `sudo ${snapshot.refs['programs.maintenance.path']}`)).body.exit).toBe(1);
@@ -114,7 +120,11 @@ describe('操作で直す課題の進行', () => {
     await commentOut('admin', 3);
     const report = await orchestrator.verify();
     expect(report?.passed).toBe(false);
-    expect(report?.outcomes.filter((outcome) => !outcome.passed).map((outcome) => `${outcome.testId}(${outcome.group})`)).toEqual(['shell.operation-allowed(normal)']);
+    const failed = report?.outcomes.filter((outcome) => !outcome.passed) ?? [];
+    expect(failed.map((outcome) => `${outcome.testId}(${outcome.group})`)).toEqual(['shell.operation-allowed(normal)']);
+    // 不合格の実測も、終了コードを先に示す
+    expect(failed[0]).toMatchObject({ expected: `operator が $ sudo ${String(snapshot.refs['programs.operation.path'])} → 終了コード 0` });
+    expect(failed[0]?.actual).toMatch(/^終了コード 1：exit が ＝ 0 ではない（実際は 1）/);
     expect(snapshot.attempt.badges.defense.achieved).toBe(false);
   });
 

@@ -15,7 +15,7 @@ import {
   type TestOutcome,
   type VerificationReport,
 } from '../contract';
-import { matchesExchange, replay, runSteps, type ScenarioInvoker, type ScenarioResult, type Scope } from './scenario';
+import { DESCRIBES_NOTHING, matchesExchange, replay, runSteps, type ScenarioInvoker, type ScenarioResult, type Scope, type StepDescriber } from './scenario';
 
 /** 検証する構成。演習開始時に固定した版・seed と、現在の実装の選択 */
 export interface EvaluationSubject {
@@ -100,6 +100,8 @@ export class Evaluator {
     /** 検証専用の実行環境を作る。演習用のインスタンスとは共有しない */
     private readonly createRuntime: () => RuntimeAdapter,
     private readonly limits: EvaluatorLimits = DEFAULT_EVALUATOR_LIMITS,
+    /** 検証する教材アプリによる、手順の表示。省くと、期待と実測をメソッド・パス・状態コードで示す */
+    private readonly describerFor: (app: EvaluationSubject['app']) => StepDescriber = () => DESCRIBES_NOTHING,
   ) {}
 
   /**
@@ -180,7 +182,8 @@ export class Evaluator {
       // 呼び出しごとの上限もテスト全体の上限と同じにし、テスト全体（再生を含む）はさらに withTimeout で抑える
       const { testTimeoutMs } = this.limitsFor(subject);
       const invoker = invokerFor(runtime, runId, testTimeoutMs);
-      const work = replay(subject.replay ?? [], invoker).then(() => runSteps(steps, refs, invoker));
+      const describe = this.describerFor(subject.app);
+      const work = replay(subject.replay ?? [], invoker).then(() => runSteps(steps, refs, invoker, describe));
       return await this.withTimeout(work, runtime, testTimeoutMs);
     } catch (e) {
       if (!(e instanceof RuntimeError)) throw e;

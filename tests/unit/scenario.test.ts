@@ -91,6 +91,26 @@ describe('runSteps', () => {
     expect(inv.calls).toHaveLength(1);
   });
 
+  it('教材アプリが手順を説明できるときは、期待と実測をそのアプリの言葉で示す', async () => {
+    const describe = {
+      request: (request: { path: string }) => (request.path === '/sh' ? '$ whoami' : null),
+      expectation: (expectation: { body?: unknown[] }) => (expectation.body ? '終了コード 0' : null),
+      exchange: (_request: unknown, response: { status: number }) => (response.status === 200 ? { mark: { ok: true, text: '終了コード 0' }, blocks: [] } : null),
+    };
+    const shell = (expect?: Extract<Step, { kind: 'request' }>['expect']): Step[] => [{ kind: 'request', as: 'alice', request: { method: 'POST', path: '/sh' }, ...(expect && { expect }) }];
+    const ok = invoker({ 'POST /sh': { status: 200, body: { exit: 0, user: 'alice' } } });
+    expect(await runSteps(shell({ status: 200, body: [{ path: 'exit', is: { equals: 0 } }] }), scope, ok, describe)).toEqual({ passed: true, expected: 'alice が $ whoami → 終了コード 0', actual: '終了コード 0' });
+    // 期待を説明できない手順は、リクエストの表示だけにする（状態コードは足さない）
+    expect((await runSteps(shell({ status: 200 }), scope, ok, describe)).expected).toBe('alice が $ whoami');
+    expect((await runSteps(shell(), scope, ok, describe)).expected).toBe('alice が $ whoami');
+    // 不合格の実測は、アプリの言葉での結果を先に示す。説明できない応答は、期待との差だけを示す
+    expect((await runSteps(shell({ body: [{ path: 'user', is: { equals: 'bob' } }] }), scope, ok, describe)).actual).toBe('終了コード 0：user が ＝ "bob" ではない（実際は "alice"）');
+    expect((await runSteps(shell({ status: 200 }), scope, invoker({}), describe)).actual).toBe('status が 200 ではない（実際は 404）');
+    // 説明しないリクエストは、メソッド・パス・状態コードで示す
+    const other: Step[] = [{ kind: 'request', as: 'alice', request: { method: 'GET', path: '/other' }, expect: { status: 404 } }];
+    expect(await runSteps(other, scope, invoker({}), describe)).toEqual({ passed: true, expected: 'alice が GET /other → status 404', actual: 'status 404' });
+  });
+
   it('未定義の値を参照する手順は不合格にする', async () => {
     const result = await runSteps([{ kind: 'request', as: 'alice', request: { method: 'GET', path: '/api/memos/{{nope}}' } }], scope, invoker({}));
     expect(result).toMatchObject({ passed: false, actual: expect.stringMatching(/未定義の値/) });

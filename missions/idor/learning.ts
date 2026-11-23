@@ -90,64 +90,6 @@ export const TRANSFER_CHECK: TransferQuestion[] = [
       },
     ],
   },
-  {
-    id: 'photo-download-cause',
-    situation:
-      '別の写真共有サービスでは、非公開アルバムの写真を /photos/{番号}/download で取り出せます。画面には自分のアルバムしか出ません。でも bob さんが番号を書き換えて送ると、知らない人の非公開の写真を保存できました。ブラウザ側のスクリプトは、非公開の写真へのリンクを出さないようにしています。',
-    prompt: 'この事故のいちばんの原因はどれでしょうか。',
-    choices: [
-      {
-        id: 'download-no-owner',
-        label: '写真を取り出す処理が、頼んだ利用者がそのアルバムの持ち主かを確かめていない',
-        correct: true,
-        explanation: '番号をどう知ったかに関係なく、取り出すときに持ち主を確かめていれば、他人の写真は返りません。',
-      },
-      {
-        id: 'client-check',
-        label: '非公開かどうかを、ブラウザ側のスクリプトでしか確かめていない',
-        correct: false,
-        explanation: 'ブラウザ側の確認は、要求を直接送れば飛ばせます。確認はサーバー側の取り出す処理に必要です。これも原因の一部ですが、いちばんの原因は、取り出す処理が持ち主を確かめていないことです。',
-      },
-      {
-        id: 'sequential',
-        label: '写真の番号が連番で、次の番号を予想できる',
-        correct: false,
-        explanation: '予想しやすいと見つかりやすくなるだけです。番号が分かれば、確かめない処理は同じように返します。',
-      },
-    ],
-  },
-  {
-    id: 'orders-api-defense',
-    situation:
-      'スマートフォンアプリ用の注文履歴 API は、ログイン後のトークンで利用者を確かめてから、GET /api/orders?userId={番号} を受け付けます。alice さんが userId を別の番号に変えて送ると、ほかの人の注文が返りました。',
-    prompt: '有効な対策はどれでしょうか。',
-    choices: [
-      {
-        id: 'token-user',
-        label: 'だれの注文を返すかはトークンから決め、要求の userId は使わない（または同じかを確かめる）',
-        correct: true,
-        explanation: 'だれの要求かは、サーバーがトークンから決められます。要求に書かれた番号を信じなければ、番号を変えても他人の注文は返りません。',
-      },
-      {
-        id: 'hide-field',
-        label: 'アプリの画面から userId を編集できる場所をなくす',
-        correct: false,
-        explanation: '画面に出さなくても、要求は直接送れます。アプリの画面は、守る場所ではありません。',
-      },
-      {
-        id: 'uuid',
-        label: 'userId を、連番ではなく予想しにくい長い ID に変える',
-        correct: false,
-        explanation: '予想しにくくなるだけで、ID を知られれば同じように他人の注文が返ります。',
-      },
-      {
-        id: 'rate-limit',
-        label: '短い時間にたくさんの userId を試した要求を止める',
-        correct: false,
-        explanation: '総当たりは遅くなりますが、1 回の要求で他人の注文が返る原因は残ります。',
-      },
-    ],
-  },
 ];
 
 export const DEBRIEF: DebriefDef = {
