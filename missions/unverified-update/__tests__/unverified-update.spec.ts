@@ -7,7 +7,6 @@ import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, exp
 const CORRECT_CHOICES: Record<string, string> = {
   'auto-update-cause': '配るサーバの中身が書き換えられると、全員のパソコンがそれをそのまま動かす',
   'web-parts-defense': '読み込んだ部品の中身が、前もって確かめておいたものと同じかを確かめてから動かす',
-  'where-to-get-hash': 'ファイルとは別の、書き換えられにくい場所で受け取った値と比べる',
 };
 
 /** 運用メモから保守の操作のパスを読み、受け取った更新の末尾に足す */

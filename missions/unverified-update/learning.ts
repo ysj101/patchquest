@@ -113,32 +113,6 @@ export const TRANSFER_CHECK: TransferQuestion[] = [
       },
     ],
   },
-  {
-    id: 'where-to-get-hash',
-    situation:
-      'チームで使う道具の新しい版を、作者のサイトから受け取りました。中身を確かめるために、ファイルから計算した値（ハッシュ）を、作者が出している値と比べることにしました。',
-    prompt: '比べる値について、気をつけることはどれでしょうか。',
-    choices: [
-      {
-        id: 'separate-channel',
-        label: 'ファイルとは別の、書き換えられにくい場所で受け取った値と比べる',
-        correct: true,
-        explanation: 'この課題の一覧も、運用担当には書き換えられない場所にありました。確かめる相手が無事でなければ、確かめる意味がありません。',
-      },
-      {
-        id: 'same-place',
-        label: 'ファイルと同じ場所に置いてある値と合えば、安全だと考える',
-        correct: false,
-        explanation: 'ファイルを書き換えられる人は、同じ場所の値も一緒に書き換えられます。',
-      },
-      {
-        id: 'size',
-        label: 'ファイルの大きさが、前の版と近いことを確かめる',
-        correct: false,
-        explanation: '大きさがほとんど同じまま、中身だけを書き換えることができます。',
-      },
-    ],
-  },
 ];
 
 export const DEBRIEF: DebriefDef = {
