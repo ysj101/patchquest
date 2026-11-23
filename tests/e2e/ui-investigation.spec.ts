@@ -130,7 +130,7 @@ test('教材由来の文字列は観測ログでも文字のまま表示され�
   expect(dialogs).toEqual([]);
 });
 
-test('調べ方・操作のしかたを持たない課題では調査タブ・対策タブに出さず、ヒントは状況・調査・対策のどのタブから開いてもすべてに出る', async ({ page }) => {
+test('調べ方・操作のしかたを持たない課題では調査タブ・対策タブに出さず、ヒントは状況・調査のどちらで開いても両方に出て、対策タブには直し方だけが出る', async ({ page }) => {
   const story = page.getByRole('tabpanel', { name: '状況' });
   const investigation = page.getByRole('tabpanel', { name: '調査' });
   await page.getByRole('tab', { name: '調査' }).click();
@@ -150,9 +150,32 @@ test('調べ方・操作のしかたを持たない課題では調査タブ・�
   const repair = page.getByRole('tabpanel', { name: '対策' });
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(repair.getByRole('heading', { name: '操作のしかた' })).toHaveCount(0);
-  await expect(repair.locator('.hint')).toHaveCount(2);
+  // 対策タブには、調べるときのヒント（見るところ・調べ方）を出さない
+  await expect(repair.locator('.hint')).toHaveCount(0);
   await repair.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
-  await expect(repair.locator('.hint')).toHaveCount(3);
+  await expect(repair.locator('.hint')).toHaveCount(1);
+  await expect(repair.locator('.hint .eyebrow')).toHaveText('ヒント 3：直し方');
   await page.getByRole('tab', { name: '状況' }).click();
   await expect(story.locator('.hint')).toHaveCount(3);
+});
+
+test('対策タブでは、見るところ・調べ方のヒントを開いていなくても、直し方のヒントと解法を開ける', async ({ page }) => {
+  const repair = page.getByRole('tabpanel', { name: '対策' });
+  await page.getByRole('tab', { name: '対策' }).click();
+  const hints = repair.getByRole('region', { name: 'ヒント' });
+  await expect(hints.getByRole('button', { name: /ヒント [12]/ })).toHaveCount(0);
+  await hints.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
+  await expect(hints.locator('.hint .eyebrow')).toHaveText('ヒント 3：直し方');
+  // 直し方を開いたら、続けて解法を開ける
+  await expect(hints.getByRole('button', { name: '解法を見る' })).toBeFocused();
+
+  // 調査タブでは、開いた直し方を段階の順（3 番目）に置き、見るところから順に開ける
+  const investigation = page.getByRole('tabpanel', { name: '調査' });
+  await page.getByRole('tab', { name: '調査' }).click();
+  await expect(investigation.locator('.hint .eyebrow')).toHaveText('ヒント 3：直し方');
+  await expect(investigation.getByRole('button', { name: '解法を見る' })).toHaveCount(0);
+  await investigation.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
+  await investigation.getByRole('button', { name: 'ヒント 2（調べ方）を見る' }).click();
+  await expect(investigation.locator('.hint .eyebrow')).toHaveText(['ヒント 1：見るところ', 'ヒント 2：調べ方', 'ヒント 3：直し方']);
+  await expect(investigation.getByRole('button', { name: '解法を見る' })).toBeFocused();
 });

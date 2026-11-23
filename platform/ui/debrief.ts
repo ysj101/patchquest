@@ -19,13 +19,24 @@ export interface HintActions {
   viewSolution(): void;
 }
 
+/**
+ * 置き場所が出すヒントの範囲。all は 3 段階を順に開く。repair は直し方だけを出し、見るところ・調べ方を開いていなくても開ける
+ * （直している人に、調べるときのヒントを先に開かせない）
+ */
+const HINT_SCOPE = {
+  all: { levels: [1, 2, 3], note: '困ったら、順番に開けます。見ても減点はありません。' },
+  repair: { levels: [3], note: '直し方のヒントです。調べるときのヒントは、「状況」と「調査」のタブにあります。見ても減点はありません。' },
+} as const;
+type HintScope = keyof typeof HINT_SCOPE;
+
 /** ヒントの置き場所 1 つ。見出しの id は置き場所ごとに分ける */
 interface HintsPlace {
   titleId: string;
+  scope: HintScope;
   element: HTMLElement;
 }
 
-/** 同じヒントを、作った置き場所のすべてに出す。開いた段階は演習の記録で共有する */
+/** 同じヒントを、作った置き場所のすべてに出す（出す範囲は置き場所ごとに決める）。開いた段階は演習の記録で共有する */
 export class HintsPanel {
   private readonly places: HintsPlace[] = [];
   private readonly guard = renderGuard();
@@ -34,9 +45,9 @@ export class HintsPanel {
   constructor(private readonly actions: HintActions) {}
 
   /** 置き場所を 1 つ作り、その要素を返す。titleId は見出しの id で、置き場所ごとに違う値にする */
-  place(titleId: string): HTMLElement {
+  place(titleId: string, scope: HintScope = 'all'): HTMLElement {
     if (this.places.some((place) => place.titleId === titleId)) throw new Error(`ヒントの置き場所「${titleId}」はすでにあります`);
-    const place = { titleId, element: h('section', { class: 'tool-section hints', 'data-anchor': 'hints', 'aria-labelledby': titleId }) };
+    const place = { titleId, scope, element: h('section', { class: 'tool-section hints', 'data-anchor': 'hints', 'aria-labelledby': titleId }) };
     this.places.push(place);
     if (this.last) this.render(place, this.last);
     return place.element;
@@ -49,23 +60,32 @@ export class HintsPanel {
     for (const place of this.places) this.render(place, snapshot);
   }
 
-  private render({ titleId, element }: HintsPlace, { attempt, pack }: ExerciseSnapshot): void {
+  private render({ titleId, scope, element }: HintsPlace, snapshot: ExerciseSnapshot): void {
+    const { attempt, pack } = snapshot;
     const hadFocus = element.contains(document.activeElement);
-    const hints = [...pack.manifest.hints].sort((a, b) => a.level - b.level);
-    const opened = hints.filter((hint) => attempt.hintsOpened.includes(hint.level));
+    const { levels, note } = HINT_SCOPE[scope];
+    const hints = pack.manifest.hints.filter((hint) => (levels as readonly number[]).includes(hint.level)).sort((a, b) => a.level - b.level);
     const next = hints.find((hint) => !attempt.hintsOpened.includes(hint.level));
+    // 段階の順に並べる。開いた段階は本文を、まだの段階は最初の 1 つだけをボタンで出す（別の置き場所から、先の段階だけが開かれていることがある）
+    const shown = hints.filter((hint) => hint === next || attempt.hintsOpened.includes(hint.level));
     fill(
       element,
-      headingWithInfo(h('h3', { id: titleId }, 'ヒント'), h('p', {}, '困ったら、順番に開けます。見ても減点はありません。')),
-      ...opened.map((hint) => h('div', { class: 'hint' }, h('p', { class: 'eyebrow' }, `ヒント ${hint.level}：${HINT_LABEL[hint.level]}`), h('p', {}, hint.text))),
-      next
-        ? h('button', { type: 'button', class: 'button', on: { click: () => this.actions.openHint(next.level) } }, `ヒント ${next.level}（${HINT_LABEL[next.level]}）を見る`)
-        : attempt.solutionViewed
-          ? h('div', { class: 'hint hint-solution', tabIndex: -1 }, h('p', { class: 'eyebrow' }, '解法'), h('p', {}, pack.manifest.solution))
-          : h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.revealSolution() } }, '解法を見る'),
+      headingWithInfo(h('h3', { id: titleId }, 'ヒント'), h('p', {}, note)),
+      ...shown.map((hint) =>
+        hint === next
+          ? h('button', { type: 'button', class: 'button', on: { click: () => this.actions.openHint(hint.level) } }, `ヒント ${hint.level}（${HINT_LABEL[hint.level]}）を見る`)
+          : h('div', { class: 'hint' }, h('p', { class: 'eyebrow' }, `ヒント ${hint.level}：${HINT_LABEL[hint.level]}`), h('p', {}, hint.text)),
+      ),
+      next ? null : this.solutionNode(snapshot),
     );
     // 開いた内容のすぐ後ろ（次のボタン）へフォーカスを移す。解法まで開いてボタンがなくなったら、解法へ移す
     if (hadFocus) (element.querySelector<HTMLElement>('button.button') ?? element.querySelector<HTMLElement>('.hint-solution'))?.focus();
+  }
+
+  /** 置き場所のヒントをすべて開いたあとに出す。解法は、確認してから見せる */
+  private solutionNode({ attempt, pack }: ExerciseSnapshot): HTMLElement {
+    if (attempt.solutionViewed) return h('div', { class: 'hint hint-solution', tabIndex: -1 }, h('p', { class: 'eyebrow' }, '解法'), h('p', {}, pack.manifest.solution));
+    return h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.revealSolution() } }, '解法を見る');
   }
 
   private async revealSolution(): Promise<void> {

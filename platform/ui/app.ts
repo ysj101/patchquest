@@ -50,7 +50,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     apply: (defenseId) => applyDefense(defenseId),
     verify: () => verify(),
     reset: () => resetToInitial(),
-  }, hints.place('repair-hints-title'));
+  }, hints.place('repair-hints-title', 'repair'));
   const debrief = new DebriefPanel({
     answer: (answers) => {
       const correct = orchestrator.answerTransfer(answers);

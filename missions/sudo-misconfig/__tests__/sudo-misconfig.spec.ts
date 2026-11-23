@@ -98,7 +98,7 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await expect(page.locator('.state-stamp')).toHaveText('解決');
 });
 
-test('調査タブの先頭に、sudo の仕組みと最初に打つコマンドを示す調べ方が出て、直し方はヒントとして対策タブからも開ける', MACHINE, async ({ page }) => {
+test('調査タブの先頭に、sudo の仕組みと最初に打つコマンドを示す調べ方が出て、対策タブでは設定ファイルの探し方が分かり、直し方のヒントをすぐ開ける', MACHINE, async ({ page }) => {
   // 開始前チェックで本物の Linux を起動するので、既定の上限（30 秒）では足りないことがある
   test.setTimeout(120_000);
   await startMission(page, 'sudo-misconfig');
@@ -120,22 +120,31 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   // 対策タブの先頭には、編集する道具の使い方が出る（答えを書いていないことは、全パック共通の tests/unit/pack-guides.test.ts で確かめる）
   await page.getByRole('tab', { name: '対策' }).click();
   const guide = page.getByRole('region', { name: '操作のしかた' });
-  await expect(guide.locator('code')).toContainText(['visudo', 'sudo visudo -f ファイルのパス']);
+  await expect(guide.locator('code')).toContainText(['visudo', 'sudo ls /etc/sudoers.d', 'sudo cat ファイルのパス', 'sudo visudo -f ファイルのパス']);
   // 名指ししているボタンは、対策タブに同じ名前で実在する
   await expect(guide).toContainText('「最初の状態に戻す」');
   await expect(page.getByRole('tabpanel', { name: '対策' }).getByRole('button', { name: '最初の状態に戻す' })).toBeVisible();
 
-  // 直し方のヒント（直し方）は対策タブからも開ける
+  // 対策タブのヒントは直し方だけ。調べ方（ヒント 2）を開いていなくても、すぐ開ける
   const repairHints = page.getByRole('tabpanel', { name: '対策' }).getByRole('region', { name: 'ヒント' });
-  await repairHints.getByRole('button', { name: 'ヒント 2（調べ方）を見る' }).click();
+  await expect(repairHints.locator('.hint')).toHaveCount(0);
   await repairHints.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
-  await expect(repairHints.locator('.hint').last()).toContainText('sudo visudo -f /etc/sudoers.d/operators');
+  await expect(repairHints.locator('.hint')).toContainText('sudo visudo -f /etc/sudoers.d/operators');
 
   // 調べ方のとおりに打つと、比べる 2 つが端末に出る
   await typeCommand(page, 'cat runbook.txt');
   await expect(terminalOutput(page)).toContainText('は管理者だけが行う');
   await typeCommand(page, 'sudo -l');
   await expect(terminalOutput(page)).toContainText('(root) NOPASSWD: /usr/local/sbin/');
+
+  // 操作のしかたのとおりに打つと、ヒントを見なくても直すファイルを探し出せる。運用担当のままでは断られ、管理者なら一覧と中身が出る
+  await typeCommand(page, 'sudo ls /etc/sudoers.d');
+  await expect(terminalOutput(page)).toContainText('is not allowed to execute');
+  await loginToTerminal(page, 'admin');
+  await typeCommand(page, 'sudo ls /etc/sudoers.d');
+  await expect(terminalOutput(page)).toContainText('operators');
+  await typeCommand(page, 'sudo cat /etc/sudoers.d/operators');
+  await expect(terminalOutput(page)).toContainText('# 運用担当に sudo で許可する操作');
 });
 
 test('機械の配布物を一度読めなくても、止まった理由が示され、「もう一度チェックする」で始められる', MACHINE, async ({ page }) => {
