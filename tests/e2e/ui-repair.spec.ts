@@ -156,16 +156,16 @@ test('対策を適用した演習を続きから始めると、開始前チェ�
 test('区画の補足は ⓘ に畳んであり、キーボードで開いて読め、Esc で閉じる', async ({ page }) => {
   await page.getByRole('tab', { name: '対策' }).click();
   const panel = page.getByRole('tabpanel', { name: '対策' });
-  await expect(panel).not.toContainText('困ったら、順番に開けます。', { useInnerText: true });
+  await expect(panel).not.toContainText('直し方のヒントです。', { useInnerText: true });
   await expect(panel).not.toContainText('自動で確かめます', { useInnerText: true });
   await expect(panel).not.toContainText('スタンプは残ります', { useInnerText: true });
 
   const hint = panel.getByRole('button', { name: 'ヒント の説明' });
   await hint.focus();
   await page.keyboard.press('Enter');
-  await expect(panel.getByRole('note').filter({ hasText: '困ったら、順番に開けます。見ても減点はありません。' })).toBeVisible();
+  await expect(panel.getByRole('note').filter({ hasText: '直し方のヒントです。調べるときのヒントは、「状況」と「調査」のタブにあります。見ても減点はありません。' })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(panel.getByRole('note').filter({ hasText: '困ったら、順番に開けます。' })).toBeHidden();
+  await expect(panel.getByRole('note').filter({ hasText: '直し方のヒントです。' })).toBeHidden();
   await expect(hint).toBeFocused();
 
   await panel.getByRole('button', { name: '② テストする の説明' }).click();

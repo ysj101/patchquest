@@ -223,7 +223,7 @@
       "count": 7
     },
     "sonarjs/no-nested-conditional": {
-      "count": 3
+      "count": 2
     }
   },
   "platform/ui/dom.ts": {
