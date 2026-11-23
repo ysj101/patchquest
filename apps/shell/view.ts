@@ -1,5 +1,5 @@
 // 擬似シェルの画面（ターミナル）。隔離 iframe の中で動き、コマンド行を 1 行ずつ ctx.request（Host 経由）で送る。
-// エディタを開くコマンド（visudo）では、入力欄の代わりに編集画面を出し、保存するときに同じコマンド行へ書き換えた行を付けて送る。
+// エディタを開くコマンド（visudo・sudoedit）では、入力欄の代わりに編集画面を出し、保存するときに同じコマンド行へ書き換えた行を付けて送る。
 // 出力は textContent で表示し、端末のエスケープや HTML を解釈しない。キーボードだけで操作できる
 import type { AppResponse } from '../../platform/contract';
 import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
@@ -167,12 +167,13 @@ class Terminal {
       this.print('term-note', note);
       this.ready();
     };
-    const panel = editorPanel(file, {
+    const tool = editorTool(line);
+    const panel = editorPanel(tool, file, {
       save: async (edits) => {
         const result = await this.send(line, edits);
-        if (result === null) return 'visudo: 保存できませんでした（端末の出力を確かめてください）';
+        if (result === null) return `${tool}: 保存できませんでした（端末の出力を確かめてください）`;
         if (result.exit !== 0) return result.stderr;
-        // 本物の visudo は、保存できたときに何も出力しない。保存できたことが分かるよう、出力がなければ知らせを出す
+        // 本物の visudo と sudoedit は、保存できたときに何も出力しない。保存できたことが分かるよう、出力がなければ知らせを出す
         close(result.stdout || `${file.path} を保存しました`);
         return null;
       },
@@ -182,6 +183,11 @@ class Terminal {
     this.box.append(panel.element);
     panel.focus();
   }
+}
+
+/** 編集画面を開いたコマンドの名前。編集画面の案内と知らせに使う（sudoedit は、本物の Linux の端末でだけ開く） */
+function editorTool(line: string): string {
+  return /(?:^|[\s/])visudo(?:\s|$)/.test(line) ? 'visudo' : 'sudoedit';
 }
 
 /** 端末の画面を作る。guide は、端末を開いたときに最初に出す案内のうち、アプリごとに違う部分（使えるコマンドの調べ方など） */

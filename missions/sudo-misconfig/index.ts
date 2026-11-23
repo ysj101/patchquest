@@ -2,7 +2,7 @@
 // 許可されているサーバを点検し、ターミナルの操作で設定を絞る。対策を選ぶのではなく、操作そのものが修正になる（repair: record）。
 // 端末の中身は本物の Linux（教材アプリ「Linux 端末」。WASM のエミュレータで動く）で、sudo の判断も本物の sudo が行う
 import { PROVISION_HOOK } from '../../apps/shell/linux/hooks';
-import { STATE_CHANGING_COMMAND } from '../../apps/shell/scenario';
+import { TERMINAL_REPAIR } from '../../apps/shell/scenario';
 import type { MissionPack } from '../../platform/contract';
 import { IMPLEMENTATIONS } from './implementations';
 import { APPROACH, DEBRIEF, HINTS, REPAIR_GUIDE, SOLUTION, TRANSFER_CHECK, WORKED_EXAMPLE } from './learning';
@@ -60,13 +60,10 @@ export const sudoMisconfigPack: MissionPack = {
         revert: 'baseline',
       },
     ],
-    // 調べるのも直すのも、ターミナルにコマンドを打って行う。同じ操作を送る定型の操作は置かない
-    actions: [],
+    // 調べるのも直すのも、ターミナルにコマンドを打って行う。状態を変えた操作（visudo で書き換えて保存した）だけを記録する
+    ...TERMINAL_REPAIR,
     approach: APPROACH,
-    defenses: [],
     repairGuide: REPAIR_GUIDE,
-    // 状態を変えた操作（visudo で書き換えて保存した）だけを記録する。調べるだけの操作や、断られた操作は記録しない
-    repair: { kind: 'record', record: STATE_CHANGING_COMMAND, noun: '加えた変更' },
     probes: PROBES,
     tests: {
       target: ['shell.maintenance-denied', ...TARGET_CASES.map((test) => test.id)],

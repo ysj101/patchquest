@@ -1,5 +1,5 @@
 // 教材アプリ「Linux 端末」の教材ロジック。擬似シェルと同じ形の要求（POST /sh { line, cwd?, edits? }）を受け、
-// コマンド行を演習用の機械（本物の Linux）の中で、ログインした利用者として実行する。sudo も visudo も本物が動く。
+// コマンド行を演習用の機械（本物の Linux）の中で、ログインした利用者として実行する。sudo も visudo も sudoedit も本物が動く。
 // 主体はセッションから解決する。機械の状態を変えたかどうかは、実行の前後でファイルを比べて決める
 import type { AppRequest, AppResponse } from '../../../platform/contract';
 import type { ServerContext } from '../../../runtimes/browser/app-module';
@@ -14,11 +14,11 @@ import { emitChanges, emitExecutions, emitSudoDecisions } from './events';
 const RUN_TIMEOUT_MS = 4500;
 /** visudo が、構文エラーのあとに入力を待って出す問い。この端末では答えられないので、保存せずに終わる */
 const VISUDO_PROMPT = /What now\? /g;
-/** エディタを開いて、何も変えずに閉じたときの visudo の知らせ。編集画面を開く操作では出さない */
-const VISUDO_UNCHANGED = /^visudo: .*\.tmp unchanged\n?/m;
+/** エディタを開いて、何も変えずに閉じたときの visudo と sudoedit の知らせ。編集画面を開く操作では出さない */
+const EDITOR_UNCHANGED = /^(?:visudo: .*\.tmp|sudoedit: .*) unchanged\n?/m;
 
-/** エディタ（guest/editor）が残す結果 */
-type EditorResult = '' | 'opened' | 'applied' | 'same' | 'range';
+/** エディタ（guest/editor）が残す結果。applied は visudo の作業用の写しを、written は sudoedit の作業用の写しを書き換えた */
+type EditorResult = '' | 'opened' | 'applied' | 'written' | 'same' | 'range';
 
 interface Ran {
   exit: number;
@@ -44,7 +44,8 @@ function openedFile(dump: string): EditorFile {
  */
 function saveExit(ran: Ran): { exit: number; note?: string } {
   if (ran.editorResult === 'range') return { exit: 2 };
-  if (ran.editorResult === 'same' || ran.changed.length > 0) return { exit: ran.exit };
+  // sudoedit は構文を確かめないので、書き換えたものがそのまま保存される。成否は sudoedit の終了コードで分かる
+  if (ran.editorResult === 'same' || ran.editorResult === 'written' || ran.changed.length > 0) return { exit: ran.exit };
   if (ran.editorResult === 'applied') return { exit: ran.exit || 1, note: 'visudo: 構文を読めないので、保存していません' };
   return { exit: ran.exit || 1, note: 'エディタが開かれなかったので、編集は保存していません' };
 }
@@ -52,7 +53,7 @@ function saveExit(ran: Ran): { exit: number; note?: string } {
 function respond(ran: Ran, input: Input): AppResponse {
   const opened = ran.editorResult === 'opened';
   const save = input.edits ? saveExit(ran) : { exit: ran.exit };
-  const stderr = [withoutLastNewline(opened ? ran.stderr.replace(VISUDO_UNCHANGED, '') : ran.stderr), ...(save.note ? [save.note] : [])].filter((part) => part !== '').join('\n');
+  const stderr = [withoutLastNewline(opened ? ran.stderr.replace(EDITOR_UNCHANGED, '') : ran.stderr), ...(save.note ? [save.note] : [])].filter((part) => part !== '').join('\n');
   const result = { stdout: withoutLastNewline(ran.stdout.replace(VISUDO_PROMPT, '')), stderr, exit: save.exit, cwd: ran.cwd, changed: ran.changed.length > 0 };
   return json(200, opened ? { ...result, editor: openedFile(ran.editorDump) } : result);
 }
