@@ -179,8 +179,8 @@ main > section > * + * { margin-top: 16px; }
 .hero-safe { font-weight: 700; max-width: 46em; }
 
 .mission-section { display: grid; gap: 8px; }
-/* 課題の表。見出し行と各行は同じ列幅で並べ、狭い幅では縦に積む */
-.mission-table { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+/* 課題の表。見出し行と各行は同じ列幅で並べ、狭い幅では縦に積む。ⓘ の説明が表の外へはみ出せるよう、overflow では切り取らない */
+.mission-table { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .mission-table-head, .mission-card { display: grid; grid-template-columns: minmax(0, 1fr) 72px 200px 72px 190px; gap: 0 16px; align-items: center; padding: 0 16px; }
 .mission-table-head { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
 .mission-table-head > span { padding: 10px 0; }
