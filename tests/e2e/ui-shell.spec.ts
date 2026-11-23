@@ -73,6 +73,20 @@ test('ⓘ はクリックとキーボード（Enter・Space・Esc）で開閉し
   await expect(info).toHaveAttribute('aria-expanded', 'true');
 });
 
+test('表の最後の行でも、ⓘ の説明は表の枠で切れずに下まで見える', async ({ page }) => {
+  const sqli = card(page, 'sqli');
+  await sqli.getByRole('button', { name: 'SQL インジェクション の説明' }).click();
+  const panel = sqli.locator('.info-panel');
+  await expect(panel).toBeVisible();
+  await panel.scrollIntoViewIfNeeded();
+  // 説明の下端のすぐ内側に、説明そのものが描かれている（表の枠で切り取られていない）
+  const bottomIsPanel = await panel.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    return element.contains(document.elementFromPoint(box.left + box.width / 2, box.bottom - 4));
+  });
+  expect(bottomIsPanel).toBe(true);
+});
+
 test('課題は練習を先頭に難易度順に並び、難易度と進捗を文字で示し、どの課題もロックされない', async ({ page }) => {
   const table = page.getByRole('list', { name: '課題の一覧' });
   const rows = table.locator('.mission-row');
