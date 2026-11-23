@@ -1,6 +1,6 @@
 // 学習UIの組み立て。課題一覧・記録・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
-import { ANONYMOUS, RuntimeError, errorMessage, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
+import { ANONYMOUS, errorMessage, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange } from '../contract';
 import { Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { profileFromAttempts } from '../progress/profile';
@@ -10,6 +10,7 @@ import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
 import { browserEffects } from './browser-effects';
 import { openSettings as openSettingsDialog } from './effect-settings-panel';
 import { confirmDialog } from './components';
+import { AddressBar } from './address';
 import { announce, fill, h } from './dom';
 import { DebriefPanel, HintsPanel } from './debrief';
 import { actorLabel, ExerciseView } from './exercise';
@@ -21,6 +22,8 @@ import { siteNav } from './site-nav';
 import { progressActions } from './progress-actions';
 import { PreflightView } from './preflight';
 import { RepairPanel } from './repair';
+import { RequestSender } from './request-sender';
+import type { Route } from './route';
 import { ResultEffects } from './result-effects';
 import { verificationEffect } from './result-effect-model';
 import { serialLatest } from './serial';
@@ -100,6 +103,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   });
 
   let screen: Screen = 'list';
+  const address = new AddressBar((route) => void openRoute(route));
   fill(
     root,
     h('a', { href: '#main', class: 'skip-link' }, '本文へ移動'),
@@ -160,16 +164,19 @@ export async function startApp(root: HTMLElement): Promise<void> {
     return { records, profile: await store.profile(records) };
   }
 
-  async function showList(message?: string): Promise<void> {
+  /** notice は、URL を開けなかった理由。一覧の先頭に出す */
+  async function showList(message?: string, notice?: string): Promise<void> {
     const { records, profile } = await loadRecords();
     fill(
       listView,
+      notice ? h('p', { class: 'banner banner-error', role: 'alert' }, notice) : null,
       missionList(missionEntries(records, orchestrator.snapshot), {
         openSettings,
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
       }, { mastery: profile.mastery, storageWarning: store.unavailableReason }),
     );
+    address.show({ page: 'list' }, !!notice);
     settle(listView, 'list', message);
   }
 
@@ -184,7 +191,18 @@ export async function startApp(root: HTMLElement): Promise<void> {
   async function showRecords(message?: string): Promise<void> {
     const { profile } = await loadRecords();
     fill(recordsView, recordsPage(profile, catalog.packs, store.unavailableReason, openSettings));
+    address.show({ page: 'records' });
     settle(recordsView, 'records', message);
+  }
+
+  /** URL が指す画面を開く。課題は、続きから始められる記録があれば続きから、なければ最初から始める。開けない URL は、理由を添えて課題一覧を出す */
+  async function openRoute(route: Route | null): Promise<void> {
+    if (route?.page === 'list') return showList();
+    if (route?.page === 'records') return showRecords();
+    const records = await saved.then(() => store.list());
+    const entry = missionEntries(records, orchestrator.snapshot).find(({ pack }) => pack.manifest.id === route?.missionId);
+    if (!route || !entry) return showList(undefined, route ? `URL の課題「${route.missionId}」は見つかりませんでした。課題一覧から選んでください。` : 'この URL は開けませんでした。課題一覧から選んでください。');
+    return begin(route.missionId, entry.resumable ? entry.latest : undefined);
   }
 
   let briefingAttemptId: string | null = null;
@@ -192,6 +210,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     others = [];
     // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の点検結果を残さない）
     const started = orchestrator.start(packId, { resume });
+    address.show({ page: 'mission', missionId: packId });
     show('preflight');
     say('開始前チェックを始めました');
     const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
@@ -313,11 +332,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   }
 
   /** 利用者ごとのセッション。演習を始めるたびに発行し直す */
-  const sessions = new Map<ActorKey, SessionToken | null>();
-  async function sessionFor(actor: ActorKey, runId: string): Promise<SessionToken | null> {
-    if (!sessions.has(actor)) sessions.set(actor, (await exercise.invoke({ kind: 'session', actor }, { runId })).session ?? null);
-    return sessions.get(actor)!;
-  }
+  const sessions = new RequestSender(exercise);
 
   /** 現在の利用者として、ブラウザ内の呼び出しを送る。基盤エラーは理由を返し、不合格には数えない。
    * 送り終わったら、実行環境のエラーで送れなかったときも含めて、今の閲覧者で最初の画面を描き直す。
@@ -325,27 +340,15 @@ export async function startApp(root: HTMLElement): Promise<void> {
   async function send(request: AppRequest): Promise<string | null> {
     const runId = orchestrator.newRunId();
     const actor = viewer;
-    const outcome = await invokeRequest(actor, request, runId).finally(() => renderView({ actor: viewer }));
+    const outcome = await sessions.invoke(actor, request, runId).finally(() => renderView({ actor: viewer }));
     if ('failure' in outcome) return outcome.failure;
     await observe(outcome.exchange);
     guide.reach('request-sent');
     return null;
   }
 
-  async function invokeRequest(actor: ActorKey, request: AppRequest, runId: string): Promise<{ exchange: Exchange } | { failure: string }> {
-    try {
-      const session = await sessionFor(actor, runId);
-      const { response, events } = await exercise.invoke({ kind: 'request', session, request }, { runId });
-      return { exchange: { runId, actor, kind: 'request', request, response, events } };
-    } catch (e) {
-      if (e instanceof RuntimeError && e.code === 'input-too-large') return { failure: '入力が大きすぎます（1 件 4KB まで）。短くしてください。' };
-      if (e instanceof RuntimeError) return { failure: `システムのエラーで送れませんでした（不合格には数えません）：${e.message}` };
-      throw e;
-    }
-  }
-
   // 進捗を読み込む・削除すると記録が変わるので、演習の途中でも演習を止めて課題一覧へ戻す（消えた記録の演習を続けさせない）
   const progress = progressActions({ store, view: document.body, guide, refresh: (message) => screen === 'records' ? showRecords(message) : showList(message), announce: say });
 
-  await showList();
+  await openRoute(address.read());
 }

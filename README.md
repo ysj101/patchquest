@@ -7,6 +7,7 @@
 インストールなしで試すには、PC版の Chrome で <https://ysj101.github.io/patchquest/> を開きます。
 
 - ローカル版と同じビルド成果物を GitHub Pages で静的に配信しているだけで、サーバー側の処理や外部 API はありません。
+- 課題へ直接入る URL は、末尾に `#/missions/<課題ID>` を付けます（例：<https://ysj101.github.io/patchquest/#/missions/idor>）。課題を開いているときのアドレス欄の URL をそのまま共有できます。
 - 進捗はローカル版と同じくブラウザの中（IndexedDB）にだけ保存され、利用履歴を外部に送信しません。消すときは課題一覧の「設定」にある「進捗をすべて削除」か、ブラウザで `ysj101.github.io` のサイトデータを削除します。
 - main ブランチへの反映時に [.github/workflows/pages.yml](.github/workflows/pages.yml) が自動で配信し直します。PR ごとのプレビューはありません。
 - オフラインで使う、または配信先に依存せずに手元で動かすときは、次のローカル版を使います。
