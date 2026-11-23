@@ -1,5 +1,5 @@
 // オンボーディング（練習用）の課題パック。メモのタイトルの文字数制限が保存処理で効いていない不具合を題材に、
-// 「こわす → なおす → たしかめる → ふりかえる」を 3 分で一周する。セキュリティの前提知識がなくても進められる題材にしている
+// 「体験する → なおす → たしかめる → ふりかえる」を 3 分で一周する。セキュリティの前提知識がなくても進められる題材にしている
 import type { MissionPack } from '../../platform/contract';
 import type { PrepareTitleInput, ValidateTitle } from '../../apps/memo/hooks';
 import { TITLE_MAX_LENGTH } from '../../apps/memo/model';
@@ -21,10 +21,10 @@ export const onboardingPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'onboarding',
-    version: '1.7.0',
+    version: '1.8.0',
     kind: 'tutorial',
     title: '練習：はじめての修正',
-    summary: 'わざと壊したメモアプリで「こわす → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
+    summary: 'わざと穴を残したメモアプリで「体験する → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
     learningObjectives: ['不具合を自分の操作で起こしてみる', '直し方を選び、自動テストで確かめる', 'なぜ起きたかをふりかえる'],
     estimatedMinutes: 3,
     story: {
@@ -198,7 +198,7 @@ export const onboardingPack: MissionPack = {
       },
       {
         id: 'break',
-        title: 'こわしてみよう',
+        title: '不具合を体験してみよう',
         body: '「調査」を開き、40 文字を超えるタイトルのまま「送る」を押してみましょう。',
         anchor: 'actions',
         until: 'reproduced',

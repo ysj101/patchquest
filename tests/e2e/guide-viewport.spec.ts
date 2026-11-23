@@ -22,7 +22,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 1024, height: 600
     await readGuide(page, '何が起きたか読んでみよう', 'briefing');
     await launchButton(page).click();
 
-    await readGuide(page, 'こわしてみよう', 'actions');
+    await readGuide(page, '不具合を体験してみよう', 'actions');
     expect((await page.getByLabel('タイトル（49 文字）').inputValue()).length, '40文字を超えるタイトルのまま送る').toBeGreaterThan(40);
     await page.getByRole('button', { name: '送る', exact: true }).click();
     await expect(ticketSeals(page)).toContainText('再現：達成');

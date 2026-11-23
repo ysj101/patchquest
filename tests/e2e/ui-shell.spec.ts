@@ -37,8 +37,8 @@ test('一覧の行は通称と一言だけで、正式名・CWE・分類は ⓘ 
   await expect(card(page, 'onboarding').locator('.vulnerability')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true })).toBeVisible();
-  await expect(page.locator('.hero-catch')).toContainText('セキュリティホールがあるアプリを、自分でこわして、なおしてみよう。');
-  await expect(page.locator('.hero-catch')).toContainText('自分でこわして');
+  await expect(page.locator('.hero-catch')).toContainText('セキュリティホールを自分で体験して、なおしてみよう。');
+  await expect(page.locator('.hero-catch')).toContainText('自分で体験して');
   await expect(page.getByRole('list', { name: '練習の流れ' }).getByRole('listitem')).toHaveText(['体験する', '直す', 'テストで確かめる']);
   await expect(page.locator('.hero-safe')).toContainText('本物のサービスには触れません');
   await expect(page).toHaveTitle('PatchQuest');
