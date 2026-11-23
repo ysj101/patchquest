@@ -74,6 +74,8 @@ mount_session() {
   mkdir -p "$SHARED"
   # プログラムの実行と sudo の記録は、root だけが読み書きできるようにして置く（コマンドごとには、中身を空にするだけ）
   (umask 077; : > "$SHARED/exec.log"; : > "$SHARED/sudo.log")
+  # エディタが書き残すものは、だれでも書けるようにして置く（sudoedit は、エディタを root ではなく利用者の権限で動かす）
+  (umask 000; : > "$SHARED/editor.dump"; : > "$SHARED/editor.result")
   : > "$Q/delta"
 }
 
@@ -119,7 +121,8 @@ run() {
     # 4 行目以降（エディタでの編集）があるときだけ、編集のファイルを作る
     if IFS= read -r first; then
       rm_edits=0
-      (umask 077; { printf '%s\n' "$first"; cat; } > "$SHARED/edits")
+      # 利用者の権限で動くエディタ（sudoedit）も読めるようにする
+      (umask 022; { printf '%s\n' "$first"; cat; } > "$SHARED/edits")
     fi
   } < "$Q/request"
   if [ "$rm_edits" = 1 ]; then rm -f "$SHARED/edits"; fi

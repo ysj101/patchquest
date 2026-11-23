@@ -2,7 +2,7 @@
 // 本物の sudo・visudo での一連の操作、機械の状態の変化の検出を確かめる
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { linuxApp } from '../../apps/shell/linux';
-import { visudoSave } from '../../apps/shell/scenario';
+import { sudoeditSave, visudoSave } from '../../apps/shell/scenario';
 import type { AppRequest, FixtureData, ObservedEvent, PrepareOptions } from '../../platform/contract';
 import { AppEngine } from '../../runtimes/browser/engine';
 import { machineEvaluator } from '../support/engine-runtime';
@@ -127,6 +127,22 @@ describe('本物の Linux の端末', { timeout: SLOW }, () => {
     expect(first).not.toBe('');
     // 同じ編集をもう一度送ると、行番号は書き換わったあとのファイルに当てはまる（再生は、同じ初期状態から行う）
     expect(await send('admin', visudoSave(OPERATORS, [{ line: 1, text: '# 先頭に足した' }]))).toMatchObject({ exit: 0, changed: false });
+  });
+
+  it('sudoedit は編集画面へ中身を渡し、書き換えた行を root の権限で保存する（構文は確かめない）', async () => {
+    const host = String(refs['host.name']);
+    // 相対パスで開いても、編集するファイルの絶対パスが分かる
+    const opened = await sh('admin', 'sudoedit hostname', '/etc');
+    expect(opened).toMatchObject({ exit: 0, changed: false, stderr: '', editor: { path: '/etc/hostname', lines: [host] } });
+    expect(await sh('operator', 'sudoedit /etc/hostname')).toMatchObject({ exit: 1, changed: false, stderr: expect.stringContaining('is not allowed to execute') as unknown });
+    expect(await send('operator', sudoeditSave('/etc/hostname', [{ line: 1, text: 'x' }]))).toMatchObject({ exit: 1, changed: false, stderr: expect.stringContaining('エディタが開かれなかった') as unknown });
+    expect(await send('admin', sudoeditSave('/etc/hostname', [{ line: 2, text: 'x' }]))).toMatchObject({ exit: 2, changed: false, stderr: expect.stringContaining('sudoedit: 行番号は 1〜1 で指定してください（指定：2）') as unknown });
+
+    const saved = await send('admin', sudoeditSave('/etc/hostname', [{ line: 1, text: `${host} # 点検済み` }, { after: 1, text: '足した行' }]));
+    expect(saved).toMatchObject({ exit: 0, changed: true, stderr: '' });
+    expect(saved.events.at(-1)).toEqual({ type: 'file.changed', data: { path: '/etc/hostname', user: refs['accounts.admin.name'] } });
+    expect((await sh('operator', 'cat /etc/hostname; stat -c "%a %U" /etc/hostname')).stdout).toBe(`${host} # 点検済み\n足した行\n644 root`);
+    expect(await send('admin', sudoeditSave('/etc/hostname', [{ line: 2, text: '足した行' }]))).toMatchObject({ exit: 0, changed: false });
   });
 
   it('ファイルを変えたコマンドだけが、機械の状態を変えたことになる', async () => {

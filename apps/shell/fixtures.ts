@@ -1,6 +1,6 @@
 // 架空の機械の初期データ。seed からホスト名・利用者名・プログラム名を決める（spec §5.4）。時刻は固定で、同じ seed なら同じ機械になる
 import type { JsonPrimitive } from '../../platform/contract';
-import type { FixtureGenerator } from '../../runtimes/browser/app-module';
+import type { FixtureGenerator, HookAccessor } from '../../runtimes/browser/app-module';
 import type { Database } from '../../runtimes/browser/sqlite';
 import { random } from '../shared/random';
 import { COMMANDS } from './exec';
@@ -47,14 +47,36 @@ interface Cast {
   publicOutput: string;
 }
 
+/**
+ * 課題が、共通の機械に足すもの。足したプログラムを運用担当の日常の操作にしたり、運用メモに行を足したりできる。
+ * 利用者・ディレクトリ・プログラムを置いたあと、sudo の設定を決める前に呼ばれる
+ */
+export type MachineAddition = (
+  db: Database,
+  people: { operator: string; admin: string },
+  hook: HookAccessor,
+) => {
+  /** 運用担当の日常の操作に足すプログラム（絶対パス）。sudo で許可する操作に入る */
+  operations: string[];
+  /** 運用メモに足す行 */
+  notes: string[];
+  refs: Record<string, JsonPrimitive>;
+};
+
+const NOTHING_ADDED: MachineAddition = () => ({ operations: [], notes: [], refs: {} });
+
 /** ファイル・ディレクトリを置く。親ディレクトリを先に置いておく */
-function put(db: Database, node: Omit<FileNode, 'content'> & { content?: string }): void {
+export function put(db: Database, node: Omit<FileNode, 'content'> & { content?: string }): void {
   const parent = node.path === '/' ? null : node.path.slice(0, node.path.lastIndexOf('/')) || '/';
   db.exec({ sql: 'INSERT INTO files (path, parent, kind, owner, readable, content) VALUES (?, ?, ?, ?, ?, ?)', bind: [node.path, parent, node.kind, node.owner, node.readable, node.content ?? ''] });
 }
 
-function putProgram(db: Database, path: string, needsRoot: boolean, output: string): void {
-  put(db, { path, kind: 'program', owner: ROOT, readable: 'all' });
+/**
+ * プログラムを置く。script を渡すと、決まった出力を返す代わりに、その中身のシェルスクリプトとして動く
+ *（本物の Linux で動かす apps/shell/linux だけが実行できる）
+ */
+export function putProgram(db: Database, path: string, needsRoot: boolean, output: string, script = ''): void {
+  put(db, { path, kind: 'program', owner: ROOT, readable: 'all', content: script });
   db.exec({ sql: 'INSERT INTO programs (path, needs_root, output) VALUES (?, ?, ?)', bind: [path, needsRoot ? 1 : 0, output] });
 }
 
@@ -101,7 +123,7 @@ function build(db: Database, { host, operator, admin, operations, maintenance, p
 }
 
 /** 設定ファイルと、調べる手がかりになるファイルを置く。granted は運用担当への sudo の許可（交換点が決めた行） */
-function writeFiles(db: Database, { host, operator, operations, maintenance }: Cast, granted: string[], provisionHook: string): string {
+function writeFiles(db: Database, { host, operator, operations, maintenance }: Cast, granted: string[], provisionHook: string, notes: string[]): string {
   const operatorsSudoers = ['# 運用担当に sudo で許可する操作', ...granted].join('\n');
   const broken = parseSudoers(operatorsSudoers).errors[0];
   if (broken) throw new Error(`${provisionHook} が返した設定を読めません（${broken.line} 行目：${broken.message}）`);
@@ -112,7 +134,7 @@ function writeFiles(db: Database, { host, operator, operations, maintenance }: C
   const runbook = `${operator.home}/runbook.txt`;
   put(db, {
     path: runbook, kind: 'file', owner: operator.name, readable: 'all',
-    content: [`運用メモ（${host}）`, ...operations.map((operation) => `- 日常の運用操作：sudo ${operation.path}`), `- 保守の操作（${maintenance}）は管理者だけが行う。必要なときは管理者に依頼する`].join('\n'),
+    content: [`運用メモ（${host}）`, ...operations.map((operation) => `- 日常の運用操作：sudo ${operation.path}`), ...notes, `- 保守の操作（${maintenance}）は管理者だけが行う。必要なときは管理者に依頼する`].join('\n'),
   });
   put(db, {
     path: '/var/log/ops.log', kind: 'file', owner: ROOT, readable: 'all',
@@ -123,16 +145,18 @@ function writeFiles(db: Database, { host, operator, operations, maintenance }: C
 
 /**
  * 機械の初期データを作る生成器。provisionHook は、運用担当への sudo の許可を決める交換点の ID。
- * 同じ機械を別の教材アプリ（本物の Linux で動かす apps/shell/linux）でも使えるよう、交換点だけを差し替えられる
+ * 同じ機械を別の教材アプリ（本物の Linux で動かす apps/shell/linux）でも使えるよう、交換点だけを差し替えられる。
+ * add を渡すと、課題のためのファイルやプログラムを足した機械になる
  */
-export const machineFixture = (provisionHook: string): FixtureGenerator => (db, seed, hook) => {
+export const machineFixture = (provisionHook: string, add: MachineAddition = NOTHING_ADDED): FixtureGenerator => (db, seed, hook) => {
   const machine = cast(seed);
   const { operator, admin, maintenance } = machine;
   const operations = machine.operations.map((operation) => operation.path);
   build(db, machine);
+  const added = add(db, { operator: operator.name, admin: admin.name }, hook);
   // 運用担当への許可は交換点が決める。レシピが注入した実装なら、ここで過剰な許可が初期データに入る
-  const granted = hook<ProvisionSudoers>(provisionHook)({ operator: operator.name, operations, maintenance: [maintenance] });
-  const runbook = writeFiles(db, machine, granted, provisionHook);
+  const granted = hook<ProvisionSudoers>(provisionHook)({ operator: operator.name, operations: [...operations, ...added.operations], maintenance: [maintenance] });
+  const runbook = writeFiles(db, machine, granted, provisionHook, added.notes);
   const refs: Record<string, JsonPrimitive> = {
     'host.name': machine.host,
     'accounts.operator.name': operator.name,
@@ -142,6 +166,7 @@ export const machineFixture = (provisionHook: string): FixtureGenerator => (db, 
     'programs.public.path': PUBLIC_PROGRAM,
     'sudoers.operators.path': OPERATORS_SUDOERS,
     'files.runbook.path': runbook,
+    ...added.refs,
   };
   // 1 つめを programs.operation.path、2 つめ以降を programs.operation2.path … として参照する
   operations.forEach((path, index) => (refs[`programs.operation${index === 0 ? '' : index + 1}.path`] = path));

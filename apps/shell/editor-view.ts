@@ -1,4 +1,4 @@
-// ターミナルの中に開く編集画面（visudo）。ファイルを行番号つきで並べ、行ごとに書き換える。行を足す・消すこともできる。保存は呼び出し側（端末）が送る。
+// ターミナルの中に開く編集画面（visudo・sudoedit）。ファイルを行番号つきで並べ、行ごとに書き換える。行を足す・消すこともできる。保存は呼び出し側（端末）が送る。
 // 本物のエディタと同じく、開いている間は端末の出力の代わりに表示する。
 // 内容は入力欄の値として扱い、HTML として解釈しない。キーボードだけで操作できる
 // （Tab で行を移り、Enter で下に行を足し、空の行で Backspace を押すとその行を消す。Ctrl+S で保存、Esc で閉じる）
@@ -118,6 +118,7 @@ function lineList(file: EditorFile) {
  * （二重に送ったり、閉じたあとで保存が成り立ったりしないように）
  */
 function editorCommands(
+  tool: string,
   file: EditorFile,
   rows: readonly Row[],
   actions: EditorActions,
@@ -130,12 +131,12 @@ function editorCommands(
     cancelButton.disabled = value;
   };
   const cancel = () => {
-    if (!saving) actions.close(`visudo: ${file.path} は変更していません（保存せずに閉じました）`);
+    if (!saving) actions.close(`${tool}: ${file.path} は変更していません（保存せずに閉じました）`);
   };
   const save = async () => {
     if (saving) return;
     const edits = editsOf(file, rows);
-    if (edits.length === 0) return void actions.close(`visudo: ${file.path} unchanged`);
+    if (edits.length === 0) return void actions.close(`${tool}: ${file.path} unchanged`);
     setSaving(true);
     message.textContent = '';
     try {
@@ -148,21 +149,27 @@ function editorCommands(
   return { save, cancel };
 }
 
-/** 編集画面を作る。高さを合わせて最初の行にフォーカスを移すのは、画面に置いたあとで呼び出し側が focus で行う */
-export function editorPanel(file: EditorFile, actions: EditorActions): { element: HTMLElement; focus(): void } {
+/** sudo の設定を編集するコマンド。行の先頭の # の意味（コメント）を、編集画面で案内する */
+const VISUDO = 'visudo';
+
+/**
+ * 編集画面を作る。tool は、編集画面を開いたコマンドの名前（visudo・sudoedit）。
+ * 高さを合わせて最初の行にフォーカスを移すのは、画面に置いたあとで呼び出し側が focus で行う
+ */
+export function editorPanel(tool: string, file: EditorFile, actions: EditorActions): { element: HTMLElement; focus(): void } {
   const { list, first, rows } = lineList(file);
   const message = el('p', { className: 'term-err term-edit-message', role: 'alert' });
   const saveButton = el('button', { type: 'button', className: 'term-button' }, '保存して閉じる（Ctrl+S）');
   const cancelButton = el('button', { type: 'button', className: 'term-button' }, '保存せずに閉じる（Esc）');
 
-  const { save, cancel } = editorCommands(file, rows, actions, { message, saveButton, cancelButton });
+  const { save, cancel } = editorCommands(tool, file, rows, actions, { message, saveButton, cancelButton });
   saveButton.addEventListener('click', () => void save());
   cancelButton.addEventListener('click', cancel);
 
   const element = el(
     'section',
     { className: 'term-editor', ariaLabel: `${file.path} の編集` },
-    el('p', { className: 'term-note' }, `visudo: ${file.path} を編集しています。行の先頭に # を付けると、その行は設定として読まれなくなります（コメント）。`),
+    el('p', { className: 'term-note' }, `${tool}: ${file.path} を編集しています。${tool === VISUDO ? '行の先頭に # を付けると、その行は設定として読まれなくなります（コメント）。' : ''}`),
     el('p', { className: 'term-note' }, '行の右の ＋（または Enter）で下に行を足し、×（または空にした行で Backspace）でその行を消します。'),
     list,
     el('div', { className: 'term-edit-actions' }, saveButton, cancelButton, first),

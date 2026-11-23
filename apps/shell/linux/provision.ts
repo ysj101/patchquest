@@ -78,15 +78,16 @@ function accountCommands(db: Database): string[] {
 }
 
 /**
- * seed から作る架空のプログラム。決まった出力を返すだけで、機械の状態は変えない。
+ * seed から作る架空のプログラム。課題が足すもの（中身を持つもの）のほかは、決まった出力を返すだけで、機械の状態は変えない。
  * root の権限で動いたことは、root だけが書ける記録に残す（利用者には書き換えられない）
  */
 function programScript(row: FileRow): string {
   const lines = ['#!/bin/sh'];
   if (row.needsRoot === 1) {
-    lines.push(`[ "$(id -u)" = 0 ] || { echo "$0: この操作には root の権限が必要です" >&2; exit 1; }`, `echo "$0 \${SUDO_USER:-root} root" >> ${WORK_DIR}/exec.log`);
+    lines.push(`[ "$(id -u)" = 0 ] || { echo "$0: この操作には root の権限が必要です" >&2; exit 1; }`, '# 実行の記録（演習の観測ログに出る）', `echo "$0 \${SUDO_USER:-root} root" >> ${WORK_DIR}/exec.log`);
   }
-  return [...lines, `echo ${quote(row.output ?? '')}`].join('\n');
+  // 中身を持つプログラムは、その中身のスクリプトとして動かす。持たないものは、決まった出力を返すだけ
+  return [...lines, row.content === '' ? `echo ${quote(row.output ?? '')}` : row.content].join('\n');
 }
 
 function placementOf(row: FileRow): Placement[] {

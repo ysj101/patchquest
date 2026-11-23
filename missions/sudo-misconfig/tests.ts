@@ -1,6 +1,6 @@
 // sudo の設定ミスのパックの、攻撃の成立条件と固有のテスト。保守の操作を実行できないことは擬似シェルと Linux 端末が共用するテストが確かめるので、
 // ここでは許可の一覧（sudo -l）に残っていないかを確かめる。利用者名・プログラム名は fixture の値で参照する
-import { SUCCEEDED, ranAsRoot, sh } from '../../apps/shell/scenario';
+import { SUCCEEDED, operatorRanAsRoot, ranAsRoot, sh } from '../../apps/shell/scenario';
 import type { ProbeDef, TestCase } from '../../platform/contract';
 
 const MAINTENANCE = '{{programs.maintenance.path}}';
@@ -14,7 +14,7 @@ export const PROBES: ProbeDef[] = [
     title: '運用担当が、保守の操作を root の権限で実行できる',
     steps: [sh('operator', `sudo ${MAINTENANCE}`, SUCCEEDED, [MAINTENANCE_RAN_AS_ROOT])],
     // 管理者が実行しても再現にはならない。運用担当の操作だけを数える
-    detect: { actor: { is: 'operator' }, request: { method: 'POST', path: '/sh' }, events: [MAINTENANCE_RAN_AS_ROOT] },
+    detect: operatorRanAsRoot(MAINTENANCE),
   },
 ];
 

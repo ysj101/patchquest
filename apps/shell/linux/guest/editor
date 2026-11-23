@@ -1,15 +1,21 @@
 #!/bin/sh
-# visudo が呼ぶエディタ。画面は持たない。編集（操作<TAB>行番号<TAB>内容。操作は r 書き換え・d 削除・a 下に追加。
+# visudo と sudoedit が呼ぶエディタ。画面は持たない。編集（操作<TAB>行番号<TAB>内容。操作は r 書き換え・d 削除・a 下に追加。
 # 行番号は開いたときのもの）が届いていれば当てはめ、
-# 届いていなければ中身を学習画面の編集画面へ渡して、何も変えずに閉じる。結果（opened・applied・same・range）を書き残す
+# 届いていなければ中身を学習画面の編集画面へ渡して、何も変えずに閉じる。結果（opened・applied・written・same・range）を書き残す
 Q=/run/pq
 for file; do :; done
+# 渡されるのは作業用の写し。visudo は「元の名前.tmp」を渡すので、元のファイルが分かる。sudoedit は別の場所の写しを渡すので、
+# 呼んだ sudoedit（親のプロセス）の最後の引数から、元のファイルを知る
+case "$file" in
+  *.tmp) tool=visudo; target=${file%.tmp} ;;
+  *) tool=sudoedit; target=$(tr '\0' '\n' < "/proc/$PPID/cmdline" | tail -n 1) ;;
+esac
 if [ ! -f "$Q/edits" ]; then
-  { readlink -f "${file%.tmp}"; cat "$file"; } > "$Q/editor.dump"
+  { readlink -f "$target"; cat "$file"; } > "$Q/editor.dump"
   printf opened > "$Q/editor.result"
   exit 0
 fi
-awk -v edits="$Q/edits" '
+awk -v edits="$Q/edits" -v tool="$tool" '
   BEGIN {
     while ((getline row < edits) > 0) {
       op = substr(row, 1, 1); rest = substr(row, 3); tab = index(rest, "\t"); n = substr(rest, 1, tab - 1) + 0; value = substr(rest, tab + 1)
@@ -19,8 +25,9 @@ awk -v edits="$Q/edits" '
     printf "%s", added[0]
   }
   { if (!(FNR in gone)) print (FNR in text) ? text[FNR] : $0; printf "%s", added[FNR] }
-  END { if (last > NR) { printf "visudo: 行番号は 1〜%d で指定してください（指定：%d）\n", NR, last > "/dev/stderr"; exit 2 } }
+  END { if (last > NR) { printf "%s: 行番号は 1〜%d で指定してください（指定：%d）\n", tool, NR, last > "/dev/stderr"; exit 2 } }
 ' "$file" > "$file.pq" || { rm -f "$file.pq"; printf range > "$Q/editor.result"; exit 2; }
-if cmp -s "$file" "$file.pq"; then printf same > "$Q/editor.result"; else printf applied > "$Q/editor.result"; fi
+# visudo は、このあと構文を確かめてから保存する（applied）。sudoedit は、書き換えた写しをそのまま元のファイルへ書き戻す（written）
+if cmp -s "$file" "$file.pq"; then printf same > "$Q/editor.result"; elif [ "$tool" = visudo ]; then printf applied > "$Q/editor.result"; else printf written > "$Q/editor.result"; fi
 cat "$file.pq" > "$file"
 rm -f "$file.pq"
