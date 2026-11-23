@@ -191,11 +191,8 @@
     }
   },
   "platform/ui/app.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    },
     "id-length": {
-      "count": 3
+      "count": 2
     },
     "max-lines-per-function": {
       "count": 1
