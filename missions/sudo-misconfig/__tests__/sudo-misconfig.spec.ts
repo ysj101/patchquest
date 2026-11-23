@@ -2,7 +2,7 @@
 // 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。調べるのも直すのも、
 // ターミナルにコマンドを打って行う（visudo の編集画面で行をコメントにする）
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, expect, loginToTerminal, openHome, resetToInitial, startMission, terminalInput, terminalOutput, test, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, startMission, terminalInput, terminalOutput, test, testRepair as verify, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'backup-cause': 'バックアップに必要な分をこえて、すべてのコマンドが許可されている',
@@ -10,15 +10,8 @@ const CORRECT_CHOICES: Record<string, string> = {
 };
 
 const GUIDE = 'help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名を補完できます。';
-const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
-
 /** 管理者の端末で、運用担当向けの設定の行を visudo でコメントにして保存する */
 const disableLines = (page: Page, ...lines: number[]) => commentOutWithVisudo(page, '/etc/sudoers.d/operators', lines);
-
-async function verify(page: Page): Promise<void> {
-  await page.getByRole('tab', { name: '対策' }).click();
-  await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
-}
 
 test('ターミナルで過剰な許可を見つけて再現し、絞りすぎでは不合格、保守の操作の許可だけを外すと合格する', MACHINE, async ({ page }) => {
   // 本物の Linux を起動し、検証のたびに機械の中でコマンドを実行するので、擬似シェルより時間がかかる
@@ -72,19 +65,14 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await disableLines(page, 3);
   await verify(page);
   await expect(repairPanel(page).locator('.repair-log li')).toHaveCount(2);
-  await expect(results(page)).toContainText('まだ合格ではありません ふだんの使い方が壊れています。', { timeout: 90_000 });
-  await expect(seals(page)).toContainText('防御：未達成');
-
   // やり直す：加えた変更が消え、機械も過剰な許可のある状態へ戻る
-  await resetToInitial(page);
-  await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
+  await expectBrokenNormalThenReset(page);
 
   // A04：保守の操作の許可（3 行目）だけを外すと、記録した操作が再生されて合格する
   await disableLines(page, 3);
   await verify(page);
   await expect(repairPanel(page).locator('.repair-log li')).toHaveText([new RegExp(`^admin → \\$ sudo visudo -f /etc/sudoers.d/operators（3 行目を「# [a-z]+ ALL=\\(root\\) NOPASSWD: ${maintenance}」に書き換えて保存）$`)]);
-  await expect(results(page)).toContainText('防御できました', { timeout: 90_000 });
-  await expect(seals(page)).toContainText('防御：達成');
+  await expectDefended(page);
   // テストの結果の詳細は、HTTP の形ではなく、コマンド行と終了コードで示す
   await results(page).getByText('詳しく見る').click();
   await expect(results(page).locator('.outcome', { hasText: '運用担当の許可の一覧に、保守の操作が残っていない' }).locator('dd')).toHaveText(['operator が $ sudo -l', '終了コード 0']);

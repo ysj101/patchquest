@@ -72,28 +72,57 @@ export async function loginToTerminal(page: Page, actor: string): Promise<void> 
   await expect(prompt).toHaveText(/^[a-z]+@/);
 }
 
-/** 端末の中に開いた編集画面（visudo） */
+/** 端末の中に開いた編集画面（visudo・sudoedit） */
 export const terminalEditor = (page: Page) => preview(page).getByRole('region', { name: /の編集$/ });
 
-/**
- * 端末で visudo を開き、指定した行の先頭に # を付けてコメントにして保存する。
- * 保存が済むと編集画面が閉じ、コマンドの入力欄へ戻る
- */
-export async function commentOutWithVisudo(page: Page, file: string, lines: number[]): Promise<void> {
-  await typeCommand(page, `sudo visudo -f ${file}`);
+/** 端末でエディタを開くコマンドを打ち、編集画面で change を行って保存する。保存が済むと編集画面が閉じ、コマンドの入力欄へ戻る */
+async function saveInEditor(page: Page, command: string, change: (row: (line: number) => Locator) => Promise<void>): Promise<void> {
+  await typeCommand(page, command);
   const editor = terminalEditor(page);
-  for (const line of lines) {
-    const row = editor.getByRole('textbox', { name: `${line} 行目`, exact: true });
-    await row.fill(`# ${await row.inputValue()}`);
-  }
+  await change((line) => editor.getByRole('textbox', { name: `${line} 行目`, exact: true }));
   await editor.getByRole('button', { name: /^保存して閉じる/ }).click();
   await expect(editor).toHaveCount(0);
+}
+
+/** 端末で visudo を開き、指定した行の先頭に # を付けてコメントにして保存する */
+export async function commentOutWithVisudo(page: Page, file: string, lines: number[]): Promise<void> {
+  await saveInEditor(page, `sudo visudo -f ${file}`, async (row) => {
+    for (const line of lines) await row(line).fill(`# ${await row(line).inputValue()}`);
+  });
+}
+
+/** 端末で sudoedit を開き、指定した行を書き換えて保存する（本物の Linux の端末だけ） */
+export async function rewriteWithSudoedit(page: Page, file: string, line: number, text: string): Promise<void> {
+  await saveInEditor(page, `sudoedit ${file}`, (row) => row(line).fill(text));
 }
 
 /** 対策タブの「最初の状態に戻す」を押し、確認して戻す */
 export async function resetToInitial(page: Page): Promise<void> {
   await page.getByRole('button', { name: '最初の状態に戻す' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '最初の状態に戻す' }).click();
+}
+
+/** 対策タブのパネル */
+export const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
+
+/** 操作で直す課題で、対策タブを開いて、加えた変更をテストする */
+export async function testRepair(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: '対策' }).click();
+  await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
+}
+
+/** 絞りすぎ・止めすぎの修正が、ふだんの使い方の失敗で不合格になったことを確かめ、最初の状態へ戻す（加えた変更も消える） */
+export async function expectBrokenNormalThenReset(page: Page): Promise<void> {
+  await expect(verifyResults(page)).toContainText('まだ合格ではありません ふだんの使い方が壊れています。', { timeout: 90_000 });
+  await expect(ticketSeals(page)).toContainText('防御：未達成');
+  await resetToInitial(page);
+  await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
+}
+
+/** 加えた変更が再生されて合格し、防御の印が付いたことを確かめる */
+export async function expectDefended(page: Page): Promise<void> {
+  await expect(verifyResults(page)).toContainText('防御できました', { timeout: 90_000 });
+  await expect(ticketSeals(page)).toContainText('防御：達成');
 }
 
 /** 検証結果のパネル */
