@@ -1,5 +1,5 @@
-// 擬似シェルが記録する観測イベントと、やり取りの表示（観測ログと「加えた変更」で使う）。HTTP の形ではなく、端末の言葉で示す。計測した値だけを示す
-import type { AppRequest, AppResponse, ExchangeDescription, JsonValue, ObservedEvent } from '../../platform/contract';
+// 擬似シェルが記録する観測イベントと、やり取りの表示（観測ログ・「加えた変更」・テストの結果で使う）。HTTP の形ではなく、端末の言葉で示す。計測した値だけを示す
+import type { AppRequest, AppResponse, ExchangeDescription, JsonValue, ObservedEvent, ResponseExpectation } from '../../platform/contract';
 
 type JsonObject = Record<string, JsonValue>;
 
@@ -77,6 +77,19 @@ export function describeRequest(request: AppRequest): string | null {
   return final ? `$ ${body.line}（${edits.map((edit) => edit.phrase).join('、')}${final.joint}保存）` : `$ ${body.line}`;
 }
 
+/** 未ログインの要求を断った応答の状態コード */
+const LOGIN_REQUIRED = 401;
+
+/** テストの結果での、期待する結果の表示。未ログインを断る期待と、終了コードの期待だけを示し、なければ説明しない */
+export function describeExpectation(expectation: ResponseExpectation): string | null {
+  if (expectation.status === LOGIN_REQUIRED) return 'ログインを求めて断る';
+  const exit = expectation.body?.find((matcher) => matcher.path === 'exit')?.is;
+  if (exit === undefined) return null;
+  if ('equals' in exit) return `終了コード ${shown(exit.equals)}`;
+  if ('notEquals' in exit) return `終了コード ${shown(exit.notEquals)} 以外`;
+  return null;
+}
+
 const text = (value: JsonValue | undefined): string => (typeof value === 'string' ? value : '');
 
 /** コマンド行を実行したやり取り。結果の印は終了コードで、中身はコマンド・書き換えた行・端末の出力 */
@@ -95,10 +108,17 @@ function describeCommand(request: JsonObject, response: JsonObject): ExchangeDes
   };
 }
 
-/** 観測ログでの表示。コマンドを解釈できなかったやり取り（未ログインや形の違う要求）は説明せず、基盤の表示に任せる */
+/** 未ログインで断ったやり取り。結果の印と中身は、応答の断りの文 */
+function describeLoginRequired(body: JsonObject): ExchangeDescription | null {
+  return typeof body.error === 'string' ? { mark: { ok: false, text: body.error }, blocks: [{ title: '端末の出力', text: body.error }] } : null;
+}
+
+/** 観測ログとテストの結果での表示。コマンドを解釈できなかったやり取り（形の違う要求）は説明せず、基盤の表示に任せる */
 export function describeExchange(request: AppRequest, response: AppResponse): ExchangeDescription | null {
   const body = asObject(response.body);
-  if (!isShell(request) || response.status !== 200 || !body) return null;
+  if (!isShell(request) || !body) return null;
+  if (response.status === LOGIN_REQUIRED) return describeLoginRequired(body);
+  if (response.status !== 200) return null;
   if (request.method === 'GET') return { mark: { ok: true, text: '端末' }, blocks: [{ title: 'プロンプト', text: `${shown(body.user)}@${shown(body.host)}:${shown(body.cwd)}$` }] };
   const sent = asObject(request.body);
   return request.method === 'POST' && sent ? describeCommand(sent, body) : null;

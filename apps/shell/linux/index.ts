@@ -1,7 +1,7 @@
 // 教材アプリ「Linux 端末」。擬似シェルと同じ端末の画面・同じ初期データで、中身だけを本物の Linux に替えたもの。
 // コマンドは、WASM のエミュレータ（v86）の中で起動した Alpine Linux が実行する。sudo の判断も本物の sudo が行う（spec §14）
 import type { AppModule } from '../../../runtimes/browser/app-module';
-import { EVENT_LABELS, describeExchange, describeRequest } from '../events';
+import { EVENT_LABELS, describeExchange, describeExpectation, describeRequest } from '../events';
 import { ACTORS, machineFixture } from '../fixtures';
 import { SCHEMA } from '../schema';
 import { SHELL_TESTS } from '../tests';
@@ -14,7 +14,7 @@ import { handle } from './server';
 export const linuxApp: AppModule = {
   descriptor: {
     id: 'linux',
-    version: '1.2.0',
+    version: '1.3.0',
     features: ['terminal', 'sudo'],
     users: [...ACTORS],
     entryRoute: '/terminal',
@@ -34,6 +34,7 @@ export const linuxApp: AppModule = {
   // 観測イベントの種類と項目名は擬似シェルと同じ（ファイルの変更だけ、行番号を持たない説明にしている）
   eventLabels: Object.values(EVENT_LABELS),
   describeRequest,
+  describeExpectation,
   describeExchange,
   requestEditor: false,
 };

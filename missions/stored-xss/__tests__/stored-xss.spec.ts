@@ -8,8 +8,6 @@ import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, star
 const CORRECT_CHOICES: Record<string, string> = {
   'guestbook-cause': '保存したニックネームを、開いた人の画面で HTML として読んでいる',
   'status-defense': '表示するときに textContent で文字として出す',
-  'support-ticket-cause': '管理画面が、保存した本文を HTML として読んで表示している',
-  'markdown-diary-defense': '表示するたびに、Markdown から作った HTML を、許可したタグ・属性だけ残す処理（サニタイズ）に通す',
 };
 
 const CAROL_COMMENT = '来週は演習問題を解いてみます';
@@ -70,5 +68,5 @@ test('保存した攻撃コメントが別の利用者の画面で実行され�
   await expect(app.locator('.comment-body img')).toHaveCount(0);
 
   // 通常の演習は理解確認を全問出す
-  expect(await answerTransferCheck(page, CORRECT_CHOICES)).toHaveLength(4);
+  expect(await answerTransferCheck(page, CORRECT_CHOICES)).toHaveLength(2);
 });

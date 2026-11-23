@@ -8,8 +8,6 @@ import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, star
 const CORRECT_CHOICES: Record<string, string> = {
   'catalog-cause': '検索語を SQL の文字としてつないでいるので、検索語の中で条件を書き換えられる',
   'catalog-defense': '検索語を値として渡し（バインド）、自分の貸出だけという条件を残す',
-  'login-cause': '入力を SQL の文字としてつないでいるので、入力の中で確かめる条件を書き換えられる',
-  'sort-column-defense': '使ってよい列の名前を一覧で決めておき、一覧にない指定は断る',
 };
 
 const OR_TITLE = "') OR title LIKE '%' --";
@@ -73,5 +71,5 @@ test('登録済みの検索語で他人のメモが返り、値としてのバ�
   await expect(app.getByText('該当するメモはありません。')).toBeVisible();
 
   // 通常の演習は理解確認を全問出す
-  expect(await answerTransferCheck(page, CORRECT_CHOICES)).toHaveLength(4);
+  expect(await answerTransferCheck(page, CORRECT_CHOICES)).toHaveLength(2);
 });

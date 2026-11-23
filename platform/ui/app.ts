@@ -1,7 +1,7 @@
 // 学習UIの組み立て。課題一覧・記録・開始前チェック・演習画面を切り替え、進行（Orchestrator）と保存（ProgressStore）をつなぐ
 import { catalog } from '@catalog';
 import { ANONYMOUS, RuntimeError, errorMessage, isInExercise, type ActorKey, type AppRequest, type AttemptRecord, type Exchange, type SessionToken } from '../contract';
-import { Evaluator } from '../evaluator/evaluator';
+import { DEFAULT_EVALUATOR_LIMITS, Evaluator } from '../evaluator/evaluator';
 import { Orchestrator, type ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { profileFromAttempts } from '../progress/profile';
 import { profileOptions } from './profile-options';
@@ -13,6 +13,7 @@ import { confirmDialog } from './components';
 import { announce, fill, h } from './dom';
 import { DebriefPanel, HintsPanel } from './debrief';
 import { actorLabel, ExerciseView } from './exercise';
+import { describersFor } from './investigation';
 import { GuidePanel } from './guide';
 import { missionList } from './mission-list';
 import { missionEntries } from './mission-entries';
@@ -95,7 +96,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   orchestrator = new Orchestrator({
     apps: catalog.apps,
     packs: catalog.packs,
-    evaluator: new Evaluator(() => new BrowserRuntimeAdapter()),
+    evaluator: new Evaluator(() => new BrowserRuntimeAdapter(), DEFAULT_EVALUATOR_LIMITS, describersFor(catalog.apps)),
     exercise,
   });
 

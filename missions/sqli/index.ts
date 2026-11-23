@@ -23,7 +23,7 @@ export const sqliPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sqli',
-    version: '1.9.0',
+    version: '1.10.0',
     kind: 'mission',
     title: '検索から他人のメモがもれるのを防ぐ',
     estimatedMinutes: 15,

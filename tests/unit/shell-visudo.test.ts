@@ -1,6 +1,6 @@
 // 擬似シェルの visudo（sudo の設定を開いて書き換え、構文を確かめて保存する）と、観測ログでのやり取りの表示を確かめる
 import { beforeEach, describe, expect, it } from 'vitest';
-import { describeEvent, describeExchange, describeRequest } from '../../apps/shell/events';
+import { describeEvent, describeExchange, describeExpectation, describeRequest } from '../../apps/shell/events';
 import { visudoSave } from '../../apps/shell/scenario';
 import type { FixtureData } from '../../platform/contract';
 import { AppEngine } from '../../runtimes/browser/engine';
@@ -122,6 +122,14 @@ describe('観測イベントとやり取りの説明', () => {
     expect(describeRequest({ method: 'POST', path: '/sh', body: ['sudo -l'] })).toBeNull();
   });
 
+  it('テストの結果での期待は、状態コードではなく終了コードで示し、終了コードの期待がなければ説明しない', () => {
+    expect(describeExpectation({ status: 200, body: [{ path: 'exit', is: { equals: 0 } }] })).toBe('終了コード 0');
+    expect(describeExpectation({ status: 200, body: [{ path: 'changed', is: { equals: false } }, { path: 'exit', is: { notEquals: 0 } }] })).toBe('終了コード 0 以外');
+    expect(describeExpectation({ status: 200, body: [{ path: 'stdout', is: { contains: 'x' } }] })).toBeNull();
+    expect(describeExpectation({ status: 200, body: [{ path: 'exit', is: { oneOf: [0, 1] } }] })).toBeNull();
+    expect(describeExpectation({ status: 200 })).toBeNull();
+  });
+
   it('観測ログでは、状態コードではなく終了コードと端末の出力で示す', () => {
     const request = { method: 'POST' as const, path: '/sh', body: { line: 'sudo /usr/bin/a' } };
     expect(describeExchange(request, { status: 200, body: { stdout: '', stderr: 'Sorry', exit: 1, cwd: '/home/sato', changed: false } })).toEqual({
@@ -144,12 +152,19 @@ describe('観測イベントとやり取りの説明', () => {
     expect(reshaped?.blocks[1]?.text).toBe('3 行目：（削除）\n先頭に追加：# 見出し\n1 行目の下に追加：x');
   });
 
+  it('未ログインで断ったやり取りは、状態コードではなく断りの文で示す', () => {
+    const request = { method: 'POST' as const, path: '/sh', body: { line: 'whoami' } };
+    expect(describeExchange(request, { status: 401, body: { error: 'ログインが必要です' } })).toEqual({ mark: { ok: false, text: 'ログインが必要です' }, blocks: [{ title: '端末の出力', text: 'ログインが必要です' }] });
+    expect(describeExchange(request, { status: 401, body: {} })).toBeNull();
+    expect(describeExpectation({ status: 401 })).toBe('ログインを求めて断る');
+  });
+
   it('端末を開いたやり取りはプロンプトで示し、コマンドを解釈できなかったやり取りは説明しない', () => {
     expect(describeExchange({ method: 'GET', path: '/sh' }, { status: 200, body: { user: 'sato', host: 'web-01', cwd: '/home/sato' } })).toEqual({
       mark: { ok: true, text: '端末' },
       blocks: [{ title: 'プロンプト', text: 'sato@web-01:/home/sato$' }],
     });
-    expect(describeExchange({ method: 'POST', path: '/sh', body: { line: 'whoami' } }, { status: 401, body: { error: 'ログインが必要です' } })).toBeNull();
+    expect(describeExchange({ method: 'POST', path: '/sh', body: { line: 'whoami' } }, { status: 500, body: { error: '壊れた' } })).toBeNull();
     expect(describeExchange({ method: 'POST', path: '/sh', body: { line: 1 } }, { status: 200, body: { exit: 0 } })).toBeNull();
     expect(describeExchange({ method: 'POST', path: '/sh', body: 'x' }, { status: 200, body: { exit: 0 } })).toBeNull();
     expect(describeExchange({ method: 'POST', path: '/sh', body: { line: 'x' } }, { status: 200, body: 'x' })).toBeNull();

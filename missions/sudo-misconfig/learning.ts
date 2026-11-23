@@ -113,32 +113,6 @@ export const TRANSFER_CHECK: TransferQuestion[] = [
       },
     ],
   },
-  {
-    id: 'shared-folder-defense',
-    situation:
-      '社内の共有フォルダで、経理の資料が入ったフォルダが「全社員が見て編集できる」設定になっていました。資料を使うのは経理の 3 人だけです。',
-    prompt: '有効な対策はどれでしょうか。',
-    choices: [
-      {
-        id: 'only-needed',
-        label: 'フォルダを見て編集できる人を、経理の 3 人だけにする',
-        correct: true,
-        explanation: 'sudo の設定と同じ考え方です。必要な人に、必要な権限だけを与えます。',
-      },
-      {
-        id: 'rename',
-        label: 'フォルダの名前を、中身が分かりにくいものに変える',
-        correct: false,
-        explanation: '見つけにくくなるだけで、開けばだれでも見て編集できるままです。',
-      },
-      {
-        id: 'notice',
-        label: '「経理以外は開かないでください」と全社員に知らせる',
-        correct: false,
-        explanation: 'お願いは設定を変えません。開こうとすれば開けるままです。',
-      },
-    ],
-  },
 ];
 
 export const DEBRIEF: DebriefDef = {

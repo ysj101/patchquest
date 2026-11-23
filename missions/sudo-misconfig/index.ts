@@ -15,7 +15,7 @@ export const sudoMisconfigPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sudo-misconfig',
-    version: '2.4.0',
+    version: '2.5.0',
     kind: 'mission',
     title: '広すぎる sudo の許可を絞る',
     summary:
