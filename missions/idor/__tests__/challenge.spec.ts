@@ -1,4 +1,4 @@
-// 完走しても「別条件で挑戦する」は出さない。やり直しは「新しいデータで再挑戦する」のまま。
+// 完走しても「別条件で挑戦する」は出さない。やり直しは課題一覧の「最初から始める」で行う。
 import { backToList, expect, openHome, startMission, test } from '../../../tests/e2e/fixtures';
 import { answerTransferCheck, reproduceByPreviousMemo, secureByOwnerCheck } from './idor-flow';
 
@@ -13,7 +13,6 @@ test('完走した振り返りと課題の表に、別条件で挑戦するボ�
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(page.getByRole('button', { name: '別条件で挑戦する' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '別条件で挑戦' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '新しいデータでもう一度挑戦する' })).toBeVisible();
 
   await backToList(page).click();
   await openHome(page);
@@ -21,4 +20,5 @@ test('完走した振り返りと課題の表に、別条件で挑戦するボ�
   await expect(card).toHaveCount(1);
   await expect(card.getByRole('button', { name: '別条件で挑戦する' })).toHaveCount(0);
   await expect(card.getByRole('button', { name: '続きから始める' })).toBeVisible();
+  await expect(card.getByRole('button', { name: '最初から始める' })).toBeVisible();
 });

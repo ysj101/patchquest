@@ -1,5 +1,5 @@
 // 学習UI：対策パネル・検証結果・ヒント・振り返り（Issue #13）
-import { backToList, enterWorkbench, expect, openRawRequest, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyResults, verifyWith } from './fixtures';
+import { backToList, enterWorkbench, expect, openMission, openRawRequest, reproduceNoteLeak, preview, startMission, test, ticketSeals as seals, verifyResults, verifyWith } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await startMission(page, 'test-pack');
@@ -81,7 +81,7 @@ test('ヒントは段階的に開け、解法は確認してから表示する',
   await expect(hints.locator('.hint-solution')).toBeFocused();
 });
 
-test('最初の状態に戻すと対策とデータが戻り、新しいデータで再挑戦すると新しい演習票になる', async ({ page }) => {
+test('最初の状態に戻すと対策とデータが戻り、課題一覧から最初から始めると新しい演習票になる', async ({ page }) => {
   const editor = page.locator('[data-anchor="request-editor"]');
   await page.getByRole('tab', { name: '調査' }).click();
   await openRawRequest(page);
@@ -103,8 +103,8 @@ test('最初の状態に戻すと対策とデータが戻り、新しいデー�
   await expect(preview(page).getByText('あとで消えるノート')).toHaveCount(0);
 
   const ticket = await page.locator('.ticket-id').textContent();
-  await page.getByRole('tab', { name: '振り返り' }).click();
-  await page.getByRole('button', { name: '新しいデータでもう一度挑戦する' }).click();
+  await backToList(page).click();
+  await openMission(page, 'test-pack');
   await enterWorkbench(page);
   await expect(page.locator('.ticket-id')).not.toHaveText(ticket!);
   await expect(seals(page)).toContainText('再現：未達成');
