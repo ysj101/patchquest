@@ -5,9 +5,9 @@ import type { AppRequest, AppResponse } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
 import { json } from '../shared/http';
 import { COMMANDS, resolveTarget, runTarget } from './exec';
-import { PATH_DIRS, baseName, childrenOf, currentAccount, findNode, hostname, type Account } from './model';
+import { PATH_DIRS, baseName, canRead, childrenOf, currentAccount, findNode, hostname, normalizePath, type Account } from './model';
 import { parseEdits, type LineEdit } from './edits';
-import { MAX_LINE_LENGTH, fail, ok, tokenize, type Env, type Output } from './shell';
+import { MAX_LINE_LENGTH, NAMES_PATH, fail, ok, tokenize, type Env, type Output } from './shell';
 import { SUDO_USAGE, sudo } from './sudo';
 
 const HELP_USAGE = { usage: 'help', summary: '使えるコマンドを一覧する' };
@@ -52,6 +52,13 @@ function parseBody(body: AppRequest['body'], home: string, validCwd: (cwd: strin
   return 'error' in parsed ? parsed : { line, cwd, edits: parsed.edits };
 }
 
+/** 名前を尋ねる要求の本文から、調べるディレクトリを読む。形が違えば null */
+function askedDir(body: AppRequest['body']): string | null {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+  const { dir } = body;
+  return typeof dir === 'string' && dir.startsWith('/') && !/[\r\n]/.test(dir) ? dir : null;
+}
+
 /** 端末を開いたときの応答。プロンプトの表示と、Tab キーでの補完に使うコマンド名（commands）を返す */
 export function sessionResponse(ctx: ServerContext, account: Account, commands: string[]): AppResponse {
   return json(200, { user: account.name, host: hostname(ctx.db), cwd: account.home, commands });
@@ -59,14 +66,18 @@ export function sessionResponse(ctx: ServerContext, account: Account, commands: 
 
 /**
  * 端末の要求の入口。ログインした利用者と、コマンド行の要求（POST /sh）の入力を返す。端末を開く問い合わせ（GET /sh）は input が null。
- * それ以外（未ログイン・形の違う要求）は、その場で返す応答を返す
+ * 名前を尋ねる要求（NAMES_PATH）は、調べるディレクトリ（dir）を返す。それ以外（未ログイン・形の違う要求）は、その場で返す応答を返す
  */
-export function terminalRequest(ctx: ServerContext, req: AppRequest, validCwd: (cwd: string) => boolean): { response: AppResponse } | { account: Account; input: Input | null } {
-  if (req.path !== '/sh') return { response: json(404, { error: '見つかりません' }) };
+export function terminalRequest(ctx: ServerContext, req: AppRequest, validCwd: (cwd: string) => boolean): { response: AppResponse } | { account: Account; input: Input | null } | { account: Account; dir: string } {
+  if (req.path !== '/sh' && req.path !== NAMES_PATH) return { response: json(404, { error: '見つかりません' }) };
   const account = currentAccount(ctx);
   if (!account) return { response: json(401, { error: 'ログインが必要です' }) };
-  if (req.method === 'GET') return { account, input: null };
+  if (req.method === 'GET' && req.path === '/sh') return { account, input: null };
   if (req.method !== 'POST') return { response: json(405, { error: '許可されていない操作です' }) };
+  if (req.path === NAMES_PATH) {
+    const dir = askedDir(req.body);
+    return dir === null ? { response: json(400, { error: 'dir には、ディレクトリの絶対パスを入れてください' }) } : { account, dir };
+  }
   const input = parseBody(req.body, account.home, validCwd);
   return 'error' in input ? { response: json(400, { error: input.error }) } : { account, input };
 }
@@ -79,9 +90,17 @@ function commandNames(ctx: ServerContext): string[] {
   return names;
 }
 
+/** ディレクトリにある名前（ディレクトリは末尾に /）。ディレクトリがない・利用者が読めないときは空 */
+function namesIn(ctx: ServerContext, account: Account, dir: string): string[] {
+  const node = findNode(ctx.db, normalizePath('/', dir, account.home));
+  if (node?.kind !== 'dir' || !canRead(node, account)) return [];
+  return childrenOf(ctx.db, node.path).map((child) => `${baseName(child.path)}${child.kind === 'dir' ? '/' : ''}`);
+}
+
 export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
   const opened = terminalRequest(ctx, req, (cwd) => findNode(ctx.db, cwd)?.kind === 'dir');
   if ('response' in opened) return opened.response;
+  if ('dir' in opened) return json(200, { names: namesIn(ctx, opened.account, opened.dir) });
   const { account, input } = opened;
   if (!input) return sessionResponse(ctx, account, commandNames(ctx));
   if (input.edits && !EDITOR_LINE.test(input.line)) return json(400, { error: 'edits は、visudo のコマンド行にだけ付けられます' });

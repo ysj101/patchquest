@@ -1,5 +1,6 @@
 // 擬似シェルが記録する観測イベントと、やり取りの表示（観測ログ・「加えた変更」・テストの結果で使う）。HTTP の形ではなく、端末の言葉で示す。計測した値だけを示す
 import type { AppRequest, AppResponse, ExchangeDescription, JsonValue, ObservedEvent, ResponseExpectation } from '../../platform/contract';
+import { NAMES_PATH } from './shell';
 
 type JsonObject = Record<string, JsonValue>;
 
@@ -37,6 +38,9 @@ export function describeEvent(event: ObservedEvent): string | null {
       return null;
   }
 }
+
+/** 画面が補完のために自分で送る問い合わせ（Tab キーを押すたびに送る）。学習者が実行したコマンドではないので、観測ログの一覧には並べない */
+export const isBackground = (request: AppRequest): boolean => request.path === NAMES_PATH;
 
 const isShell = (request: AppRequest): boolean => request.path === '/sh';
 

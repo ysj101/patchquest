@@ -176,6 +176,21 @@ describe('本物の Linux の端末', { timeout: SLOW }, () => {
     expect(commands).toEqual([...new Set(commands)].sort());
   });
 
+  it('補完のために、ディレクトリにある名前を機械に聞いて答える（ディレクトリは末尾に /）。ない場所・入れない場所は空で、観測イベントは残さない', async () => {
+    const names = (actor: string, dir: string) => send(actor, { method: 'POST', path: '/sh/names', body: { dir } });
+    const home = `/home/${String(refs['accounts.operator.name'])}`;
+    expect(await names('operator', home)).toMatchObject({ names: expect.arrayContaining(['runbook.txt']) as unknown, events: [] });
+    expect(((await names('operator', `${home}/../../etc/`)) as unknown as { names: string[] }).names).toEqual(expect.arrayContaining(['hostname', 'sudoers', 'sudoers.d/']));
+    expect(await names('operator', '/etc/sudoers.d/')).toMatchObject({ names: ['operators'], events: [] });
+    // 運用担当は /root に入れない
+    expect(await names('operator', '/root/')).toMatchObject({ names: [] });
+    expect(await names('operator', '/etc/none/')).toMatchObject({ names: [] });
+    expect((await names('operator', 'etc')).status).toBe(400);
+    expect((await names('anonymous', '/etc')).status).toBe(401);
+    // 名前を聞いただけでは、機械の状態は変わらない
+    expect(await sh('operator', 'true')).toMatchObject({ changed: false });
+  });
+
   it('リセットすると、機械は初期状態へ戻る', async () => {
     await sh('operator', 'echo memo > kept.txt');
     await engine.reset();

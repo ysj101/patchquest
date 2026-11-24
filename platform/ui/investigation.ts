@@ -23,6 +23,8 @@ type EventDescriber = (event: ObservedEvent) => string | null;
 /** 教材アプリによる、観測イベント・リクエスト・期待する結果・やり取りの説明。説明しないものは null を返す */
 export interface AppDescribers extends StepDescriber {
   event: EventDescriber;
+  /** 画面が補助のために自分で送る問い合わせか。観測ログの一覧に並べない */
+  background: (request: AppRequest) => boolean;
   /** 「リクエストを編集して送る」を出すか */
   requestEditor: boolean;
 }
@@ -33,10 +35,11 @@ export interface DescribingApp {
   describeRequest?: AppDescribers['request'];
   describeExpectation?: AppDescribers['expectation'];
   describeExchange?: AppDescribers['exchange'];
+  isBackground?: AppDescribers['background'];
   requestEditor?: false;
 }
 
-const DESCRIBES_NOTHING: AppDescribers = { event: () => null, request: () => null, expectation: () => null, exchange: () => null, requestEditor: true };
+const DESCRIBES_NOTHING: AppDescribers = { event: () => null, request: () => null, expectation: () => null, exchange: () => null, background: () => false, requestEditor: true };
 
 /** 教材アプリが持つ説明を、説明しないものは null を返す形にそろえる */
 export function describersOf(app: DescribingApp): AppDescribers {
@@ -45,6 +48,7 @@ export function describersOf(app: DescribingApp): AppDescribers {
     request: (request) => app.describeRequest?.(request) ?? null,
     expectation: (expectation) => app.describeExpectation?.(expectation) ?? null,
     exchange: (request, response) => app.describeExchange?.(request, response) ?? null,
+    background: (request) => app.isBackground?.(request) ?? false,
     requestEditor: app.requestEditor ?? true,
   };
 }
@@ -167,10 +171,11 @@ export class InvestigationPanel {
     this.viewer.textContent = label;
   }
 
-  /** やり取りを記録する。新しいものを上に置き、上限を超えたら古いものから消す */
+  /** やり取りを記録する。新しいものを上に置き、上限を超えたら古いものから消す。画面が補助のために送った問い合わせは並べない */
   record(exchange: Exchange, actorLabel: string): void {
-    this.count++;
     const describers = this.describers;
+    if (exchange.request && describers.background(exchange.request)) return;
+    this.count++;
     const described = exchange.request && exchange.response ? describers.exchange(exchange.request, exchange.response) : null;
     const { mark, summary } = headline(exchange, actorLabel, describers.request, described);
     const details = h('details', { class: 'log-entry' }, h('summary', {}, h('span', { class: 'log-no' }, `#${this.count}`), mark, h('span', { class: 'log-summary mono' }, summary)));

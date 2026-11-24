@@ -88,20 +88,38 @@ const BUILTINS = ['cd', 'help'];
 /** PATH にあるものの名前を並べるコマンド行（補完の候補に使う） */
 const LIST_COMMANDS = 'IFS=:; for dir in $PATH; do ls "$dir" 2>/dev/null; done';
 
-/** 利用者が名前だけで実行できるコマンドの名前（名前順）。機械の PATH にあるものを、機械に聞く。観測イベントにはしない */
-async function commandNames(ctx: ServerContext, account: Account): Promise<string[]> {
+/** 調べるだけのコマンド行を、機械の中で、利用者として、場所（cwd）で実行する。観測イベントにはしない */
+async function ask(ctx: ServerContext, account: Account, cwd: string, line: string): Promise<{ status: string; stdout: string }> {
   if (!ctx.machine) throw new Error('演習用の機械がありません');
-  const [status = '', stdout = ''] = await ctx.machine.call('run', `${[account.name, account.home, LIST_COMMANDS].join('\n')}\n`, RUN_TIMEOUT_MS);
+  const [status = '', stdout = ''] = await ctx.machine.call('run', `${[account.name, cwd, line].join('\n')}\n`, RUN_TIMEOUT_MS);
+  return { status, stdout };
+}
+
+const lines = (text: string): string[] => text.split('\n').filter((line) => line !== '');
+
+/** 利用者が名前だけで実行できるコマンドの名前（名前順）。機械の PATH にあるものを、機械に聞く */
+async function commandNames(ctx: ServerContext, account: Account): Promise<string[]> {
+  const { status, stdout } = await ask(ctx, account, account.home, LIST_COMMANDS);
   if (status !== '0') throw new Error(`機械からコマンドの一覧を受け取れません（終了コード ${status}）`);
-  const names = [...new Set([...BUILTINS, ...stdout.split('\n').filter((name) => name !== '')])];
+  const names = [...new Set([...BUILTINS, ...lines(stdout)])];
   names.sort();
   return names;
+}
+
+/**
+ * ディレクトリにある名前（ディレクトリは末尾に /）。利用者として機械に聞く。ディレクトリがない・利用者が入れない・読めないときは空
+ * （場所へ移れなければ、機械は ls を実行せずに終わる）
+ */
+async function namesIn(ctx: ServerContext, account: Account, dir: string): Promise<string[]> {
+  const { status, stdout } = await ask(ctx, account, dir, 'ls -1Ap');
+  return status === '0' ? lines(stdout) : [];
 }
 
 export async function handle(ctx: ServerContext, req: AppRequest): Promise<AppResponse> {
   // 場所が実在するかどうかは機械が確かめる（なければ cd が失敗する）。ここでは形だけを確かめる
   const opened = terminalRequest(ctx, req, (cwd) => cwd.startsWith('/') && !/[\r\n]/.test(cwd));
   if ('response' in opened) return opened.response;
+  if ('dir' in opened) return json(200, { names: await namesIn(ctx, opened.account, opened.dir) });
   const { account, input } = opened;
   if (!input) return sessionResponse(ctx, account, await commandNames(ctx, account));
   if (input.line.length > MAX_LINE_LENGTH) return json(200, { stdout: '', stderr: `sh: 入力が長すぎます（${MAX_LINE_LENGTH} 文字まで）`, exit: 2, cwd: input.cwd, changed: false });

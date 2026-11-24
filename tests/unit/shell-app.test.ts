@@ -106,6 +106,22 @@ describe('コマンドの解釈', () => {
     expect((await sh(engine, 'admin', 'sudo cat /etc/sudoers')).stdout).toContain('%admin ALL=(ALL) NOPASSWD: ALL');
   });
 
+  it('補完のために、ディレクトリにある名前を答える（ディレクトリは末尾に /）。ない場所・読めない場所は空で、状態も観測イベントも残さない', async () => {
+    const names = async (actor: string, dir: unknown) => send(engine, actor, { method: 'POST', path: '/sh/names', body: { dir } });
+    const home = `/home/${String(refs['accounts.operator.name'])}`;
+    expect(await names('operator', home)).toEqual({ response: { status: 200, body: { names: ['runbook.txt'] } }, events: [] });
+    expect((await names('operator', '/etc/')).response.body).toMatchObject({ names: expect.arrayContaining(['hostname', 'sudoers', 'sudoers.d/']) as unknown });
+    expect((await names('operator', `${home}/../../etc/sudoers.d/`)).response.body).toEqual({ names: ['operators'] });
+    expect((await names('operator', '/etc/none/')).response.body).toEqual({ names: [] });
+    expect((await names('operator', '/etc/hostname')).response.body).toEqual({ names: [] });
+    expect((await names('operator', '/root')).response.body).toEqual({ names: [] });
+    expect((await names('operator', 'etc')).response.status).toBe(400);
+    expect((await names('operator', 1)).response.status).toBe(400);
+    expect((await send(engine, 'operator', { method: 'POST', path: '/sh/names', body: 'x' })).response.status).toBe(400);
+    expect((await send(engine, 'operator', { method: 'GET', path: '/sh/names' })).response.status).toBe(405);
+    expect((await names('anonymous', '/etc')).response.status).toBe(401);
+  });
+
   it('登録したコマンドは絶対パスでも実行でき、プログラムは名前でも実行できる', async () => {
     expect((await sh(engine, 'operator', '/usr/bin/whoami')).stdout).toBe(refs['accounts.operator.name']);
     const { stdout, events } = await sh(engine, 'operator', 'sys-info');

@@ -6,6 +6,12 @@ import type { Account } from './model';
 /** 1 行に入力できる長さ（文字数） */
 export const MAX_LINE_LENGTH = 1024;
 
+/**
+ * ファイル名の補完のために、ディレクトリにある名前を尋ねる要求（POST。本文は { dir: 絶対パス }）のパス。
+ * 応答は { names }（ディレクトリは末尾に /）。利用者が読める範囲だけを返し、状態は変えない
+ */
+export const NAMES_PATH = '/sh/names';
+
 /** エディタで開いたファイル（端末の画面が編集画面を出すのに使う） */
 export type EditorFile = { path: string; lines: string[] };
 

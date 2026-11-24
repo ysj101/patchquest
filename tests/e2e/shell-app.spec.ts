@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 test('端末でコマンドを実行でき、未実装のコマンドや対応していない書き方は理由を示して断る', async ({ page }) => {
   // 最初の案内は、使えるコマンドを調べる help を勧める
-  await expect(terminalOutput(page).locator('.term-note')).toHaveText('help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名を補完できます。');
+  await expect(terminalOutput(page).locator('.term-note')).toHaveText('help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。');
   await type(page, 'whoami');
   await expect(terminalOutput(page).locator('.term-out')).toHaveText(/^[a-z]+$/);
   await type(page, 'cd /etc');
@@ -50,7 +50,7 @@ test('端末はプレビューの枠の高さいっぱいに広がり、編集�
   expect(await gapBelow()).toBeLessThanOrEqual(16.5);
 });
 
-test('Tab キーでコマンド名を補完でき、候補が複数あれば並べて見せる。何も打っていなければ Tab は次の項目へ移る', async ({ page }) => {
+test('Tab キーでコマンド名とファイル名を補完でき、候補が複数あれば並べて見せる。何も打っていなければ Tab は次の項目へ移る', async ({ page }) => {
   const input = commandInput(page);
   // 候補が 1 つなら、名前と空白まで補う。sudo の直後もコマンド名として補う
   await input.focus();
@@ -58,13 +58,31 @@ test('Tab キーでコマンド名を補完でき、候補が複数あれば並�
   await page.keyboard.press('Tab');
   await expect(input).toHaveValue('sudo visudo ');
   await expect(input).toBeFocused();
-  // 引数の位置では補わない（フォーカスも動かさない）
-  await page.keyboard.type('-f /etc/sudoers.d/ope');
+  // 引数の位置では、ファイル名を補う。ディレクトリは / まで補い、続けて中の名前を補える（フォーカスは動かさない）
+  await page.keyboard.type('-f /etc/sudoers.');
   await page.keyboard.press('Tab');
-  await expect(input).toHaveValue('sudo visudo -f /etc/sudoers.d/ope');
+  await expect(input).toHaveValue('sudo visudo -f /etc/sudoers.d/');
+  await page.keyboard.type('ope');
+  await page.keyboard.press('Tab');
+  await expect(input).toHaveValue('sudo visudo -f /etc/sudoers.d/operators ');
   await expect(input).toBeFocused();
+  // いまの場所にあるファイルは、名前の先頭だけで補う。候補のない語と、オプションは変えない
+  await input.fill('cat ru');
+  await page.keyboard.press('Tab');
+  await expect(input).toHaveValue('cat runbook.txt ');
+  await input.fill('cat none');
+  await page.keyboard.press('Tab');
+  await expect(input).toHaveValue('cat none');
+  await input.fill('ls -l');
+  await page.keyboard.press('Tab');
+  await expect(input).toHaveValue('ls -l');
+  await expect(input).toBeFocused();
+  // 候補が複数あるファイル名は、端末に並べる
+  await input.fill('cat /etc/sudoers');
+  await page.keyboard.press('Tab');
+  await expect(terminalOutput(page).locator('.term-out').last()).toHaveText('sudoers  sudoers.d/');
 
-  // 候補が複数あって補えないときは、候補を端末に並べ、入力は残す。観測ログには何も残さない
+  // 候補が複数あって補えないときは、候補を端末に並べ、入力は残す。補完は、観測ログに何も並べない（端末を開いた 1 件だけ）
   await input.fill('c');
   await page.keyboard.press('Tab');
   await expect(terminalOutput(page).locator('.term-out').last()).toHaveText('cat  cd');
