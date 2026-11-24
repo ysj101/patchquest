@@ -50,7 +50,8 @@ test('各段階で報酬を受け取り、再挑戦は20 XPだけ加算し、再
   await finish(page);
   await gain(page, 20);
   await expect(badge(page)).toContainText('Lv.2 ・ 160 XP');
-  await page.getByRole('button', { name: '新しいデータでもう一度挑戦する' }).click();
+  await backToList(page).click();
+  await openMission(page, 'test-pack');
   await enterWorkbench(page);
   await expect(badge(page)).toContainText('Lv.2 ・ 160 XP');
   await expect(badge(page).locator('.xp-gain')).toHaveCount(0);

@@ -60,10 +60,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
       const correct = orchestrator.answerTransfer(answers);
       say(correct ? '「理解」達成です' : 'まだ正解していない問題があります');
     },
-    retry: () => {
-      const packId = orchestrator.snapshot?.pack.manifest.id;
-      if (packId) void begin(packId);
-    },
   });
   const exerciseView = new ExerciseView(
     {

@@ -216,9 +216,6 @@
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 1
     },
-    "@typescript-eslint/unbound-method": {
-      "count": 1
-    },
     "id-length": {
       "count": 7
     },

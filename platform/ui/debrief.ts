@@ -111,7 +111,6 @@ function masterySection(category: VulnerabilityCategory | undefined, mastery: Ma
 
 export interface DebriefActions {
   answer(answers: Record<string, string>): void;
-  retry(): void;
 }
 
 /** 理解確認の出題の種類。通常の演習と、出題を絞った演習で説明が分かれる */
@@ -138,15 +137,13 @@ export class DebriefPanel {
     const { answers } = attempt;
     const key = `${attempt.attemptId}|${attempt.badges.reproduction.achieved}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}`;
     if (!this.guard.changed(key)) return;
-    const { debrief, fixtures } = pack.manifest;
-    const retry = this.retrySection(fixtures.variants.length);
+    const { debrief } = pack.manifest;
     if (!attempt.badges.defense.achieved) {
       fill(
         this.element,
         h('section', { class: 'tool-section' }, h('h3', {}, '振り返り'), h('p', { class: 'muted' }, '対策をテストして防御に合格すると、ここで原因と対策を振り返れます。')),
         securityHistory(snapshot),
         masterySection(pack.manifest.vulnerability?.category, mastery),
-        retry,
       );
       return;
     }
@@ -177,7 +174,6 @@ export class DebriefPanel {
         attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '「理解」達成です')) : null,
         form,
       ),
-      retry,
     );
     if (answering) this.element.querySelector<HTMLElement>('#transfer-title')?.focus();
   }
@@ -214,21 +210,5 @@ export class DebriefPanel {
   private submit(form: HTMLFormElement, questions: readonly TransferQuestion[]): void {
     const data = new FormData(form);
     this.actions.answer(Object.fromEntries(questions.map((q) => [q.id, String(data.get(q.id) ?? '')])));
-  }
-
-  private retrySection(variantCount: number): HTMLElement {
-    return h(
-      'section',
-      { class: 'tool-section', 'aria-labelledby': 'retry-title' },
-      h('h3', { id: 'retry-title' }, 'もう一度挑戦'),
-      h(
-        'p',
-        { class: 'note' },
-        variantCount > 1
-          ? '新しいデータで始めます。利用者やメモなどのデータと、セキュリティホールの出方が変わることがあります。'
-          : '新しいデータで始めます。利用者やメモなどのデータが変わります（セキュリティホールの種類は同じです）。',
-      ),
-      h('div', { class: 'actions' }, h('button', { type: 'button', class: 'button', on: { click: this.actions.retry } }, '新しいデータでもう一度挑戦する')),
-    );
   }
 }
