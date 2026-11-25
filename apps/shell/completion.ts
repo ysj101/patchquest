@@ -1,5 +1,5 @@
-// 端末の入力欄での、コマンド名の補完（Tab キー）。カーソルの手前の語が、コマンドを書く位置にあるときだけ補う。
-// ファイル名は補わない（機械へ問い合わせる必要があり、問い合わせは 1 回ごとに観測ログへ残るため）
+// 端末の入力欄での補完（Tab キー）。カーソルの手前の語が、コマンドを書く位置にあればコマンド名で、それ以外の位置やパスならファイル名で補う。
+// コマンド名は端末を開いたときに受け取ったもので補う。ファイル名は、その場所にある名前を機械へ尋ねて補う（尋ねるのは画面の役目。view.ts）
 export interface Completion {
   /** 補ったあとのコマンド行 */
   line: string;
@@ -38,21 +38,76 @@ function commonPrefix(words: readonly string[]): string {
   return prefix;
 }
 
+/** カーソルの手前で打ちかけている語（word）と、その前後 */
+interface Word {
+  before: string;
+  word: string;
+  tail: string;
+}
+
+function wordAt(line: string, cursor: number): Word {
+  const head = line.slice(0, cursor);
+  const before = head.slice(0, wordStart(head));
+  return { before, word: head.slice(before.length), tail: line.slice(cursor) };
+}
+
+/**
+ * 語のうち typed の部分を、names のうち typed で始まるもので補う（kept は、語のうち補わずに残す先頭の部分）。
+ * 候補が 1 つならその名前まで、複数なら共通する部分まで補う
+ */
+function fill(at: Word, kept: string, typed: string, names: readonly string[]): Completion {
+  const candidates = [...new Set(names.filter((name) => name.startsWith(typed)))];
+  candidates.sort();
+  if (candidates.length === 0) return { line: `${at.before}${at.word}${at.tail}`, cursor: at.before.length + at.word.length, listed: [] };
+  let filled = commonPrefix(candidates);
+  // 候補が 1 つに決まったら、続けて引数を打てるよう空白を足す（すでに空白が続いていれば足さない）。ディレクトリは、続けて中の名前を打てるよう足さない
+  if (candidates.length === 1 && !filled.endsWith('/') && !/^\s/.test(at.tail)) filled += ' ';
+  const done = `${at.before}${kept}${filled}`;
+  return { line: `${done}${at.tail}`, cursor: done.length, listed: filled === typed ? candidates : [] };
+}
+
 /**
  * カーソルの手前の語を、コマンド名（commands）で補う。候補が 1 つならその名前と空白 1 つ、複数なら共通する部分まで補う。
- * コマンド名を書く位置でないとき・語が空のとき・パス（/ を含む）のときは、補完の対象ではないので null を返す
+ * コマンド名を書く位置でないとき・語が空のとき・パス（/ を含む）のときは、コマンド名の補完の対象ではないので null を返す
  */
 export function complete(line: string, cursor: number, commands: readonly string[]): Completion | null {
-  const head = line.slice(0, cursor);
-  const tail = line.slice(cursor);
-  const before = head.slice(0, wordStart(head));
-  const word = head.slice(before.length);
-  if (word === '' || word.includes('/') || !isCommandPosition(before)) return null;
-  const candidates = [...new Set(commands.filter((name) => name.startsWith(word)))];
-  candidates.sort();
-  if (candidates.length === 0) return { line, cursor, listed: [] };
-  let filled = commonPrefix(candidates);
-  // 候補が 1 つに決まったら、続けて引数を打てるよう空白を足す（すでに空白が続いていれば足さない）
-  if (candidates.length === 1 && !/^\s/.test(tail)) filled += ' ';
-  return { line: `${before}${filled}${tail}`, cursor: before.length + filled.length, listed: filled === word ? candidates : [] };
+  const at = wordAt(line, cursor);
+  if (at.word === '' || at.word.includes('/') || !isCommandPosition(at.before)) return null;
+  return fill(at, '', at.word, commands);
+}
+
+/** そのまま打つと、シェルが名前の一部として読まない文字（空白・引用符・展開や区切りの記号）。これを含む語と名前は、ファイル名の補完の対象にしない */
+const NEEDS_QUOTING = /[\s'"\\$`*?!&|;<>()[\]{}~#]/;
+
+/** 語のうち、場所の部分（最後の / まで）の長さ */
+const placeLength = (word: string): number => word.lastIndexOf('/') + 1;
+
+/** 語がファイル名として補える位置にあるか。オプション（- で始まる語）と、コマンド名として補う語（complete の対象）と、行の先頭の空の語は補わない */
+function isNameWord(at: Word): boolean {
+  if (at.word.startsWith('-') || NEEDS_QUOTING.test(at.word)) return false;
+  return at.word.includes('/') || !isCommandPosition(at.before);
+}
+
+/**
+ * カーソルの手前の語をファイル名として補うときに、名前を調べるディレクトリ（絶対パス。.. は畳まない）。
+ * 語に / があればそこまでの場所、なければいまの場所（cwd）。ファイル名の補完の対象でなければ null
+ */
+export function nameDir(line: string, cursor: number, cwd: string): string | null {
+  const at = wordAt(line, cursor);
+  if (!isNameWord(at)) return null;
+  const place = at.word.slice(0, placeLength(at.word));
+  if (place === '') return cwd;
+  return place.startsWith('/') ? place : `${cwd}/${place}`;
+}
+
+/**
+ * カーソルの手前の語を、nameDir が返した場所にある名前（names。ディレクトリは末尾に / を付けたもの）で補う。
+ * . で始まる名前は、語の名前の部分が . で始まるときだけ候補にする（本物のシェルと同じ）
+ */
+export function completeName(line: string, cursor: number, names: readonly string[]): Completion {
+  const at = wordAt(line, cursor);
+  const place = at.word.slice(0, placeLength(at.word));
+  const typed = at.word.slice(place.length);
+  const usable = names.filter((name) => !NEEDS_QUOTING.test(name) && (typed.startsWith('.') || !name.startsWith('.')));
+  return fill(at, place, typed, usable);
 }

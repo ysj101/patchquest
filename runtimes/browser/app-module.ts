@@ -90,6 +90,11 @@ export interface AppModule {
   /** 観測ログとテストの結果での、やり取りの結果の印と中身。説明しないものは null で、状態コードとリクエスト・応答をそのまま示す */
   describeExchange?(request: AppRequest, response: AppResponse): ExchangeDescription | null;
   /**
+   * 画面が補助のために自分で送る問い合わせ（例：端末の Tab キーでの補完が、ディレクトリにある名前を尋ねる）なら true を返す。
+   * true のやり取りは、観測ログの一覧に並べない。進行の判定（再現・修正の記録）では、ほかのやり取りと同じに扱う
+   */
+  isBackground?(request: AppRequest): boolean;
+  /**
    * false にすると、調査タブの「リクエストを編集して送る」を出さない。
    * 端末のように、アプリの画面からどの操作でも送れて、リクエストを手で組む意味がないアプリで使う
    */

@@ -4,10 +4,10 @@
 import type { AppResponse } from '../../platform/contract';
 import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
 import { el } from '../shared/dom';
-import { complete } from './completion';
+import { complete, completeName, nameDir, type Completion } from './completion';
 import { editorPanel } from './editor-view';
 import type { LineEdit } from './edits';
-import type { EditorFile } from './shell';
+import { NAMES_PATH, type EditorFile } from './shell';
 
 interface Session {
   user: string;
@@ -72,7 +72,7 @@ class Terminal {
       if (!this.entry.hidden && !this.input.disabled && window.getSelection()?.isCollapsed !== false) this.input.focus();
     });
     this.prompt.textContent = this.promptText();
-    this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名を補完できます。`);
+    this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。`);
   }
 
   private promptText(): string {
@@ -90,15 +90,32 @@ class Terminal {
     if (!this.entry.hidden) this.input.focus();
   }
 
+  /** カーソルの手前の語を、ファイル名として補う。その場所にある名前を、教材アプリに尋ねる。補完の対象でないとき・尋ねられなかったときは null */
+  private async completeFileName(line: string, cursor: number): Promise<Completion | null> {
+    const dir = nameDir(line, cursor, this.cwd);
+    if (dir === null) return null;
+    try {
+      const res = await this.ctx.request({ method: 'POST', path: NAMES_PATH, body: { dir } });
+      if (res.status === 200) return completeName(line, cursor, (res.body as { names: string[] }).names);
+      this.print('term-err', errorMessage(res));
+    } catch (error) {
+      this.print('term-err', `補完の候補を調べられませんでした：${error instanceof Error ? error.message : String(error)}`);
+    }
+    return null;
+  }
+
   /**
-   * Tab キーで、カーソルの手前のコマンド名を補う。候補が複数あってそれ以上補えないときは、候補を端末に並べる。
+   * Tab キーで、カーソルの手前のコマンド名かファイル名を補う。候補が複数あってそれ以上補えないときは、候補を端末に並べる。
    * 何も打っていないときは補わず、Tab は次の項目へ移る（キーボードだけで端末の外へ出られるようにする）
    */
-  private completeWord(event: KeyboardEvent): void {
+  private async completeWord(event: KeyboardEvent): Promise<void> {
     if (event.isComposing || this.input.value.trim() === '') return;
     event.preventDefault();
-    const done = complete(this.input.value, this.input.selectionStart ?? this.input.value.length, this.session.commands);
-    if (!done) return;
+    const line = this.input.value;
+    const cursor = this.input.selectionStart ?? line.length;
+    const done = complete(line, cursor, this.session.commands) ?? (await this.completeFileName(line, cursor));
+    // 名前を尋ねている間に入力が変わっていたら（打ち足した・実行した）、補わない
+    if (!done || this.input.value !== line || this.input.selectionStart !== cursor) return;
     this.input.value = done.line;
     this.input.setSelectionRange(done.cursor, done.cursor);
     if (done.listed.length === 0) return;

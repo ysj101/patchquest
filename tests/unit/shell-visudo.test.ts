@@ -1,6 +1,6 @@
 // 擬似シェルの visudo（sudo の設定を開いて書き換え、構文を確かめて保存する）と、観測ログでのやり取りの表示を確かめる
 import { beforeEach, describe, expect, it } from 'vitest';
-import { describeEvent, describeExchange, describeExpectation, describeRequest } from '../../apps/shell/events';
+import { describeEvent, describeExchange, describeExpectation, describeRequest, isBackground } from '../../apps/shell/events';
 import { visudoSave } from '../../apps/shell/scenario';
 import type { FixtureData } from '../../platform/contract';
 import { AppEngine } from '../../runtimes/browser/engine';
@@ -157,6 +157,12 @@ describe('観測イベントとやり取りの説明', () => {
     expect(describeExchange(request, { status: 401, body: { error: 'ログインが必要です' } })).toEqual({ mark: { ok: false, text: 'ログインが必要です' }, blocks: [{ title: '端末の出力', text: 'ログインが必要です' }] });
     expect(describeExchange(request, { status: 401, body: {} })).toBeNull();
     expect(describeExpectation({ status: 401 })).toBe('ログインを求めて断る');
+  });
+
+  it('補完のために画面が送る問い合わせだけを、観測ログに並べないものとして扱う', () => {
+    expect(isBackground({ method: 'POST', path: '/sh/names', body: { dir: '/etc' } })).toBe(true);
+    expect(isBackground({ method: 'POST', path: '/sh', body: { line: 'ls' } })).toBe(false);
+    expect(isBackground({ method: 'GET', path: '/sh' })).toBe(false);
   });
 
   it('端末を開いたやり取りはプロンプトで示し、コマンドを解釈できなかったやり取りは説明しない', () => {
