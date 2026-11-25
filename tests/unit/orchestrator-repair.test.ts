@@ -67,3 +67,56 @@ it('最初の状態に戻すと記録が消え、構成も開始時へ戻る', a
   expect(snapshot.attempt.state).toBe('Prepared');
   expect(snapshot.attempt.configHash).toBe(hashBefore);
 });
+
+it('検証の間に修正の記録が増えても、検証が終わるまで検証中のままで、初期化も検証の重ね掛けも受け付けない', async () => {
+  const orchestrator = setup();
+  const snapshot = await orchestrator.start('test-pack');
+  await orchestrator.onExchange(post(orchestrator.newRunId(), 'one'));
+  const verifying = orchestrator.verify();
+
+  await orchestrator.onExchange(post(orchestrator.newRunId(), 'two'));
+  expect(snapshot.attempt.state).toBe('Verifying');
+  await expect(orchestrator.verify()).rejects.toThrow('対策を使ってからテストしてください');
+  await orchestrator.resetToInitial();
+  expect(snapshot.attempt.repairLog).toHaveLength(2);
+
+  await verifying;
+  expect(snapshot).toMatchObject({ defenseCurrent: false, attempt: { state: 'Repairing', verifications: 1 } });
+  expect(snapshot.attempt.repairLog).toHaveLength(2);
+});
+
+/** 修正を 1 件記録した演習と、その記録に使った実行 ID（before） */
+async function startRepaired() {
+  const orchestrator = setup();
+  const snapshot = await orchestrator.start('test-pack');
+  const before = orchestrator.newRunId();
+  await orchestrator.onExchange(post(before, 'one'));
+  return { orchestrator, snapshot, before };
+}
+
+it('初期化の途中では検証を始められず、戻す前に発行した実行 ID のやり取りは修正の記録にならない', async () => {
+  const { orchestrator, snapshot, before } = await startRepaired();
+
+  const resetting = orchestrator.resetToInitial();
+  // 初期化が順番を得て状態を戻したあと（実装とデータを戻している間）
+  await Promise.resolve();
+  expect(snapshot.attempt.state).toBe('Prepared');
+  await expect(orchestrator.verify()).rejects.toThrow('対策を使ってからテストしてください');
+  await orchestrator.onExchange(post(before, 'late'));
+  await resetting;
+  expect(snapshot.attempt).toMatchObject({ state: 'Prepared', repairLog: [] });
+
+  const after = orchestrator.newRunId();
+  expect(after).not.toBe(before);
+  await orchestrator.onExchange(post(after, 'again'));
+  expect(snapshot.attempt).toMatchObject({ state: 'Repairing', repairLog: [{ as: 'alice' }] });
+});
+
+it('初期化の順番を待つ間に届いた修正の操作は、戻す前の操作なので記録しない', async () => {
+  const { orchestrator, snapshot, before } = await startRepaired();
+
+  const resetting = orchestrator.resetToInitial();
+  const late = orchestrator.onExchange(post(before, 'late'));
+  await Promise.all([resetting, late]);
+  expect(snapshot.attempt).toMatchObject({ state: 'Prepared', repairLog: [] });
+});

@@ -86,4 +86,6 @@ export interface Current {
   baseline: ImplementationSelection;
   /** この演習で発行した実行 ID。これ以外のやり取り（古い演習の応答など）は無視する */
   runIds: Set<string>;
+  /** これまでに発行した実行 ID の数。runIds を空にしても、同じ ID を二度発行しない */
+  issuedRunIds: number;
 }

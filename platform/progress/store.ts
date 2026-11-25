@@ -130,30 +130,38 @@ function mergeKept(local: KeptProfile, imported: KeptProfile): KeptProfile {
 
 export type ImportResult = { ok: true; imported: number; profileRecomputed: boolean } | { ok: false; error: string };
 
+/**
+ * 保存先の状態。persistent から switching を経て memory へ進むだけで、戻らない。docs/formal/Storage.tla が検査する。
+ * persistent: ブラウザに保存できている / switching: 保存先が失敗し、読めた記録をメモリへ引き継いでいる途中。操作は引き継ぎの完了を待つ /
+ * memory: メモリで続けている。reason は保存できない理由（メモリだけで使う検証用の保存では null）
+ */
+type Storage =
+  | { kind: 'persistent'; backend: ProgressBackend }
+  | { kind: 'switching'; memory: Promise<MemoryBackend>; reason: string }
+  | { kind: 'memory'; backend: MemoryBackend; reason: string | null };
+
 export class ProgressStore {
   private constructor(
-    private backend: ProgressBackend,
-    /** 保存できない理由。null なら保存できている */
-    private reason: string | null,
+    private storage: Storage,
     private readonly options: ProfileOptions,
   ) {}
 
   /** IndexedDB を開く。開けなければメモリで続ける */
   static async open(options: ProfileOptions = { missionIds: [], categories: {} }): Promise<ProgressStore> {
     try {
-      return new ProgressStore(await IndexedDbBackend.open(), null, options);
+      return new ProgressStore({ kind: 'persistent', backend: await IndexedDbBackend.open() }, options);
     } catch (e) {
-      return new ProgressStore(new MemoryBackend(), `ブラウザに保存できません（${errorMessage(e)}）`, options);
+      return new ProgressStore({ kind: 'memory', backend: new MemoryBackend(), reason: `ブラウザに保存できません（${errorMessage(e)}）` }, options);
     }
   }
 
   static inMemory(options: ProfileOptions = { missionIds: [], categories: {} }, reason: string | null = null): ProgressStore {
-    return new ProgressStore(new MemoryBackend(), reason, options);
+    return new ProgressStore({ kind: 'memory', backend: new MemoryBackend(), reason }, options);
   }
 
   /** 保存できない理由。null なら保存できている */
   get unavailableReason(): string | null {
-    return this.reason;
+    return this.storage.kind === 'persistent' ? null : this.storage.reason;
   }
 
   save(attempt: AttemptRecord): Promise<void> {
@@ -218,19 +226,36 @@ export class ProgressStore {
 
   /** 保存先が失敗したら、読めた記録を引き継いでメモリへ切り替え、同じ操作をやり直す */
   private async withBackend<T>(operation: (backend: ProgressBackend) => Promise<T>): Promise<T> {
+    const storage = this.storage;
+    if (storage.kind === 'switching') return operation(await storage.memory);
     try {
-      return await operation(this.backend);
+      return await operation(storage.backend);
     } catch (e) {
-      if (this.backend instanceof MemoryBackend) throw e;
-      const memory = new MemoryBackend();
-      const [attempts, profile] = await Promise.all([
-        Promise.resolve().then(() => this.backend.getAll()).catch(() => []),
-        Promise.resolve().then(() => this.backend.getProfile()).catch(() => ({})),
-      ]);
-      await Promise.all([memory.put(attempts), memory.putProfile(profile)]);
-      this.backend = memory;
-      this.reason = `ブラウザに保存できなくなりました（${errorMessage(e)}）`;
-      return operation(memory);
+      if (storage.kind === 'memory') throw e;
+      return operation(await this.switchToMemory(storage.backend, e));
     }
+  }
+
+  /**
+   * 失敗した保存先から読めた記録を引き継いで、メモリへ切り替える。切り替えは 1 回だけ行い、同時に失敗した操作は同じ切り替えを待つ
+   * （操作ごとに別のメモリへ切り替えると、先にやり直した書き込みが、あとの切り替えで消える）
+   */
+  private switchToMemory(failed: ProgressBackend, error: unknown): Promise<MemoryBackend> {
+    if (this.storage.kind === 'switching') return this.storage.memory;
+    if (this.storage.kind === 'memory') return Promise.resolve(this.storage.backend);
+    const reason = `ブラウザに保存できなくなりました（${errorMessage(error)}）`;
+    const carryOver = async (): Promise<MemoryBackend> => {
+      const backend = new MemoryBackend();
+      const [attempts, profile] = await Promise.all([
+        Promise.resolve().then(() => failed.getAll()).catch(() => []),
+        Promise.resolve().then(() => failed.getProfile()).catch(() => ({})),
+      ]);
+      await Promise.all([backend.put(attempts), backend.putProfile(profile)]);
+      this.storage = { kind: 'memory', backend, reason };
+      return backend;
+    };
+    const memory = carryOver();
+    this.storage = { kind: 'switching', memory, reason };
+    return memory;
   }
 }

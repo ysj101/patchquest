@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { emptyMilestones, type AttemptRecord } from '../../platform/contract';
 import { MAX_PROGRESS_BYTES, PROGRESS_FORMAT, ProgressFormatError, parseProgress } from '../../platform/progress/schema';
-import { IndexedDbBackend, ProgressStore } from '../../platform/progress/store';
+import { IndexedDbBackend, ProgressStore, type ProgressBackend } from '../../platform/progress/store';
 import { makeAttempt } from '../support/attempt';
 import { progressJson } from '../support/progress-json';
 
@@ -196,6 +196,27 @@ describe('進捗の保存先', () => {
     await store.save(attempt('接続終了後'));
     expect(store.unavailableReason).toBe('ブラウザに保存できなくなりました（保存領域の接続は閉じています）');
     expect(await store.list()).toEqual([attempt('接続終了後')]);
+  });
+
+  it('保存先が同時に失敗しても切り替えは 1 回で、どの書き込みも消えない', async () => {
+    // 読めるが書けない保存先
+    const failing: ProgressBackend = {
+      getAll: () => Promise.resolve([attempt('保持')]),
+      getProfile: () => Promise.resolve({}),
+      put: () => Promise.reject(new Error('保存不可')),
+      putProfile: () => Promise.resolve(),
+      clear: () => Promise.resolve(),
+    };
+    vi.spyOn(IndexedDbBackend, 'open').mockResolvedValue(failing as unknown as IndexedDbBackend);
+    const store = await ProgressStore.open();
+    const saving = [store.save(attempt('一')), store.save(attempt('二二'))];
+    // 引き継いでいる途中に頼んだ操作も、切り替えの完了を待つ
+    await Promise.resolve();
+    await Promise.resolve();
+    saving.push(store.save(attempt('三三三')));
+    expect(store.unavailableReason).toBe('ブラウザに保存できなくなりました（保存不可）');
+    await Promise.all(saving);
+    expect((await store.list()).map((record) => record.attemptId).sort()).toEqual(['一', '三三三', '二二', '保持']);
   });
 
   it('profile の保存が失敗したら記録を引き継ぎ、メモリで取り込みを完了する', async () => {

@@ -28,9 +28,7 @@ import type { Route } from './route';
 import { ResultEffects } from './result-effects';
 import { verificationEffect } from './result-effect-model';
 import { serialLatest } from './serial';
-
-type Screen = 'list' | 'records' | 'preflight' | 'exercise';
-
+import { nextScreen, type Screen } from './screen';
 
 export async function startApp(root: HTMLElement): Promise<void> {
   const effectWarning = h('p', { class: 'banner banner-warn', role: 'status' });
@@ -120,9 +118,9 @@ export async function startApp(root: HTMLElement): Promise<void> {
   );
   fill(main, guide.element, listView, recordsView, preflightView.element, exerciseView.element);
 
-  let others: AttemptRecord[] = [];
+  let others: AttemptRecord[] = [], briefingAttemptId: string | null = null;
   function show(next: Screen): void {
-    screen = next;
+    screen = nextScreen(screen, next);
     const snapshot = orchestrator.snapshot;
     if (snapshot && next === 'preflight') preflightView.update(snapshot);
     if (snapshot && next === 'exercise') updateExercise(snapshot);
@@ -202,7 +200,6 @@ export async function startApp(root: HTMLElement): Promise<void> {
     return begin(route.missionId, entry.resumable ? entry.latest : undefined);
   }
 
-  let briefingAttemptId: string | null = null;
   async function begin(packId: string, resume?: AttemptRecord): Promise<void> {
     others = [];
     // start は最初の await より前に新しい演習の状態を公開するので、先に呼んでから画面を切り替える（前の演習の点検結果を残さない）
@@ -211,6 +208,8 @@ export async function startApp(root: HTMLElement): Promise<void> {
     show('preflight');
     say('開始前チェックを始めました');
     const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
+    // 点検の間に別の演習が始まっていたら、その演習の begin に任せる（古い演習の記録で上書きしない）
+    if (orchestrator.snapshot !== snapshot) return;
     others = records.filter((record) => record.attemptId !== snapshot.attempt.attemptId);
     briefingAttemptId = resume ? null : snapshot.attempt.attemptId;
     await enterIfReady(snapshot);

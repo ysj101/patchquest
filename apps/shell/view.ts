@@ -62,6 +62,12 @@ class Terminal {
   readonly element = el('div', { className: 'term-screen' }, el('p', { className: 'badge' }, BADGE), this.box);
   private readonly history = lineHistory(this.input);
   private cwd: string;
+  /**
+   * 端末の状態。docs/formal/Terminal.tla が検査する。
+   * prompt: コマンドを受け付けている / running: コマンドを送って応答を待っている（入力できない） /
+   * editing: 編集画面が端末の出力と入力欄の代わりに出ている（保存できるか、保存せずに閉じるまで、コマンドは入力できない）
+   */
+  private mode: 'prompt' | 'running' | 'editing' = 'prompt';
 
   constructor(private readonly ctx: ViewContext, private readonly session: Session, guide: string) {
     this.cwd = session.cwd;
@@ -69,7 +75,7 @@ class Terminal {
     this.input.addEventListener('keydown', (event) => this.onKey(event));
     // 端末のどこを押しても入力できるようにする（プロンプトの行や出力を押して打ち始める人が多い）。出力の文字を選んでいるときは邪魔しない
     this.box.addEventListener('click', () => {
-      if (!this.entry.hidden && !this.input.disabled && window.getSelection()?.isCollapsed !== false) this.input.focus();
+      if (this.mode === 'prompt' && window.getSelection()?.isCollapsed !== false) this.input.focus();
     });
     this.prompt.textContent = this.promptText();
     this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。`);
@@ -87,7 +93,7 @@ class Terminal {
   private ready(): void {
     this.prompt.textContent = this.promptText();
     this.output.scrollTop = this.output.scrollHeight;
-    if (!this.entry.hidden) this.input.focus();
+    if (this.mode === 'prompt') this.input.focus();
   }
 
   /** カーソルの手前の語を、ファイル名として補う。その場所にある名前を、教材アプリに尋ねる。補完の対象でないとき・尋ねられなかったときは null */
@@ -157,9 +163,9 @@ class Terminal {
 
   /** コマンド行を実行し、応答（標準出力・標準エラー・移動先）を表示する */
   private async run(line: string): Promise<void> {
-    this.input.disabled = true;
+    this.setMode('running');
     const result = await this.send(line);
-    this.input.disabled = false;
+    this.setMode('prompt');
     if (result) {
       this.print('term-out', result.stdout);
       this.print('term-err', result.stderr);
@@ -169,18 +175,23 @@ class Terminal {
     this.ready();
   }
 
-  /** 編集している間は、端末の出力とコマンドの入力欄を隠す（エディタが画面を占める）。行が多くて枠に収まらないときは、枠ごと縦に送れるようにする */
-  private setEditing(editing: boolean): void {
-    this.element.classList.toggle('term-editing', editing);
-    this.output.hidden = editing;
-    this.entry.hidden = editing;
+  /**
+   * 状態を切り替え、画面をそれに合わせる。応答を待つ間は入力欄を止める。
+   * 編集している間は、端末の出力とコマンドの入力欄を隠す（エディタが画面を占める）。行が多くて枠に収まらないときは、枠ごと縦に送れるようにする
+   */
+  private setMode(mode: Terminal['mode']): void {
+    this.mode = mode;
+    this.input.disabled = mode === 'running';
+    this.element.classList.toggle('term-editing', mode === 'editing');
+    this.output.hidden = mode === 'editing';
+    this.entry.hidden = mode === 'editing';
   }
 
   /** 編集画面を、端末の出力と入力欄の代わりに出す。保存できるか、保存せずに閉じるまで、コマンドは入力できない */
   private edit(line: string, file: EditorFile): void {
     const close = (note: string) => {
       panel.element.remove();
-      this.setEditing(false);
+      this.setMode('prompt');
       this.print('term-note', note);
       this.ready();
     };
@@ -196,7 +207,7 @@ class Terminal {
       },
       close,
     });
-    this.setEditing(true);
+    this.setMode('editing');
     this.box.append(panel.element);
     panel.focus();
   }

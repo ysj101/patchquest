@@ -45,13 +45,30 @@ async function snapshotHash(db: Database): Promise<string> {
 }
 
 export class AppEngine {
+  /** 準備が済んでいれば、その中身。準備の前・準備に失敗したあと・破棄したあとは undefined（呼び出しは not-prepared で断る） */
   private state: State | undefined;
+  /**
+   * 準備・初期化・破棄は 1 件ずつ順に行う。重ねると、前の準備が起動した機械を知らずにもう 1 台起動して止め忘れたり、
+   * 先に頼んだ準備の結果が、あとに頼んだ準備の結果を上書きしたりする。docs/formal/Engine.tla が検査する
+   */
+  private lifecycle: Promise<unknown> = Promise.resolve();
 
   /** loadAsset は、演習用の機械の配布物を読む手段。機械を使うアプリを動かすときに要る */
   constructor(private readonly loadAsset?: AssetLoader) {}
 
   /** fixture と seed から初期データを作る。server のフックの実装だけを保持する */
-  async prepare(options: PrepareOptions, selection: ImplementationSelection = options.implementations): Promise<FixtureData> {
+  prepare(options: PrepareOptions, selection: ImplementationSelection = options.implementations): Promise<FixtureData> {
+    return this.inTurn(() => this.build(options, selection));
+  }
+
+  /** 前に頼まれた準備・初期化・破棄が終わってから実行する */
+  private inTurn<T>(work: () => Promise<T>): Promise<T> {
+    const result = this.lifecycle.then(work);
+    this.lifecycle = result.catch(() => undefined);
+    return result;
+  }
+
+  private async build(options: PrepareOptions, selection: ImplementationSelection): Promise<FixtureData> {
     const app = findApp(options.app.id, options.app.version);
     const { server } = splitByRealm(app, selection);
     const generate = app.fixtures[options.fixture.generator];
@@ -73,11 +90,13 @@ export class AppEngine {
   }
 
   /** 機械を止め、DB を閉じる。使い終わった実行環境が、エミュレータのメモリを持ち続けないようにする */
-  async dispose(): Promise<void> {
-    const previous = this.state;
-    this.state = undefined;
-    previous?.db.close();
-    await previous?.machine?.machine.destroy();
+  dispose(): Promise<void> {
+    return this.inTurn(async () => {
+      const previous = this.state;
+      this.state = undefined;
+      previous?.db.close();
+      await previous?.machine?.machine.destroy();
+    });
   }
 
   /**
@@ -107,10 +126,12 @@ export class AppEngine {
     return { machine, key };
   }
 
-  /** 実装の選択を保ったまま、同じ fixture と seed で初期データを作り直す。セッションは失効する */
+  /** 実装の選択を保ったまま、同じ fixture と seed で初期データを作り直す。セッションは失効する。順番が来たときの準備の中身を作り直す */
   reset(): Promise<FixtureData> {
-    const s = this.require();
-    return this.prepare(s.options, s.selection);
+    return this.inTurn(() => {
+      const s = this.require();
+      return this.build(s.options, s.selection);
+    });
   }
 
   setImplementation(hook: HookId, implementation: ImplementationId): void {

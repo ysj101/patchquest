@@ -88,10 +88,18 @@ function invokerFor(runtime: RuntimeAdapter, runId: string, timeoutMs: number): 
   };
 }
 
+/**
+ * 検証インスタンスの状態。docs/formal/Evaluator.tla が検査する。
+ * none: まだ作っていない / started: 作ったが、どの構成も準備していない（実行環境が止まったあともここへ戻る） /
+ * prepared: key の構成（JSON）を準備してある。同じ構成の検証では準備し直さない
+ */
+type Instance =
+  | { name: 'none' }
+  | { name: 'started'; runtime: RuntimeAdapter }
+  | { name: 'prepared'; runtime: RuntimeAdapter; key: string };
+
 export class Evaluator {
-  private runtime: RuntimeAdapter | undefined;
-  /** いま検証インスタンスが準備されている構成（JSON） */
-  private preparedFor: string | undefined;
+  private instance: Instance = { name: 'none' };
   private generation = 0;
   /** 検証インスタンスは 1 つなので、実行は 1 件ずつ順に行う */
   private tail: Promise<unknown> = Promise.resolve();
@@ -131,9 +139,9 @@ export class Evaluator {
   async dispose(): Promise<void> {
     this.generation++;
     await this.tail;
-    await this.runtime?.dispose();
-    this.runtime = undefined;
-    this.preparedFor = undefined;
+    const instance = this.instance;
+    this.instance = { name: 'none' };
+    if (instance.name !== 'none') await instance.runtime.dispose();
   }
 
   private exclusive<T>(work: () => Promise<T>): Promise<T> {
@@ -188,7 +196,7 @@ export class Evaluator {
     } catch (e) {
       if (!(e instanceof RuntimeError)) throw e;
       // 実行環境が止まったので、次のテストの前に準備し直す
-      this.preparedFor = undefined;
+      if (this.instance.name === 'prepared') this.instance = { name: 'started', runtime: this.instance.runtime };
       return { passed: false, expected: '時間内に実行を終える', actual: e.message, error: e.code };
     }
   }
@@ -216,17 +224,20 @@ export class Evaluator {
   }
 
   private async ensureRuntime(subject: EvaluationSubject): Promise<RuntimeAdapter> {
-    if (!this.runtime) {
-      this.runtime = this.createRuntime();
-      await this.runtime.start();
+    if (this.instance.name === 'none') {
+      this.instance = { name: 'started', runtime: this.createRuntime() };
+      await this.instance.runtime.start();
     }
+    const { runtime } = this.instance;
     // 内容で比べる。同じオブジェクトが書き換えられても古い構成のまま検証しない
     const key = JSON.stringify(subject);
-    if (this.preparedFor !== key) {
-      await this.runtime.prepare(subject);
-      this.preparedFor = key;
+    if (this.instance.name !== 'prepared' || this.instance.key !== key) {
+      // 準備に失敗したら、前の構成が残っているとは見なさない
+      this.instance = { name: 'started', runtime };
+      await runtime.prepare(subject);
+      this.instance = { name: 'prepared', runtime, key };
     }
-    return this.runtime;
+    return runtime;
   }
 
   private assertCurrent(generation: number): void {

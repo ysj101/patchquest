@@ -1,6 +1,6 @@
 // 対策パネルと検証結果（spec §10）。修正方針を選ぶとその場で適用し（取り消しもできる）、参考コード差分を閲覧し、
 // 攻撃阻止・正常系・回帰を検証する。合否は実際の実行結果だけで決まり、選んだ対策の ID では決まらない
-import { RESULT_GROUPS, failedOutcomes, type AttemptRecord, type DefenseDef, type ReferenceDiff, type RepairDef, type TestOutcome, type VerificationReport } from '../contract';
+import { RESULT_GROUPS, failedOutcomes, nextExerciseState, type AttemptRecord, type DefenseDef, type ReferenceDiff, type RepairDef, type TestOutcome, type VerificationReport } from '../contract';
 import { highlightSource } from '../syntax/highlight';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
@@ -226,7 +226,7 @@ export class RepairPanel {
 
   private showVerifyState(state: ExerciseSnapshot['attempt']['state']): void {
     const verifying = state === 'Verifying';
-    const canVerify = state === 'Repairing' || state === 'Passed';
+    const canVerify = nextExerciseState(state, 'verification-started') !== undefined;
     this.verifying = verifying;
     this.syncChoices();
     this.verifyButton.disabled = verifying || !canVerify;

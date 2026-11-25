@@ -8,25 +8,52 @@ import type { ReplayEntry } from './runtime';
  */
 export type ExerciseState = 'Selected' | 'Preflight' | 'Prepared' | 'Explored' | 'Repairing' | 'Verifying' | 'Passed' | 'Blocked';
 
-/** 許可する状態遷移。Prepared へ戻る遷移は「初期状態へ戻す」 */
+/**
+ * 演習の状態を動かす出来事。
+ * preflight-started: 事前検証を始めた / preflight-passed: 事前検証に合格した / preflight-blocked: 開始不可・基盤エラーで止まった /
+ * explored: プレイヤーのやり取りを初めて観測した / repair-changed: 対策の切り替え・修正の記録で構成が変わった /
+ * verification-started: 検証を始めた / verification-settled: 検証が終わり、達成印はそろっていない /
+ * completed: 再現・防御（現在の構成）・理解がそろった / reset: 初期状態へ戻した
+ */
+export type ExerciseEvent =
+  | 'preflight-started' | 'preflight-passed' | 'preflight-blocked' | 'explored' | 'repair-changed'
+  | 'verification-started' | 'verification-settled' | 'completed' | 'reset';
+
+/**
+ * 演習の状態遷移表（状態 × 出来事 → 次の状態）。ここにない組み合わせは起こせない。docs/formal/Exercise.tla が同じ表を検査する。
+ * Verifying の repair-changed は、検証の途中で構成が変わったことを表す。検証が終わるまで Verifying に留まり、
+ * 確かめた結果は古い構成のものとして扱う（途中で Repairing へ出ると、検証中に検証や初期化を重ねられてしまう）
+ */
+export const EXERCISE_MACHINE: Readonly<Record<ExerciseState, Readonly<Partial<Record<ExerciseEvent, ExerciseState>>>>> = {
+  Selected: { 'preflight-started': 'Preflight' },
+  Preflight: { 'preflight-passed': 'Prepared', 'preflight-blocked': 'Blocked' },
+  Prepared: { explored: 'Explored', 'repair-changed': 'Repairing' },
+  Explored: { 'repair-changed': 'Repairing', reset: 'Prepared' },
+  Repairing: { 'repair-changed': 'Repairing', 'verification-started': 'Verifying', completed: 'Passed', reset: 'Prepared' },
+  Verifying: { 'repair-changed': 'Verifying', 'verification-settled': 'Repairing', completed: 'Passed' },
+  Passed: { 'repair-changed': 'Repairing', 'verification-started': 'Verifying', reset: 'Prepared' },
+  Blocked: { 'preflight-started': 'Preflight' },
+};
+
+/** 出来事が起きたあとの状態。その状態で起こせない出来事なら undefined */
+export function nextExerciseState(state: ExerciseState, event: ExerciseEvent): ExerciseState | undefined {
+  return EXERCISE_MACHINE[state][event];
+}
+
+/** 許可する状態遷移（移る先の一覧）。遷移表から導く。Prepared へ戻る遷移は「初期状態へ戻す」 */
+const targets = (from: ExerciseState): ExerciseState[] => [...new Set(Object.values(EXERCISE_MACHINE[from]))].filter((to) => to !== from);
 export const TRANSITIONS: Readonly<Record<ExerciseState, readonly ExerciseState[]>> = {
-  Selected: ['Preflight'],
-  Preflight: ['Prepared', 'Blocked'],
-  Prepared: ['Explored', 'Repairing', 'Blocked'],
-  Explored: ['Repairing', 'Prepared', 'Blocked'],
-  Repairing: ['Verifying', 'Prepared', 'Passed', 'Blocked'],
-  Verifying: ['Repairing', 'Passed', 'Blocked'],
-  Passed: ['Repairing', 'Prepared', 'Blocked'],
-  Blocked: ['Preflight'],
+  Selected: targets('Selected'), Preflight: targets('Preflight'), Prepared: targets('Prepared'), Explored: targets('Explored'),
+  Repairing: targets('Repairing'), Verifying: targets('Verifying'), Passed: targets('Passed'), Blocked: targets('Blocked'),
 };
 
 export function canTransition(from: ExerciseState, to: ExerciseState): boolean {
   return TRANSITIONS[from].includes(to);
 }
 
-/** 演習中（開始後で、対策を選べる状態）か。遷移表から導く */
+/** 演習中（開始後で、修正の構成を変えられる状態）か。遷移表から導く */
 export function isInExercise(state: ExerciseState): boolean {
-  return state === 'Repairing' || canTransition(state, 'Repairing');
+  return nextExerciseState(state, 'repair-changed') !== undefined;
 }
 
 export const BADGE_KINDS = ['reproduction', 'defense', 'understanding'] as const;

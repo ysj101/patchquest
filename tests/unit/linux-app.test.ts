@@ -1,10 +1,11 @@
 // 教材アプリ「Linux 端末」（本物の Linux を WASM のエミュレータで動かす）が、擬似シェルと同じ共通テストを通すこと（spec A01）と、
 // 本物の sudo・visudo での一連の操作、機械の状態の変化の検出を確かめる
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { linuxApp } from '../../apps/shell/linux';
 import { sudoeditSave, visudoSave } from '../../apps/shell/scenario';
 import type { AppRequest, FixtureData, ObservedEvent, PrepareOptions } from '../../platform/contract';
 import { AppEngine } from '../../runtimes/browser/engine';
+import { Machine } from '../../runtimes/browser/machine';
 import { machineEvaluator } from '../support/engine-runtime';
 import { readMachineAsset } from '../support/machine-assets';
 import { OPERATORS, type Result } from '../support/shell-terminal';
@@ -36,6 +37,17 @@ it('配布物を一度読めなくても、次の準備では読み直して機�
   await expect(engine.prepare(options(7))).rejects.toThrow('読めません');
   await expect(engine.prepare(options(7))).resolves.toHaveProperty('refs');
   await engine.dispose();
+});
+
+it('準備・初期化を続けて頼んでも 1 件ずつ順に行い、機械は 1 台だけ起動して、最後に頼んだ準備が残る', { timeout: SLOW }, async () => {
+  const boot = vi.spyOn(Machine, 'boot');
+  const engine = new AppEngine(readMachineAsset);
+  const [first, second, again] = await Promise.all([engine.prepare(options(7)), engine.prepare(options(8)), engine.reset()]);
+  expect(boot).toHaveBeenCalledOnce();
+  expect(first.hash).not.toBe(second.hash);
+  expect(again.hash).toBe(second.hash);
+  await engine.dispose();
+  boot.mockRestore();
 });
 
 describe('本物の Linux の端末', { timeout: SLOW }, () => {
