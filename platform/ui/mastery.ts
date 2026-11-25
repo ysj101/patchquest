@@ -9,7 +9,7 @@ function stars(mastery: CategoryMastery): HTMLElement {
   return h('span', { class: 'mastery-stars', 'aria-hidden': true }, '★'.repeat(mastery.stars) + '☆'.repeat(MASTERY_MAX - mastery.stars));
 }
 
-/** 1 行の表示。課題の行の詳細・振り返り・記録ページで使う */
+/** 1 行の表示。課題の行の詳細・記録ページで使う */
 export function masteryLine(mastery: CategoryMastery): HTMLElement {
   return h(
     'p',
@@ -31,7 +31,7 @@ function reviewNote(mastery: CategoryMastery): HTMLElement | null {
 }
 
 /** 判定の根拠。どの演習のどの達成が、どの★に効いたか */
-export function masteryEvidence(mastery: CategoryMastery): HTMLElement {
+function masteryEvidence(mastery: CategoryMastery): HTMLElement {
   return h(
     'details',
     { class: 'mastery-evidence' },

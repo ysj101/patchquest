@@ -25,18 +25,15 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await guide(page).getByRole('button', { name: '場所を表示' }).click();
   await expect(page.locator('[data-anchor="briefing"]')).toBeFocused();
   await launchButton(page).click();
-  await expect(page.locator('.now-doing')).toHaveText('今やること：調査を開いて、手がかりを集めます。');
+  await expect(page.locator('.now-doing')).toHaveText('今やること：調査で、手がかりを集めます。');
 
-  // 案内先が閉じたタブの中にあるときは、そのタブを指す。開くと中の案内先を指す
+  // 作業台は調査タブから始まるので、案内先はそのまま操作の区画を指す
   await expectStep(page, '1 / 5', '不具合を体験してみよう');
   await expect(guide(page)).toContainText('今回の依頼を確認できました！');
-  await expect(target(page)).toHaveAttribute('role', 'tab');
-  await expect(target(page)).toHaveText('調査');
-  await page.getByRole('tab', { name: '調査' }).click();
   await expect(target(page)).toHaveAttribute('data-anchor', 'actions');
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await expect(seals(page)).toContainText('再現：達成');
-  await expect(page.locator('.now-doing')).toHaveText('今やること：対策を選んで、使います。');
+  await expect(page.locator('.now-doing')).toHaveText('今やること：対策を選びます。');
 
   // 「場所を表示」は、案内先のタブを開いてフォーカスを移す
   await expectStep(page, '2 / 5', 'なおし方を選ぼう');
@@ -97,7 +94,6 @@ test('「入力欄で 41 文字目を打てなくする」を適用すると、�
 
   await page.getByRole('tab', { name: '対策' }).click();
   await page.getByRole('radio', { name: /入力欄で 41 文字目を打てなくする/ }).check();
-  await page.getByRole('button', { name: 'この対策を使う' }).click();
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await frame.getByRole('button', { name: '＋ 新しいメモ' }).click();
   await expect(frame.getByLabel('タイトル')).toHaveAttribute('maxlength', '40');

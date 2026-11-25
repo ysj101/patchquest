@@ -223,11 +223,17 @@ export async function enterWorkbench(page: Page): Promise<void> {
   await finishBriefing(page);
 }
 
-/** 作業台の状況タブが見え、導入が閉じてタイトルへフォーカスが移ったことを確かめる */
+/** 作業台の調査タブが見え、導入が閉じてタイトルへフォーカスが移ったことを確かめる */
 export async function expectWorkbench(page: Page): Promise<void> {
   await expect(page.locator('[data-anchor="briefing"]')).toBeHidden();
-  await expect(page.getByRole('tab', { name: '状況' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '調査' })).toBeVisible();
   await expect(page.locator('#exercise-title')).toBeFocused();
+}
+
+/** 作業台の「依頼」を開き、その中の「導入をもう一度見る」で導入へ戻る */
+export async function reopenBriefing(page: Page): Promise<void> {
+  await page.locator('.desk-request').getByRole('button', { name: '依頼' }).click();
+  await page.getByRole('button', { name: '導入をもう一度見る' }).click();
 }
 
 /** 開始前チェックに合格すると、ボタンを押さずに演習画面へ進む */
@@ -242,11 +248,10 @@ async function finishBriefing(page: Page): Promise<void> {
   await expectWorkbench(page);
 }
 
-/** 対策パネルで対策を選んで適用する */
+/** 対策パネルで対策を選ぶ。選ぶとその場で適用される */
 export async function applyDefense(page: Page, defense: string): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
   await page.getByRole('radio', { name: new RegExp(defense) }).check();
-  await page.getByRole('button', { name: 'この対策を使う' }).click();
   await expect(page.getByText(`使っている対策：${defense}`)).toBeVisible();
 }
 
@@ -270,16 +275,13 @@ export async function tabTo(page: Page, name: string | RegExp | Locator, max = 4
   throw new Error(`${String(name)} までフォーカスを移せませんでした`);
 }
 
-/** 直近の検証総評と、コールアウトの種類・文言・防御の達成印が一致することを確かめる */
-export async function expectCalloutMatchesVerdict(page: Page): Promise<void> {
+/** 直近の検証総評と、防御の達成印が一致することを確かめる。検証の結果は対策タブにだけ出し、作業台の上には重ねない */
+export async function expectSealMatchesVerdict(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' })).toBeEnabled({ timeout: 20_000 });
   const verdict = verifyResults(page).locator('.banner .status');
   await expect(verdict).toHaveText(/防御できました|まだ合格ではありません/, { timeout: 20_000 });
   const secured = (await verdict.innerText()).includes('防御できました');
-  const callout = page.locator('.result-callout');
-  await expect(callout).toBeVisible();
-  await expect(callout).toHaveAttribute('data-result', secured ? 'secured' : 'insufficient');
-  await expect(callout).toContainText(secured ? '防御できました' : 'まだ合格ではありません');
+  await expect(page.locator('.result-callout')).toBeHidden();
   await expect(ticketSeals(page)).toContainText(secured ? '防御：達成' : '防御：未達成');
 }
 

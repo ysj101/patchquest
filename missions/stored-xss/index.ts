@@ -16,7 +16,7 @@ export const storedXssPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'stored-xss',
-    version: '1.10.0',
+    version: '1.11.0',
     kind: 'mission',
     title: 'コメントが勝手に動くのを防ぐ',
     summary:
@@ -31,14 +31,7 @@ export const storedXssPack: MissionPack = {
     difficulty: 'intermediate',
     story: {
       workedExample: WORKED_EXAMPLE,
-      requester: {
-        name: 'carol さん', role: '共有ページの利用者',
-        reactions: {
-          reproduced: 'コメントを読むだけで動いてしまうんだね。',
-          secured: '直してくれてありがとう。コメントを文字として読めるね。',
-          closing: '書かれた文字とプログラムを分けて扱うんだね。',
-        },
-      },
+      requester: { name: 'carol さん', role: '共有ページの利用者' },
       incident:
         '利用者の carol さんから問い合わせがありました。「共有ページを開いたら、bob さんのコメントのところで、何もしていないのに勝手な動きが起きました。コメントに書いたことが、ほかの人の画面でプログラムとして動いているようです」',
       goal: 'コメントは、読んだ人の画面で文字として表示します。プログラムとしては動かしません。日本語・記号・角括弧を含むふつうのコメントは、今までどおり読めます。',

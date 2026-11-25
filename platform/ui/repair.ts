@@ -1,6 +1,6 @@
-// 対策パネルと検証結果（spec §10）。修正方針を選んで適用・取り消しし、参考コード差分を閲覧し、
+// 対策パネルと検証結果（spec §10）。修正方針を選ぶとその場で適用し（取り消しもできる）、参考コード差分を閲覧し、
 // 攻撃阻止・正常系・回帰を検証する。合否は実際の実行結果だけで決まり、選んだ対策の ID では決まらない
-import { RESULT_GROUPS, failedOutcomes, type DefenseDef, type ReferenceDiff, type RepairDef, type TestOutcome, type VerificationReport } from '../contract';
+import { RESULT_GROUPS, failedOutcomes, type AttemptRecord, type DefenseDef, type ReferenceDiff, type RepairDef, type TestOutcome, type VerificationReport } from '../contract';
 import { highlightSource } from '../syntax/highlight';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
@@ -11,6 +11,7 @@ import { fill, h, renderGuard } from './dom';
 import { headingWithInfo } from './info-popover';
 import { describersOf, type DescribingApp } from './investigation';
 import { GROUP_LABEL, STALE_VERIFICATION, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
+import { failureDetails } from './result-effect-model';
 import { recordSection, recordedChanges, recordedSummary, type RequestDescriber } from './repair-record';
 
 export interface RepairActions {
@@ -65,12 +66,21 @@ function resultDetails(report: VerificationReport, stale: boolean): HTMLElement 
   return h('details', { class: 'verify-details' }, h('summary', { role: 'button' }, '詳しく見る'), ...outcomeGroups(report, stale));
 }
 
-/** 不合格のときは、総評の直後に対策の選び直しへ戻るボタン（rechoose）を置く。選び直す対策がない課題では null を渡す */
+/** 不合格のテストを先頭二件まで、1 件ずつ分け、理由と題名・正しい結果・実際の結果を行を分けて示す。残りの件数は添える（全件は「詳しく見る」にある） */
+function failureList(report: VerificationReport): HTMLElement[] {
+  const { failures, more } = failureDetails(report);
+  const items = failures.map((failure) => h('li', {}, h('p', { class: 'verdict-failure-title' }, `${failure.reason}：${failure.title}`), expectedActual(failure.expected, failure.actual)));
+  return [h('ul', { class: 'verdict-failures' }, ...items), ...(more > 0 ? [h('p', { class: 'muted' }, `ほか ${more} 件`)] : [])];
+}
+
+/** 不合格のときは、総評の直後に失敗したテストと、対策の選び直しへ戻るボタン（rechoose）を置く。選び直す対策がない課題では null を渡す */
 function resultNodes(report: VerificationReport, stale: boolean, whyItFailed: string | null, rechoose: HTMLElement | null): (HTMLElement | null)[] {
+  const insufficient = verdictKind(report) === 'insufficient';
   return [
     stale ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null,
     verdict(report),
-    verdictKind(report) === 'insufficient' ? rechoose : null,
+    ...(insufficient ? failureList(report) : []),
+    insufficient ? rechoose : null,
     securityComparison(report, whyItFailed),
     resultDetails(report, stale),
   ];
@@ -100,12 +110,13 @@ export class RepairPanel {
   );
   private readonly verifyNote = h('p', { class: 'note', hidden: true });
   /** 検証中は押せない操作 */
-  private readonly applyButton = h('button', { type: 'button', class: 'button', on: { click: () => this.selected && void this.actions.apply(this.selected) } }, 'この対策を使う');
   private readonly revertButton = h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.actions.apply(null) } }, '対策を外す');
   private readonly resetButton = h('button', { type: 'button', class: 'button button-danger', on: { click: () => void this.actions.reset() } }, '最初の状態に戻す');
   private readonly rechooseButton = h('button', { type: 'button', class: 'button', on: { click: () => this.returnToChoices() } }, '① に戻って対策を選び直す');
   private readonly results = h('div', { class: 'results' });
   private readonly resultsTitle = h('h3', { tabIndex: -1 }, 'テストの結果');
+  /** テストの結果の区画。結果が出るまでは出さない */
+  private readonly resultsSection = h('section', { class: 'tool-section', 'data-anchor': 'results', hidden: true }, this.resultsTitle, this.results);
   private readonly resultsGuard = renderGuard();
   /** パックが操作のしかたを持つときだけ、① より先に見せる */
   private readonly guide = h('section', { class: 'tool-section repair-guide', 'aria-labelledby': 'repair-guide-title', hidden: true });
@@ -114,7 +125,13 @@ export class RepairPanel {
   private readonly changes = h('div', {});
   private readonly resetNote = h('p', {});
   private defenses: DefenseDef[] = [];
+  /** 選んでいる対策。選ぶとその場で使うので、切り替えを待つ間を除いて appliedId と同じ */
   private selected: string | null = null;
+  /** 実際に使っている対策 */
+  private appliedId: string | null = null;
+  /** 対策の切り替えを待っている間。続けて選ばれても、切り替えを重ねない */
+  private applying = false;
+  private verifying = false;
   /** 操作で直す課題の修正方式。対策を選ぶ課題では null */
   private record: RepairDef | null = null;
   private describeRequest: RequestDescriber = () => null;
@@ -130,7 +147,8 @@ export class RepairPanel {
     this.record = manifest.repair ?? null;
     this.describeRequest = describersOf(app).request;
     this.defenses = manifest.defenses;
-    this.selected = snapshot.attempt.appliedDefense ?? this.defenses[0]?.id ?? null;
+    this.appliedId = snapshot.attempt.appliedDefense;
+    this.selected = this.appliedId;
     this.reference.open = false;
     this.guide.hidden = !manifest.repairGuide;
     if (manifest.repairGuide) fill(this.guide, ...approachNodes('repair-guide-title', '操作のしかた', manifest.repairGuide));
@@ -141,7 +159,7 @@ export class RepairPanel {
       this.choices,
       ...this.defenses.map((defense) =>
         radioOption(
-          { name: 'defense', value: defense.id, checked: defense.id === this.selected, className: 'defense-option', onChange: () => this.select(defense.id) },
+          { name: 'defense', value: defense.id, checked: defense.id === this.selected, className: 'defense-option', onChange: () => void this.choose(defense.id) },
           h('span', { class: 'defense-text' }, h('strong', {}, defense.label), h('span', { class: 'note' }, defense.description)),
         ),
       ),
@@ -163,10 +181,10 @@ export class RepairPanel {
 
   private choiceNodes(): HTMLElement[] {
     return [
-      headingWithInfo(h('h3', { id: 'defense-title' }, '① 対策を選んで使う'), h('p', {}, '選んだ対策に、教材アプリの中身が切り替わります。')),
+      headingWithInfo(h('h3', { id: 'defense-title' }, '① 対策を選ぶ'), h('p', {}, '選ぶと、教材アプリの中身がその対策に切り替わります。')),
       this.choices,
       this.reference,
-      h('div', { class: 'actions' }, this.applyButton, this.revertButton),
+      h('div', { class: 'actions' }, this.revertButton),
     ];
   }
 
@@ -178,7 +196,7 @@ export class RepairPanel {
       this.applied,
       h('div', { class: 'actions' }, this.verifyButton),
       this.verifyNote,
-      h('section', { class: 'tool-section', 'data-anchor': 'results' }, this.resultsTitle, this.results),
+      this.resultsSection,
     );
   }
 
@@ -191,13 +209,17 @@ export class RepairPanel {
     );
   }
 
-  private showApplied(attempt: ExerciseSnapshot['attempt']): void {
+  private showApplied(attempt: AttemptRecord): void {
     if (this.record) {
       fill(this.changes, recordedChanges(this.record, attempt.repairLog, this.describeRequest));
       fill(this.applied, recordedSummary(this.record, attempt.repairLog));
       return;
     }
     const applied = this.defenses.find((defense) => defense.id === attempt.appliedDefense);
+    this.revertButton.hidden = !applied;
+    this.appliedId = applied?.id ?? null;
+    // 切り替えを待つ間は、選んだ対策の表示を保つ
+    if (!this.applying) this.showSelected(this.appliedId);
     const label = applied ? `使っている対策：${applied.label}` : '対策は使っていません（セキュリティホールが残った状態）';
     fill(this.applied, status('idle', label));
   }
@@ -205,13 +227,14 @@ export class RepairPanel {
   private showVerifyState(state: ExerciseSnapshot['attempt']['state']): void {
     const verifying = state === 'Verifying';
     const canVerify = state === 'Repairing' || state === 'Passed';
+    this.verifying = verifying;
+    this.syncChoices();
     this.verifyButton.disabled = verifying || !canVerify;
-    this.applyButton.disabled = verifying;
     this.revertButton.disabled = verifying;
     this.resetButton.disabled = verifying;
     this.verifyNote.replaceChildren();
     if (verifying) fill(this.verifyNote, status('running', 'テストしています…'));
-    else if (!canVerify) this.verifyNote.textContent = this.record ? '教材アプリで直す操作をすると、テストできます。' : '対策を使うと、テストできます。';
+    else if (!canVerify) this.verifyNote.textContent = this.record ? '教材アプリで直す操作をすると、テストできます。' : '対策を選ぶと、テストできます。';
     this.verifyNote.hidden = !verifying && canVerify;
   }
 
@@ -220,21 +243,45 @@ export class RepairPanel {
     const report = attempt.lastVerification;
     const key = `${attempt.attemptId}|${report?.runId}|${attempt.configHash}|${snapshot.platformError}|${snapshot.vulnerableVerification?.runId}`;
     if (!this.resultsGuard.changed(key)) return;
+    this.resultsSection.hidden = !report && !snapshot.platformError;
     if (snapshot.platformError) {
       fill(this.results, h('div', { class: 'banner banner-warn', role: 'alert' }, status('error', 'システムのエラー'), ` ${snapshot.platformError}（不合格には数えません）`));
       return;
     }
-    if (!report) {
-      fill(this.results, h('p', { class: 'muted' }, 'まだテストしていません。'));
-      return;
-    }
+    if (!report) return void this.results.replaceChildren();
     // 操作で直す課題には選び直す対策がないので、選び直しのボタンは出さない
     fill(this.results, ...resultNodes(report, !isCurrent(report, attempt.configHash), whyDefenseFailed(snapshot), this.record ? null : this.rechooseButton));
   }
 
-  private select(id: string): void {
+  /** 選んだ対策をその場で使う。切り替えが終わるまでは、ほかの対策を選べない */
+  private async choose(id: string): Promise<void> {
+    const hadFocus = this.choices.contains(document.activeElement);
+    this.applying = true;
+    this.showSelected(id);
+    try {
+      await this.actions.apply(id);
+    } finally {
+      this.applying = false;
+      // 切り替えに失敗したときも、実際に使っている対策の表示へ戻す
+      this.showSelected(this.appliedId);
+      if (hadFocus) this.choices.querySelector<HTMLInputElement>('input:checked')?.focus();
+    }
+  }
+
+  /** 選んでいる対策を替え、ラジオボタンと参考コードを合わせる。参考コードは、対策が替わったときだけ組み直す */
+  private showSelected(id: string | null): void {
+    const changed = this.selected !== id;
     this.selected = id;
-    this.showDiff();
+    if (changed) this.showDiff();
+    this.syncChoices();
+  }
+
+  /** ラジオボタンを、選んでいる対策と、選べるかどうかに合わせる */
+  private syncChoices(): void {
+    for (const input of this.choices.querySelectorAll('input')) {
+      input.checked = input.value === this.selected;
+      input.disabled = this.applying || this.verifying;
+    }
   }
 
   /** 参考コード差分（閲覧専用）。実際の切り替えは事前に用意した実装で行う */

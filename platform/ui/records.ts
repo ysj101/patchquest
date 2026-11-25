@@ -1,4 +1,4 @@
-// 記録ページ（spec §10）。分類ごとの習熟度と実績を置く。進捗の書き出し・読み込み・削除は設定にある。
+// 記録ページ（spec §10）。レベルと XP、分類ごとの習熟度と実績を置く。進捗の書き出し・読み込み・削除は設定にある。
 import type { MissionPack } from '../contract';
 import type { ProfileSummary } from '../progress/profile';
 import { achievementList } from './achievement-list';
@@ -12,11 +12,11 @@ const HOW_TO_GROW = '課題を解くと「再現・防御・理解」のスタ�
 const categoriesOf = (packs: readonly MissionPack[]) => [...new Set(packs.flatMap((pack) => pack.manifest.vulnerability?.category ?? []))];
 
 /**
- * 記録ページ。保存済みの記録から導いた習熟度と実績だけを置く。
+ * 記録ページ。保存済みの記録から導いたレベルと XP・習熟度・実績を置く。
  * storageWarning があれば、保存できない旨と設定の書き出しへの案内を先頭に出す
  */
 export function recordsPage(
-  { achievements, mastery }: ProfileSummary,
+  { achievements, mastery, xp }: ProfileSummary,
   packs: readonly MissionPack[],
   storageWarning: string | null,
   openSettings: () => void,
@@ -32,6 +32,8 @@ export function recordsPage(
         { class: 'hero-text' },
         h('h1', { id: 'records-title', tabIndex: -1 }, '記録'),
         h('p', { class: 'hero-lead' }, HOW_TO_GROW),
+        // 取り組みへの報酬。演習画面には出さず、ここにだけ置く
+        h('p', { class: 'xp-badge' }, `Lv.${xp.level} ・ ${xp.total} XP`),
       ),
     ),
     storageWarning ? storageWarningBanner(storageWarning, openSettings) : null,

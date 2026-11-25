@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
   await startExercise(page);
 });
 
-test('依頼の文は「依頼」に重ねて一度だけ出て、矢印キーでタブを切り替えられる', async ({ page }) => {
+test('依頼の文は「依頼」に重ねて一度だけ出て、守るものと壊さないことは帯に常に出て、矢印キーでタブを切り替えられる', async ({ page }) => {
   const request = page.locator('.desk-request');
   await expect(request.getByRole('note')).toBeHidden();
   await request.getByRole('button', { name: '依頼' }).hover();
@@ -30,11 +30,17 @@ test('依頼の文は「依頼」に重ねて一度だけ出て、矢印キー�
   await expect(request.getByRole('note')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(request.getByRole('note')).toBeHidden();
-  await expect(page.getByRole('tabpanel', { name: '状況' })).not.toContainText('他人のノートが見える');
+  await expect(page.locator('.tools')).not.toContainText('他人のノートが見える');
   await expect(page.locator('.now-doing')).toContainText('今やること：');
-  await page.getByRole('tab', { name: '状況' }).focus();
+  // 「状況」タブは置かず、対策を選ぶ基準は帯に 1 行で出す
+  await expect(page.getByRole('tab')).toHaveText(['調査', '対策', '振り返り']);
+  await expect(page.locator('.desk-goal dt')).toHaveText(['守るもの', '壊さないこと']);
+  await expect(page.locator('.desk-goal dd')).toHaveText(['ノート本文', '本人がノートを読める']);
+  await expect(page.getByRole('tab', { name: '調査' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: '調査' }).focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: '調査' })).toBeFocused();
+  await expect(page.getByRole('tab', { name: '対策' })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
   await expect(page.getByRole('tab', { name: '調査' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tabpanel', { name: '調査' })).toContainText('本物の通信ではありません');
 });
@@ -56,10 +62,9 @@ test('キーボードで利用者を切り替え、定型の操作で事故を�
   await expect(entry.locator('summary')).toContainText(`bob → GET /notes/${id}`);
   await expect(entry.locator('.status')).toHaveText(/200/);
   await expect(page.getByRole('list', { name: 'スタンプ' })).toContainText('再現：達成');
-  await expect(page.locator('.state-stamp')).toHaveText('調査中');
 });
 
-test('調査タブでは生の編集欄が畳まれ、上級者向けを開くと編集して送れ、コピーも入る', async ({ page }) => {
+test('調査タブでは生の編集欄が畳まれ、上級者向けを開くと編集して送れ、開いている間だけ出るコピーも入る', async ({ page }) => {
   await page.getByRole('tab', { name: '調査' }).click();
   const editor = page.locator('[data-anchor="request-editor"]');
   await expect(editor).not.toHaveAttribute('open');
@@ -67,12 +72,32 @@ test('調査タブでは生の編集欄が畳まれ、上級者向けを開く�
   await expect(page.getByRole('button', { name: '送る', exact: true })).toBeVisible();
 
   await page.getByLabel('ノート ID').fill('7');
-  await page.getByRole('button', { name: '編集欄にコピー' }).click();
-  await expect(editor).toHaveAttribute('open', '');
+  const copy = page.getByRole('button', { name: '編集欄にコピー' });
+  await expect(copy).toBeHidden();
+  await openRawRequest(page);
+  await copy.click();
   await expect(editor.getByLabel('メソッド')).toHaveValue('GET');
   await expect(editor.getByLabel('パス')).toHaveValue('/notes/7');
   await editor.getByRole('button', { name: 'このリクエストを送る' }).click();
   await expect(page.locator('.log-entry').filter({ hasText: 'alice → GET /notes/7' }).locator('summary')).toBeVisible();
+});
+
+test('操作の説明と入力欄の補足は ⓘ に畳んであり、マウスを乗せるか押すと読める', async ({ page }) => {
+  const actions = page.locator('[data-anchor="actions"]');
+  await expect(actions).not.toContainText('ノートを ID で取得する', { useInnerText: true });
+  const info = actions.locator('.action').first().getByRole('button', { name: / の説明$/ }).first();
+  await info.hover();
+  await expect(actions.getByRole('note').filter({ hasText: 'ノートを ID で取得する' })).toBeVisible();
+  await page.locator('.now-doing').hover();
+  await expect(actions.getByRole('note').filter({ hasText: 'ノートを ID で取得する' })).toBeHidden();
+  await info.press('Enter');
+  await expect(actions.getByRole('note').filter({ hasText: 'ノートを ID で取得する' })).toBeVisible();
+  // 補足を持つ入力欄は、ラベルの横に ⓘ を置く。ラベルは入力欄だけを指す
+  await startMission(page, 'idor');
+  await expect(page.getByLabel('メモの ID', { exact: true })).toHaveCount(1);
+  const help = page.getByRole('button', { name: 'メモの ID の説明' });
+  await help.click();
+  await expect(help.locator('xpath=..').getByRole('note')).toBeVisible();
 });
 
 test('どの課題の調査タブでも、生の編集欄は畳まれたまま操作が見える', async ({ page }) => {
@@ -130,8 +155,7 @@ test('教材由来の文字列は観測ログでも文字のまま表示され�
   expect(dialogs).toEqual([]);
 });
 
-test('調べ方・操作のしかたを持たない課題では調査タブ・対策タブに出さず、ヒントは状況・調査のどちらで開いても両方に出て、対策タブには直し方だけが出る', async ({ page }) => {
-  const story = page.getByRole('tabpanel', { name: '状況' });
+test('調べ方・操作のしかたを持たない課題では調査タブ・対策タブに出さず、ヒントは調査タブで順に開け、対策タブには直し方だけが出る', async ({ page }) => {
   const investigation = page.getByRole('tabpanel', { name: '調査' });
   await page.getByRole('tab', { name: '調査' }).click();
   await expect(investigation.getByRole('heading', { name: '調べ方' })).toHaveCount(0);
@@ -141,10 +165,7 @@ test('調べ方・操作のしかたを持たない課題では調査タブ・�
   await expect(investigation.locator('.hint')).toHaveCount(1);
   await expect(investigation.getByRole('button', { name: 'ヒント 2（調べ方）を見る' })).toBeFocused();
 
-  await page.getByRole('tab', { name: '状況' }).click();
-  await expect(story.locator('.hint')).toHaveCount(1);
-  await story.getByRole('button', { name: 'ヒント 2（調べ方）を見る' }).click();
-  await page.getByRole('tab', { name: '調査' }).click();
+  await investigation.getByRole('button', { name: 'ヒント 2（調べ方）を見る' }).click();
   await expect(investigation.locator('.hint')).toHaveCount(2);
 
   const repair = page.getByRole('tabpanel', { name: '対策' });
@@ -155,8 +176,8 @@ test('調べ方・操作のしかたを持たない課題では調査タブ・�
   await repair.getByRole('button', { name: 'ヒント 3（直し方）を見る' }).click();
   await expect(repair.locator('.hint')).toHaveCount(1);
   await expect(repair.locator('.hint .eyebrow')).toHaveText('ヒント 3：直し方');
-  await page.getByRole('tab', { name: '状況' }).click();
-  await expect(story.locator('.hint')).toHaveCount(3);
+  await page.getByRole('tab', { name: '調査' }).click();
+  await expect(investigation.locator('.hint')).toHaveCount(3);
 });
 
 test('対策タブでは、見るところ・調べ方のヒントを開いていなくても、直し方のヒントと解法を開ける', async ({ page }) => {

@@ -2,7 +2,7 @@
 // 検証済みの固定ペイロードを保存し、別の利用者が開くと実行マーカーで再現する（A08）。
 // script タグの削除では不合格、コメントの非表示は正常系が壊れ、文字としての表示で合格する（A09）。
 // ペイロードは隔離 iframe の外の Host では要素にならない（A17）
-import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from '../../../tests/e2e/fixtures';
+import { answerTransferCheck, expect, expectSealMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from '../../../tests/e2e/fixtures';
 
 /** 理解確認の正解の選択肢（設問 ID → ラベル） */
 const CORRECT_CHOICES: Record<string, string> = {
@@ -23,7 +23,7 @@ test('保存した攻撃コメントが別の利用者の画面で実行され�
 
   // A08：検証済みペイロードを保存し、投稿者以外が共有ページを開くと実行マーカーが出る
   await page.getByRole('tab', { name: '調査' }).click();
-  await page.getByLabel('投稿するコメント').selectOption({ label: '攻撃コメント（画像の onerror）' });
+  await page.getByLabel('投稿するコメント', { exact: true }).selectOption({ label: '攻撃コメント（画像の onerror）' });
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await page.getByRole('radio', { name: /^bob/ }).check();
   await expect(app.getByText('bob さんとしてログイン中')).toBeVisible();
@@ -38,7 +38,7 @@ test('保存した攻撃コメントが別の利用者の画面で実行され�
 
   // script タグだけ消しても onerror は残り、攻撃阻止にならない
   await verifyWith(page, 'script タグだけを削除する');
-  await expectCalloutMatchesVerdict(page);
+  await expectSealMatchesVerdict(page);
   await expect(results(page)).toContainText('まだ合格ではありません 攻撃をまだ防げていません。', { timeout: 20_000 });
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await app.getByRole('button', { name: '共有ページ', exact: true }).click();
@@ -47,7 +47,7 @@ test('保存した攻撃コメントが別の利用者の画面で実行され�
 
   // コメントを出さないと、普通のコメントも読めない
   await verifyWith(page, 'コメントをすべて表示しない');
-  await expectCalloutMatchesVerdict(page);
+  await expectSealMatchesVerdict(page);
   await expect(results(page)).toContainText('ふだんの使い方が壊れています', { timeout: 20_000 });
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await app.getByRole('button', { name: '共有ページ', exact: true }).click();
@@ -57,7 +57,7 @@ test('保存した攻撃コメントが別の利用者の画面で実行され�
 
   // A09：文字として出せば、保存済みの攻撃コメントは動かず、普通のコメントは読める
   await verifyWith(page, 'コメントを文字として表示する');
-  await expectCalloutMatchesVerdict(page);
+  await expectSealMatchesVerdict(page);
   await expect(results(page)).toContainText('防御できました', { timeout: 20_000 });
   await expect(seals(page)).toContainText('防御：達成');
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();

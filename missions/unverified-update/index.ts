@@ -25,7 +25,7 @@ export const unverifiedUpdatePack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'unverified-update',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'mission',
     title: '更新を、確かめてから取り込む',
     summary:
@@ -40,14 +40,7 @@ export const unverifiedUpdatePack: MissionPack = {
     difficulty: 'beginner',
     story: {
       workedExample: WORKED_EXAMPLE,
-      requester: {
-        name: '関さん', role: 'サーバの管理者',
-        reactions: {
-          reproduced: '足した行まで、root の権限で動いてしまうんですね。',
-          secured: '書き換えた更新は止まるようになりました。正しい更新は今までどおりですね。',
-          closing: '受け取ったものは、確かめてから動かすんですね。',
-        },
-      },
+      requester: { name: '関さん', role: 'サーバの管理者' },
       incident:
         '管理者の関さんから依頼がありました。「よその会社で、更新の配布元が乗っ取られ、書き換えられた更新を取り込んだサーバが被害にあいました。このサーバは、書き換えられた更新を受け取ったら止められるでしょうか。更新の取り込みを調べてください」',
       goal: '中身を書き換えられた更新は、取り込まないようにします。配布元が出したままの更新は、運用担当が今までどおり取り込めるようにします。',

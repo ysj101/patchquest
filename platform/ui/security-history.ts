@@ -1,4 +1,4 @@
-// 検証ごとの対策・合否・グループ別の変化を時刻順で示す。
+// 検証ごとの対策・合否・グループ別の変化を時刻順で示す。閉じた状態で置き、見たいときだけ開く。
 import { RESULT_GROUPS, summarizeVerification, type VerificationEntry } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { h } from './dom';
@@ -30,5 +30,5 @@ export function securityHistory(snapshot: ExerciseSnapshot): HTMLElement | null 
     previous = entry.groups;
     return item;
   });
-  return h('section', { class: 'security-history tool-section' }, h('h3', {}, '改善履歴'), h('ol', {}, ...items));
+  return h('details', { class: 'security-history debrief-fold' }, h('summary', {}, '改善履歴'), h('ol', {}, ...items));
 }

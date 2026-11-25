@@ -28,19 +28,20 @@ async function box(page: Page, selector: string): Promise<{ x: number; y: number
   return value;
 }
 
-/** 対策タブの適用と検証が、参考コードを閉じたままパネル内スクロールなしに画面へ入っている。
+/** 対策タブの候補と検証が、参考コードを閉じたままパネル内スクロールなしに画面へ入っている。
  * ページのスクロールは許すので、道具パネルを画面の上端まで送ってから確かめる */
 async function expectRepairActionsInView(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
   await page.locator('.tools').evaluate((el) => el.scrollIntoView({ block: 'start' }));
-  await expect(page.locator('.reference-code')).not.toHaveAttribute('open');
+  await expect(page.locator('.reference-code')).toBeHidden();
   await expectNoPanelScroll(page);
-  await expect(page.getByRole('button', { name: 'この対策を使う' })).toBeInViewport();
+  await expect(page.locator('.defense-option').last()).toBeInViewport();
   await expect(page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' })).toBeInViewport();
 }
 
-/** 閉じている参考コードを開く。差分の列数は開いたあとに測る */
+/** 対策を選んで（参考コードは選ぶと出る）、閉じている参考コードを開く。差分の列数は開いたあとに測る */
 async function openReference(page: Page): Promise<void> {
+  await page.locator('.defense-option input').first().check();
   await page.locator('.reference-code summary').click();
   await expect(page.locator('.reference-code')).toHaveAttribute('open', '');
 }
@@ -128,7 +129,7 @@ test('960px 以下は教材アプリの下に道具が並び、横にはみ出�
   await openReference(page);
   const diffTracks = await page.locator('.diff-pair').first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
   expect(diffTracks).toBe(1);
-  await expect(page.getByRole('button', { name: 'この対策を使う' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '対策を外す' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
   await page.setViewportSize({ width: 390, height: 700 });

@@ -15,7 +15,7 @@ export const sudoMisconfigPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sudo-misconfig',
-    version: '2.5.0',
+    version: '2.6.0',
     kind: 'mission',
     title: '広すぎる sudo の許可を絞る',
     summary:
@@ -30,14 +30,7 @@ export const sudoMisconfigPack: MissionPack = {
     difficulty: 'beginner',
     story: {
       workedExample: WORKED_EXAMPLE,
-      requester: {
-        name: '森さん', role: 'サーバの管理者',
-        reactions: {
-          reproduced: '運用担当なのに、保守の操作までできてしまうんですね。',
-          secured: '保守の操作は管理者だけになりました。運用の作業は今までどおりですね。',
-          closing: '許可は、仕事に必要な分だけにするんですね。',
-        },
-      },
+      requester: { name: '森さん', role: 'サーバの管理者' },
       incident:
         '管理者の森さんから依頼がありました。「運用担当から『管理者だけがやるはずの保守の操作が、自分でもできてしまった』と報告がありました。このサーバの sudo の設定を調べてください」',
       goal: '保守の操作は、管理者だけが sudo でできるようにします。運用担当は今までどおり、日常の運用の操作を sudo でできるようにします。',

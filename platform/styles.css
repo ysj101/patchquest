@@ -192,7 +192,6 @@ main > section > * + * { margin-top: 16px; }
 .mission-main h3 { font-size: 0.95rem; font-weight: 500; color: var(--ink); }
 .vulnerability { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; }
 .vulnerability-name { font-size: 1.05rem; font-weight: 700; }
-.vulnerability-plain { flex-basis: 100%; font-size: 0.85rem; color: var(--muted); }
 /* ⓘ の説明。ボタンの近くに重ねて出し、キーボードでも開閉できる */
 .info { position: relative; display: inline-flex; }
 .info-button {
@@ -210,7 +209,10 @@ main > section > * + * { margin-top: 16px; }
 .terms { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 0.85rem; }
 .terms dt { color: var(--muted); }
 .terms dd { margin: 0; display: grid; gap: 2px; }
-.terms-note { margin-top: 10px; display: grid; gap: 6px; }
+.terms-note[open] { display: grid; gap: 6px; }
+/* 振り返りで畳んでおく区画（覚えておくこと・用語・改善履歴）。見出しと同じ太さの 1 行だけを見せる */
+.debrief-fold > summary { cursor: pointer; font-weight: 700; width: fit-content; }
+.debrief-fold[open] > summary { margin-bottom: 6px; }
 .summary-fold summary { cursor: pointer; color: var(--link); font-size: 0.82rem; width: fit-content; }
 .summary-fold[open] { display: grid; gap: 6px; padding: 6px 0 4px; }
 .mission-summary { font-size: 0.87rem; color: var(--muted); max-width: 46em; }
@@ -248,7 +250,7 @@ main > section > * + * { margin-top: 16px; }
 .preflight-details[open] > * + * { margin-top: 12px; }
 .preflight-outcome { display: grid; gap: 12px; }
 
-/* 演習票：上端の 1 行に、戻る・課題名・状態・架空サービスの表示・検印・設定 */
+/* 演習票：上端の 1 行に、戻る・課題名・検印・設定 */
 .ticket {
   display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 12px;
@@ -256,19 +258,13 @@ main > section > * + * { margin-top: 16px; }
 .ticket-main { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; flex: 1 1 280px; min-width: 0; }
 .ticket h1 { font-size: 1.1rem; }
 .ticket-back::before { content: '← '; }
-.fictional-label strong { font-size: 0.75rem; font-weight: 700; color: var(--on-primary); background: var(--primary); border-radius: 4px; padding: 2px 8px; }
-.state-stamp {
-  font-weight: 700; font-size: 0.78rem;
-  border: 1px solid var(--primary); color: var(--primary); border-radius: 999px; padding: 0 10px;
-}
-.state-stamp[data-state='Passed'] { border-color: var(--ok); color: var(--ok); }
 .desk-status {
   display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 12px; padding: 6px 12px;
   font-size: 0.78rem; color: var(--muted); border-top: 1px solid var(--line);
 }
 .ticket-id { font-family: var(--font-mono); }
 
-/* 作業台：上の帯に依頼（重ねて出す）とステージ、左に教材アプリと観測ログ、右に道具。教材アプリに幅を残すため、依頼は列にしない */
+/* 作業台：上の帯に依頼（重ねて出す）・ステージ・守るものと壊さないこと、左に教材アプリと観測ログ、右に道具。教材アプリに幅を残すため、依頼は列にしない */
 .workbench { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px 16px; align-items: start; margin-top: 8px; }
 /* 広い画面では教材アプリを道具と同じ幅まで広げる。狭い画面では道具の操作が切れないよう、道具を広く保つ */
 @media (min-width: 1400px) { .workbench { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
@@ -276,10 +272,13 @@ main > section > * + * { margin-top: 16px; }
   grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 12px;
 }
-.stage-count { font-size: 0.75rem; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; }
+/* 守るものと壊さないこと。帯の 2 行目に、見出しと中身を横に並べる */
+.desk-goal { flex: 1 1 100%; margin: 0; display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 0.85rem; line-height: 1.5; }
+.desk-goal dt { font-weight: 700; color: var(--muted); }
+.desk-goal dd { margin: 0 12px 0 0; }
 .desk-request .info-label[aria-expanded='true'] { color: var(--primary); }
 /* ボタンから依頼の文へマウスを移す間に閉じないよう、すき間を空けずに重ねる */
-.desk-request .info-panel { top: 100%; font-size: 0.9rem; }
+.desk-request .info-panel { top: 100%; font-size: 0.9rem; display: grid; gap: 8px; justify-items: start; }
 .app-pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .preview-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .preview-slot { padding: 10px; }
@@ -354,6 +353,8 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .action-list { display: grid; gap: 12px; }
 .action { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 8px; background: var(--surface-2); }
 .action h4 { font-size: 0.95rem; }
+/* 「編集欄にコピー」は、リクエストの編集欄を開いている間だけ出す */
+.investigation:not(:has(.raw-request[open])) .copy-to-editor { display: none; }
 .field { display: grid; gap: 4px; font-weight: 600; font-size: 0.87rem; }
 .field input, .field textarea, .field select, .request-line input, .request-line select, .investigation textarea {
   border: 1px solid var(--control); border-radius: 6px; padding: 6px 8px; background: var(--sunken); color: var(--ink); width: 100%;
@@ -383,6 +384,8 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .defense-option:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
 .defense-option input { margin-top: 5px; accent-color: var(--primary); }
 .defense-text { display: grid; gap: 2px; }
+/* 説明は、選んだ（使っている）対策の分だけ出す */
+.defense-option:not(:has(input:checked)) .defense-text .note { display: none; }
 .diff { display: grid; gap: 8px; }
 .diff:empty { display: none; }
 /* 参考コードは閉じて始める。開いた差分の下に検証を置かない（パネル内をスクロールさせない） */
@@ -497,22 +500,19 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 @keyframes guide-pulse { 50% { filter: brightness(1.15); } }
 
 /* 結果は最初から読み取れる。移動だけを段階的に付け、動きの設定で停止できる。 */
-.result-callout { padding: 14px 18px; margin-top: 12px; border: 1px solid var(--fail); border-radius: 8px; background: var(--fail-bg); animation: rise-in 0.3s ease-out; }
-.result-callout[data-result='secured'] { border-color: var(--ok); background: var(--ok-bg); }
-.result-callout[data-result='insufficient'] { border-color: var(--fail); border-style: dashed; }
-.result-callout h2 { font-size: 1.05rem; }
+/* 再現の通知は 1 行。見出しと閉じるボタンを横に並べる */
+.result-callout { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; padding: 4px 12px; margin-top: 8px; border: 1px solid var(--fail); border-radius: 8px; background: var(--fail-bg); animation: rise-in 0.3s ease-out; }
+.result-callout h2 { font-size: 0.95rem; }
 /* 不合格の内訳。失敗を 1 件ずつ分け、理由・正しい結果・実際の結果を行を分けて示す */
-.callout-failures { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
-.callout-failure-title { margin: 0 0 2px; font-weight: 700; }
-.callout-failures .outcome-detail { font-size: 0.9rem; }
+.verdict-failures { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.verdict-failure-title { margin: 0 0 2px; font-weight: 700; }
+.verdict-failures .outcome-detail { font-size: 0.9rem; }
 .result-group[data-reveal='true'] { animation: rise-in 0.3s ease-out backwards; }
 .result-group[data-reveal='true']:nth-of-type(2) { animation-delay: 0.15s; }
 .result-group[data-reveal='true']:nth-of-type(3) { animation-delay: 0.3s; }
 
 /* 五つのステージは一行に並べ、状態は色で示す（文字の状態は読み上げ用に残す）。新規到達だけを動かす。 */
 .stage-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; flex: 1 1 0; min-width: 0; }
-.stage-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
-.stage-count { margin: 0; }
 .stages { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .stages li { display: flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 0.82rem; color: var(--muted); }
 .stage-number { font-family: var(--font-mono); font-weight: 700; }
@@ -524,7 +524,7 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .security-history time { font-size: 0.8rem; overflow-wrap: anywhere; }
 
 .xp-badge { display: flex; flex-wrap: wrap; gap: 4px 12px; font-family: var(--font-mono); font-size: 0.82rem; color: var(--muted); }
-.xp-gain, .achievement-gain { color: var(--primary); font-weight: bold; animation: rise-in 0.3s ease-out; }
+.achievement-gain { color: var(--primary); font-weight: bold; animation: rise-in 0.3s ease-out; }
 .achievement-toast:empty { display: none; }
 
 .achievements ul { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 0.9rem; }
@@ -556,10 +556,6 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 
 .guide-coach .character-face { width: 32px; height: 32px; }
 
-.character-voice-compact { margin: 0; grid-template-columns: 24px auto minmax(0, 1fr); align-items: center; gap: 8px; }
-.character-voice-compact .character-face, .character-voice-compact .character-live { width: 24px; height: 24px; grid-row: 1; }
-.character-voice-compact blockquote { grid-column: 3; grid-row: 1; padding: 0; border: 0; background: transparent; }
-.character-voice-compact figcaption { grid-column: 2; grid-row: 1; }
 
 /* ux-collapse-raw-request */
 .raw-request summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }

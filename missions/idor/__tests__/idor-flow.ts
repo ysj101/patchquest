@@ -1,6 +1,6 @@
 // IDOR の E2E で共用する操作。画面の「前のメモ」で再現し、所有者の照合で合格し、理解確認に答える
 import type { Page } from '@playwright/test';
-import { answerTransferCheck as answerAll, expect, expectCalloutMatchesVerdict, preview, ticketSeals as seals, verifyResults as results, verifyWith } from '../../../tests/e2e/fixtures';
+import { answerTransferCheck as answerAll, expect, expectSealMatchesVerdict, preview, ticketSeals as seals, verifyResults as results, verifyWith } from '../../../tests/e2e/fixtures';
 
 /** bob の非公開メモを開き、「前のメモ」で bob のもう 1 つのメモ（一つ前の番号）へ移る */
 export async function openBobsFirstMemo(page: Page): Promise<void> {
@@ -25,7 +25,7 @@ export async function reproduceByPreviousMemo(page: Page): Promise<void> {
 /** 所有者を照合する対策で検証し、防御の達成印を得る（A07） */
 export async function secureByOwnerCheck(page: Page): Promise<void> {
   await verifyWith(page, '取り出すときに、ログイン中の利用者が持ち主かを確かめる');
-  await expectCalloutMatchesVerdict(page);
+  await expectSealMatchesVerdict(page);
   await expect(results(page)).toContainText('防御できました', { timeout: 15_000 });
   await expect(seals(page)).toContainText('防御：達成');
 }

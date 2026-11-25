@@ -1,61 +1,27 @@
-// 案内役の短い言葉と、名前・役割を文字でも示すキャラクター表示。
-import type { StoryDef } from '../contract';
+// 案内役の名前と顔、依頼人の発言を名前・役割つきで示すキャラクター表示。
 import { h } from './dom';
 
-export const GUIDE = {
-  name: 'パッチ',
-  role: 'セキュリティ担当の先輩',
-  reactions: {
-    briefing: 'まずは、何があったのか話を聞いてみよう。',
-    reproduced: 'やったね、同じことが起きた！ 次は、どう守るかを考えよう。',
-    secured: 'ばっちり守れたね！ どうして守れたのか、振り返ってみよう。',
-    closing: 'なぜ起きたのか、どう守ったのか。自分の言葉で言えるかな？',
-  },
-};
+export const GUIDE = { name: 'パッチ' };
 
 interface Voice { name: string; role: string; text: string }
-
-function sceneVoice<Scene extends string>(character: { name: string; role: string; reactions: Record<Scene, string> }, scene: Scene): Voice {
-  return { name: character.name, role: character.role, text: character.reactions[scene] };
-}
-
-/** うまくいった場面では、案内役を「できた」顔にする。 */
-const DONE_SCENES: ReadonlySet<keyof typeof GUIDE.reactions> = new Set(['reproduced', 'secured']);
 
 function stillFace(file: string, label: string): HTMLImageElement {
   return h('img', { class: 'character-face', src: `./assets/avatars/${file}.svg`, alt: label, width: 48, height: 48 });
 }
 
-/** ふだんのパッチ。口は画像の外に置き、data-motion と prefers-reduced-motion が点滅を止められるようにする */
-function livePatch(label: string): HTMLElement {
+/** 案内役パッチの顔。口は画像の外に置き、data-motion と prefers-reduced-motion が点滅を止められるようにする */
+export function guideFace(): HTMLElement {
   return h('span', { class: 'character-live' },
-    stillFace('patch', label),
+    stillFace('patch', `案内役 ${GUIDE.name}`),
     h('span', { class: 'character-cursor', 'aria-hidden': true }),
   );
 }
 
-/** 同梱の顔を名前入りの代替テキストで表示する。done は案内役の「できた」顔。 */
-export function characterFace(name: string, guide = false, done = false): HTMLElement {
-  const label = `${guide ? '案内役' : '依頼人'} ${name}`;
-  if (guide && !done) return livePatch(label);
-  return stillFace(guide ? 'patch-done' : 'requester', label);
-}
-
-/** 発言と話者を結び付ける。画像がなくても名前・役割・本文が読める。 */
-export function characterVoice(voice: Voice, { guide = false, done = false, bodyClass = '', compact = false }: { guide?: boolean; done?: boolean; bodyClass?: string; compact?: boolean } = {}): HTMLElement {
-  return h('figure', { class: compact ? 'character-voice character-voice-compact' : 'character-voice', 'data-character': guide ? 'guide' : 'requester' },
-    characterFace(voice.name, guide, done),
+/** 依頼人の発言と話者を結び付ける。画像がなくても名前・役割・本文が読める。 */
+export function requesterVoice(voice: Voice, bodyClass: string): HTMLElement {
+  return h('figure', { class: 'character-voice', 'data-character': 'requester' },
+    stillFace('requester', `依頼人 ${voice.name}`),
     h('blockquote', {}, h('p', { class: bodyClass }, voice.text)),
     h('figcaption', {}, h('strong', {}, voice.name), ` · ${voice.role}`),
   );
-}
-
-/** 説明を増やさず、場面に合う案内役の一言を表示する。 */
-export function guideVoice(scene: keyof typeof GUIDE.reactions, compact = false): HTMLElement {
-  return characterVoice(sceneVoice(GUIDE, scene), { guide: true, done: DONE_SCENES.has(scene), compact });
-}
-
-/** 依頼人がいるパックでだけ、その場面の名前・役割・発言を返す。 */
-export function requesterVoice(requester: StoryDef['requester'], scene: 'reproduced' | 'secured' | 'closing'): Voice | null {
-  return requester ? sceneVoice(requester, scene) : null;
 }

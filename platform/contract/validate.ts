@@ -274,8 +274,6 @@ function checkRequester(checker: Checker, value: unknown): void {
   const requester = checker.obj('story.requester', value);
   checker.text('story.requester.name', requester.name);
   checker.text('story.requester.role', requester.role);
-  const reactions = checker.obj('story.requester.reactions', requester.reactions);
-  for (const scene of ['reproduced', 'secured', 'closing']) checker.text(`story.requester.reactions.${scene}`, reactions[scene]);
 }
 
 const CWE_ID = /^CWE-\d+$/;

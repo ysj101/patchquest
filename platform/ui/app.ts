@@ -83,7 +83,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
         { id: 'repair', label: '対策', panel: repair.element },
         { id: 'debrief', label: '振り返り', panel: debrief.element },
       ],
-      storyFooter: hints.place('story-hints-title'), investigationFooter: hints.place('investigation-hints-title'),
+      investigationFooter: hints.place('investigation-hints-title'),
       callout: resultEffects.element,
     },
     say,
@@ -226,12 +226,11 @@ export async function startApp(root: HTMLElement): Promise<void> {
   function updateExercise(snapshot: ExerciseSnapshot): void {
     exerciseView.update(snapshot);
     const profile = profileFromAttempts([...others, snapshot.attempt], profileOptions);
-    exerciseView.xp.update(profile.xp);
     exerciseView.achievements.update(profile.achievements);
     resultEffects.update(snapshot);
     repair.update(snapshot);
     hints.update(snapshot);
-    debrief.update(snapshot, profile.mastery);
+    debrief.update(snapshot);
   }
 
   async function applyDefense(defenseId: string | null): Promise<void> {

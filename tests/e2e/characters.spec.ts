@@ -1,53 +1,37 @@
-// キャラクターの発言が実際の評価に連動し、演出オフでも読めることを確かめる。
-import {
-  expect, launchButton, openHome, openMission, reproduceNoteLeak, settingsButton, startMission,
-  test, turnMotionOffWithKeyboard, verifyWith,
-} from './fixtures';
+// 導入の依頼人と操作ガイドの案内役を名前・顔つきで示し、再現・検証・振り返りには発言を出さないことを確かめる。
+import { expect, launchButton, openHome, openMission, reproduceNoteLeak, startMission, test, verifyResults, verifyWith } from './fixtures';
 
 const requester = '[data-character="requester"]';
 
-test('導入に依頼人の話と案内役を名前・役割・顔付きで表示する', async ({ page }) => {
+test('導入に依頼人の話を名前・役割・顔付きで表示し、案内役の前置きは出さない', async ({ page }) => {
   await openHome(page);
   await openMission(page, 'test-pack');
   const briefing = page.locator('[data-anchor="briefing"]');
   const voice = briefing.locator(requester);
   await expect(voice.locator('figcaption')).toHaveText('ノートの依頼人 · ノートアプリの利用者');
   await expect(voice.locator('blockquote')).toHaveText('他人のノートが見える');
-  for (const name of ['依頼人 ノートの依頼人', '案内役 パッチ']) {
-    const face = briefing.getByRole('img', { name, exact: true });
-    await expect(face).toBeVisible();
-    await expect.poll(() => face.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
-  }
-  await expect(briefing.locator('[data-character="guide"]')).toContainText('まずは、何があったのか話を聞いてみよう。');
+  const face = briefing.getByRole('img', { name: '依頼人 ノートの依頼人', exact: true });
+  await expect(face).toBeVisible();
+  await expect.poll(() => face.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
+  await expect(briefing.getByRole('img', { name: '案内役 パッチ' })).toHaveCount(0);
+  await expect(briefing).toContainText('SECURITY ALERT');
+  await expect(briefing).not.toContainText('Esc');
   await expect(launchButton(page)).toBeFocused();
 });
 
-for (const motionOff of [false, true]) {
-  test(`再現・防御・振り返りに反応し、不十分な対策には依頼人を出さない（動きオフ：${motionOff}）`, async ({ page }) => {
-    await startMission(page, 'test-pack');
-    if (motionOff) {
-      await settingsButton(page).focus();
-      await turnMotionOffWithKeyboard(page);
-      await expect(page.locator('html')).toHaveAttribute('data-motion', 'off');
-    }
-    await page.getByRole('tab', { name: '調査' }).click();
-    await reproduceNoteLeak(page);
-    const callout = page.locator('.result-callout');
-    const live = page.locator('[aria-live="polite"]');
-    await expect(callout.locator(requester)).toContainText('ほかの人のノートまで読めてしまうんだね。');
-    await expect(live).toContainText('ノートの依頼人。ほかの人のノートまで読めてしまうんだね。');
-    await verifyWith(page, 'すべて拒否する');
-    await expect(callout).toHaveAttribute('data-result', 'insufficient', { timeout: 15_000 });
-    await expect(callout.locator(requester)).toHaveCount(0);
-    await expect(live).not.toContainText('ノートの依頼人');
-    await verifyWith(page, '所有者を照合する');
-    await expect(callout).toHaveAttribute('data-result', 'secured', { timeout: 15_000 });
-    await expect(callout.locator(requester)).toContainText('守ってくれてありがとう。');
-    await expect(live).toContainText('ノートの依頼人。守ってくれてありがとう。');
-    await page.getByRole('tab', { name: '振り返り' }).click();
-    await expect(page.locator('[data-anchor="debrief"]').locator(requester)).toContainText('誰のノートかを確かめるんだね。');
-  });
-}
+test('再現・検証・振り返りには、依頼人や案内役の発言を出さない', async ({ page }) => {
+  await startMission(page, 'test-pack');
+  await reproduceNoteLeak(page);
+  // 導入（閉じている）の依頼人は数えない
+  const voices = page.locator('.result-callout [data-character], .workbench [data-character]');
+  await expect(page.locator('.result-callout')).toContainText('セキュリティホールを再現できました');
+  await expect(voices).toHaveCount(0);
+  await verifyWith(page, '所有者を照合する');
+  await expect(verifyResults(page)).toContainText('防御できました', { timeout: 15_000 });
+  await page.getByRole('tab', { name: '振り返り' }).click();
+  await expect(page.locator('[data-anchor="debrief"]')).toContainText('原因');
+  await expect(voices).toHaveCount(0);
+});
 
 test('練習課題の操作ガイドはパッチの名前と顔で案内する', async ({ page }) => {
   await startMission(page, 'onboarding');

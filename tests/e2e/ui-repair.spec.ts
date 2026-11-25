@@ -30,6 +30,14 @@ test('再現・正しい対策・理解確認をそろえると解決になり�
 
   await page.getByRole('tab', { name: '振り返り' }).click();
   await expect(page.getByRole('tabpanel', { name: '振り返り' })).toContainText('所有者を照合していない');
+  // 原因と効く理由は開いたままにし、覚えておくこと・改善履歴は畳んでおく
+  const debrief = page.getByRole('tabpanel', { name: '振り返り' });
+  await expect(debrief).toContainText('取得時に照合する');
+  await expect(debrief.getByText('画面ではなく処理で守る')).toBeHidden();
+  await debrief.locator('.debrief-takeaway summary').click();
+  await expect(debrief.getByText('画面ではなく処理で守る')).toBeVisible();
+  await expect(debrief.locator('.security-history')).not.toHaveAttribute('open');
+  await expect(debrief.locator('.security-history summary')).toHaveText('改善履歴');
   await page.getByRole('radio', { name: '一覧のリンクを隠す' }).check();
   await page.getByRole('button', { name: '答える' }).click();
   await expect(page.locator('.question')).toContainText('不正解');
@@ -39,27 +47,43 @@ test('再現・正しい対策・理解確認をそろえると解決になり�
   await page.getByRole('radio', { name: '取得時に所有者を照合する' }).check();
   await page.getByRole('button', { name: '答える' }).click();
   await expect(seals(page)).toContainText('理解：達成');
-  await expect(page.locator('.state-stamp')).toHaveText('解決');
+  // 3 つのスタンプがそろうと、ステージはすべて済みになる
+  await expect(page.getByRole('list', { name: 'ステージ', exact: true }).locator('li[data-state="done"]')).toHaveCount(5);
 
   await page.getByRole('tab', { name: '対策' }).click();
   await page.getByRole('button', { name: '対策を外す' }).click();
   await expect(verifyResults(page)).toContainText('これは前の結果です');
   await expect(seals(page)).toContainText('防御：記録あり（もう一度テストすると確定）');
-  await expect(page.locator('.state-stamp')).toHaveText('対策中');
 });
 
-test('キーボードで対策を選び、適用して検証できる', async ({ page }) => {
-  await page.getByRole('tab', { name: '状況' }).focus();
+test('キーボードで対策を選ぶとその場で使われ、説明は選んだ対策の分だけ出て、続けて検証できる', async ({ page }) => {
+  await page.getByRole('tab', { name: '調査' }).focus();
   await page.keyboard.press('End');
   await page.keyboard.press('ArrowLeft');
   await expect(page.getByRole('tab', { name: '対策' })).toBeFocused();
+  // 始めはどれも選ばれておらず、説明も参考コードも外すボタンも出ていない
+  const options = page.locator('.defense-option');
+  const checked = page.locator('.defense-choices').getByRole('radio', { checked: true });
+  await expect(checked).toHaveCount(0);
+  await expect(options.locator('.note').filter({ visible: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'この対策を使う' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '対策を外す' })).toBeHidden();
+  await expect(page.locator('.reference-code')).toBeHidden();
   await page.getByRole('radio', { name: /所有者を照合する/ }).focus();
   await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('radio', { name: /すべて拒否する/ })).toBeChecked();
+  const chosen = page.getByRole('radio', { name: /すべて拒否する/ });
+  await expect(chosen).toBeChecked();
+  await expect(page.getByText('使っている対策：すべて拒否する')).toBeVisible();
+  // 切り替えのあとも、フォーカスは選んだ対策に残る
+  await expect(chosen).toBeFocused();
+  await expect(options.locator('.note').filter({ visible: true })).toHaveCount(1);
+  await expect(options.filter({ has: chosen }).locator('.note')).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(page.locator('.reference-code summary')).toBeFocused();
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: '対策を外す' }).click();
+  await expect(checked).toHaveCount(0);
+  await expect(page.getByText('対策は使っていません（セキュリティホールが残った状態）')).toBeVisible();
+  await chosen.check();
   await expect(page.getByText('使っている対策：すべて拒否する')).toBeVisible();
   await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).focus();
   await page.keyboard.press('Enter');
@@ -67,7 +91,7 @@ test('キーボードで対策を選び、適用して検証できる', async ({
 });
 
 test('ヒントは段階的に開け、解法は確認してから表示する', async ({ page }) => {
-  const hints = page.getByRole('tabpanel', { name: '状況' }).locator('[data-anchor="hints"]');
+  const hints = page.getByRole('tabpanel', { name: '調査' }).locator('[data-anchor="hints"]');
   await hints.getByRole('button', { name: 'ヒント 1（見るところ）を見る' }).click();
   await expect(hints).toContainText('ID を変えると何が返るか');
   await expect(hints.getByRole('button', { name: 'ヒント 2（調べ方）を見る' })).toBeFocused();
@@ -96,8 +120,6 @@ test('最初の状態に戻すと対策とデータが戻り、課題一覧か�
 
   await page.getByRole('button', { name: '最初の状態に戻す' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '最初の状態に戻す' }).click();
-  // 戻した直後に画面を開き直すので、「調査を始められます」か「調査中」になる
-  await expect(page.locator('.state-stamp')).toHaveText(/調査/);
   await expect(page.getByText('対策は使っていません（セキュリティホールが残った状態）')).toBeVisible();
   await expect(preview(page).getByRole('heading', { name: 'ノート（alice）' })).toBeVisible();
   await expect(preview(page).getByText('あとで消えるノート')).toHaveCount(0);
@@ -112,7 +134,9 @@ test('最初の状態に戻すと対策とデータが戻り、課題一覧か�
 
 test('不合格のあと①に戻って、別の対策を選び直せる', async ({ page }) => {
   await page.getByRole('tab', { name: '対策' }).click();
-  await expect(page.getByRole('heading', { name: '① 対策を選んで使う' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '① 対策を選ぶ' })).toBeVisible();
+  // テストするまでは、結果の区画を出さない
+  await expect(verifyResults(page)).toBeHidden();
   await expect(page.getByRole('heading', { name: '② テストする' })).toBeVisible();
   await expect(page.locator('.reference-code')).not.toHaveAttribute('open');
   await expect(page.getByRole('button', { name: '① に戻って対策を選び直す' })).toBeHidden();
@@ -163,7 +187,7 @@ test('区画の補足は ⓘ に畳んであり、キーボードで開いて読
   const hint = panel.getByRole('button', { name: 'ヒント の説明' });
   await hint.focus();
   await page.keyboard.press('Enter');
-  await expect(panel.getByRole('note').filter({ hasText: '直し方のヒントです。調べるときのヒントは、「状況」と「調査」のタブにあります。見ても減点はありません。' })).toBeVisible();
+  await expect(panel.getByRole('note').filter({ hasText: '直し方のヒントです。調べるときのヒントは、「調査」のタブにあります。見ても減点はありません。' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(panel.getByRole('note').filter({ hasText: '直し方のヒントです。' })).toBeHidden();
   await expect(hint).toBeFocused();

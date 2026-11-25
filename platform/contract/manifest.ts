@@ -100,9 +100,9 @@ export interface RepairDef {
 }
 
 export interface StoryDef {
-  /** 依頼人。導入と結果の場面で短い反応を添える（任意。無ければキャラクターなしで表示） */
-  requester?: { name: string; role: string; reactions: { reproduced: string; secured: string; closing: string } };
-  /** 脆弱性の仕組みだけを示す短い完成例（任意。無ければ状況タブに出さない） */
+  /** 依頼人。導入で、問い合わせを名前・役割つきの吹き出しにする（任意。無ければキャラクターなしで表示） */
+  requester?: { name: string; role: string };
+  /** 脆弱性の仕組みだけを示す短い完成例（任意。無ければ調査タブに出さない） */
   workedExample?: WorkedExample;
   incident: string;
   goal: string;

@@ -1,17 +1,20 @@
 // ミッション導入の表示・読み直しと、続きから始めるときのスキップを確かめる
 import type { Page } from '@playwright/test';
-import { backToList, expect, expectWorkbench, launchButton, openMission, test, ticketSeals, openHome } from './fixtures';
+import { backToList, expect, expectWorkbench, launchButton, openMission, reopenBriefing, test, ticketSeals, openHome } from './fixtures';
 
 const briefing = (page: Page) => page.locator('[data-anchor="briefing"]');
 
-test('初回の事件と依頼、注意書きと演習票を表示し、Escで閉じて同じiframeのまま読み直せる', async ({ page }) => {
+test('初回の事件と依頼、フッターの注意書きと演習票を表示し、Escで閉じて同じiframeのまま読み直せる', async ({ page }) => {
   await openHome(page);
   await openMission(page, 'idor');
   await expect(page.getByRole('heading', { name: 'セキュリティ警報', exact: true })).toBeVisible();
   await expect(launchButton(page)).toBeFocused();
   await expect(briefing(page)).toContainText('知らない人の非公開メモが出てきました');
   await expect(briefing(page)).toContainText('非公開メモは、書いた本人（持ち主）だけが読めるようにします。');
-  await expect(page.locator('.fictional-label')).toBeVisible();
+  // 架空のサービスであることは、フッターに 1 か所だけ示す
+  await expect(page.locator('.fictional-label')).toHaveCount(1);
+  await expect(page.locator('footer .fictional-label')).toContainText('架空のサービスです');
+  await expect(page.locator('.ticket')).not.toContainText('架空');
   await expect(backToList(page)).toBeVisible();
   await expect(page.locator('.ticket')).toContainText('非公開メモを守る');
   await expect(page.locator('.workbench')).toBeHidden();
@@ -25,13 +28,17 @@ test('初回の事件と依頼、注意書きと演習票を表示し、Escで�
   await page.keyboard.press('Escape');
   await expectWorkbench(page);
   await expect(page.locator('.desk-request')).toContainText(incident);
-  await expect(page.getByRole('tabpanel', { name: '状況' })).not.toContainText(incident);
-  await expect(page.getByRole('tabpanel', { name: '状況' })).not.toContainText(goal);
-  await page.getByRole('button', { name: '導入をもう一度見る' }).click();
+  // 依頼の文と目標は導入と「依頼」にだけ置き、道具のタブには繰り返さない
+  await expect(page.locator('.tools')).not.toContainText(incident);
+  await expect(page.locator('.tools')).not.toContainText(goal);
+  await expect(page.getByRole('tab', { name: '状況' })).toHaveCount(0);
+  await reopenBriefing(page);
   await expect(briefing(page)).toBeVisible();
   await expect(launchButton(page)).toBeFocused();
   await page.keyboard.press('Enter');
   await expectWorkbench(page);
+  // 導入から戻ると、依頼の説明は閉じている
+  await expect(page.locator('.desk-request').getByRole('note')).toBeHidden();
   expect(await frame.evaluate((element, previous) => element === previous, original)).toBe(true);
 });
 
@@ -76,7 +83,7 @@ test('練習課題を始め直しても導入を表示し、閉じると導入�
   await expect(guide.locator('.guide-count')).toHaveText('1 / 5');
   await expect(guide.getByRole('heading', { level: 3 })).toHaveText('不具合を体験してみよう');
   await expect(guide.getByRole('list', { name: '練習の手順' })).toContainText('何が起きたか読んでみよう：済み');
-  await page.getByRole('button', { name: '導入をもう一度見る' }).click();
+  await reopenBriefing(page);
   await page.keyboard.press('Escape');
   await expectWorkbench(page);
   await expect(guide.locator('.guide-count')).toHaveText('1 / 5');

@@ -65,7 +65,7 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   // 再現：運用担当が保守の操作を root の権限で実行できる
   await typeCommand(page, `sudo ${maintenance}`);
   await expect(seals(page)).toContainText('再現：達成');
-  await expect(page.locator('.result-callout')).toContainText('運用担当なのに、保守の操作までできてしまうんですね。');
+  await expect(page.locator('.result-callout')).toContainText('セキュリティホールを再現できました');
 
   // A05：日常の運用操作の許可（2 行目）まで外すと、ふだんの使い方が壊れて合格しない
   await loginToTerminal(page, 'admin');
@@ -94,7 +94,7 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await expect(terminalOutput(page).locator('.term-out')).not.toContainText(maintenance);
 
   await answerTransferCheck(page, CORRECT_CHOICES);
-  await expect(page.locator('.state-stamp')).toHaveText('解決');
+  await expect(page.getByRole('list', { name: 'ステージ', exact: true }).locator('li[data-state="done"]')).toHaveCount(5);
 });
 
 test('調査タブの先頭に、sudo の仕組みと最初に打つコマンドを示す調べ方が出て、対策タブでは設定ファイルの探し方が分かり、直し方のヒントをすぐ開ける', MACHINE, async ({ page }) => {
