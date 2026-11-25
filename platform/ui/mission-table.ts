@@ -44,12 +44,15 @@ function tableOrder(entries: MissionEntry[]): MissionEntry[] {
 /** 次に進むおすすめ。表の順で、まだ完了していない最初の課題 */
 export const nextEntry = (entries: MissionEntry[]): MissionEntry | undefined => tableOrder(entries).find((entry) => !entry.completed);
 
-/** 脆弱性の通称だけを行に出し、「一言でいうと」・正式名・分類・CWE は ⓘ の説明に畳む */
-function vulnerabilityLabel(manifest: MissionPack['manifest'], vulnerability: VulnerabilityDef): HTMLElement {
+/** 行の見出し。脆弱性の通称と題名を「IDOR - 非公開メモを守る」の 1 行にし、「一言でいうと」・正式名・分類・CWE は ⓘ の説明に畳む。練習課題は題名だけ */
+function heading(manifest: MissionPack['manifest'], titleId: string): HTMLElement {
+  const { vulnerability } = manifest;
+  const title = h('span', { class: 'mission-title' }, manifest.title);
+  if (!vulnerability) return h('div', { class: 'mission-heading' }, h('h3', { id: titleId }, title));
   return h(
-    'p',
-    { class: 'vulnerability' },
-    h('strong', { class: 'vulnerability-name' }, vulnerability.name),
+    'div',
+    { class: 'mission-heading' },
+    h('h3', { id: titleId }, h('strong', { class: 'vulnerability-name' }, vulnerability.name), h('span', { class: 'mission-title-separator' }, ' - '), title),
     infoFor(manifest, vulnerability),
   );
 }
@@ -125,8 +128,7 @@ function row(entry: MissionEntry, actions: MissionActions, mastery: MasterySumma
       h(
         'div',
         { class: 'mission-main' },
-        manifest.vulnerability ? vulnerabilityLabel(manifest, manifest.vulnerability) : null,
-        h('h3', { id: titleId }, manifest.title),
+        heading(manifest, titleId),
         details(entry, mastery),
         entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が新しくなったため、前回の続きからは始められません。') : null,
       ),

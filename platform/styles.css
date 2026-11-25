@@ -189,9 +189,11 @@ main > section > * + * { margin-top: 16px; }
 .mission-row:last-child { border-bottom: 0; }
 .mission-card { padding-top: 14px; padding-bottom: 14px; }
 .mission-main { display: grid; gap: 2px; min-width: 0; }
-.mission-main h3 { font-size: 0.95rem; font-weight: 500; color: var(--ink); }
-.vulnerability { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; }
+/* 行の見出し。通称を主、題名を副題として 1 行に並べる */
+.mission-heading { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.mission-heading h3 { font-size: 0.95rem; font-weight: 500; color: var(--ink); min-width: 0; }
 .vulnerability-name { font-size: 1.05rem; font-weight: 700; }
+.mission-title-separator { color: var(--muted); white-space: pre; }
 /* ⓘ の説明。ボタンの近くに重ねて出し、キーボードでも開閉できる */
 .info { position: relative; display: inline-flex; }
 .info-button {
