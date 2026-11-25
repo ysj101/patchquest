@@ -5,15 +5,18 @@ import { VERDICT_REASON, VERDICT_SUCCESS } from './labels';
 
 export type ResultEffectKind = 'reproduced' | 'secured' | 'insufficient';
 /** 不合格のときに示す、失敗したテスト 1 件 */
-export interface FailureDetail { reason: string; title: string; expected: string; actual: string }
+interface FailureDetail { reason: string; title: string; expected: string; actual: string }
 export interface ResultEffect {
   kind: ResultEffectKind;
-  /** 読み上げに使う 1 文。画面でも、failures がなければこれを示す */
+  /** 読み上げに使う 1 文 */
   detail: string;
-  /** 不合格のとき、画面に 1 件ずつ分けて示す失敗（先頭二件まで） */
-  failures?: FailureDetail[];
-  /** failures に入れなかった失敗の件数 */
-  more?: number;
+}
+
+/** 不合格のテストのうち、画面に 1 件ずつ分けて示すもの（先頭二件まで）と、入れなかった件数 */
+export function failureDetails(report: VerificationReport): { failures: FailureDetail[]; more: number } {
+  const failed = failedOutcomes(report);
+  const failures = failed.slice(0, 2).map((outcome) => ({ reason: VERDICT_REASON[outcome.group], title: outcome.title, expected: outcome.expected, actual: outcome.actual }));
+  return { failures, more: failed.length - failures.length };
 }
 
 /** エラーを含む失敗は演出しない。通常の失敗はパックの文言を二件まで使う。 */
@@ -23,13 +26,11 @@ export function verificationEffect(report: VerificationReport | null, allSealsDo
     const sealMessage = allSealsDone ? '再現・防御・理解がぜんぶそろいました。' : '「防御」達成です。';
     return { kind: 'secured', detail: sealMessage + VERDICT_SUCCESS };
   }
-  const failed = failedOutcomes(report);
-  if (failed.some((outcome) => outcome.error !== undefined)) return null;
-  const failures = failed.slice(0, 2).map((outcome) => ({ reason: VERDICT_REASON[outcome.group], title: outcome.title, expected: outcome.expected, actual: outcome.actual }));
-  const more = failed.length - failures.length;
+  if (failedOutcomes(report).some((outcome) => outcome.error !== undefined)) return null;
+  const { failures, more } = failureDetails(report);
   const details = failures.map((failure) => `${failure.reason}：${failure.title}（正しい結果「${failure.expected}」、実際の結果「${failure.actual}」）`);
   if (more > 0) details.push(`ほか ${more} 件`);
-  return { kind: 'insufficient', detail: details.join('。'), failures, more };
+  return { kind: 'insufficient', detail: details.join('。') };
 }
 
 /** 音の種類と音量を設定から決める。最大振幅を抑えた短い音のみを合成する。 */

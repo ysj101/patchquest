@@ -1,8 +1,8 @@
-// 状況タブの「仕組みの例」（Issue #87）。3 ミッションで閉じた状態で表示され、開くと手順が読め、正解の対策は書かれていない
+// 調査タブの「仕組みの例」（Issue #87）。3 ミッションで閉じた状態で表示され、開くと手順が読め、正解の対策は書かれていない
 import type { Page } from '@playwright/test';
 import { expect, startMission, test } from './fixtures';
 
-const example = (page: Page) => page.getByRole('tabpanel', { name: '状況' }).locator('.worked-example');
+const example = (page: Page) => page.getByRole('tabpanel', { name: '調査' }).locator('.worked-example');
 
 /** 例に含めてはいけない、正解の対策を示す記述 */
 const SOLUTION_WORDS: Record<string, RegExp[]> = {
@@ -12,7 +12,7 @@ const SOLUTION_WORDS: Record<string, RegExp[]> = {
 };
 
 for (const [missionId, forbidden] of Object.entries(SOLUTION_WORDS)) {
-  test(`${missionId}：状況タブの仕組みの例は閉じた状態で出て、開くと手順が読め、対策の正解を含まない`, async ({ page }) => {
+  test(`${missionId}：調査タブの仕組みの例は閉じた状態で出て、開くと手順が読め、対策の正解を含まない`, async ({ page }) => {
     await startMission(page, missionId);
     const details = example(page);
     await expect(details).toBeVisible();
@@ -35,8 +35,9 @@ for (const [missionId, forbidden] of Object.entries(SOLUTION_WORDS)) {
   });
 }
 
-test('例を持たない練習課題では、状況タブに仕組みの例を出さない', async ({ page }) => {
+test('例を持たない練習課題では、調査タブに仕組みの例を出さず、守るものと壊さないことは帯に出す', async ({ page }) => {
   await startMission(page, 'onboarding');
-  await expect(page.getByRole('tabpanel', { name: '状況' })).toContainText('守るもの');
+  await expect(page.locator('.desk-goal dt')).toHaveText(['守るもの', '壊さないこと']);
+  await expect(page.getByRole('tabpanel', { name: '調査' })).toBeVisible();
   await expect(example(page)).toHaveCount(0);
 });

@@ -1,16 +1,15 @@
-// 演習画面（spec §10）。調査デスクの形で、上に演習票（課題・状態・達成印・架空サービスの表示）、
-// その下の帯に依頼（ボタンに畳み、重ねて出す）とステージ、左に動く教材アプリと観測ログ、右に状況・調査・対策・振り返りの道具、下に演習票番号を並べる
+// 演習画面（spec §10）。調査デスクの形で、上に演習票（課題・達成印）、
+// その下の帯に依頼（ボタンに畳み、重ねて出す）・ステージ・守るものと壊さないこと、左に動く教材アプリと観測ログ、右に調査・対策・振り返りの道具、
+// 下に演習票番号と架空サービスの表示を並べる
 import { ANONYMOUS, type ActorKey, type AppDescriptor, type AppRequest } from '../contract';
 import { sealStates, stageStates } from '../progress/stages';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { radioOption, seals, settingsButton, tabs, type TabSpec } from './components';
 import { fill, h, renderGuard } from './dom';
 import { labelPopover } from './info-popover';
-import { InvestigationPanel, describersOf, storyPanel, type DescribingApp } from './investigation';
-import { STATE_LABEL } from './labels';
+import { InvestigationPanel, describersOf, type DescribingApp } from './investigation';
 import { AchievementToast } from './achievement-toast';
-import { XpBadge } from './xp-badge';
-import { characterVoice, guideVoice } from './characters';
+import { requesterVoice } from './characters';
 import { StageProgress } from './stage-progress';
 
 export interface ExerciseActions {
@@ -34,9 +33,9 @@ export function actorLabel(actor: ActorKey): string {
 /** いまのステージに対応する、画面上部の一行。課題ごとの文は置かない */
 const NOW_DOING = {
   briefed: '依頼を読んで、ミッションを始めます。',
-  investigated: '調査を開いて、手がかりを集めます。',
+  investigated: '調査で、手がかりを集めます。',
   reproduced: '同じ操作をして、問題を再現します。',
-  repaired: '対策を選んで、使います。',
+  repaired: '対策を選びます。',
   verified: '攻撃とふだんの使い方をテストします。',
 } as const;
 
@@ -61,39 +60,34 @@ export class ExerciseView {
   readonly previewSlot = h('div', { class: 'preview-slot', 'data-anchor': 'app-preview' });
   readonly investigation: InvestigationPanel;
   private readonly users = h('fieldset', { class: 'user-switcher', 'data-anchor': 'user-switcher' });
-  private readonly storySlot = h('div', {});
   private readonly title = h('h1', { id: 'exercise-title', tabIndex: -1 });
   private readonly ticket = h('p', { class: 'ticket-id' });
   private readonly request = h('div', { class: 'desk-request' });
+  private incident = '';
+  /** 守るものと壊さないこと。対策を選ぶ基準なので、畳まずに帯へ常に出す */
+  private readonly goal = h('dl', { class: 'desk-goal', 'data-anchor': 'story' });
   private readonly nowDoing = h('p', { class: 'now-doing' });
   /** 続きから始めて前回の対策を適用し直したときに、作り直した内容を知らせる */
   private readonly resumeNote = h('p', { class: 'banner banner-ok', hidden: true });
-  private readonly state = h('p', { class: 'state-stamp' });
   private readonly stages: StageProgress;
-  readonly xp: XpBadge;
   readonly achievements: AchievementToast;
   private readonly sealSlot = h('div', { class: 'ticket-seals' });
   private readonly sealGuard = renderGuard();
   private readonly toolTabs: ReturnType<typeof tabs>;
-  private readonly storyFooter: HTMLElement;
   private readonly workbench = h('div', { class: 'workbench' });
   private readonly briefing = h('section', { class: 'mission-briefing', 'data-anchor': 'briefing', 'aria-labelledby': 'briefing-title', hidden: true });
   private readonly launch = h('button', { type: 'button', class: 'button button-primary button-chunky', on: { click: () => this.closeBriefing() } }, 'ミッション開始');
 
   constructor(
     private readonly actions: ExerciseActions,
-    /** 状況・調査に続けて並べるタブと、状況タブ・調査タブの末尾に置く要素（ヒントなど） */
-    extras: { tabs: TabSpec[]; storyFooter: HTMLElement; investigationFooter: HTMLElement; callout: HTMLElement },
+    /** 調査に続けて並べるタブと、調査タブの末尾に置く要素（ヒントなど） */
+    extras: { tabs: TabSpec[]; investigationFooter: HTMLElement; callout: HTMLElement },
     private readonly announce: (message: string) => void,
   ) {
-    this.xp = new XpBadge(announce);
     this.achievements = new AchievementToast(announce);
     this.stages = new StageProgress(announce);
-    this.stages.header.append(this.xp.element, this.achievements.element);
-    this.storyFooter = extras.storyFooter;
     this.investigation = new InvestigationPanel({ send: actions.send }, extras.investigationFooter);
     this.toolTabs = tabs('演習の道具', [
-      { id: 'story', label: '状況', panel: this.storySlot },
       { id: 'investigate', label: '調査', panel: this.investigation.element },
       ...extras.tabs,
     ]);
@@ -110,8 +104,7 @@ export class ExerciseView {
         'header',
         { class: 'ticket' },
         h('button', { type: 'button', class: 'button button-quiet ticket-back', on: { click: actions.back } }, '課題一覧へ戻る'),
-        h('div', { class: 'ticket-main' }, this.title, this.state),
-        h('p', { class: 'fictional-label', role: 'note' }, h('strong', {}, '学習用に、わざとセキュリティホールを入れた架空のサービスです。')),
+        h('div', { class: 'ticket-main' }, this.title),
         this.sealSlot,
         settingsButton(() => actions.openSettings()),
       ),
@@ -124,7 +117,7 @@ export class ExerciseView {
         'footer',
         { class: 'desk-status' },
         this.ticket,
-        h('p', {}, '本物のサービスを調べた結果ではありません。データはすべて架空で、このブラウザの中だけで動いています。'),
+        h('p', { class: 'fictional-label', role: 'note' }, '学習用に、わざとセキュリティホールを入れた架空のサービスです。このブラウザの中だけで動いています。'),
       ),
     );
   }
@@ -134,7 +127,7 @@ export class ExerciseView {
     else this.launch.focus();
   }
 
-  /** 演習を始めたときに、利用者・操作・状況を組み直す */
+  /** 演習を始めたときに、利用者・操作・依頼を組み直す */
   setup(snapshot: ExerciseSnapshot, app: DescribingApp & { descriptor: AppDescriptor }, viewer: ActorKey, showBriefing: boolean): void {
     fill(
       this.users,
@@ -147,33 +140,31 @@ export class ExerciseView {
       ),
     );
     this.stages.reset();
-    this.xp.reset();
     this.achievements.reset();
     const story = snapshot.pack.manifest.story;
-    fill(this.request, labelPopover('依頼', h('p', {}, story.incident)));
-    fill(this.storySlot, storyPanel(story), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る'), this.storyFooter);
+    this.incident = story.incident;
+    this.showRequest();
+    fill(this.goal, h('dt', {}, '守るもの'), h('dd', {}, story.protectedAssets.join('／')), h('dt', {}, '壊さないこと'), h('dd', {}, story.normalUse.join('／')));
     fill(
       this.briefing,
       h('h2', { id: 'briefing-title' }, h('span', { class: 'eyebrow', 'aria-hidden': true }, 'SECURITY ALERT'), 'セキュリティ警報'),
-      story.requester ? characterVoice({ name: story.requester.name, role: story.requester.role, text: story.incident }, { bodyClass: 'incident' }) : h('p', { class: 'incident' }, story.incident),
-      guideVoice('briefing'),
+      story.requester ? requesterVoice({ ...story.requester, text: story.incident }, 'incident') : h('p', { class: 'incident' }, story.incident),
       h('h3', {}, '依頼'),
       h('p', { class: 'briefing-goal' }, story.goal),
       this.launch,
-      h('p', { class: 'note' }, 'Esc キーでも始められます。'),
     );
     this.setBriefingVisible(showBriefing);
     this.showResumed(snapshot);
     this.showNow(snapshot);
-    this.investigation.setup(snapshot.pack.manifest, snapshot.refs, describersOf(app));
+    this.investigation.setup({ ...snapshot.pack.manifest, workedExample: story.workedExample }, snapshot.refs, describersOf(app));
     this.investigation.setViewer(actorLabel(viewer));
-    this.toolTabs.select('story');
+    this.toolTabs.select('investigate');
   }
 
   private buildWorkbench(): void {
     fill(
       this.workbench,
-      h('aside', { class: 'desk-brief', 'aria-label': '依頼とステージ' }, this.request, this.stages.element),
+      h('aside', { class: 'desk-brief', 'aria-label': '依頼とステージ' }, this.request, this.stages.element, this.achievements.element, this.goal),
       h('div', { class: 'app-pane' },
         h('div', { class: 'preview-bar' }, this.users, h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.actions.reloadView() } }, '最初の画面を開き直す')),
         this.previewSlot,
@@ -183,12 +174,19 @@ export class ExerciseView {
     );
   }
 
+  /** 依頼のボタンと、重ねて出す問い合わせの文・導入への戻り口。組み直すと、開いていた説明は閉じる */
+  private showRequest(): void {
+    fill(this.request, labelPopover('依頼', h('p', {}, this.incident), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.openBriefing() } }, '導入をもう一度見る')));
+  }
+
   private setBriefingVisible(visible: boolean): void {
     this.briefing.hidden = !visible;
     this.workbench.hidden = visible;
   }
 
   private openBriefing(): void {
+    // 導入から戻ったときに、依頼の説明が開いたまま残らないようにする
+    this.showRequest();
     this.setBriefingVisible(true);
     this.focus();
   }
@@ -229,8 +227,6 @@ export class ExerciseView {
     this.showNow(snapshot);
     this.title.textContent = pack.manifest.title;
     this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}`;
-    this.state.textContent = STATE_LABEL[attempt.state];
-    this.state.dataset.state = attempt.state;
     // 押印の動きを通知のたびに繰り返さないよう、変わったときだけ描き直す
     const states = sealStates(attempt, defenseCurrent);
     if (this.sealGuard.changed(JSON.stringify(states))) fill(this.sealSlot, seals(states, 'small'));

@@ -44,14 +44,13 @@ function tableOrder(entries: MissionEntry[]): MissionEntry[] {
 /** 次に進むおすすめ。表の順で、まだ完了していない最初の課題 */
 export const nextEntry = (entries: MissionEntry[]): MissionEntry | undefined => tableOrder(entries).find((entry) => !entry.completed);
 
-/** 脆弱性の通称と「一言でいうと」だけを行に出し、正式名・分類・CWE は ⓘ の説明に畳む */
+/** 脆弱性の通称だけを行に出し、「一言でいうと」・正式名・分類・CWE は ⓘ の説明に畳む */
 function vulnerabilityLabel(manifest: MissionPack['manifest'], vulnerability: VulnerabilityDef): HTMLElement {
   return h(
     'p',
     { class: 'vulnerability' },
     h('strong', { class: 'vulnerability-name' }, vulnerability.name),
     infoFor(manifest, vulnerability),
-    h('span', { class: 'vulnerability-plain' }, vulnerability.plain),
   );
 }
 
@@ -94,7 +93,7 @@ function buttons(entry: MissionEntry, actions: MissionActions): HTMLElement[] {
     : [h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
 }
 
-/** 概要は畳んでおき、行は名前と一言だけで読めるようにする（学習目標は ⓘ にある）。習熟度は完了した課題にだけ添える */
+/** 概要は畳んでおき、行は名前だけで読めるようにする（一言の説明と学習目標は ⓘ にある）。習熟度は完了した課題にだけ添える */
 function details(entry: MissionEntry, mastery: MasterySummary): HTMLElement {
   const { manifest } = entry.pack;
   return h(
@@ -149,7 +148,6 @@ export function missionTable(entries: MissionEntry[], actions: MissionActions, m
     'section',
     { class: 'mission-section', 'aria-labelledby': 'table-title' },
     h('h2', { id: 'table-title' }, '課題の一覧'),
-    h('p', { class: 'note' }, '入門から順に並んでいます。どれからでも始められます。'),
     h('div', { class: 'mission-table' }, tableHead(), h('ol', { class: 'mission-rows', 'aria-label': '課題の一覧' }, ...tableOrder(entries).map((entry) => row(entry, actions, mastery)))),
   );
 }

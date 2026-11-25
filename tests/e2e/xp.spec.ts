@@ -1,9 +1,13 @@
-// XP の段階報酬・再挑戦・改変した進捗の照合をブラウザで確かめる。
+// XP の段階報酬・再挑戦・改変した進捗の照合をブラウザで確かめる。XP は演習画面に出さず、記録ページにだけ出す。
 import type { Page } from '@playwright/test';
-import { TEST_PACK_ANSWERS, answerTransferCheck, applyDefense, backToList, expect, enterWorkbench, importProgressFile, reproduceNoteLeak, launchButton, openMission, openMissions, openRawRequest, openTestPage, startWithMotionOff, test, ticketSeals, openHome } from './fixtures';
+import { TEST_PACK_ANSWERS, answerTransferCheck, applyDefense, backToList, expect, importProgressFile, reproduceNoteLeak, launchButton, openMission, openRawRequest, openRecords, openTestPage, test, ticketSeals, openHome } from './fixtures';
 
-const badge = (page: Page) => page.locator('.xp-badge');
-const gain = (page: Page, amount: number) => expect(badge(page).locator('.xp-gain')).toHaveText(`+${amount} XP`);
+const badge = (page: Page) => page.locator('.records-view .xp-badge');
+/** 記録ページを開いて、レベルと XP の表示を確かめる */
+async function expectXp(page: Page, text: string): Promise<void> {
+  await openRecords(page);
+  await expect(badge(page)).toHaveText(text);
+}
 
 async function investigate(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '調査' }).click();
@@ -19,44 +23,28 @@ async function finish(page: Page): Promise<void> {
   await answerTransferCheck(page, TEST_PACK_ANSWERS);
 }
 
-test('各段階で報酬を受け取り、再挑戦は20 XPだけ加算し、再開時は演出しない', async ({ page }) => {
+test('段階ごとの報酬は記録ページに出し、再挑戦は 20 XP だけ加算し、演習画面には XP を出さない', async ({ page }) => {
   await openHome(page);
+  await expectXp(page, 'Lv.1 ・ 0 XP');
   await openMission(page, 'test-pack');
-  await expect(badge(page)).toContainText('Lv.1 ・ 0 XP');
   await launchButton(page).click();
-  await gain(page, 10);
+  await expect(page.locator('.exercise')).not.toContainText('XP');
   await investigate(page);
-  await gain(page, 20);
   await reproduceNoteLeak(page);
-  await gain(page, 30);
   await repair(page);
-  await gain(page, 30);
   await finish(page);
-  await gain(page, 50);
-  await expect(badge(page)).toContainText('Lv.2 ・ 140 XP');
+  await expect(page.locator('.exercise')).not.toContainText('XP');
+  await expect(page.locator('[aria-live="polite"]')).not.toContainText('XP');
   await backToList(page).click();
-  await expect(page.getByRole('region', { name: '取り組み', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '別条件で挑戦する' })).toHaveCount(0);
-  await openMission(page, 'test-pack', { resume: true });
-  await expect(badge(page)).toContainText('140 XP');
-  await expect(badge(page).locator('.xp-gain')).toHaveCount(0);
-  await backToList(page).click();
+  await expectXp(page, 'Lv.2 ・ 140 XP');
   await openMission(page, 'test-pack');
   await launchButton(page).click();
   await investigate(page);
   await reproduceNoteLeak(page);
   await repair(page);
-  await expect(badge(page).locator('.xp-gain')).toHaveCount(0);
   await finish(page);
-  await gain(page, 20);
-  await expect(badge(page)).toContainText('Lv.2 ・ 160 XP');
   await backToList(page).click();
-  await openMission(page, 'test-pack');
-  await enterWorkbench(page);
-  await expect(badge(page)).toContainText('Lv.2 ・ 160 XP');
-  await expect(badge(page).locator('.xp-gain')).toHaveCount(0);
-  await backToList(page).click();
-  await expect(page.getByRole('region', { name: '取り組み', exact: true })).toHaveCount(0);
+  await expectXp(page, 'Lv.2 ・ 160 XP');
 });
 
 test('改変したXPは取り込み時に注記し、記録から計算した値を表示する', async ({ page }) => {
@@ -64,16 +52,6 @@ test('改変したXPは取り込み時に注記し、記録から計算した値
   const source = JSON.parse(await page.evaluate(() => window.progressTest.exportJson())) as { profile: { xp: { total: number } } };
   source.profile.xp = { total: 999 };
   await importProgressFile(page, source, '読み込んだファイルの XP や実績が記録と合わなかったので、記録から計算し直しました');
-  await openMissions(page);
-  await expect(page.getByRole('region', { name: '取り組み', exact: true })).toHaveCount(0);
   await expect(page.locator('[aria-live="polite"]')).toContainText('記録から計算し直しました');
-  await openMission(page, 'test-pack');
-  await expect(badge(page)).toContainText('Lv.1 ・ 0 XP');
-});
-
-test('動きオフでも獲得量と読み上げを文字で示す', async ({ page }) => {
-  await startWithMotionOff(page, 'test-pack');
-  await gain(page, 10);
-  await expect(badge(page).locator('.xp-gain')).toHaveCSS('animation-name', 'none');
-  await expect(page.locator('[aria-live="polite"]')).toContainText('10 XP を獲得（合計 10）');
+  await expectXp(page, 'Lv.1 ・ 0 XP');
 });

@@ -48,7 +48,7 @@ test('ターミナルで取り込みの仕組みを調べて再現し、取り�
   await typeCommand(page, 'sudo apply-update');
   await expect(terminalOutput(page)).toContainText('中身の確認：しない');
   await expect(seals(page)).toContainText('再現：達成');
-  await expect(page.locator('.result-callout')).toContainText('足した行まで、root の権限で動いてしまうんですね。');
+  await expect(page.locator('.result-callout')).toContainText('セキュリティホールを再現できました');
 
   // 更新を書き換えた操作は、機械の設定の変更ではないので「加えた変更」に並ばない
   await page.getByRole('tab', { name: '対策' }).click();
@@ -91,5 +91,5 @@ test('ターミナルで取り込みの仕組みを調べて再現し、取り�
   await expect(terminalOutput(page)).not.toContainText(`${maintenance}: `);
 
   await answerTransferCheck(page, CORRECT_CHOICES);
-  await expect(page.locator('.state-stamp')).toHaveText('解決');
+  await expect(page.getByRole('list', { name: 'ステージ', exact: true }).locator('li[data-state="done"]')).toHaveCount(5);
 });

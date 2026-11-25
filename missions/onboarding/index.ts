@@ -21,21 +21,14 @@ export const onboardingPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'onboarding',
-    version: '1.8.0',
+    version: '1.9.0',
     kind: 'tutorial',
     title: '練習：はじめての修正',
     summary: 'わざと穴を残したメモアプリで「体験する → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
     learningObjectives: ['不具合を自分の操作で起こしてみる', '直し方を選び、自動テストで確かめる', 'なぜ起きたかをふりかえる'],
     estimatedMinutes: 3,
     story: {
-      requester: {
-        name: 'サポート担当', role: 'メモアプリのサポート',
-        reactions: {
-          reproduced: '長すぎるタイトルが保存されてしまったね。',
-          secured: '直してくれてありがとう。文字数の決まりを守れるね。',
-          closing: '短いタイトルは今までどおり使えるね。',
-        },
-      },
+      requester: { name: 'サポート担当', role: 'メモアプリのサポート' },
       incident: 'メモのタイトルは 40 文字までの決まりなのに、もっと長いタイトルでも保存できてしまう、という報告がありました。',
       goal: '40 文字を超えるタイトルは保存されないようにします。40 文字までなら、これまでどおり保存できるようにします。',
       protectedAssets: ['タイトルは 40 文字までという決まり'],
@@ -199,7 +192,7 @@ export const onboardingPack: MissionPack = {
       {
         id: 'break',
         title: '不具合を体験してみよう',
-        body: '「調査」を開き、40 文字を超えるタイトルのまま「送る」を押してみましょう。',
+        body: '「調査」で、40 文字を超えるタイトルのまま「送る」を押してみましょう。',
         anchor: 'actions',
         until: 'reproduced',
         praise: '保存できてしまいました。これが今回の不具合です',
@@ -207,7 +200,7 @@ export const onboardingPack: MissionPack = {
       {
         id: 'fix',
         title: 'なおし方を選ぼう',
-        body: '「対策」を開き、正しそうな直し方を 1 つ選んで「この対策を使う」を押します。',
+        body: '「対策」を開き、正しそうな直し方を 1 つ選びます。選ぶと、その対策が使われます。',
         anchor: 'defense-panel',
         until: 'defense-applied',
         praise: '対策を入れました',

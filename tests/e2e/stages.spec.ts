@@ -1,14 +1,14 @@
 // ステージの到達・取り消し・再開・別環境への復元を確かめる。
 import type { Page } from '@playwright/test';
-import { backToList, expect, launchButton, openMission, openRawRequest, preview, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
+import { backToList, expect, launchButton, openMission, openRawRequest, preview, reopenBriefing, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
 
 const stages = (page: Page) => page.getByRole('list', { name: 'ステージ', exact: true });
-const count = (page: Page, total: number) => expect(page.getByRole('heading', { name: `完了 ${total} / 5 ステージ`, exact: true })).toBeVisible();
+/** 済んだステージの数。数の見出しは出さないので、ステージの色（状態）で数える */
+const count = (page: Page, total: number) => expect(stages(page).locator('li[data-state="done"]')).toHaveCount(total);
 
 async function apply(page: Page): Promise<void> {
   await page.getByRole('tab', { name: '対策' }).click();
   await page.getByRole('radio', { name: /取り出すときに、ログイン中/ }).check();
-  await page.getByRole('button', { name: 'この対策を使う' }).click();
   await expect(stages(page).locator('li').nth(3)).toHaveAttribute('data-state', 'done');
 }
 
@@ -16,7 +16,8 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await openHome(page);
   await openMission(page, 'idor');
   // 導入の間は作業台（ステージを含む）を隠している。数だけを確かめる
-  await expect(page.getByRole('heading', { name: '完了 0 / 5 ステージ', exact: true, includeHidden: true })).toHaveCount(1);
+  await count(page, 0);
+  await expect(stages(page)).toBeHidden();
   await expect(ticketSeals(page)).toContainText('再現：未達成');
   await launchButton(page).click();
   await count(page, 1);
@@ -27,7 +28,6 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
   await count(page, 2);
   const investigation = stages(page).locator('li').nth(1);
   await expect(investigation).toHaveClass('stage-arrived');
-  await expect(page.locator('[aria-live="polite"]')).toContainText('20 XP を獲得（合計 30）');
   await expect(page.locator('[aria-live="polite"]')).toContainText('ステージ 2「手がかりを探す」に到達しました');
   await page.getByRole('radio', { name: /^bob/ }).check();
   await preview(page).getByRole('button', { name: '非公開のメモ' }).click();
@@ -99,7 +99,7 @@ test('動きを減らしても到達と現在地を文字で示し、導入の�
   await expect(stages(page).locator('li').nth(1)).toContainText('いま');
   await expect(page.locator('[aria-live="polite"]')).toContainText('ステージ 1「事件を確認」に到達しました');
   await page.locator('[aria-live="polite"]').evaluate((region) => { region.textContent = ''; });
-  await page.getByRole('button', { name: '導入をもう一度見る' }).click();
+  await reopenBriefing(page);
   await launchButton(page).click();
   await count(page, 1);
   await expect(page.locator('[aria-live="polite"]')).toBeEmpty();

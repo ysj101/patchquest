@@ -1,10 +1,10 @@
 // 調査パネル（spec §10）。調べ方と定型の操作・リクエスト編集でブラウザ内の呼び出しを送り、観測したやり取りを記録する。
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
-import { HTTP_METHODS, errorMessage, type ActionDef, type ApproachDef, type AppRequest, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type StoryDef, type WorkedExample } from '../contract';
+import { HTTP_METHODS, errorMessage, type ActionDef, type ApproachDef, type AppRequest, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type WorkedExample } from '../contract';
 import { expandRequest, type Scope, type StepDescriber } from '../evaluator/scenario';
 import { approachNodes, status } from './components';
 import { fill, h } from './dom';
-import { headingWithInfo } from './info-popover';
+import { headingWithInfo, infoPopover } from './info-popover';
 
 /** 操作履歴の上限（初期案 1000 件、spec §14） */
 const MAX_LOG_ENTRIES = 1000;
@@ -103,6 +103,12 @@ function fieldControl(field: FieldDef, id: string): HTMLInputElement | HTMLSelec
   return h('input', { id, type: field.input === 'number' ? 'number' : 'text', value: field.default ?? '', class: field.input === 'number' ? 'mono' : '' });
 }
 
+/** 入力欄 1 つ。補足は、ラベルの横の ⓘ に畳む（読まなくても入力できる内容） */
+function fieldRow(field: FieldDef, control: HTMLElement): HTMLElement {
+  const label = h('label', { for: control.id }, field.label);
+  return h('div', { class: 'field' }, field.help ? h('div', { class: 'heading-info' }, label, infoPopover(`${field.label} の説明`, h('p', {}, field.help))) : label, control);
+}
+
 export class InvestigationPanel {
   readonly element: HTMLElement;
   /** 観測ログ。道具のタブではなく、教材アプリの下に置く */
@@ -129,6 +135,8 @@ export class InvestigationPanel {
   private readonly actionList = h('div', { class: 'action-list' });
   /** 定型の操作の区画。操作も編集欄もない課題（教材アプリの画面だけで調べる課題）では出さない */
   private readonly actionSection = h('section', { class: 'tool-section', 'aria-labelledby': 'actions-title', 'data-anchor': 'actions' }, h('h3', { id: 'actions-title' }, '操作'), this.actionList);
+  /** パックが仕組みの例を持つときだけ、いちばん上に閉じた状態で置く */
+  private readonly example = h('div', {});
   /** パックが調べ方を持つときだけ、操作より先に見せる */
   private readonly approach = h('section', { class: 'tool-section approach', 'aria-labelledby': 'approach-title', hidden: true });
   private count = 0;
@@ -140,6 +148,7 @@ export class InvestigationPanel {
     this.element = h(
       'div',
       { class: 'investigation' },
+      this.example,
       this.approach,
       this.actionSection,
       this.editor,
@@ -153,8 +162,9 @@ export class InvestigationPanel {
     );
   }
 
-  /** 演習を始めたときに、調べ方・操作の定義・fixture の値・アプリによる観測ログと調査タブの見せ方を受け取る */
-  setup({ approach, actions }: { approach?: ApproachDef; actions: ActionDef[] }, refs: Scope, describers: AppDescribers): void {
+  /** 演習を始めたときに、仕組みの例・調べ方・操作の定義・fixture の値・アプリによる観測ログと調査タブの見せ方を受け取る */
+  setup({ workedExample: example, approach, actions }: { workedExample?: WorkedExample; approach?: ApproachDef; actions: ActionDef[] }, refs: Scope, describers: AppDescribers): void {
+    fill(this.example, example ? workedExample(example) : null);
     this.approach.hidden = !approach;
     if (approach) fill(this.approach, ...approachNodes('approach-title', '調べ方', approach));
     this.refs = refs;
@@ -211,14 +221,14 @@ export class InvestigationPanel {
     return h(
       'form',
       { class: 'action', on: { submit: (e) => (e.preventDefault(), void run()) } },
-      h('h4', {}, action.label),
-      h('p', { class: 'note' }, action.description),
-      ...controls.map(([field, control]) => h('label', { for: control.id, class: 'field' }, field.label, control, field.help ? h('span', { class: 'note' }, field.help) : null)),
+      headingWithInfo(h('h4', {}, action.label), h('p', {}, action.description)),
+      ...controls.map(([field, control]) => fieldRow(field, control)),
       h(
         'div',
         { class: 'actions' },
         h('button', { type: 'submit', class: 'button' }, '送る'),
-        action.editable ? h('button', { type: 'button', class: 'button button-quiet', on: { click: toEditor } }, '編集欄にコピー') : null,
+        // 編集欄を開いている間だけ出す（styles.css）。ふだんは「送る」だけを見せる
+        action.editable ? h('button', { type: 'button', class: 'button button-quiet copy-to-editor', on: { click: toEditor } }, '編集欄にコピー') : null,
       ),
       message,
     );
@@ -261,16 +271,5 @@ function workedExample(example: WorkedExample): HTMLElement {
     h('ol', { class: 'worked-example-steps' }, ...example.steps.map((step) => h('li', {}, step))),
     h('p', {}, h('strong', {}, 'ここから分かること：'), example.takeaway),
     h('p', { class: 'note' }, '対策は書いていません。どう守るかは、「対策」で自分で選びます。'),
-  );
-}
-
-/** 状況パネル：守るもの・普段の使い方・仕組みの例（あれば）。問い合わせの文は左の依頼に 1 か所だけ置くので、ここには出さない */
-export function storyPanel(story: StoryDef): HTMLElement {
-  return h(
-    'div',
-    { class: 'story', 'data-anchor': 'story' },
-    h('section', { class: 'tool-section' }, h('h3', {}, '守るもの'), h('ul', {}, ...story.protectedAssets.map((a) => h('li', {}, a)))),
-    h('section', { class: 'tool-section' }, h('h3', {}, '壊してはいけない、ふだんの使い方'), h('ul', {}, ...story.normalUse.map((a) => h('li', {}, a)))),
-    story.workedExample ? workedExample(story.workedExample) : null,
   );
 }

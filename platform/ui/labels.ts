@@ -1,17 +1,6 @@
 // 画面に出す名前。利用者が操作・認識するものの名前で書く
-import type { BadgeKind, Difficulty, ExerciseState, ResultGroup, VulnerabilityCategory } from '../contract';
+import type { BadgeKind, Difficulty, ResultGroup, VulnerabilityCategory } from '../contract';
 import type { PreflightStep } from '../orchestrator/orchestrator';
-
-export const STATE_LABEL: Record<ExerciseState, string> = {
-  Selected: '準備中',
-  Preflight: '開始前チェック中',
-  Prepared: '調査を始められます',
-  Explored: '調査中',
-  Repairing: '対策中',
-  Verifying: 'テスト中',
-  Passed: '解決',
-  Blocked: '開始できません',
-};
 
 export const STEP_LABEL: Record<PreflightStep, string> = {
   compatibility: '教材アプリと課題が合っているか',

@@ -1,8 +1,7 @@
-// 演習の評価結果を記号・文言・色で示し、常設の live 領域への読み上げと任意の効果音を添える。
-import type { StoryDef } from '../contract';
+// 演習の評価結果を、常設の live 領域への読み上げと任意の効果音で知らせる。再現できたときだけ、作業台の上に 1 行の通知を出す。
+// テストの結果は対策タブに出るので、ここでは画面に重ねて出さない
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { characterVoice, guideVoice, requesterVoice } from './characters';
-import { expectedActual, status, type StatusKind } from './components';
+import { status } from './components';
 import { fill, h, renderGuard } from './dom';
 import type { EffectSettingsStore } from './effect-settings';
 import type { ResultEffect, ResultEffectKind } from './result-effect-model';
@@ -13,19 +12,9 @@ const TITLES: Record<ResultEffectKind, string> = {
   reproduced: 'セキュリティホールを再現できました', ...VERDICT_TITLE,
 };
 
-/** 結果の中身。不合格は、失敗を 1 件ずつ分け、理由と題名・正しい結果・実際の結果を行を分けて示す。それ以外は 1 文 */
-function detailBody(effect: ResultEffect): HTMLElement[] {
-  if (!effect.failures) return [h('p', {}, effect.detail)];
-  const items = effect.failures.map((failure) => h('li', {}, h('p', { class: 'callout-failure-title' }, `${failure.reason}：${failure.title}`), expectedActual(failure.expected, failure.actual)));
-  return [h('ul', { class: 'callout-failures' }, ...items), ...(effect.more ? [h('p', { class: 'muted' }, `ほか ${effect.more} 件`)] : [])];
-}
-
-const STATUS: Record<ResultEffectKind, StatusKind> = { reproduced: 'alert', secured: 'passed', insufficient: 'failed' };
-
 export class ResultEffects {
-  /** 隠した領域を見せながら中身を入れても読み上げは保証されないので、role は付けず announce に任せる */
+  /** 再現の通知。隠した領域を見せながら中身を入れても読み上げは保証されないので、role は付けず announce に任せる */
   readonly element = h('section', { class: 'result-callout', hidden: true });
-  private requester: StoryDef['requester'];
   private readonly sound: ResultSound;
   private readonly guard = renderGuard();
 
@@ -42,30 +31,21 @@ export class ResultEffects {
   }
 
   /** 新しい演習・検証の開始と結果（判定不可・実行環境のエラーを含む）・対策の状態の変化で消す。
-   * やり取りの観測はこれらを変えないので、再現のコールアウトは残る。
+   * やり取りの観測はこれらを変えないので、再現の通知は残る。
    * キーが変わらない操作（続きから始める、同じ対策の再適用、脆弱な状態での初期化）は操作側で clear() を呼ぶ */
   update(snapshot: ExerciseSnapshot): void {
-    this.requester = snapshot.pack.manifest.story.requester;
     const { attempt, defenseCurrent, platformError } = snapshot;
     const key = [attempt.attemptId, attempt.configHash, attempt.state, defenseCurrent, attempt.lastVerification?.runId ?? '', platformError ?? ''].join('|');
     if (this.guard.changed(key)) this.clear();
   }
 
-  show(effect: ResultEffect): void {
-    const { kind, detail } = effect;
+  show({ kind, detail }: ResultEffect): void {
     const title = TITLES[kind];
-    const voice = kind === 'insufficient' ? null : requesterVoice(this.requester, kind);
-    this.element.dataset.result = kind;
-    this.element.hidden = false;
-    fill(this.element,
-      h('h2', {}, status(STATUS[kind], title)),
-      ...detailBody(effect),
-      kind === 'insufficient' ? null : guideVoice(kind, true),
-      voice ? characterVoice(voice) : null,
-      h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.clear() } }, '結果を閉じる'),
-    );
-    const reaction = voice ? `。${voice.name}。${voice.text}` : '';
-    this.announce(`${title}。${detail}${reaction}`);
+    if (kind === 'reproduced') {
+      this.element.hidden = false;
+      fill(this.element, h('h2', {}, status('alert', title)), h('button', { type: 'button', class: 'button button-quiet', on: { click: () => this.clear() } }, '閉じる'));
+    }
+    this.announce(`${title}。${detail}`);
     void this.sound.play(kind);
   }
 }

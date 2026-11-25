@@ -6,10 +6,8 @@ import { sealStates, stageStates } from '../progress/stages';
 const STATE_LABELS = { done: '済', current: 'いま', todo: 'これから' };
 
 export class StageProgress {
-  private readonly heading = h('h2', { class: 'stage-count' });
-  readonly header = h('div', { class: 'stage-heading' }, this.heading);
   private readonly list = h('ol', { class: 'stages', 'aria-label': 'ステージ' });
-  readonly element = h('section', { class: 'stage-progress' }, this.header, this.list);
+  readonly element = h('section', { class: 'stage-progress' }, this.list);
   private guard = renderGuard();
   private previous: ReturnType<typeof stageStates> | null = null;
 
@@ -27,7 +25,6 @@ export class StageProgress {
     if (!this.guard.changed(key)) return;
     const states = stageStates(attempt, defenseCurrent);
     const arrived = states.flatMap((stage, index) => stage.state === 'done' && this.previous?.[index]?.state === 'todo' ? [index] : []);
-    this.heading.textContent = `完了 ${states.filter((stage) => stage.state === 'done').length} / ${states.length} ステージ`;
     fill(this.list, ...states.map((stage, index) => {
       const pending = stage.current ? 'current' : 'todo';
       const visualState = stage.state === 'done' ? 'done' : pending;

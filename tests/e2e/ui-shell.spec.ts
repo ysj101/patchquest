@@ -14,13 +14,14 @@ test.beforeEach(async ({ page }) => {
   await openHome(page);
 });
 
-test('一覧の行は通称と一言だけで、正式名・CWE・分類は ⓘ を開くまで出さない', async ({ page }) => {
+test('一覧の行は通称だけで、一言の説明・正式名・CWE・分類は ⓘ を開くまで出さない', async ({ page }) => {
   await expect(page.locator('.hero-catch')).not.toContainText('IDOR');
   await expect(page.locator('.hero-catch')).not.toContainText('3 つ');
   await expect(page.locator('.hero')).not.toContainText('わざと壊した');
   const idor = card(page, 'idor');
   await expect(idor.locator('.vulnerability-name')).toHaveText('IDOR');
-  await expect(idor.locator('.vulnerability-plain')).toHaveText('メモの番号を変えるだけで、他人の非公開メモが読めてしまう問題');
+  await expect(idor.getByText('メモの番号を変えるだけで、他人の非公開メモが読めてしまう問題')).toBeHidden();
+  await expect(page.getByText('入門から順に並んでいます')).toHaveCount(0);
   await expect(idor.getByRole('heading', { name: '非公開メモを守る' })).toBeVisible();
   await expect(idor.getByText('目安 15 分')).toBeVisible();
   // 行に見えている文字に専門用語を出さない
@@ -122,7 +123,7 @@ test('キーボードだけで課題一覧から始めると、開始前チェ�
   await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeHidden();
   await page.keyboard.press('Enter');
   await expect(page.locator('#exercise-title')).toBeFocused();
-  await expect(page.getByText('学習用に、わざとセキュリティホールを入れた架空のサービスです。', { exact: true })).toBeVisible();
+  await expect(page.locator('footer .fictional-label')).toContainText('学習用に、わざとセキュリティホールを入れた架空のサービスです。');
   await expect(page.getByRole('list', { name: 'スタンプ' })).toContainText('再現：未達成');
 });
 

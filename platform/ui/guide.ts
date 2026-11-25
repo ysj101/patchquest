@@ -5,7 +5,7 @@
 import type { AttemptRecord, GuideMilestone, GuideStep } from '../contract';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { REVEALABLE_ATTR, REVEAL_EVENT, SHOWN_EVENT } from './components';
-import { characterFace, GUIDE } from './characters';
+import { guideFace, GUIDE } from './characters';
 import { fill, h } from './dom';
 
 /** 案内している場所に付ける印（CSS で枠を描く） */
@@ -170,7 +170,7 @@ export class GuidePanel {
       h(
         'div',
         { class: 'guide-coach', 'data-done': step ? null : 'true' },
-        characterFace(GUIDE.name, true),
+        guideFace(),
         h(
           'div',
           { class: 'guide-bubble' },

@@ -285,7 +285,7 @@ test('過剰な許可を調べて再現し、端末の操作で外すと、記�
   await expect(terminalOutput(page)).toContainText(`visudo: ${OPERATORS} の 3 行目を保存しました`);
   await expect(repairPanel(page).locator('.repair-log li')).toHaveText([new RegExp(`^admin → \\$ sudo visudo -f ${OPERATORS}（3 行目を「# [a-z]+ ALL=\\(root\\) NOPASSWD: ${maintenance}」に書き換えて保存）$`)]);
   await expect(repairPanel(page)).toContainText('加えた変更：1 件');
-  await expect(page.locator('.state-stamp')).toHaveText('対策中');
+  await expect(page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' })).toBeEnabled();
 
   await page.getByRole('button', { name: '攻撃とふだんの使い方をテストする' }).click();
   await expect(verifyResults(page)).toContainText('防御できました', { timeout: 20_000 });

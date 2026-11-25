@@ -1,5 +1,5 @@
 // キーボードだけで導入のスキップ・設定変更・再現・対策・理解確認まで完走できることを確かめる。
-import { expect, expectCalloutMatchesVerdict, expectWorkbench, launchButton, preview, settingsButton, tabTo, test, ticketSeals, turnMotionOffWithKeyboard, openHome } from './fixtures';
+import { expect, expectSealMatchesVerdict, expectWorkbench, launchButton, preview, settingsButton, tabTo, test, ticketSeals, turnMotionOffWithKeyboard, openHome } from './fixtures';
 
 test('キーボードだけで導入を飛ばし、動きをオフにして演習を完了できる', async ({ page }) => {
   await openHome(page);
@@ -14,8 +14,7 @@ test('キーボードだけで導入を飛ばし、動きをオフにして演�
   await turnMotionOffWithKeyboard(page);
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'off');
 
-  await tabTo(page, '状況');
-  await page.keyboard.press('ArrowRight');
+  await tabTo(page, '調査');
   await expect(page.getByRole('tab', { name: '調査' })).toBeFocused();
   // 初期画面が残した alice の一覧応答だけを読み、操作はキーボードで行う。
   const entry = page.locator('.log-entry').filter({ hasText: 'alice → GET /notes' }).first();
@@ -40,15 +39,20 @@ test('キーボードだけで導入を飛ばし、動きをオフにして演�
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: '対策' })).toBeFocused();
   const defense = page.getByRole('radio', { name: /^所有者を照合する/ });
-  await tabTo(page, defense);
+  // どれも選んでいないときは、Tab で最初の候補に入る。選ぶとその場で使われ、切り替えの後もフォーカスは選んだ候補に残る
+  const options = page.locator('.defense-choices input');
+  await tabTo(page, options.first());
   await page.keyboard.press('Space');
+  for (let moved = 0; moved < 5 && !(await defense.isChecked()); moved++) {
+    await expect(options.first()).toBeEnabled();
+    await page.keyboard.press('ArrowDown');
+  }
   await expect(defense).toBeChecked();
-  await tabTo(page, 'この対策を使う');
-  await page.keyboard.press('Enter');
+  await expect(defense).toBeFocused();
   await expect(page.getByText('使っている対策：所有者を照合する')).toBeVisible();
   await tabTo(page, '攻撃とふだんの使い方をテストする');
   await page.keyboard.press('Enter');
-  await expectCalloutMatchesVerdict(page);
+  await expectSealMatchesVerdict(page);
   await expect(ticketSeals(page)).toContainText('防御：達成');
 
   await tabTo(page, '対策');
@@ -59,5 +63,5 @@ test('キーボードだけで導入を飛ばし、動きをオフにして演�
   await tabTo(page, '答える');
   await page.keyboard.press('Enter');
   for (const seal of ['再現：達成', '防御：達成', '理解：達成']) await expect(ticketSeals(page)).toContainText(seal);
-  await expect(page.getByRole('heading', { name: '完了 5 / 5 ステージ', exact: true })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'ステージ', exact: true }).locator('li[data-state="done"]')).toHaveCount(5);
 });

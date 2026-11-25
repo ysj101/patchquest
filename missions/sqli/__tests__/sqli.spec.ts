@@ -2,7 +2,7 @@
 // 登録済みの検索語で他人のメモが返り（A10）、値としてバインドすると日本語・引用符・該当なしも守れる（A11）。
 // UNION という語だけを止めても不合格、検索を止めると正常系が壊れる
 import type { Page } from '@playwright/test';
-import { answerTransferCheck, expect, expectCalloutMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from '../../../tests/e2e/fixtures';
+import { answerTransferCheck, expect, expectSealMatchesVerdict, preview, startMission, test, ticketSeals as seals, verifyResults as results, verifyWith, openHome } from '../../../tests/e2e/fixtures';
 
 /** 理解確認の正解の選択肢（設問 ID → ラベル） */
 const CORRECT_CHOICES: Record<string, string> = {
@@ -36,20 +36,20 @@ test('登録済みの検索語で他人のメモが返り、値としてのバ�
 
   // A10：登録済みの検索語で所有者の条件を迂回し、別の利用者のメモが結果に含まれる
   await page.getByRole('tab', { name: '調査' }).click();
-  await page.getByLabel('登録済みの検索語').selectOption({ label: '持ち主の条件を広げる（タイトル）' });
+  await page.getByLabel('登録済みの検索語', { exact: true }).selectOption({ label: '持ち主の条件を広げる（タイトル）' });
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await expect(seals(page)).toContainText('再現：達成');
   await leakedPrivates(page);
 
   // 特定の語だけを止めても、その語を使わない検索語では他人のメモが返る
   await verifyWith(page, 'UNION という言葉だけを止める');
-  await expectCalloutMatchesVerdict(page);
+  await expectSealMatchesVerdict(page);
   await expect(results(page)).toContainText('まだ合格ではありません 攻撃をまだ防げていません。', { timeout: 20_000 });
   await leakedPrivates(page);
 
   // 検索を止めると、自分のメモも探せない
   await verifyWith(page, '検索を止める');
-  await expectCalloutMatchesVerdict(page);
+  await expectSealMatchesVerdict(page);
   await expect(results(page)).toContainText('ふだんの使い方が壊れています', { timeout: 20_000 });
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await search(page, '週報');
@@ -58,7 +58,7 @@ test('登録済みの検索語で他人のメモが返り、値としてのバ�
   // A11：値としてバインドすると、他人のメモは返らず、日本語・引用符・該当なしは通る
   await verifyWith(page, '検索語を値として渡し（バインド）、持ち主の条件を残す');
   await expect(results(page)).toContainText('防御できました', { timeout: 20_000 });
-  await expectCalloutMatchesVerdict(page);
+  await expectSealMatchesVerdict(page);
   await expect(seals(page)).toContainText('防御：達成');
   await page.getByRole('button', { name: '最初の画面を開き直す' }).click();
   await search(page, '週報');

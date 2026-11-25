@@ -23,7 +23,7 @@ export const sqliPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'sqli',
-    version: '1.10.0',
+    version: '1.11.0',
     kind: 'mission',
     title: '検索から他人のメモがもれるのを防ぐ',
     estimatedMinutes: 15,
@@ -38,14 +38,7 @@ export const sqliPack: MissionPack = {
     ],
     story: {
       workedExample: WORKED_EXAMPLE,
-      requester: {
-        name: 'alice さん', role: 'メモアプリの利用者',
-        reactions: {
-          reproduced: '検索で、ほかの人のメモまで出てきちゃうんだね。',
-          secured: '直してくれてありがとう。自分のメモをこれまでどおり探せるね。',
-          closing: '検索語は命令じゃなくて、探したい言葉として扱うんだね。',
-        },
-      },
+      requester: { name: 'alice さん', role: 'メモアプリの利用者' },
       incident:
         '利用者の alice さんから問い合わせがありました。「自分のメモを検索したら、bob さんの非公開のメモまで出てきました。検索語を変えると、ほかの人のメモも混ざるようです」',
       goal: '検索では、検索した本人のメモだけを返します。日本語や引用符を含む言葉でも、該当がないときでも、今までどおり検索できます。',

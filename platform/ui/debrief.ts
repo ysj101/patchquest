@@ -1,8 +1,7 @@
 // ヒント・振り返り・理解確認（spec §9, §10）。ヒントは減点しないが利用を記録する。
 // 理解確認は登録済みの選択肢で判定し、自由記述は採点しない
 import { askedQuestions } from '../contract';
-import { characterVoice, guideVoice, requesterVoice } from './characters';
-import type { TransferQuestion, VulnerabilityCategory, VulnerabilityDef } from '../contract';
+import type { TransferQuestion, VulnerabilityDef } from '../contract';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { confirmDialog, radioOption, status } from './components';
@@ -10,8 +9,6 @@ import { fill, h, renderGuard } from './dom';
 import { headingWithInfo } from './info-popover';
 import { securityHistory } from './security-history';
 import { HINT_LABEL, STALE_VERIFICATION } from './labels';
-import type { MasterySummary } from '../progress/mastery';
-import { masteryEvidence, masteryLine } from './mastery';
 import { vulnerabilityTerms } from './vulnerability-terms';
 
 export interface HintActions {
@@ -25,7 +22,7 @@ export interface HintActions {
  */
 const HINT_SCOPE = {
   all: { levels: [1, 2, 3], note: '困ったら、順番に開けます。見ても減点はありません。' },
-  repair: { levels: [3], note: '直し方のヒントです。調べるときのヒントは、「状況」と「調査」のタブにあります。見ても減点はありません。' },
+  repair: { levels: [3], note: '直し方のヒントです。調べるときのヒントは、「調査」のタブにあります。見ても減点はありません。' },
 } as const;
 type HintScope = keyof typeof HINT_SCOPE;
 
@@ -98,15 +95,9 @@ export class HintsPanel {
   }
 }
 
-/** 学び終えた時点で、体験した問題を正式な名前と結びつける。一覧の ⓘ と同じ言い方で出す */
+/** 学び終えた時点で、体験した問題を正式な名前と結びつける。名前だけを見せ、正式名・分類・CWE は開いたときに一覧の ⓘ と同じ言い方で出す */
 function termsNote(vulnerability: VulnerabilityDef): HTMLElement {
-  return h('div', { class: 'terms-note' }, h('p', { class: 'eyebrow' }, `いま直した問題は「${vulnerability.name}」といいます`), vulnerabilityTerms(vulnerability, 'info'));
-}
-
-/** この課題の分類の習熟度と判定の根拠。分類のないパックでは出さない */
-function masterySection(category: VulnerabilityCategory | undefined, mastery: MasterySummary): HTMLElement | null {
-  if (category === undefined) return null;
-  return h('section', { class: 'tool-section', 'aria-labelledby': 'mastery-section-title' }, h('h3', { id: 'mastery-section-title' }, '習熟度'), masteryLine(mastery[category]), masteryEvidence(mastery[category]));
+  return h('details', { class: 'terms-note debrief-fold' }, h('summary', {}, `いま直した問題は「${vulnerability.name}」といいます`), vulnerabilityTerms(vulnerability, 'info'));
 }
 
 export interface DebriefActions {
@@ -115,8 +106,8 @@ export interface DebriefActions {
 
 /** 理解確認の出題の種類。通常の演習と、出題を絞った演習で説明が分かれる */
 type TransferKind = 'normal' | 'fresh' | 'repeated';
-const TRANSFER_NOTE: Record<TransferKind, string> = {
-  normal: '演習とは違う場面で、原因と正しい対策を選びます。',
+/** 出題を絞った演習でだけ、ふだんと違う出し方を知らせる */
+const TRANSFER_NOTE: Record<Exclude<TransferKind, 'normal'>, string> = {
   fresh: '前回と違う問題を 1 問出します。',
   repeated: 'この課題の問題はすべて出し終えたので、前回と同じ問題を 1 問出します。',
 };
@@ -131,8 +122,7 @@ export class DebriefPanel {
 
   constructor(private readonly actions: DebriefActions) {}
 
-  /** mastery はこの演習を含めて計算した分類ごとの習熟度。課題の分類がないパック（練習）では出さない。 */
-  update(snapshot: ExerciseSnapshot, mastery: MasterySummary): void {
+  update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack } = snapshot;
     const { answers } = attempt;
     const key = `${attempt.attemptId}|${attempt.badges.reproduction.achieved}|${attempt.badges.defense.achieved}|${attempt.badges.understanding.achieved}|${Object.entries(answers).join()}|${attempt.configHash}|${snapshot.vulnerableVerification?.runId}|${attempt.lastVerification?.runId}`;
@@ -143,7 +133,6 @@ export class DebriefPanel {
         this.element,
         h('section', { class: 'tool-section' }, h('h3', {}, '振り返り'), h('p', { class: 'muted' }, '対策をテストして防御に合格すると、ここで原因と対策を振り返れます。')),
         securityHistory(snapshot),
-        masterySection(pack.manifest.vulnerability?.category, mastery),
       );
       return;
     }
@@ -151,26 +140,23 @@ export class DebriefPanel {
     const answering = this.element.querySelector('form.transfer')?.contains(document.activeElement) === true;
     const form = this.transferForm(snapshot);
     const kind = transferKind(attempt.challenge);
-    const closing = requesterVoice(pack.manifest.story.requester, 'closing');
     const lesson = [
       h('section', { class: 'tool-section debrief-cause' }, h('h3', {}, '原因'), h('p', {}, debrief.cause)),
-      h('section', { class: 'tool-section debrief-takeaway' }, h('h3', {}, '覚えておくこと'), h('ul', {}, ...debrief.takeaways.map((takeaway) => h('li', {}, takeaway)))),
       h('section', { class: 'tool-section debrief-reason' }, h('h3', {}, 'この対策が効く理由'), h('p', {}, debrief.defenseRationale)),
+      // 原因と理由を先に読ませ、まとめは開いたときに出す
+      h('details', { class: 'debrief-takeaway debrief-fold' }, h('summary', {}, '覚えておくこと'), h('ul', {}, ...debrief.takeaways.map((takeaway) => h('li', {}, takeaway)))),
     ];
     fill(
       this.element,
       attempt.lastVerification && !isCurrent(attempt.lastVerification, attempt.configHash) ? h('p', { class: 'banner banner-warn' }, STALE_VERIFICATION) : null,
       ...lesson,
       pack.manifest.vulnerability ? termsNote(pack.manifest.vulnerability) : null,
-      guideVoice('closing'),
-      closing ? characterVoice(closing) : null,
       securityHistory(snapshot),
-      masterySection(pack.manifest.vulnerability?.category, mastery),
       h(
         'section',
         { class: 'tool-section', 'aria-labelledby': 'transfer-title' },
         h('h3', { id: 'transfer-title', tabIndex: -1 }, '理解の確認'),
-        h('p', { class: 'note', 'data-transfer-note': kind }, TRANSFER_NOTE[kind]),
+        kind === 'normal' ? null : h('p', { class: 'note', 'data-transfer-note': kind }, TRANSFER_NOTE[kind]),
         attempt.badges.understanding.achieved ? h('p', { class: 'banner banner-ok' }, status('passed', '「理解」達成です')) : null,
         form,
       ),
