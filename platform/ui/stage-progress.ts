@@ -1,6 +1,7 @@
 // ステージの表示を差分更新し（見た目は色、読み上げは文字で状態を示す）、新しく到達した項目だけを演出・通知する。
 import type { AttemptRecord } from '../contract';
 import { fill, h, renderGuard } from './dom';
+import { popover } from './info-popover';
 import { sealStates, stageStates } from '../progress/stages';
 
 const STATE_LABELS = { done: '済', current: 'いま', todo: 'これから' };
@@ -19,8 +20,9 @@ export class StageProgress {
     this.previous = null;
   }
 
-  update(attempt: AttemptRecord, defenseCurrent: boolean): void {
-    const key = [...Object.values(attempt.milestones), ...Object.values(sealStates(attempt, defenseCurrent)), defenseCurrent]
+  /** now は、いまのステージでやること。いまのステージの印に畳み、マウスを乗せるか押すと読める */
+  update(attempt: AttemptRecord, defenseCurrent: boolean, now: string): void {
+    const key = [...Object.values(attempt.milestones), ...Object.values(sealStates(attempt, defenseCurrent)), defenseCurrent, now]
       .map((value) => String(value)).join('|');
     if (!this.guard.changed(key)) return;
     const states = stageStates(attempt, defenseCurrent);
@@ -28,12 +30,14 @@ export class StageProgress {
     fill(this.list, ...states.map((stage, index) => {
       const pending = stage.current ? 'current' : 'todo';
       const visualState = stage.state === 'done' ? 'done' : pending;
+      const content = [h('span', { class: 'stage-number' }, index + 1), h('span', {}, stage.label), h('span', { class: 'stage-status visually-hidden' }, STATE_LABELS[visualState])];
       return h('li', {
         'data-state': visualState,
-        title: STATE_LABELS[visualState],
+        // いまのステージは、状態の代わりにやることを重ねて出す
+        title: stage.current ? undefined : STATE_LABELS[visualState],
         'aria-current': stage.current ? 'step' : undefined,
         class: arrived.includes(index) ? 'stage-arrived' : undefined,
-      }, h('span', { class: 'stage-number' }, index + 1), h('span', {}, stage.label), h('span', { class: 'stage-status visually-hidden' }, STATE_LABELS[visualState]));
+      }, ...(stage.current ? [popover(h('button', { type: 'button', class: 'stage-now' }, ...content), [h('p', {}, `今やること：${now}`)])] : content));
     }));
     if (arrived.length) {
       this.announce(states.flatMap((stage, index) => arrived.includes(index) ? [`ステージ ${index + 1}「${stage.label}」に到達しました`] : []).join('。'));

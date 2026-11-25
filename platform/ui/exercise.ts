@@ -30,7 +30,7 @@ export function actorLabel(actor: ActorKey): string {
   return actor === ANONYMOUS ? '未ログイン' : actor;
 }
 
-/** いまのステージに対応する、画面上部の一行。課題ごとの文は置かない */
+/** いまのステージでやること。いまのステージの印に畳んで出す。課題ごとの文は置かない */
 const NOW_DOING = {
   briefed: '依頼を読んで、ミッションを始めます。',
   investigated: '調査で、手がかりを集めます。',
@@ -66,7 +66,6 @@ export class ExerciseView {
   private incident = '';
   /** 守るものと壊さないこと。対策を選ぶ基準なので、畳まずに帯へ常に出す */
   private readonly goal = h('dl', { class: 'desk-goal', 'data-anchor': 'story' });
-  private readonly nowDoing = h('p', { class: 'now-doing' });
   /** 続きから始めて前回の対策を適用し直したときに、作り直した内容を知らせる */
   private readonly resumeNote = h('p', { class: 'banner banner-ok', hidden: true });
   private readonly stages: StageProgress;
@@ -108,7 +107,6 @@ export class ExerciseView {
         this.sealSlot,
         settingsButton(() => actions.openSettings()),
       ),
-      this.nowDoing,
       this.resumeNote,
       extras.callout,
       this.briefing,
@@ -155,7 +153,6 @@ export class ExerciseView {
     );
     this.setBriefingVisible(showBriefing);
     this.showResumed(snapshot);
-    this.showNow(snapshot);
     this.investigation.setup({ ...snapshot.pack.manifest, workedExample: story.workedExample }, snapshot.refs, describersOf(app));
     this.investigation.setViewer(actorLabel(viewer));
     this.toolTabs.select('investigate');
@@ -207,13 +204,11 @@ export class ExerciseView {
     this.announce(message);
   }
 
-  private showNow({ attempt, defenseCurrent, pack }: ExerciseSnapshot): void {
+  private now({ attempt, defenseCurrent, pack }: ExerciseSnapshot): string {
     const current = stageStates(attempt, defenseCurrent).find((stage) => stage.current);
     // 最終検証のステージは、防御が済んだあとの残りが振り返り
     const reflecting = current?.id === 'verified' && attempt.badges.defense.achieved && defenseCurrent;
-    let sentence: string = NOW_DONE;
-    if (current && !reflecting) sentence = nowDoing(current.id, pack.manifest);
-    this.nowDoing.textContent = `今やること：${sentence}`;
+    return current && !reflecting ? nowDoing(current.id, pack.manifest) : NOW_DONE;
   }
 
   setViewer(actor: ActorKey): void {
@@ -223,8 +218,7 @@ export class ExerciseView {
 
   update(snapshot: ExerciseSnapshot): void {
     const { attempt, pack, defenseCurrent } = snapshot;
-    this.stages.update(attempt, defenseCurrent);
-    this.showNow(snapshot);
+    this.stages.update(attempt, defenseCurrent, this.now(snapshot));
     this.title.textContent = pack.manifest.title;
     this.ticket.textContent = `演習票 ${attempt.attemptId.slice(0, 8)}・seed ${attempt.seed}`;
     // 押印の動きを通知のたびに繰り返さないよう、変わったときだけ描き直す

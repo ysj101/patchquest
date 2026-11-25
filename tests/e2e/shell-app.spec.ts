@@ -1,6 +1,6 @@
 // 擬似シェル（ターミナル）と、操作で直す課題の学習UI。端末で調べて再現し、visudo で設定を書き換えた操作が記録され、検証の前に再生されることを確かめる
 import type { Page } from '@playwright/test';
-import { commentOutWithVisudo, expect, loginToTerminal as loginAs, preview, resetToInitial, startMission, terminalEditor as editor, terminalInput as commandInput, terminalOutput, test, ticketSeals as seals, typeCommand as type, verifyResults } from './fixtures';
+import { commentOutWithVisudo, currentStage, expect, loginToTerminal as loginAs, preview, resetToInitial, startMission, terminalEditor as editor, terminalInput as commandInput, terminalOutput, test, ticketSeals as seals, typeCommand as type, verifyResults } from './fixtures';
 
 const OPERATORS = '/etc/sudoers.d/operators';
 const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
@@ -100,7 +100,8 @@ test('Tab キーでコマンド名とファイル名を補完でき、候補が�
 
 test('観測ログと調査タブは、HTTP のリクエストではなく端末の言葉で示す', async ({ page }) => {
   // 定型の操作がないので、調査タブを開くのではなく、教材アプリで調べるよう案内する
-  await expect(page.locator('.now-doing')).toHaveText('今やること：教材アプリを操作して、手がかりを集めます。');
+  await currentStage(page).hover();
+  await expect(currentStage(page).getByRole('note')).toHaveText('今やること：教材アプリを操作して、手がかりを集めます。');
   await type(page, 'whoami');
   await type(page, 'cat /etc/sudoers');
   const log = page.locator('.log-section');

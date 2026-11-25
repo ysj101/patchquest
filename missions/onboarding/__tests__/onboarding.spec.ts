@@ -1,7 +1,7 @@
 // オンボーディング（練習用パック）。一覧の「まずは練習」から、操作ガイドに沿って
 // 体験する → なおす → たしかめる → ふりかえる を最後まで進められる
 import type { Page } from '@playwright/test';
-import { backToList, expect, launchButton, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from '../../../tests/e2e/fixtures';
+import { backToList, currentStage, expect, launchButton, preview, startMission, test, ticketSeals as seals, verifyWith, openHome } from '../../../tests/e2e/fixtures';
 
 const guide = (page: Page) => page.getByRole('complementary', { name: '操作ガイド' });
 const target = (page: Page) => page.locator('[data-guide-target]');
@@ -25,7 +25,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await guide(page).getByRole('button', { name: '場所を表示' }).click();
   await expect(page.locator('[data-anchor="briefing"]')).toBeFocused();
   await launchButton(page).click();
-  await expect(page.locator('.now-doing')).toHaveText('今やること：調査で、手がかりを集めます。');
+  await expect(currentStage(page).getByRole('note', { includeHidden: true })).toHaveText('今やること：調査で、手がかりを集めます。');
 
   // 作業台は調査タブから始まるので、案内先はそのまま操作の区画を指す
   await expectStep(page, '1 / 5', '不具合を体験してみよう');
@@ -33,7 +33,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   await expect(target(page)).toHaveAttribute('data-anchor', 'actions');
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await expect(seals(page)).toContainText('再現：達成');
-  await expect(page.locator('.now-doing')).toHaveText('今やること：対策を選びます。');
+  await expect(currentStage(page).getByRole('note', { includeHidden: true })).toHaveText('今やること：対策を選びます。');
 
   // 「場所を表示」は、案内先のタブを開いてフォーカスを移す
   await expectStep(page, '2 / 5', 'なおし方を選ぼう');
@@ -53,7 +53,7 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
 
   await expectStep(page, '4 / 5', 'ふりかえろう');
   await expect(guide(page)).toContainText('合格！ 攻撃を防げました');
-  await expect(page.locator('.now-doing')).toHaveText('今やること：振り返りで、原因と対策を確認します。');
+  await expect(currentStage(page).getByRole('note', { includeHidden: true })).toHaveText('今やること：振り返りで、原因と対策を確認します。');
   await page.getByRole('tab', { name: '振り返り' }).click();
   await page.getByRole('radio', { name: 'コメントを保存するときに文字数を確かめる' }).check();
   await page.getByRole('button', { name: '答える' }).click();

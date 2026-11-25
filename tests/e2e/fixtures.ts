@@ -131,6 +131,9 @@ export const verifyResults = (page: Page) => page.locator('[data-anchor="results
 export const ticketSeals = (page: Page) => page.locator('.ticket').getByRole('list', { name: 'スタンプ' });
 
 /** 導入を閉じてミッションを始めるボタン */
+/** いまのステージの印。マウスを乗せるか押すと、今やることを重ねて出す */
+export const currentStage = (page: Page) => page.getByRole('list', { name: 'ステージ', exact: true }).locator('[aria-current="step"]');
+
 export const launchButton = (page: Page) => page.getByRole('button', { name: 'ミッション開始', exact: true });
 
 /**
