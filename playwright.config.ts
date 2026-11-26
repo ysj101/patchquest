@@ -12,10 +12,13 @@ const port = portFor(4173);
 
 /**
  * 演習用の機械（本物の Linux を動かすエミュレータ）を起動するテストに付ける印。機械は CPU を使い切るので、ほかのテストと並べると
- * 互いの待ち時間を超える（Issue #173）。印を付けたテストは chrome-machine で 1 件ずつ走らせる（pnpm run test:e2e は、ほかのテストのあとに走らせる）
+ * 互いの待ち時間を超える（Issue #173）。印を付けたテストは chrome-machine で 1 件ずつ走らせる（pnpm run test:e2e は、ほかのテストのあとに走らせる）。
+ * パックの出荷前検証（PACK_VERIFICATION）も機械を使うが、CI ではパックごとに別のランナーで走らせるので、別の project（chrome-verify）に分ける
  */
 export const MACHINE_TAG = '@machine';
 const machine = new RegExp(MACHINE_TAG);
+/** パックの出荷前検証。pnpm run test:e2e では走らせず、pnpm run verify:packs だけが走らせる（同じ検証を二重に走らせない） */
+const PACK_VERIFICATION = 'tests/e2e/pack-verification.spec.ts';
 
 /** 対応ブラウザはPC版のChromeのみ（spec §2）。インストール済みのブラウザを使う */
 export const BROWSERS = [{ name: 'chrome', use: { channel: 'chrome' } }];
@@ -31,8 +34,9 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${port}`,
   },
   projects: [
-    ...BROWSERS.map((browser) => ({ ...browser, grepInvert: machine })),
-    { name: 'chrome-machine', use: { channel: 'chrome' }, grep: machine, workers: 1 },
+    ...BROWSERS.map((browser) => ({ ...browser, grepInvert: machine, testIgnore: PACK_VERIFICATION })),
+    { name: 'chrome-machine', use: { channel: 'chrome' }, grep: machine, testIgnore: PACK_VERIFICATION, workers: 1 },
+    { name: 'chrome-verify', use: { channel: 'chrome' }, testMatch: PACK_VERIFICATION, workers: 1 },
     {
       name: 'chrome-quiet',
       use: { channel: 'chrome', contextOptions: { reducedMotion: 'reduce' } },
