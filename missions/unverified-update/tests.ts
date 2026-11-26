@@ -6,7 +6,6 @@ import type { ProbeDef, TestCase } from '../../platform/contract';
 const MAINTENANCE = '{{programs.maintenance.path}}';
 const APPLY = '{{programs.update.path}}';
 const UPDATE_FILE = '{{updates.file.path}}';
-const CONFIG = '{{updates.config.path}}';
 const SUMS = '{{updates.sums.path}}';
 
 /** 保守の操作が root の権限で実行された、という観測イベント */
@@ -14,6 +13,9 @@ const MAINTENANCE_RAN_AS_ROOT = ranAsRoot(MAINTENANCE);
 
 /** 受け取った更新の末尾に、保守の操作を 1 行足すコマンド行 */
 const APPEND_MAINTENANCE = `echo ${MAINTENANCE} >> ${UPDATE_FILE}`;
+
+/** 受け取った更新の中身を、行数も大きさも変えずに 1 文字だけ書き換えるコマンド行（版の番号 2026.10 を 2026.11 にする） */
+const CHANGE_ONE_LETTER = `sed -i s/2026.10/2026.11/ ${UPDATE_FILE}`;
 
 export const PROBES: ProbeDef[] = [
   {
@@ -37,6 +39,16 @@ export const TARGET_CASES: TestCase[] = [
       sh('operator', `sudo ${APPLY}`, FAILED, [ranAsRoot(MAINTENANCE, 'absent')]),
     ],
   },
+  {
+    id: 'unverified-update.any-change-rejected',
+    category: 'security',
+    title: '中身を 1 文字書き換えただけの更新も、取り込まない',
+    // 足された行の文字を見て断る・行数や大きさを見て断るだけの直し方は、ここで落ちる。中身が変わったことそのものに気づく必要がある
+    steps: [
+      sh('admin', `sudo sh -c '${CHANGE_ONE_LETTER}'`, SUCCEEDED),
+      sh('operator', `sudo ${APPLY}`, FAILED),
+    ],
+  },
 ];
 
 export const CASES: TestCase[] = [
@@ -48,12 +60,12 @@ export const CASES: TestCase[] = [
     steps: [sh('operator', `sudo ${APPLY}`, { status: 200, body: [{ path: 'exit', is: { equals: 0 } }, { path: 'stdout', is: { contains: '取り込みました' } }] }, [ranAsRoot(APPLY)])],
   },
   {
-    id: 'unverified-update.settings-protected',
+    id: 'unverified-update.checks-protected',
     category: 'security',
-    title: '運用担当は、中身を確かめる設定と一覧を書き換えられない',
+    title: '運用担当は、取り込みのプログラムとハッシュの一覧を書き換えられない',
     steps: [
-      sh('operator', `sudoedit ${CONFIG}`, FAILED),
-      sh('operator', `echo verify=off >> ${CONFIG}`, FAILED),
+      sh('operator', `sudoedit ${APPLY}`, FAILED),
+      sh('operator', `echo true >> ${APPLY}`, FAILED),
       sh('operator', `echo x >> ${SUMS}`, FAILED),
     ],
   },
