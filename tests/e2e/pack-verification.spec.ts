@@ -2,7 +2,8 @@
 import { MACHINE, expect, openTestPage, test } from './fixtures';
 
 test('カタログのすべてのパックが出荷前検証に合格する', MACHINE, async ({ page }) => {
-  test.setTimeout(600_000);
+  // CI の機械では 340〜555 秒かかり、遅い回は 600 秒を超えた。CI のジョブの上限（30 分）に収まる範囲で余裕を持たせる
+  test.setTimeout(900_000);
   await openTestPage(page, 'pack-verification');
   const started = Date.now();
   const results = await page.evaluate(() => window.verifyAllPacks());
