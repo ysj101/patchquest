@@ -1,17 +1,25 @@
-// ミッション「更新を、確かめてから取り込む」。カタログに登録しただけで一覧に出て、ターミナルで取り込みの仕組みを調べ、
-// 書き換えた更新が root の権限で動くことを再現する。取り込みそのものを止めると正常系の失敗で不合格（A05）、
-// 中身の確認を有効にすると合格する（A04）。調べるのも直すのも、ターミナルにコマンドを打って行う
+// ミッション「更新を、確かめてから取り込む」。カタログに登録しただけで一覧に出て、ターミナルでハッシュを計算して見くらべ、
+// 更新を書き換えると値が変わること、書き換えた更新が root の権限で動くことを再現する。確かめるだけでやめない直し方は不合格、
+// 取り込みそのものを止めると正常系の失敗で不合格（A05）、動かす前に sha256sum -c で確かめてやめる行を入れると合格する（A04）
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, rewriteWithSudoedit, terminalEditor, terminalInput, terminalOutput, test, testRepair, ticketSeals as seals, typeCommand } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, resetToInitial, rewriteWithSudoedit, terminalEditor, terminalInput, terminalOutput, test, testRepair, ticketSeals as seals, typeCommand, verifyResults } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
-  'auto-update-cause': '配るサーバの中身が書き換えられると、全員のパソコンがそれをそのまま動かす',
-  'web-parts-defense': '読み込んだ部品の中身が、前もって確かめておいたものと同じかを確かめてから動かす',
+  'install-script-cause': '途中で書き換えられたスクリプトでも、気づかないまま root の権限で動かしてしまう',
+  'same-place-defense': 'ハッシュの一覧を、ファイルとは別の、書き換えられにくい経路で受け取る（配布元の署名が付いた一覧を使うなど）',
 };
+
+const APPLY = '/usr/local/bin/apply-update';
+const CHECK = 'sha256sum -c /etc/updates/SHA256SUMS';
+/** 配布元が出したままの更新のハッシュ（apps/shell/linux/update.ts の UPDATE_SHA256） */
+const GENUINE = 'c067468ede5b05941adf62383a594ca3c636e640caaf01dec3281f30ab2ee1ec';
+
+/** 端末の出力のうち、最後のコマンドの標準出力 */
+const lastOutput = (page: Page) => terminalOutput(page).locator('.term-out').last();
 
 /** 運用メモから保守の操作のパスを読み、受け取った更新の末尾に足す */
 async function appendMaintenance(page: Page): Promise<string> {
-  await typeCommand(page, 'cat runbook.txt');
+  await typeCommand(page, 'cat ~/runbook.txt');
   await expect(terminalOutput(page)).toContainText('は管理者だけが行う');
   const maintenance = /保守の操作（(\/usr\/local\/sbin\/[a-z-]+)）/.exec(await terminalOutput(page).innerText())?.[1];
   if (!maintenance) throw new Error('運用メモに保守の操作が出ていません');
@@ -19,9 +27,9 @@ async function appendMaintenance(page: Page): Promise<string> {
   return maintenance;
 }
 
-test('ターミナルで取り込みの仕組みを調べて再現し、取り込みを止めると不合格、中身の確認を有効にすると合格する', MACHINE, async ({ page }) => {
+test('ハッシュを計算して見くらべ、書き換えた更新を再現し、確かめるだけ・取り込みを止めるだけでは不合格、確かめてやめる行を入れると合格する', MACHINE, async ({ page }) => {
   // 本物の Linux を起動し、検証のたびに機械の中でコマンドを実行するので、時間がかかる
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
   await openHome(page);
   const card = page.locator('[data-mission="unverified-update"]');
   await expect(card.getByRole('heading', { name: '更新を、確かめてから取り込む' })).toBeVisible();
@@ -31,22 +39,36 @@ test('ターミナルで取り込みの仕組みを調べて再現し、取り�
   await enterWorkbench(page);
   await expect(terminalInput(page)).toBeVisible();
 
-  // 調べ方は、取り込みの仕組みと最初に打つコマンドを示し、直し方は書かない
+  // 調べ方は、ハッシュを自分で計算して見くらべる操作を示し、直し方は書かない
   await page.getByRole('tab', { name: '調査' }).click();
   const approach = page.getByRole('region', { name: '調べ方' });
-  await expect(approach.locator('code')).toHaveText(['cat runbook.txt', 'cat /usr/local/bin/apply-update', 'cat ファイルのパス', 'ls -l /var/cache/updates', '-rw-r--r--']);
+  await expect(approach.locator('code')).toContainText(['cat runbook.txt', 'cd /var/cache/updates', 'sha256sum update.sh', 'cat /etc/updates/SHA256SUMS', CHECK, 'update.sh: OK', `cat ${APPLY}`, 'echo 足す行 >> update.sh']);
   await expect(approach).not.toContainText('sudoedit');
 
-  // 調べる：取り込みのプログラムは中身を確かめられるが、設定で切られている
-  await typeCommand(page, 'cat /usr/local/bin/apply-update');
-  await expect(terminalOutput(page)).toContainText('sha256sum -c /etc/update.sums');
-  await typeCommand(page, 'cat /etc/update.conf');
-  await expect(terminalOutput(page)).toContainText('一時的に切った');
+  // 調べる：運用メモに、置き場・取り込みのコマンド・ハッシュの一覧の場所がある
+  await typeCommand(page, 'cat runbook.txt');
+  await expect(lastOutput(page)).toContainText('/etc/updates/SHA256SUMS に写してある');
+  // 自分で計算したハッシュは、配布元が知らせた値と同じ。sha256sum -c も OK を出す
+  await typeCommand(page, 'cd /var/cache/updates');
+  await typeCommand(page, 'sha256sum update.sh');
+  await expect(lastOutput(page)).toHaveText(`${GENUINE}  update.sh`);
+  await typeCommand(page, 'cat /etc/updates/SHA256SUMS');
+  await expect(lastOutput(page)).toHaveText(`${GENUINE}  update.sh`);
+  await typeCommand(page, CHECK);
+  await expect(lastOutput(page)).toHaveText('update.sh: OK');
+  // 取り込みのプログラムは、確かめる行が外されたまま、更新を動かしている
+  await typeCommand(page, `cat ${APPLY}`);
+  await expect(lastOutput(page)).toContainText('中身を確かめる行を一時的に外した');
+  await expect(lastOutput(page)).not.toContainText('sha256sum');
 
-  // 再現：運用担当が更新に足した行が、root の権限で動く
+  // 再現：更新に 1 行足すと、ハッシュが別の値になり、sha256sum -c は FAILED を出す。それでも取り込みは、足した行を root の権限で動かす
   const maintenance = await appendMaintenance(page);
+  await typeCommand(page, 'sha256sum update.sh');
+  await expect(lastOutput(page)).toHaveText(/^[0-9a-f]{64} {2}update\.sh$/);
+  await expect(lastOutput(page)).not.toContainText(GENUINE);
+  await typeCommand(page, CHECK);
+  await expect(lastOutput(page)).toHaveText('update.sh: FAILED');
   await typeCommand(page, 'sudo apply-update');
-  await expect(terminalOutput(page)).toContainText('中身の確認：しない');
   await expect(seals(page)).toContainText('再現：達成');
   await expect(page.locator('.result-callout')).toContainText('セキュリティホールを再現できました');
 
@@ -54,41 +76,57 @@ test('ターミナルで取り込みの仕組みを調べて再現し、取り�
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
   // 操作のしかたは、編集する道具の使い方を、名指ししているボタンと同じ名前で案内する
-  await expect(page.getByRole('region', { name: '操作のしかた' }).locator('code')).toContainText(['sudoedit', 'sudoedit ファイルのパス']);
+  await expect(page.getByRole('region', { name: '操作のしかた' }).locator('code')).toContainText(['sudoedit', 'ls -l ファイルのパス', 'sudoedit ファイルのパス', "sed -i '$d' /var/cache/updates/update.sh"]);
   await expect(page.getByRole('region', { name: '操作のしかた' })).toContainText('「最初の状態に戻す」');
 
   // A05：運用担当の sudo の許可（2 行目）を外して取り込みそのものを止めると、ふだんの使い方が壊れて合格しない
   await loginToTerminal(page, 'admin');
   await commentOutWithVisudo(page, '/etc/sudoers.d/operators', [2]);
   await testRepair(page);
-  // やり直す：加えた変更が消え、機械も確認が切られた状態へ戻る
+  // やり直す：加えた変更が消え、機械も確かめる行が外された状態へ戻る
   await expectBrokenNormalThenReset(page);
 
-  // 運用担当は、設定を開けない
+  // 確かめるだけで、合わなくてもやめない行では、書き換えた更新が動いてしまうので合格しない
+  await rewriteWithSudoedit(page, APPLY, 6, CHECK);
+  await testRepair(page);
+  await expect(verifyResults(page)).toContainText('まだ合格ではありません', { timeout: 90_000 });
+  await expect(verifyResults(page)).toContainText('中身を書き換えられた更新は、取り込まない');
+  await expect(seals(page)).toContainText('防御：未達成');
+  await resetToInitial(page);
+  await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
+
+  // 運用担当は、取り込みのプログラムを開けない
   await loginToTerminal(page, 'operator');
-  await typeCommand(page, 'sudoedit /etc/update.conf');
+  await typeCommand(page, `sudoedit ${APPLY}`);
   await expect(terminalOutput(page).locator('.term-err').last()).toContainText('is not allowed to execute');
   await expect(terminalEditor(page)).toHaveCount(0);
 
-  // A04：管理者が sudoedit で設定を開き、中身の確認を有効にすると、記録した操作が再生されて合格する
+  // A04：管理者が sudoedit で取り込みのプログラムを開き、確かめてやめる行を入れると、記録した操作が再生されて合格する
   await loginToTerminal(page, 'admin');
-  await typeCommand(page, 'sudoedit /etc/update.conf');
-  await expect(terminalEditor(page)).toContainText('sudoedit: /etc/update.conf を編集しています。');
-  await expect(terminalEditor(page).getByRole('textbox', { name: '5 行目', exact: true })).toHaveValue('verify=off');
+  await typeCommand(page, `sudoedit ${APPLY}`);
+  await expect(terminalEditor(page)).toContainText(`sudoedit: ${APPLY} を編集しています。`);
+  await expect(terminalEditor(page).getByRole('textbox', { name: '6 行目', exact: true })).toHaveValue(/中身を確かめる行を一時的に外した/);
+  await expect(terminalEditor(page).getByRole('textbox', { name: '7 行目', exact: true })).toHaveValue('sh ./update.sh');
   await terminalEditor(page).getByRole('button', { name: /^保存せずに閉じる/ }).click();
-  await rewriteWithSudoedit(page, '/etc/update.conf', 5, 'verify=on');
+  await rewriteWithSudoedit(page, APPLY, 6, `${CHECK} || exit 1`);
   await testRepair(page);
-  await expect(repairPanel(page).locator('.repair-log li')).toHaveText(['admin → $ sudoedit /etc/update.conf（5 行目を「verify=on」に書き換えて保存）']);
+  await expect(repairPanel(page).locator('.repair-log li')).toHaveText([`admin → $ sudoedit ${APPLY}（6 行目を「${CHECK} || exit 1」に書き換えて保存）`]);
   await expectDefended(page);
 
-  // 演習中の機械でも、正しい更新は取り込め、書き換えた更新は止まる
+  // 演習中の機械でも、正しい更新は取り込め、書き換えた更新は、動かす前に止まる
   await loginToTerminal(page, 'operator');
   await typeCommand(page, 'sudo apply-update');
-  await expect(terminalOutput(page)).toContainText('update.sh: OK');
+  await expect(lastOutput(page)).toContainText('update.sh: OK');
+  await expect(lastOutput(page)).toContainText('更新 2026.10 を取り込みました');
   await appendMaintenance(page);
   await typeCommand(page, 'sudo apply-update');
-  await expect(terminalOutput(page).locator('.term-err').last()).toContainText('更新の中身が一覧と合いません。取り込みをやめました');
+  await expect(lastOutput(page)).toHaveText('update.sh: FAILED');
   await expect(terminalOutput(page)).not.toContainText(`${maintenance}: `);
+  // 操作のしかたにあるコマンドで足した行を消すと、配布元が出したままに戻り、また取り込める
+  await typeCommand(page, "sed -i '$d' /var/cache/updates/update.sh");
+  await typeCommand(page, 'sudo apply-update');
+  await expect(lastOutput(page)).toContainText('update.sh: OK');
+  await expect(lastOutput(page)).toContainText('更新 2026.10 を取り込みました');
 
   await answerTransferCheck(page, CORRECT_CHOICES);
   await expect(page.getByRole('list', { name: 'ステージ', exact: true }).locator('li[data-state="done"]')).toHaveCount(5);
