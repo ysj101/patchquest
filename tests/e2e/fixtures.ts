@@ -49,6 +49,9 @@ export const settingsButton = (page: Page) => page.getByRole('button', { name: '
  * ヘッダーのロゴ（読み上げ名は「PatchQuest（課題一覧へ戻る）」）は含めない。
  * 演習票のボタンは、CSS の矢印が読み上げ名の先頭に入る
  */
+/** 開始前チェックの見出し。課題名が入る */
+export const preflightHeading = (page: Page) => page.locator('[data-anchor="preflight"]').getByRole('heading', { level: 1 });
+
 export const backToList = (page: Page) => page.getByRole('button', { name: /^(?:← )?課題一覧へ戻る$/ });
 
 /** 演習画面の教材アプリ（隔離 iframe） */
@@ -203,6 +206,13 @@ export async function openMission(page: Page, missionId: string, options: { resu
   await openMissions(page);
   const name = options.resume ? '続きから始める' : /この課題を始める|最初から始める/;
   await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name }).click();
+  await beginExercise(page);
+}
+
+/** 本物の Linux を動かす課題を、一覧のカードから始める。準備の間は長く待つことを先に伝え、合格するとボタンを押さずに演習画面へ進む */
+export async function beginMachineMission(page: Page, missionId: string): Promise<void> {
+  await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name: /この課題を始める|最初から始める/ }).click();
+  await expect(page.locator('[data-anchor="preflight"]')).toContainText('30 秒程度かかります。');
   await beginExercise(page);
 }
 

@@ -2,7 +2,7 @@
 // 書き換えた更新が root の権限で動くことを再現する。取り込みそのものを止めると正常系の失敗で不合格（A05）、
 // 中身の確認を有効にすると合格する（A04）。調べるのも直すのも、ターミナルにコマンドを打って行う
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, rewriteWithSudoedit, terminalEditor, terminalInput, terminalOutput, test, testRepair, ticketSeals as seals, typeCommand } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, rewriteWithSudoedit, terminalEditor, terminalInput, terminalOutput, test, testRepair, ticketSeals as seals, typeCommand } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'auto-update-cause': '配るサーバの中身が書き換えられると、全員のパソコンがそれをそのまま動かす',
@@ -26,8 +26,8 @@ test('ターミナルで取り込みの仕組みを調べて再現し、取り�
   const card = page.locator('[data-mission="unverified-update"]');
   await expect(card.getByRole('heading', { name: '更新を、確かめてから取り込む' })).toBeVisible();
   await expect(card).toContainText('確かめない更新');
-  await card.getByRole('button', { name: /この課題を始める|最初から始める/ }).click();
-  await expect(page.locator('.exercise')).toBeVisible({ timeout: 60_000 });
+  // 準備の間は、ほかの課題より長く待つことを先に伝える
+  await beginMachineMission(page, 'unverified-update');
   await enterWorkbench(page);
   await expect(terminalInput(page)).toBeVisible();
 

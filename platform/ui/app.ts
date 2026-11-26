@@ -206,7 +206,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     const started = orchestrator.start(packId, { resume });
     address.show({ page: 'mission', missionId: packId });
     show('preflight');
-    say('開始前チェックを始めました');
+    say('準備を始めました');
     const [records, snapshot] = await Promise.all([saved.then(() => store.list()), started]);
     // 点検の間に別の演習が始まっていたら、その演習の begin に任せる（古い演習の記録で上書きしない）
     if (orchestrator.snapshot !== snapshot) return;
@@ -219,7 +219,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   async function enterIfReady(snapshot: ExerciseSnapshot): Promise<void> {
     if (screen !== 'preflight' || orchestrator.snapshot?.attempt.attemptId !== snapshot.attempt.attemptId) return;
     if (isInExercise(snapshot.attempt.state)) await beginExercise();
-    else say('開始前チェックで問題が見つかりました');
+    else say('準備で問題が見つかりました');
   }
 
   function updateExercise(snapshot: ExerciseSnapshot): void {
