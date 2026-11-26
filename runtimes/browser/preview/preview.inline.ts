@@ -8,7 +8,7 @@ import { installNavigationGuard } from './navigation-guard';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
-let current: { runId: string; app: AppModule; viewer: string; implementations: ImplementationSelection } | null = null;
+let current: { runId: string; app: AppModule; viewer: string; implementations: ImplementationSelection; dataGeneration: number } | null = null;
 let nextRequestId = 1;
 const pendingRequests = new Map<number, (response: AppResponse) => void>();
 
@@ -45,6 +45,7 @@ async function show(route: string): Promise<void> {
     hook: (id) => resolveHook(ctx.app, ctx.implementations, id),
     navigate: (next) => void show(next),
     viewer: ctx.viewer === ANONYMOUS ? null : ctx.viewer,
+    dataGeneration: ctx.dataGeneration,
     emit: (type, data) => send({ type: 'event', runId: ctx.runId, event: { type, data } }),
   };
   try {
@@ -60,7 +61,7 @@ window.addEventListener('message', (e: MessageEvent<ToFrame>) => {
   const message = e.data;
   if (message?.type === 'render') {
     pendingRequests.clear();
-    current = { runId: message.runId, app: findApp(message.appId), viewer: message.viewer, implementations: message.implementations };
+    current = { runId: message.runId, app: findApp(message.appId), viewer: message.viewer, implementations: message.implementations, dataGeneration: message.dataGeneration };
     void show(message.route);
   } else if (message?.type === 'response' && message.runId === current?.runId) {
     pendingRequests.get(message.requestId)?.(message.response);

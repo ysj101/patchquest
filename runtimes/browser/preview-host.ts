@@ -59,6 +59,8 @@ export interface RenderParams {
   viewer: ActorKey;
   session: SessionToken | null;
   implementations: ImplementationSelection;
+  /** 教材データの世代（ViewContext.dataGeneration として画面へ渡す） */
+  dataGeneration: number;
   timeoutMs: number;
   /** 描画完了の通知から結果を返すまで待つ時間 */
   settleMs: number;
@@ -123,6 +125,7 @@ export class PreviewFrame {
       route: params.route,
       viewer: params.viewer,
       implementations: params.implementations,
+      dataGeneration: params.dataGeneration,
     });
     try {
       await done;

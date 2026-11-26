@@ -72,6 +72,8 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   private readonly sessionActors = new Map<SessionToken, ActorKey>();
   private frame: PreviewFrame | undefined;
   private disposed = false;
+  /** 教材データの世代。用意し直す・初期状態へ戻すたびに進め、画面が前のデータのときの表示を持ち越さないようにする */
+  private dataGeneration = 0;
 
   constructor(private readonly options: BrowserRuntimeOptions = {}) {
     this.limits = { ...DEFAULT_LIMITS, ...options.limits };
@@ -89,6 +91,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     this.prepared = { options, app };
     this.viewSelection = view;
     this.sessionActors.clear();
+    this.dataGeneration += 1;
     try {
       return (await this.call({ op: 'prepare', options }, `prepare:${options.attemptId}`, this.limits.timeoutMs * prepareFactor(app))) as FixtureData;
     } catch (error) {
@@ -142,6 +145,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     const { app } = this.requirePrepared();
     this.frame?.detach();
     this.sessionActors.clear();
+    this.dataGeneration += 1;
     return (await this.call({ op: 'reset' }, 'reset', this.limits.timeoutMs * prepareFactor(app))) as FixtureData;
   }
 
@@ -175,6 +179,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
       viewer,
       session,
       implementations: this.viewSelection,
+      dataGeneration: this.dataGeneration,
       timeoutMs,
       settleMs,
     });

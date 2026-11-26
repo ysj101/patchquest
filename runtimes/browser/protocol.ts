@@ -36,7 +36,7 @@ export type WorkerReply =
 
 /** Host → プレビュー */
 export type ToFrame =
-  | { type: 'render'; runId: string; appId: string; route: string; viewer: ActorKey; implementations: ImplementationSelection }
+  | { type: 'render'; runId: string; appId: string; route: string; viewer: ActorKey; implementations: ImplementationSelection; dataGeneration: number }
   | { type: 'response'; runId: string; requestId: number; response: AppResponse };
 
 /** プレビュー → Host。ready 以外は現在の runId を付ける */
