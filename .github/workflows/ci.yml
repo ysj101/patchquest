@@ -1,5 +1,8 @@
 # CI。push（main）と PR ごとに、品質ゲート（pnpm run check：型・lint・重複・未使用コード・ユニットテストとカバレッジ）と
-# ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）、E2E（Chrome。パックの出荷前検証を含む）・配布物の確認を行う。
+# ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）、Chrome の E2E・パックの出荷前検証・配布物の確認を行う。
+# E2E と出荷前検証は、ここ（CI）だけで走らせる。本物の Linux を動かす「機械」を使うテストは CPU を使い切るので同じ機械の上では並べられない
+# （Issue #173）。そこで別のランナーに分けて並べる：通常の E2E・機械を使う E2E・パックごとの出荷前検証・配布物の確認。
+# 出荷前検証はテストの一覧（パックごとに 1 件）から matrix を作るので、パックを足しても、このファイルを直さずに済む
 # 既存の lint 違反は eslint-suppressions.json に記録済みなので、ここで止まるのは新しく増えた問題だけ
 name: CI
 
@@ -61,10 +64,41 @@ jobs:
       - run: pnpm run check
       - run: pnpm run build
 
-  browsers:
-    name: E2E・出荷前検証・配布物（Chrome）
+  e2e:
+    name: E2E（機械を使わないもの）
     runs-on: ubuntu-latest
-    # 本物の Linux を動かす課題の出荷前検証は、機械の中でコマンドを実行する分だけ時間がかかる
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0（版は package.json の packageManager）
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Chrome はランナーに入っているものを使う。機械の配布物はビルドが自分で用意する（このジョブでは機械を起動しない）
+      # 演習用の機械（本物の Linux）の配布物と、その元になるもの（docs/machine-sources.md）。配布物を作るには機械を起動して状態を保存するので、
+      # 作ったものを使い回す。鍵は配布物の中身を決めるもの（scripts/build-machine.mjs の inputsHash と同じ範囲）。古い配布物が戻っても、
+      # ビルドが自分で比べて作り直す。元になるものは restore-keys で引き継ぐ
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .machine
+          key: machine-${{ hashFiles('scripts/build-machine.mjs', 'scripts/cpio.mjs', 'scripts/machine-sources.mjs', 'apps/shell/linux/guest/**', 'pnpm-lock.yaml') }}
+          restore-keys: machine-
+      - run: node scripts/build.mjs --test
+      - run: pnpm exec playwright test --project chrome --project chrome-quiet
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-e2e
+          path: test-results/
+          retention-days: 7
+
+  e2e-machine:
+    name: E2E（機械を使うもの）
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,12 +118,100 @@ jobs:
           path: .machine
           key: machine-${{ hashFiles('scripts/build-machine.mjs', 'scripts/cpio.mjs', 'scripts/machine-sources.mjs', 'apps/shell/linux/guest/**', 'pnpm-lock.yaml') }}
           restore-keys: machine-
-      # Chrome はランナーに入っているものを使う
-      - run: pnpm run test:e2e
+      - run: node scripts/build.mjs --test
+      - run: pnpm exec playwright test --project chrome-machine
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-e2e-machine
+          path: test-results/
+          retention-days: 7
+
+  verify-plan:
+    name: 出荷前検証の一覧
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0（版は package.json の packageManager）
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # テストを実行せず、出荷前検証のテスト（パックごとに 1 件）の一覧から matrix を作る
+      - id: matrix
+        run: echo "matrix=$(node scripts/verify-packs-matrix.mjs)" >> "$GITHUB_OUTPUT"
+
+  verify-packs:
+    name: 出荷前検証（${{ matrix.title }}）
+    needs: verify-plan
+    runs-on: ubuntu-latest
+    # 本物の Linux を動かす課題の出荷前検証は、機械の中でコマンドを実行する分だけ時間がかかる。1 パックの上限はテストごとに 10 分
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # 1 つのパックが落ちても、ほかのパックの結果は最後まで見る
+      matrix: ${{ fromJSON(needs.verify-plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0（版は package.json の packageManager）
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # 演習用の機械（本物の Linux）の配布物と、その元になるもの（docs/machine-sources.md）。配布物を作るには機械を起動して状態を保存するので、
+      # 作ったものを使い回す。鍵は配布物の中身を決めるもの（scripts/build-machine.mjs の inputsHash と同じ範囲）。古い配布物が戻っても、
+      # ビルドが自分で比べて作り直す。元になるものは restore-keys で引き継ぐ
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .machine
+          key: machine-${{ hashFiles('scripts/build-machine.mjs', 'scripts/cpio.mjs', 'scripts/machine-sources.mjs', 'apps/shell/linux/guest/**', 'pnpm-lock.yaml') }}
+          restore-keys: machine-
+      # pnpm run verify:packs と同じ（ビルドして chrome-verify を走らせる）。このパックのテストだけに絞る
+      - run: node scripts/build.mjs --test
+      - run: pnpm exec playwright test --project chrome-verify --grep "$PACK_GREP"
+        env:
+          PACK_GREP: ${{ matrix.grep }}
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-verify-${{ strategy.job-index }}
+          path: test-results/
+          retention-days: 7
+
+  dist:
+    name: 配布物の確認（Chrome）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0（版は package.json の packageManager）
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # 演習用の機械（本物の Linux）の配布物と、その元になるもの（docs/machine-sources.md）。配布物を作るには機械を起動して状態を保存するので、
+      # 作ったものを使い回す。鍵は配布物の中身を決めるもの（scripts/build-machine.mjs の inputsHash と同じ範囲）。古い配布物が戻っても、
+      # ビルドが自分で比べて作り直す。元になるものは restore-keys で引き継ぐ
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .machine
+          key: machine-${{ hashFiles('scripts/build-machine.mjs', 'scripts/cpio.mjs', 'scripts/machine-sources.mjs', 'apps/shell/linux/guest/**', 'pnpm-lock.yaml') }}
+          restore-keys: machine-
       - run: pnpm run test:dist
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: test-results
+          name: test-results-dist
           path: test-results/
           retention-days: 7

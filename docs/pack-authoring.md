@@ -219,7 +219,7 @@ repair: {
    - 脆弱な状態 V では `tests.target` のテストだけが失敗し、`verify.probes` の攻撃が成立する。
    - `expected: 'secure'` の対策を適用すると全テストが通る。
 
-   出荷前検証は、カタログの全パックを `VERIFICATION_SEEDS` の各 seed で行う。初期データ（利用者・メモの ID や内容）が変わっても結果が変わらないことを確かめるためである。ブラウザの `verify:packs` が全テストを検証する。`pnpm run check` のユニットテストでも、描画を含まないテストだけで同じ検証を行う。パックごとにこの検証を書く必要はない。
+   出荷前検証は、カタログの全パックを `VERIFICATION_SEEDS` の各 seed で行う。初期データ（利用者・メモの ID や内容）が変わっても結果が変わらないことを確かめるためである。ブラウザの `verify:packs`（CI ではパックごとに別のジョブ。`pnpm run test:e2e` には含まない）が全テストを検証する。`pnpm run check` のユニットテストでも、描画を含まないテストだけで同じ検証を行う。パックごとにこの検証を書く必要はない。
 5. 特定の利用者名や ID をハードコードした誤った修正などを見逃さないことを確かめたいときは、`__tests__/verification.ts` に検証データ（`PackVerificationData`）を書き、`tests/support/catalog.ts` の `verifications` に加える。
    - `candidates` は学習画面に出ない対策候補で、出荷前検証がパックの対策候補と同じ基準で `expected` どおりかを確かめる。
    - 実装 ID は `<パックID>/…` で始める。誤った修正は `defenses` には入れない（学習画面に出てしまうため）。

@@ -1,18 +1,26 @@
-// パック出荷前検証（pnpm run verify:packs）。カタログのすべてのパックが、どの seed でも基準・レシピ・対策の期待どおりかを確かめる
+// パック出荷前検証（pnpm run verify:packs。CI ではパックごとに別のランナーで走らせる）。検証対象のパックごとに 1 件のテストを作り、
+// そのパックがどの seed でも基準・レシピ・対策の期待どおりかを確かめる。テストの一覧は検証対象（tests/support/verification-catalog.ts）から作るので、
+// パックを足すとテストも CI のジョブも自動で増える
+import { verificationCatalog } from '../support/verification-catalog';
 import { MACHINE, expect, openTestPage, test } from './fixtures';
 
-test('カタログのすべてのパックが出荷前検証に合格する', MACHINE, async ({ page }) => {
-  // CI の機械では 340〜555 秒かかり、遅い回は 600 秒を超えた。CI のジョブの上限（30 分）に収まる範囲で余裕を持たせる
-  test.setTimeout(900_000);
-  await openTestPage(page, 'pack-verification');
-  const started = Date.now();
-  const results = await page.evaluate(() => window.verifyAllPacks());
-  // 所要時間を記録に残す（Issue #171。CI のログで見る）
-  console.log(`出荷前検証の所要時間：${((Date.now() - started) / 1000).toFixed(0)} 秒`);
-  for (const result of results) {
-    console.log(`[${result.ok ? 'OK' : 'NG'}] ${result.packId}（seed ${result.seed}）`);
-    for (const check of result.checks) console.log(`  ${check.ok ? '✓' : '✗'} ${check.name}: ${check.detail}`);
-  }
-  expect(results.length).toBeGreaterThan(0);
-  expect(results.filter((r) => !r.ok).map((r) => `${r.packId}（seed ${r.seed}）`)).toEqual([]);
-});
+/** パックごとのテストの題名の先頭。CI は題名でパックごとのジョブに分ける（scripts/verify-packs-matrix.mjs） */
+const TITLE_PREFIX = '出荷前検証：';
+
+for (const { manifest } of verificationCatalog.packs) {
+  test(`${TITLE_PREFIX}${manifest.id}`, MACHINE, async ({ page }) => {
+    // 8 パックを順に検証すると CI の機械で 8.6〜10 分だった。パックごとに分けたので、1 パックの分として余裕を持たせる
+    test.setTimeout(600_000);
+    await openTestPage(page, 'pack-verification');
+    const started = Date.now();
+    const results = await page.evaluate((packId) => window.verifyPackById(packId), manifest.id);
+    // 所要時間を記録に残す（Issue #171, #219。CI のログで見る）
+    console.log(`出荷前検証の所要時間（${manifest.id}）：${((Date.now() - started) / 1000).toFixed(0)} 秒`);
+    for (const result of results) {
+      console.log(`[${result.ok ? 'OK' : 'NG'}] ${result.packId}（seed ${result.seed}）`);
+      for (const check of result.checks) console.log(`  ${check.ok ? '✓' : '✗'} ${check.name}: ${check.detail}`);
+    }
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.filter((r) => !r.ok).map((r) => `${r.packId}（seed ${r.seed}）`)).toEqual([]);
+  });
+}
