@@ -1,6 +1,6 @@
 // 擬似シェル（ターミナル）と、操作で直す課題の学習UI。端末で調べて再現し、visudo で設定を書き換えた操作が記録され、検証の前に再生されることを確かめる
 import type { Page } from '@playwright/test';
-import { commentOutWithVisudo, expect, loginToTerminal as loginAs, preview, resetToInitial, startMission, terminalEditor as editor, terminalInput as commandInput, terminalOutput, test, ticketSeals as seals, typeCommand as type, verifyResults } from './fixtures';
+import { commentOutWithVisudo, currentStage, expect, loginToTerminal as loginAs, preview, resetToInitial, startMission, terminalEditor as editor, terminalInput as commandInput, terminalOutput, test, ticketSeals as seals, typeCommand as type, verifyResults } from './fixtures';
 
 const OPERATORS = '/etc/sudoers.d/operators';
 const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
@@ -100,7 +100,8 @@ test('Tab キーでコマンド名とファイル名を補完でき、候補が�
 
 test('観測ログと調査タブは、HTTP のリクエストではなく端末の言葉で示す', async ({ page }) => {
   // 定型の操作がないので、調査タブを開くのではなく、教材アプリで調べるよう案内する
-  await expect(page.locator('.now-doing')).toHaveText('今やること：教材アプリを操作して、手がかりを集めます。');
+  await currentStage(page).hover();
+  await expect(currentStage(page).getByRole('note')).toHaveText('今やること：教材アプリを操作して、手がかりを集めます。');
   await type(page, 'whoami');
   await type(page, 'cat /etc/sudoers');
   const log = page.locator('.log-section');
@@ -241,6 +242,42 @@ test('キーボードだけでコマンドを送り、↑ で前のコマンド�
   await expect(commandInput(page)).toHaveValue('pwd');
   await page.keyboard.press('ArrowDown');
   await expect(commandInput(page)).toHaveValue('');
+});
+
+test('利用者を切り替えて戻ると、その利用者の端末の出力・入力の履歴・作業ディレクトリが残っていて、最初の状態に戻すと消える', async ({ page }) => {
+  await type(page, 'cd /etc');
+  await type(page, 'cat hostname');
+  await expect(terminalOutput(page).locator('.term-out')).toHaveCount(1);
+  const before = await terminalOutput(page).locator('pre').allInnerTexts();
+
+  // 別の利用者の端末は、その利用者のもの。運用担当の出力は混ざらない
+  await loginAs(page, 'admin');
+  await expect(terminalOutput(page).locator('pre')).toHaveCount(1);
+  await type(page, 'whoami');
+  await expect(terminalOutput(page).locator('.term-out')).toHaveText(/^[a-z]+$/);
+  const adminLines = await terminalOutput(page).locator('pre').allInnerTexts();
+
+  await loginAs(page, 'operator');
+  await expect(terminalOutput(page).locator('pre')).toHaveText(before);
+  await expect(preview(page).locator('.term-prompt')).toHaveText(/:\/etc\$$/);
+  // 戻ったあともコマンドを送れ、前に入力したコマンドを ↑ で呼び出せる
+  await type(page, 'pwd');
+  await expect(terminalOutput(page).locator('.term-out').last()).toHaveText('/etc');
+  await commandInput(page).press('ArrowUp');
+  await commandInput(page).press('ArrowUp');
+  await expect(commandInput(page)).toHaveValue('cat hostname');
+  await commandInput(page).fill('');
+
+  await loginAs(page, 'admin');
+  await expect(terminalOutput(page).locator('pre')).toHaveText(adminLines);
+
+  // 最初の状態に戻すと、機械も戻るので、どの利用者の端末も開いたばかりの状態になる
+  await page.getByRole('tab', { name: '対策' }).click();
+  await resetToInitial(page);
+  await expect(terminalOutput(page).locator('pre')).toHaveCount(1);
+  await loginAs(page, 'operator');
+  await expect(terminalOutput(page).locator('pre')).toHaveCount(1);
+  await expect(preview(page).locator('.term-prompt')).not.toHaveText(/:\/etc\$$/);
 });
 
 test('端末の出力やプロンプトを押しても打ち始められ、日本語入力の変換を確定する Enter では送らない', async ({ page }) => {

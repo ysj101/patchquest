@@ -22,7 +22,11 @@ test('一覧の行は通称だけで、一言の説明・正式名・CWE・分�
   await expect(idor.locator('.vulnerability-name')).toHaveText('IDOR');
   await expect(idor.getByText('メモの番号を変えるだけで、他人の非公開メモが読めてしまう問題')).toBeHidden();
   await expect(page.getByText('入門から順に並んでいます')).toHaveCount(0);
-  await expect(idor.getByRole('heading', { name: '非公開メモを守る' })).toBeVisible();
+  // 通称と題名は 1 行の見出しにまとめる
+  await expect(idor.getByRole('heading', { level: 3 })).toHaveText('IDOR - 非公開メモを守る');
+  const rectOf = (selector: string) => idor.locator(selector).evaluate((node) => node.getBoundingClientRect().toJSON() as DOMRect);
+  expect((await rectOf('.mission-title')).top).toBeLessThan((await rectOf('.vulnerability-name')).bottom);
+  expect((await rectOf('.mission-title')).left).toBeGreaterThan((await rectOf('.vulnerability-name')).right);
   await expect(idor.getByText('目安 15 分')).toBeVisible();
   // 行に見えている文字に専門用語を出さない
   const panel = idor.locator('.info-panel');
@@ -35,7 +39,9 @@ test('一覧の行は通称だけで、一言の説明・正式名・CWE・分�
   // 未着手の課題に習熟度の★は出さない
   await expect(idor.locator('.mastery-line')).toHaveCount(0);
   // 練習課題は操作の練習なので、脆弱性名も ⓘ も出さない
-  await expect(card(page, 'onboarding').locator('.vulnerability')).toHaveCount(0);
+  await expect(card(page, 'onboarding').locator('.vulnerability-name')).toHaveCount(0);
+  await expect(card(page, 'onboarding').locator('.info-button')).toHaveCount(0);
+  await expect(card(page, 'onboarding').getByRole('heading', { level: 3 })).toHaveText('練習：はじめての修正');
   await expect(page.getByRole('button', { name: /まずは練習/ })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true })).toBeVisible();
   await expect(page.locator('.hero-catch')).toContainText('セキュリティホールを自分で体験して、なおしてみよう。');

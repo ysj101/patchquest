@@ -1,5 +1,6 @@
 // 擬似シェルの画面（ターミナル）。隔離 iframe の中で動き、コマンド行を 1 行ずつ ctx.request（Host 経由）で送る。
 // エディタを開くコマンド（visudo・sudoedit）では、入力欄の代わりに編集画面を出し、保存するときに同じコマンド行へ書き換えた行を付けて送る。
+// 利用者の表示を切り替えて戻ったときは、その利用者の端末（出力・入力の履歴）をそのまま出し直す。
 // 出力は textContent で表示し、端末のエスケープや HTML を解釈しない。キーボードだけで操作できる
 import type { AppResponse } from '../../platform/contract';
 import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
@@ -69,7 +70,7 @@ class Terminal {
    */
   private mode: 'prompt' | 'running' | 'editing' = 'prompt';
 
-  constructor(private readonly ctx: ViewContext, private readonly session: Session, guide: string) {
+  constructor(private ctx: ViewContext, private readonly session: Session, guide: string) {
     this.cwd = session.cwd;
     // sandbox ではフォーム送信が禁止されているため、submit ではなく Enter キーで送る
     this.input.addEventListener('keydown', (event) => this.onKey(event));
@@ -79,6 +80,17 @@ class Terminal {
     });
     this.prompt.textContent = this.promptText();
     this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。`);
+  }
+
+  /**
+   * 描き直された画面へ、同じ端末を出し直す。それまでの出力・入力の履歴・作業ディレクトリ・開いている編集画面はそのまま残す。
+   * 呼び出しは新しい描画の ctx で送る（前の描画の ctx で送った呼び出しは、Host が破棄する）
+   */
+  reopen(ctx: ViewContext, root: HTMLElement): void {
+    this.ctx = ctx;
+    root.append(this.element);
+    // 画面から外れている間に、出力の欄の送り位置は先頭へ戻る
+    this.output.scrollTop = this.output.scrollHeight;
   }
 
   private promptText(): string {
@@ -218,6 +230,12 @@ function editorTool(line: string): string {
   return /(?:^|[\s/])visudo(?:\s|$)/.test(line) ? 'visudo' : 'sudoedit';
 }
 
+/**
+ * 利用者ごとの端末。プレビューは利用者の表示を切り替えるたびに描き直されるので、ここに残しておき、戻ってきたときに同じ端末を出し直す。
+ * 教材データが用意し直されたら（別の演習を始めた・最初の状態に戻した）、前のデータのときの端末は捨てる
+ */
+const opened = { dataGeneration: -1, terminals: new Map<string, Terminal>() };
+
 /** 端末の画面を作る。guide は、端末を開いたときに最初に出す案内のうち、アプリごとに違う部分（使えるコマンドの調べ方など） */
 export function terminalView(guide: string): AppModule['render'] {
   return async (root, _route, ctx) => {
@@ -225,6 +243,14 @@ export function terminalView(guide: string): AppModule['render'] {
     if (!ctx.viewer) return void root.append(badge, el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
     const res = await ctx.request({ method: 'GET', path: '/sh' });
     if (res.status !== 200) return void root.append(badge, el('p', { className: 'error' }, errorMessage(res)));
-    root.append(new Terminal(ctx, res.body as unknown as Session, guide).element);
+    if (opened.dataGeneration !== ctx.dataGeneration) {
+      opened.terminals.clear();
+      opened.dataGeneration = ctx.dataGeneration;
+    }
+    const terminal = opened.terminals.get(ctx.viewer);
+    if (terminal) return void terminal.reopen(ctx, root);
+    const created = new Terminal(ctx, res.body as unknown as Session, guide);
+    opened.terminals.set(ctx.viewer, created);
+    root.append(created.element);
   };
 }

@@ -1,6 +1,6 @@
 // ステージの到達・取り消し・再開・別環境への復元を確かめる。
 import type { Page } from '@playwright/test';
-import { backToList, expect, launchButton, openMission, openRawRequest, preview, reopenBriefing, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
+import { backToList, currentStage, expect, launchButton, openMission, openRawRequest, preview, reopenBriefing, startMission, test, ticketSeals, verifyWith, openHome } from './fixtures';
 
 const stages = (page: Page) => page.getByRole('list', { name: 'ステージ', exact: true });
 /** 済んだステージの数。数の見出しは出さないので、ステージの色（状態）で数える */
@@ -103,6 +103,25 @@ test('動きを減らしても到達と現在地を文字で示し、導入の�
   await launchButton(page).click();
   await count(page, 1);
   await expect(page.locator('[aria-live="polite"]')).toBeEmpty();
+});
+
+test('今やることは、いまのステージの印に畳んであり、マウスを乗せるか押すと読める', async ({ page }) => {
+  await startMission(page, 'idor');
+  const now = currentStage(page).getByRole('note');
+  await expect(now).toBeHidden();
+  await currentStage(page).hover();
+  await expect(now).toHaveText('今やること：調査で、手がかりを集めます。');
+  await page.locator('.desk-goal').hover();
+  await expect(now).toBeHidden();
+  await currentStage(page).getByRole('button').press('Enter');
+  await expect(now).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(now).toBeHidden();
+  // ステージが進むと、印も中身も次のステージへ移る
+  await preview(page).getByRole('button', { name: '非公開のメモ' }).click();
+  await expect(currentStage(page)).toContainText('セキュリティホールを再現');
+  await currentStage(page).hover();
+  await expect(now).toHaveText('今やること：同じ操作をして、問題を再現します。');
 });
 
 test('教材アプリでメモを開くだけで手がかりを探すステージに到達する', async ({ page }) => {

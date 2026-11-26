@@ -28,7 +28,8 @@ export function headingWithInfo(heading: HTMLElement, ...content: Content): HTML
   return h('div', { class: 'heading-info' }, heading, infoPopover(`${heading.textContent} の説明`, ...content));
 }
 
-function popover(button: HTMLElement, content: Content): HTMLElement {
+/** 呼び出し側が用意したボタン（いまのステージの印など）に説明を畳む。開閉の操作は ⓘ と同じ */
+export function popover(button: HTMLElement, content: Content): HTMLElement {
   const id = `info-${++sequence}`;
   const panel = h('div', { id, class: 'info-panel', role: 'note', hidden: true }, ...content);
   button.setAttribute('aria-expanded', 'false');
