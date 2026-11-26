@@ -24,14 +24,13 @@ test('依頼の文は「依頼」に重ねて一度だけ出て、守るもの�
   await expect(request.getByRole('note')).toBeHidden();
   await request.getByRole('button', { name: '依頼' }).hover();
   await expect(request.getByRole('note')).toContainText('他人のノートが見える');
-  await page.locator('.now-doing').hover();
+  await page.locator('.desk-goal').hover();
   await expect(request.getByRole('note')).toBeHidden();
   await request.getByRole('button', { name: '依頼' }).press('Enter');
   await expect(request.getByRole('note')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(request.getByRole('note')).toBeHidden();
   await expect(page.locator('.tools')).not.toContainText('他人のノートが見える');
-  await expect(page.locator('.now-doing')).toContainText('今やること：');
   // 「状況」タブは置かず、対策を選ぶ基準は帯に 1 行で出す
   await expect(page.getByRole('tab')).toHaveText(['調査', '対策', '振り返り']);
   await expect(page.locator('.desk-goal dt')).toHaveText(['守るもの', '壊さないこと']);
@@ -88,7 +87,7 @@ test('操作の説明と入力欄の補足は ⓘ に畳んであり、マウス
   const info = actions.locator('.action').first().getByRole('button', { name: / の説明$/ }).first();
   await info.hover();
   await expect(actions.getByRole('note').filter({ hasText: 'ノートを ID で取得する' })).toBeVisible();
-  await page.locator('.now-doing').hover();
+  await page.locator('.desk-goal').hover();
   await expect(actions.getByRole('note').filter({ hasText: 'ノートを ID で取得する' })).toBeHidden();
   await info.press('Enter');
   await expect(actions.getByRole('note').filter({ hasText: 'ノートを ID で取得する' })).toBeVisible();
