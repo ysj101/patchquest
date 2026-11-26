@@ -78,8 +78,8 @@ bash を動かすのではなく、固定のコマンド集合を機械の状態
 | `linux/server.ts` | 教材ロジック。要求の形は擬似シェルと同じ（`POST /sh { line, cwd?, edits? }`）で、コマンド行を機械の中で、ログインした利用者として実行する |
 | `linux/provision.ts` | 初期データ（SQLite の表）を機械へ反映するスクリプトを組み立てる。利用者・ファイル・プログラム・sudo の設定を置く |
 | `linux/events.ts` | 機械の中の記録（プログラムの実行・sudo の記録・変わったファイル）を観測イベントにする |
-| `linux/hooks.ts` | 交換点 `linux.sudoers.provision`（処理の形は `shell.sudoers.provision` と同じ。契約 1）と、`linux.update.configure`（配備時に、更新の取り込みの設定を決める。契約 1） |
-| `linux/update.ts` | 初期データ `linux.update`。共通の機械に、更新の取り込みを足す。受け取った更新の置き場（`/var/cache/updates/`）、取り込むプログラム（`apply-update`。運用担当が sudo で実行する）、中身を確かめる一覧（`/etc/update.sums`）と設定（`/etc/update.conf`。管理者が `sudoedit` で書き換える）を置く。取り込みと中身の確認は、機械の中のシェルスクリプトと `sha256sum` が行う |
+| `linux/hooks.ts` | 交換点 `linux.sudoers.provision`（処理の形は `shell.sudoers.provision` と同じ。契約 1）と、`linux.update.verify`（配備時に、取り込みのプログラムが更新を動かす前に行う確認を決める。契約 1） |
+| `linux/update.ts` | 初期データ `linux.update`。共通の機械に、更新の取り込みを足す。受け取った更新の置き場（`/var/cache/updates/`）、配布元が知らせたハッシュの一覧（`/etc/updates/SHA256SUMS`。名前と書式は、配布元が公開するものと同じ）、取り込むプログラム（`apply-update`。運用担当が sudo で実行するシェルスクリプトで、管理者が `sudoedit` で書き換える）を置く。中身の確認は、本物の `sha256sum -c` が行う。独自の設定ファイルは置かない（確かめるかどうかは、取り込みのプログラムに確かめる行があるかどうかで決まる） |
 | `linux/guest/` | 機械の中で動くシェルスクリプト。`init`（起動）、`agent`（要求を受ける係）、`run`（利用者としてコマンド行を実行）、`editor`（visudo と sudoedit が呼ぶエディタ） |
 
 機械の配布物（エミュレータ・BIOS・起動を済ませた状態）は `scripts/build-machine.mjs` が `.machine/` に作る。Alpine Linux の最小構成・sudo・カーネルを、版とハッシュを固定して、このリポジトリのリリースに保管したものから取得する（`scripts/machine-sources.mjs`。版を上げる手順は [docs/machine-sources.md](../../docs/machine-sources.md)）。ビルド（`pnpm run build`）とユニットテストの前に、必要なら自動で作る。機械を動かす部品は `runtimes/browser/machine.ts`。

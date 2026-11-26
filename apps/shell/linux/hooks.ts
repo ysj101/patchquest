@@ -19,7 +19,7 @@ export const HOOKS: HookDescriptor[] = [
     realm: 'server',
     contract: 1,
     baseline: 'linux/update-verify',
-    description: '配備時に、更新の取り込みの設定を決める処理（設定ファイルの本文になる。更新の取り込みを持つ機械だけが使う）',
+    description: '配備時に、取り込みのプログラムが更新を動かす前に行う確認を決める処理（取り込みのプログラムの行になる。更新の取り込みを持つ機械だけが使う）',
   },
 ];
 
