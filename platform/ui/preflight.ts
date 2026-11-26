@@ -1,5 +1,6 @@
 // 開始前チェック（spec §10）。互換性・注入・事前検証の結果を示す。事前検証はプレイヤーの達成に数えない。
 // 合格したら学習UIがそのまま演習画面へ進めるので、この画面に残るのは点検中と開始できないときだけ
+import { usesMachine } from '../contract';
 import type { ExerciseSnapshot, PreflightStep } from '../orchestrator/orchestrator';
 import { status, type StatusKind } from './components';
 import { fill, h } from './dom';
@@ -82,7 +83,7 @@ export class PreflightView {
         this.outcome,
         h('p', { class: 'muted' }, status('running', `確かめています…（${passed} / ${STEPS.length}）`)),
         // 本物の Linux を起動する課題は、ほかの課題より長く待つ。止まっているように見えないよう、先に伝える
-        pack.manifest.runtime.capabilities.includes('linux-vm') ? h('p', { class: 'note' }, MACHINE_WAIT_NOTE) : null,
+        usesMachine(pack.manifest.runtime.capabilities) ? h('p', { class: 'note' }, MACHINE_WAIT_NOTE) : null,
       );
     }
   }
