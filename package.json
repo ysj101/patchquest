@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "lint:prune": "eslint . --prune-suppressions",
     "test": "vitest run",
+    "test:related": "node scripts/test-related.mjs",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "node scripts/build.mjs --test && playwright test --project chrome --project chrome-quiet && playwright test --project chrome-machine",
     "serve": "python3 -m http.server 8000 --bind 127.0.0.1 --directory dist",

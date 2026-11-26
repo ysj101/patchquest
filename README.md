@@ -54,7 +54,7 @@ node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API 
 
 ### 品質ゲート
 
-`pnpm install` の `prepare` は `hooks:install` を呼び、`.githooks` を有効にします。既存の pre-commit 品質ゲートも動きます。Git 管理外や Git 設定を書けない環境でもインストールは続行します。
+`pnpm install` の `prepare` は `hooks:install` を呼び、`.githooks` を有効にします。既存の pre-commit 品質ゲートも動きます。pre-commit のユニットテストは、stage したファイルに関係するものだけを走らせます（`scripts/test-related.mjs`。設定・依存・`tests/support/`・機械の配布物など、import からたどれない変更のときは全件）。全体は `pnpm run check` と CI で確かめます。Git 管理外や Git 設定を書けない環境でもインストールは続行します。
 
 #### コミットと PR のメールアドレス保護
 
