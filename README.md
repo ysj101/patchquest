@@ -43,8 +43,8 @@ pnpm run build          # dist/ に静的成果物を生成する（DOM 安全�
 pnpm run serve          # http://127.0.0.1:8000/ で dist/ を配信
 pnpm run typecheck      # 型検査
 pnpm test               # ユニットテスト
-pnpm run test:e2e       # ビルドしてから Chrome で E2E テスト（本物の Linux を起動するテストは、ほかのテストのあとに 1 件ずつ）
-pnpm run verify:packs   # 同梱パックの出荷前検証（基準・レシピ・対策が期待どおりか）
+pnpm run test:e2e       # ビルドしてから Chrome で E2E テスト（本物の Linux を起動するテストは、ほかのテストのあとに 1 件ずつ。パックの出荷前検証は含まない）
+pnpm run verify:packs   # 同梱パックの出荷前検証（基準・レシピ・対策が期待どおりか。パックごとに 1 件のテスト）
 pnpm run package        # 配布用の ZIP を release/ に作る
 pnpm run test:dist      # ZIP を展開して localhost で開き、Chrome で確かめる
 node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API を使っていないか（ビルドでも実行）
@@ -88,7 +88,9 @@ pnpm run test:coverage      # ユニットテストとカバレッジの下限
 
 push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）が次を実行します。
 - 品質ゲート（`pnpm run check`）とビルド（DOM 安全性・依存の境界・外部参照の検査を含む）
-- Chrome の E2E（出荷前検証を含む）、配布物の確認
+- Chrome の E2E（機械を使わないもの・使うものを別のジョブで）、パックの出荷前検証（パックごとに別のジョブ）、配布物の確認
+
+E2E と出荷前検証は CI で確かめます（手元で通すのは `pnpm run check`）。出荷前検証のジョブはテストの一覧から作るので、パックを足しても ci.yml を直す必要はありません。
 
 課題パックの作り方は [docs/pack-authoring.md](docs/pack-authoring.md) を参照してください。
 
