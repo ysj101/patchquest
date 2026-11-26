@@ -49,6 +49,6 @@ export function createCurrent(deps: OrchestratorDeps, options: StartOptions & { 
     app, tests: [...(app?.tests ?? []), ...manifest.tests.cases],
     recipe, vulnerable: withChanges({}, recipe?.apply ?? []),
     baseline: Object.fromEntries(manifest.hooks.map((hook) => [hook.id, app?.descriptor.hooks.find((candidate) => candidate.id === hook.id)?.baseline ?? ''])),
-    runIds: new Set(),
+    runIds: new Set(), issuedRunIds: 0,
   };
 }

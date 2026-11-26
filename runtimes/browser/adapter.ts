@@ -55,6 +55,23 @@ interface Pending {
   reject: (error: RuntimeError) => void;
 }
 
+interface Prepared {
+  options: PrepareOptions;
+  app: AppModule;
+}
+
+/**
+ * 実行環境の状態。docs/formal/Runtime.tla が、この状態と呼び出しの対応を検査する。
+ * idle: まだ準備していない / ready: Worker が動いていて、教材ロジックを呼び出せる /
+ * halted: 停止・時間切れ・異常終了・準備の失敗で Worker を捨てた。画面側（view）の実装の選択は残り、prepare し直すと ready に戻る /
+ * disposed: 破棄した。どの操作も受け付けない
+ */
+type Phase =
+  | { name: 'idle' }
+  | { name: 'ready'; worker: Worker; prepared: Prepared }
+  | { name: 'halted'; prepared: Prepared }
+  | { name: 'disposed' };
+
 const inputSize = (request: AppRequest) => new TextEncoder().encode(JSON.stringify(request)).length;
 
 export class BrowserRuntimeAdapter implements RuntimeAdapter {
@@ -62,16 +79,14 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   readonly capabilities = CAPABILITIES;
   private readonly limits: RuntimeLimits;
   private readonly assetsBase: URL;
-  private worker: Worker | undefined;
+  private phase: Phase = { name: 'idle' };
   private readonly pending = new Map<number, Pending>();
   private nextCallId = 1;
-  private prepared: { options: PrepareOptions; app: AppModule } | undefined;
   /** view で実行するフックの実装。server のフックは Worker が持つ */
   private viewSelection: ImplementationSelection = {};
   /** 発行したセッションの利用者。画面に閲覧者として表示する */
   private readonly sessionActors = new Map<SessionToken, ActorKey>();
   private frame: PreviewFrame | undefined;
-  private disposed = false;
   /** 教材データの世代。用意し直す・初期状態へ戻すたびに進め、画面が前のデータのときの表示を持ち越さないようにする */
   private dataGeneration = 0;
 
@@ -87,8 +102,8 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     this.frame?.detach();
     // 演習用の機械（本物の Linux）は起動直後の動きが遅いので、同じアプリを準備し直すときは Worker ごと使い回す
     // （初期データの置き直しは Worker の中で行う）。それ以外は、前の状態を残さないよう Worker を作り直す
-    if (!(app.machine && this.worker && this.prepared?.app === app)) this.startWorker();
-    this.prepared = { options, app };
+    const reusable = this.phase.name === 'ready' && app.machine && this.phase.prepared.app === app ? this.phase.worker : undefined;
+    this.phase = { name: 'ready', worker: reusable ?? this.startWorker(), prepared: { options, app } };
     this.viewSelection = view;
     this.sessionActors.clear();
     this.dataGeneration += 1;
@@ -96,7 +111,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
       return (await this.call({ op: 'prepare', options }, `prepare:${options.attemptId}`, this.limits.timeoutMs * prepareFactor(app))) as FixtureData;
     } catch (error) {
       // 準備に失敗した Worker は使い回さない（途中まで進んだ状態や、読めなかった配布物を次の準備へ持ち越さない）
-      this.terminateWorker('stopped');
+      this.halt('stopped');
       throw error;
     }
   }
@@ -150,7 +165,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   }
 
   async stop(): Promise<void> {
-    this.terminateWorker('stopped');
+    this.halt('stopped');
     this.frame?.detach();
   }
 
@@ -158,8 +173,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     await this.stop();
     this.frame?.dispose();
     this.frame = undefined;
-    this.prepared = undefined;
-    this.disposed = true;
+    this.phase = { name: 'disposed' };
   }
 
   /** 照合に失敗して破棄したプレビューからのメッセージの件数（検証用） */
@@ -192,16 +206,15 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   }
 
   private call(request: WorkerRequest, runId: string, timeoutMs: number): Promise<WorkerResult> {
-    const worker = this.worker;
-    const prepared = this.prepared;
-    if (!worker || !prepared) return Promise.reject(new RuntimeError('not-prepared', '実行環境が準備されていません'));
+    if (this.phase.name !== 'ready') return Promise.reject(new RuntimeError('not-prepared', '実行環境が準備されていません'));
+    const { worker, prepared } = this.phase;
     const callId = this.nextCallId++;
     const { attemptId } = prepared.options;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         // 実行中の WASM は外から中断できないため、Worker ごと破棄する。続けるには prepare し直す
         this.pending.delete(callId);
-        this.terminateWorker('stopped');
+        this.halt('stopped');
         reject(new RuntimeError('timeout', `${timeoutMs}ms 以内に終わりませんでした`));
       }, timeoutMs);
       this.pending.set(callId, {
@@ -224,27 +237,32 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     else pending.reject(new RuntimeError(reply.error.code, reply.error.message));
   }
 
-  private startWorker(): void {
-    this.terminateWorker('stopped');
-    this.worker = new Worker(new URL('runtime-worker.js', this.assetsBase), { type: 'module', name: 'patchquest-runtime' });
-    this.worker.addEventListener('message', (e: MessageEvent<WorkerReply>) => this.receive(e.data));
-    this.worker.addEventListener('error', () => this.terminateWorker('crashed'));
+  /** 動いている Worker を捨て（前の状態を残さない）、新しい Worker を起動する */
+  private startWorker(): Worker {
+    this.halt('stopped');
+    const worker = new Worker(new URL('runtime-worker.js', this.assetsBase), { type: 'module', name: 'patchquest-runtime' });
+    worker.addEventListener('message', (e: MessageEvent<WorkerReply>) => this.receive(e.data));
+    worker.addEventListener('error', () => this.halt('crashed'));
+    return worker;
   }
 
-  private terminateWorker(code: 'stopped' | 'crashed'): void {
-    this.worker?.terminate();
-    this.worker = undefined;
+  /** Worker を捨てて halted にし、応答を待っている呼び出しを code で失敗させる。Worker が動いていなければ状態は変えない */
+  private halt(code: 'stopped' | 'crashed'): void {
+    if (this.phase.name === 'ready') {
+      this.phase.worker.terminate();
+      this.phase = { name: 'halted', prepared: this.phase.prepared };
+    }
     for (const pending of this.pending.values()) pending.reject(new RuntimeError(code, code === 'stopped' ? '停止しました' : '実行環境が異常終了しました'));
     this.pending.clear();
   }
 
-  private requirePrepared(): { options: PrepareOptions; app: AppModule } {
+  private requirePrepared(): Prepared {
     this.assertAlive();
-    if (!this.prepared) throw new RuntimeError('not-prepared', '実行環境が準備されていません');
-    return this.prepared;
+    if (this.phase.name !== 'ready' && this.phase.name !== 'halted') throw new RuntimeError('not-prepared', '実行環境が準備されていません');
+    return this.phase.prepared;
   }
 
   private assertAlive(): void {
-    if (this.disposed) throw new RuntimeError('disposed', '実行環境は破棄されています');
+    if (this.phase.name === 'disposed') throw new RuntimeError('disposed', '実行環境は破棄されています');
   }
 }

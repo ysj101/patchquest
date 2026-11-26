@@ -1,6 +1,7 @@
 // ⓘ ボタンや文字のボタンで開く小さな説明。クリック・Enter・Space で開閉、Esc で閉じ、マウスを乗せても同じ中身を出す。
 // マウスオーバーだけに頼らず、キーボードでも同じ操作ができる（spec §10, A22）
 import { h } from './dom';
+import { isPopoverOpen, nextPopoverState, type PopoverEvent, type PopoverState } from './popover-model';
 
 let sequence = 0;
 
@@ -33,42 +34,22 @@ export function popover(button: HTMLElement, content: Content): HTMLElement {
   const panel = h('div', { id, class: 'info-panel', role: 'note', hidden: true }, ...content);
   button.setAttribute('aria-expanded', 'false');
   button.setAttribute('aria-controls', id);
-  // 押す・キーで開いたもの（pinned）はマウスが離れても残る。マウスを乗せただけなら離れたら閉じる。
-  // 押して閉じた直後は、マウスがまだ乗っていても開き直さない（離れたら元に戻る）
-  let pinned = false;
-  let hovering = false;
-  let hoverSuppressed = false;
-  const render = () => {
-    const open = pinned || (hovering && !hoverSuppressed);
-    panel.hidden = !open;
-    button.setAttribute('aria-expanded', String(open));
+  // 押す・キーで開いたものはマウスが離れても残る。マウスを乗せただけなら離れたら閉じる。
+  // 閉じた直後は、マウスがまだ乗っていても開き直さない（離れたら元に戻る）。遷移は POPOVER_MACHINE に従う
+  let state: PopoverState = 'closed';
+  const apply = (event: PopoverEvent) => {
+    state = nextPopoverState(state, event);
+    panel.hidden = !isPopoverOpen(state);
+    button.setAttribute('aria-expanded', String(isPopoverOpen(state)));
   };
-  const close = () => {
-    pinned = false;
-    hoverSuppressed = true;
-    render();
-  };
-  button.addEventListener('click', () => {
-    if (pinned) close();
-    else {
-      pinned = true;
-      render();
-    }
-  });
+  button.addEventListener('click', () => apply('press'));
   const root = h('span', { class: 'info' }, button, panel);
-  root.addEventListener('mouseenter', () => {
-    hovering = true;
-    render();
-  });
-  root.addEventListener('mouseleave', () => {
-    hovering = false;
-    hoverSuppressed = false;
-    render();
-  });
+  root.addEventListener('mouseenter', () => apply('enter'));
+  root.addEventListener('mouseleave', () => apply('leave'));
   root.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || panel.hidden) return;
+    if (event.key !== 'Escape' || !isPopoverOpen(state)) return;
     event.preventDefault();
-    close();
+    apply('escape');
     button.focus();
   });
   return root;

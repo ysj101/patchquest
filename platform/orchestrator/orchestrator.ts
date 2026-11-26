@@ -2,11 +2,11 @@
 // 演習用インスタンスの準備、対策の切り替え、再検証、リセットを状態遷移表に沿って行う
 import {
   askedQuestions,
-  canTransition,
   errorMessage,
   isInExercise,
+  nextExerciseState,
   type Exchange,
-  type ExerciseState,
+  type ExerciseEvent,
   type ImplementationSelection,
   type VerificationReport,
 } from '../contract';
@@ -27,6 +27,8 @@ export class Orchestrator {
   private readonly randomSeed: () => number;
   private readonly newId: () => string;
   private readonly now: () => Date;
+  /** 対策の切り替え・修正の記録・初期化は 1 件ずつ順に行う。重ねると、実装の切り替えや構成のハッシュが混ざる */
+  private changes: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly deps: OrchestratorDeps) {
     this.randomSeed = deps.randomSeed ?? (() => crypto.getRandomValues(new Uint32Array(1))[0]!);
@@ -46,7 +48,7 @@ export class Orchestrator {
   /** 実行 ID を発行する。発行した ID のやり取りだけを現在の演習のものとして扱う */
   newRunId(kind = 'player'): string {
     const c = this.require();
-    const runId = `${c.snapshot.attempt.attemptId}:${kind}:${c.runIds.size + 1}`;
+    const runId = `${c.snapshot.attempt.attemptId}:${kind}:${++c.issuedRunIds}`;
     c.runIds.add(runId);
     return runId;
   }
@@ -55,20 +57,22 @@ export class Orchestrator {
    * 新しい演習を始める。基準状態から作り直し、前の演習の注入・対策・データを引き継がない。
    * 事前検証に合格するまで演習用インスタンスには触れないため、失敗しても部分適用は残らない。
    * resume を渡すと、保存した記録の seed と対策構成から環境を作り直して続きを始める（データは初期化される）。
-   * challenge を渡すと別条件での挑戦として記録し、理解確認はその設問だけで判定する
+   * challenge を渡すと別条件での挑戦として記録し、理解確認はその設問だけで判定する。
+   * 返すのは、この呼び出しが始めた演習の状態。事前検証の間に別の演習が始まっていたら、いまの演習（snapshot）とは別物になる
    */
   async start(packId: string, options: StartOptions = {}): Promise<ExerciseSnapshot> {
     const { resume } = options;
     this.current = createCurrent(this.deps, { ...options, packId }, {
       newId: this.newId, now: this.now, randomSeed: this.randomSeed,
     });
-    const { manifest } = this.current.snapshot.pack;
+    const { snapshot } = this.current;
+    const { manifest } = snapshot.pack;
     await this.runPreflight();
     const resumedDefense = resume?.appliedDefense;
-    if (resumedDefense && this.current?.snapshot.attempt.state === 'Prepared' && manifest.defenses.some((d) => d.id === resumedDefense)) {
+    if (resumedDefense && snapshot.attempt.state === 'Prepared' && manifest.defenses.some((d) => d.id === resumedDefense)) {
       await this.setDefense(resumedDefense);
     }
-    return this.require().snapshot;
+    return snapshot;
   }
 
   /** 導入を閉じた、または既定で飛ばした最初の時刻を記録する。 */
@@ -81,8 +85,9 @@ export class Orchestrator {
 
   /** 開始不可・基盤エラーの後に、同じ演習の事前検証をやり直す */
   async retryPreflight(): Promise<ExerciseSnapshot> {
+    const { snapshot } = this.require();
     await this.runPreflight();
-    return this.require().snapshot;
+    return snapshot;
   }
 
   /**
@@ -98,9 +103,10 @@ export class Orchestrator {
     const firstRequest = !options.initialView && exchange.kind === 'request' && attempt.milestones.firstRequestAt === null;
     if (firstRequest) attempt.milestones.firstRequestAt = this.now().toISOString();
     const explored = attempt.state === 'Prepared';
-    if (explored) this.transition('Explored');
+    if (explored) this.dispatch(c, 'explored');
     const reproduced = !attempt.badges.reproduction.achieved && detectReproduction(exchange, pack.manifest.probes, refs) !== null;
     if (reproduced) attempt.badges.reproduction = { achieved: true, runId: exchange.runId, at: this.now().toISOString() };
+    this.complete(c);
     const repaired = await this.recordRepair(c, exchange);
     // やり取りのたびに届くので、記録が変わったときだけ知らせる（描き直しと保存を増やさない）
     if (firstRequest || explored || reproduced || repaired) this.emit();
@@ -109,43 +115,67 @@ export class Orchestrator {
 
   /**
    * 操作で直す課題で、状態を変える操作を修正の記録として残す（spec §5.3）。記録は検証の前に再生する。
-   * 記録を加えたら構成が変わるので、過去の合格を現在の合格として扱わない（defenseCurrent を下げる）。記録を加えたら true を返す
+   * 記録を加えたら構成が変わるので、過去の合格を現在の合格として扱わない（defenseCurrent を下げる）。記録を加えたら true を返す。
+   * 対策の切り替え・初期化と同じ順番待ちに並び、記録・構成のハッシュ・状態をまとめて書き換える
    */
   private async recordRepair(current: Current, exchange: Exchange): Promise<boolean> {
     const { snapshot } = current;
     const repair = snapshot.pack.manifest.repair;
-    if (repair?.kind !== 'record' || !exchange.request || !matchesExchange(exchange, repair.record, snapshot.refs)) return false;
-    const { attempt } = snapshot;
-    attempt.repairLog = [...attempt.repairLog, { as: exchange.actor, request: exchange.request }];
-    if (attempt.milestones.firstDefenseAt === null) attempt.milestones.firstDefenseAt = this.now().toISOString();
-    this.transition('Repairing');
-    snapshot.defenseCurrent = false;
-    attempt.configHash = await this.hashFor(snapshot.implementations);
-    return true;
+    const { request, actor, runId } = exchange;
+    if (repair?.kind !== 'record' || !request || !matchesExchange(exchange, repair.record, snapshot.refs)) return false;
+    const recorded = await this.change(async () => {
+      const { attempt } = snapshot;
+      const repairLog = [...attempt.repairLog, { as: actor, request }];
+      const hash = await this.hashFor(snapshot.implementations, repairLog);
+      // 順番を待つ間に初期化されたら、戻す前の操作なので記録しない。別の演習が始まっていても記録しない
+      if (this.current !== current || !current.runIds.has(runId)) return false;
+      attempt.repairLog = repairLog;
+      attempt.configHash = hash;
+      if (attempt.milestones.firstDefenseAt === null) attempt.milestones.firstDefenseAt = this.now().toISOString();
+      this.dispatch(current, 'repair-changed');
+      snapshot.defenseCurrent = false;
+      return true;
+    });
+    return recorded === true;
   }
 
   /** 対策を適用する（null で取り消して脆弱な状態 V に戻す）。動作を切り替えるだけで合否は返さない */
   async applyDefense(defenseId: string | null): Promise<void> {
+    const current = this.require();
     await this.setDefense(defenseId);
-    const { milestones } = this.require().snapshot.attempt;
-    if (defenseId !== null && milestones.firstDefenseAt === null) {
+    const { milestones } = current.snapshot.attempt;
+    if (this.current === current && defenseId !== null && milestones.firstDefenseAt === null) {
       milestones.firstDefenseAt = this.now().toISOString();
       this.emit();
     }
   }
 
   private async setDefense(defenseId: string | null): Promise<void> {
-    const c = this.require();
-    const { attempt, pack } = c.snapshot;
-    const defense = defenseId === null ? null : pack.manifest.defenses.find((d) => d.id === defenseId);
-    if (defense === undefined) throw new Error(`対策 ${defenseId} はありません`);
-    if (!isInExercise(attempt.state) || attempt.state === 'Verifying') throw new Error(`${attempt.state} では対策を適用できません`);
+    await this.change(async (c) => {
+      const { attempt, pack } = c.snapshot;
+      const defense = defenseId === null ? null : pack.manifest.defenses.find((d) => d.id === defenseId);
+      if (defense === undefined) throw new Error(`対策 ${defenseId} はありません`);
+      if (!isInExercise(attempt.state) || attempt.state === 'Verifying') throw new Error(`${attempt.state} では対策を適用できません`);
 
-    await this.switchImplementations(withChanges(c.vulnerable, defense?.apply ?? []));
-    c.snapshot.defenseCurrent = false;
-    attempt.appliedDefense = defenseId;
-    this.transition('Repairing');
-    this.emit();
+      await this.switchImplementations(withChanges(c.vulnerable, defense?.apply ?? []));
+      // 切り替えている間に別の演習が始まっていたら、その演習の状態は動かさない
+      if (this.current !== c) return;
+      c.snapshot.defenseCurrent = false;
+      attempt.appliedDefense = defenseId;
+      this.dispatch(c, 'repair-changed');
+      this.emit();
+    });
+  }
+
+  /**
+   * 修正の構成を変える処理（対策の切り替え・修正の記録・初期化）を、前の処理が終わってから実行する。
+   * 順番を待つ間に別の演習が始まっていたら、実行しない（前の演習への操作を、新しい演習に当てない）
+   */
+  private change<T>(work: (current: Current) => Promise<T>): Promise<T | undefined> {
+    const current = this.require();
+    const result = this.changes.then(() => (this.current === current ? work(current) : undefined));
+    this.changes = result.catch(() => undefined);
+    return result;
   }
 
   /**
@@ -155,9 +185,8 @@ export class Orchestrator {
   async verify(): Promise<VerificationReport | null> {
     const c = this.require();
     const { attempt } = c.snapshot;
-    if (attempt.state !== 'Repairing' && attempt.state !== 'Passed') throw new Error('対策を使ってからテストしてください');
-    if (attempt.state === 'Passed') this.transition('Repairing');
-    this.transition('Verifying');
+    if (nextExerciseState(attempt.state, 'verification-started') === undefined) throw new Error('対策を使ってからテストしてください');
+    this.dispatch(c, 'verification-started');
     c.snapshot.platformError = null;
     this.emit();
 
@@ -168,7 +197,7 @@ export class Orchestrator {
       // 基盤エラーは学習上の不合格に数えない。合格済みの演習をテストし直していたなら、合格のままにする
       if (this.current !== c) return null;
       c.snapshot.platformError = errorMessage(e);
-      this.transition(this.allBadges() ? 'Passed' : 'Repairing');
+      this.dispatch(c, this.allBadges() ? 'completed' : 'verification-settled');
       this.emit();
       return null;
     }
@@ -179,7 +208,7 @@ export class Orchestrator {
     }
     // 検証の間に修正の記録が増えていたら、確かめたのは古い構成なので、現在の合格としては扱わない（spec §5.3）
     c.snapshot.defenseCurrent = report.passed && report.configHash === attempt.configHash;
-    this.transition(this.allBadges() ? 'Passed' : 'Repairing');
+    this.dispatch(c, this.allBadges() ? 'completed' : 'verification-settled');
     this.emit();
     return report;
   }
@@ -193,7 +222,7 @@ export class Orchestrator {
     if (correct && !attempt.badges.understanding.achieved) {
       attempt.badges.understanding = { achieved: true, at: this.now().toISOString() };
     }
-    if (this.allBadges() && attempt.state === 'Repairing') this.transition('Passed');
+    this.complete(c);
     this.emit();
     return correct;
   }
@@ -212,27 +241,32 @@ export class Orchestrator {
 
   /** 当該演習の修正を破棄し、同じ seed の脆弱な初期状態へ戻す。達成印は残す */
   async resetToInitial(): Promise<void> {
-    const c = this.require();
-    const { attempt } = c.snapshot;
-    // 検証中は戻せない（検証が終わってから戻す）
-    if (!isInExercise(attempt.state) || attempt.state === 'Prepared' || attempt.state === 'Verifying') return;
-    attempt.repairLog = [];
-    await this.switchImplementations({ ...c.vulnerable });
-    await this.deps.exercise.reset();
-    attempt.appliedDefense = null;
-    c.snapshot.defenseCurrent = false;
-    this.transition('Prepared');
-    this.emit();
+    await this.change(async (c) => {
+      const { attempt } = c.snapshot;
+      // 検証中は戻せない（検証が終わってから戻す）
+      if (nextExerciseState(attempt.state, 'reset') === undefined) return;
+      // 実装とデータを戻し終える前に、状態を先に戻す。戻している間に検証を始めさせない。
+      // 戻す前のやり取りが遅れて届いても修正の記録にしないよう、発行済みの実行 ID も無効にする。
+      // 画面へは、戻し終えてから知らせる（戻している途中の教材アプリを、戻し終えたものとして操作させない）
+      attempt.repairLog = [];
+      attempt.appliedDefense = null;
+      c.snapshot.defenseCurrent = false;
+      c.runIds.clear();
+      this.dispatch(c, 'reset');
+      await this.switchImplementations({ ...c.vulnerable });
+      await this.deps.exercise.reset();
+      this.emit();
+    });
   }
 
   private async runPreflight(): Promise<void> {
     const c = this.require();
     const { snapshot } = c;
+    this.dispatch(c, 'preflight-started');
     snapshot.preflight = [];
     snapshot.vulnerableVerification = null;
     snapshot.blocked = null;
     snapshot.platformError = null;
-    this.transition('Preflight');
     this.emit();
 
     try {
@@ -246,12 +280,12 @@ export class Orchestrator {
       snapshot.blocked =
         e instanceof Blocked ? e.reason : { kind: 'platform-error', message: errorMessage(e) };
       if (!(e instanceof Blocked)) await this.deps.exercise.stop().catch(() => undefined);
-      this.transition('Blocked');
+      this.dispatch(c, 'preflight-blocked');
       this.emit();
       return;
     }
     if (this.current !== c) return;
-    this.transition('Prepared');
+    this.dispatch(c, 'preflight-passed');
     this.emit();
   }
 
@@ -279,8 +313,10 @@ export class Orchestrator {
     for (const [hook, implementation] of Object.entries({ ...c.baseline, ...next })) {
       if (applied[hook] !== implementation) await this.deps.exercise.setImplementation(hook, implementation);
     }
+    // 実装の選択と構成のハッシュは、食い違って見える間を作らずにまとめて書き換える
+    const hash = await this.hashFor(next);
     c.snapshot.implementations = { ...next };
-    c.snapshot.attempt.configHash = await this.hashFor(next);
+    c.snapshot.attempt.configHash = hash;
   }
 
   /** 互換性の確認を通った後にだけ呼ぶ（教材アプリがあることは確認済み） */
@@ -290,7 +326,7 @@ export class Orchestrator {
     return buildSubject(c.app!, pack, attempt.attemptId, attempt.seed, implementations, attempt.repairLog);
   }
 
-  private hashFor(implementations: ImplementationSelection): Promise<string> {
+  private hashFor(implementations: ImplementationSelection, replay = this.require().snapshot.attempt.repairLog): Promise<string> {
     const { attempt } = this.require().snapshot;
     return configHash({
       missionId: attempt.missionId,
@@ -299,7 +335,7 @@ export class Orchestrator {
       recipeVersion: attempt.recipeVersion,
       app: { id: attempt.appId, version: attempt.appVersion },
       implementations,
-      replay: attempt.repairLog,
+      replay,
     });
   }
 
@@ -312,11 +348,17 @@ export class Orchestrator {
     return attempt.badges.reproduction.achieved && defenseCurrent && attempt.badges.understanding.achieved;
   }
 
-  private transition(to: ExerciseState): void {
-    const { attempt } = this.require().snapshot;
-    if (attempt.state === to) return;
-    if (!canTransition(attempt.state, to)) throw new Error(`状態 ${attempt.state} から ${to} へは遷移できません`);
-    attempt.state = to;
+  /** 達成印がそろっていたら Passed にする。検証中にそろったときは、検証が終わるときに Passed にする */
+  private complete(current: Current): void {
+    if (this.allBadges() && current.snapshot.attempt.state === 'Repairing') this.dispatch(current, 'completed');
+  }
+
+  /** 演習に出来事を起こし、遷移表（EXERCISE_MACHINE）に沿って状態を進める。その状態で起こせない出来事なら失敗する */
+  private dispatch(current: Current, event: ExerciseEvent): void {
+    const { attempt } = current.snapshot;
+    const next = nextExerciseState(attempt.state, event);
+    if (next === undefined) throw new Error(`状態 ${attempt.state} では ${event} を起こせません`);
+    attempt.state = next;
   }
 
   private require(): Current {

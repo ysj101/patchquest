@@ -51,6 +51,11 @@ export interface GuideActions {
 
 export class GuidePanel {
   readonly element = h('aside', { class: 'guide', 'aria-label': '操作ガイド', hidden: true });
+  /**
+   * ガイドの状態。off: ガイドのないパック、または演習が始まっていない / guiding: 案内している / closed: プレイヤーが閉じた。
+   * guiding のときだけ帯を出し、出来事を受け付ける。別の演習が始まると、off か guiding から始め直す
+   */
+  private mode: 'off' | 'guiding' | 'closed' = 'off';
   /** ガイドしている演習。別の演習が始まったら、そのパックのガイドで始め直す */
   private attemptId: string | null = null;
   private steps: GuideStep[] = [];
@@ -73,10 +78,10 @@ export class GuidePanel {
       this.reached.clear();
       this.skipped.clear();
       this.praise = null;
-      this.element.hidden = this.steps.length === 0;
+      this.setMode(this.steps.length === 0 ? 'off' : 'guiding');
       this.render();
     }
-    if (this.element.hidden) return;
+    if (this.mode !== 'guiding') return;
     this.advance(() => {
       for (const [milestone, happened] of Object.entries(FROM_RECORD)) if (happened(attempt)) this.reached.add(milestone as GuideMilestone);
     });
@@ -84,13 +89,13 @@ export class GuidePanel {
 
   /** 画面の操作で起きた出来事を知らせる。同時に起きた出来事はまとめて渡すと、読み上げが 1 回になる */
   reach(...milestones: ReportedMilestone[]): void {
-    if (!this.element.hidden) this.advance(() => milestones.forEach((milestone) => this.reached.add(milestone)));
+    if (this.mode === 'guiding') this.advance(() => milestones.forEach((milestone) => this.reached.add(milestone)));
   }
 
   /** 案内先に印を付け直す。案内先が閉じたタブの中なら、そのタブを開く操作に印を付ける。画面が切り替わったときにも呼ぶ */
   refresh(): void {
     this.marked?.removeAttribute(TARGET_ATTR);
-    const step = this.element.hidden ? undefined : this.current();
+    const step = this.mode === 'guiding' ? this.current() : undefined;
     const target = step && findTarget(step.anchor);
     const closed = target?.closest(`[hidden][${REVEALABLE_ATTR}]`);
     this.marked = (closed ? document.getElementById(closed.getAttribute(REVEALABLE_ATTR) ?? '') : target) ?? null;
@@ -124,8 +129,13 @@ export class GuidePanel {
     this.render();
   }
 
+  private setMode(mode: GuidePanel['mode']): void {
+    this.mode = mode;
+    this.element.hidden = mode !== 'guiding';
+  }
+
   private close(): void {
-    this.element.hidden = true;
+    this.setMode('closed');
     this.refresh();
   }
 

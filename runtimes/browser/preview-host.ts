@@ -79,14 +79,24 @@ interface Collector {
   failed: (message: string) => void;
 }
 
+/**
+ * プレビューの状態。docs/formal/Preview.tla が、この状態とメッセージの扱いを検査する。
+ * loading: iframe の読み込み（ready の通知）を待っている / idle: 何も表示していない。届くメッセージはすべて破棄する /
+ * rendering: 描画中。観測した事象を collector に集める / showing: 描画を終えて表示している。プレビュー内の操作を受け付ける /
+ * disposed: 破棄した
+ */
+type FrameState =
+  | { name: 'loading' | 'idle' | 'disposed' }
+  | { name: 'rendering'; context: FrameContext; collector: Collector }
+  | { name: 'showing'; context: FrameContext };
+
 export class PreviewFrame {
   readonly element = document.createElement('iframe');
   /** 照合に失敗して破棄したメッセージの件数（検証用） */
   rejected = 0;
   private readonly ready: Promise<void>;
   private markReady!: () => void;
-  private current: FrameContext | null = null;
-  private collector: Collector | null = null;
+  private state: FrameState = { name: 'loading' };
   private readonly onMessage = (e: MessageEvent) => this.receive(e);
 
   constructor(
@@ -108,16 +118,21 @@ export class PreviewFrame {
   /** 画面を描画し、描画中に観測した事象を返す。以前の runId のメッセージはこれ以降破棄する */
   async render(params: RenderParams): Promise<ObservedEvent[]> {
     await this.ready;
-    this.current = { runId: params.runId, viewer: params.viewer, session: params.session, route: params.route };
+    if (this.state.name === 'disposed') throw new RuntimeError('disposed', 'プレビューは破棄されています');
+    // 前の描画が終わる前に次を始めたら、前の描画は結果を返さずに終える
+    this.detach();
     const events: ObservedEvent[] = [];
+    let collector!: Collector;
     const done = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new RuntimeError('timeout', '画面の描画が時間内に終わりませんでした')), params.timeoutMs);
-      this.collector = {
+      collector = {
         events,
         rendered: () => (clearTimeout(timer), setTimeout(resolve, params.settleMs)),
         failed: (message) => (clearTimeout(timer), reject(new RuntimeError('crashed', message))),
       };
     });
+    const context = { runId: params.runId, viewer: params.viewer, session: params.session, route: params.route };
+    this.state = { name: 'rendering', context, collector };
     this.post({
       type: 'render',
       runId: params.runId,
@@ -130,20 +145,23 @@ export class PreviewFrame {
     try {
       await done;
     } finally {
-      this.collector = null;
+      // 待っている間に止められたり、次の描画が始まったりしていたら、その状態を変えない
+      if (this.active(params.runId)?.collector === collector) this.state = { name: 'showing', context };
     }
     return events;
   }
 
-  /** 以降のメッセージをすべて破棄する */
+  /** 表示をやめ、以降のメッセージをすべて破棄する。描画中なら、その描画を失敗で終える */
   detach(): void {
-    this.current = null;
-    this.collector?.failed('停止しました');
-    this.collector = null;
+    const state = this.state;
+    if (state.name !== 'rendering' && state.name !== 'showing') return;
+    this.state = { name: 'idle' };
+    if (state.name === 'rendering') state.collector.failed('停止しました');
   }
 
   dispose(): void {
     this.detach();
+    this.state = { name: 'disposed' };
     window.removeEventListener('message', this.onMessage);
     this.element.remove();
   }
@@ -153,44 +171,56 @@ export class PreviewFrame {
     this.element.contentWindow?.postMessage(message, '*');
   }
 
+  /** runId の画面を描画中・表示中なら、その文脈と、描画中の事象の集め先を返す。古い runId や表示していないときは null */
+  private active(runId: string): { context: FrameContext; collector: Collector | null } | null {
+    const state = this.state;
+    if ((state.name !== 'rendering' && state.name !== 'showing') || state.context.runId !== runId) return null;
+    return { context: state.context, collector: state.name === 'rendering' ? state.collector : null };
+  }
+
   private receive(e: MessageEvent): void {
     if (e.source !== this.element.contentWindow) return;
     const message = parseFromFrame(e.data);
     if (!message) return void this.rejected++;
-    if (message.type === 'ready') return this.markReady();
-    const current = this.current;
-    if (!current || message.runId !== current.runId) return void this.rejected++;
+    if (message.type === 'ready') {
+      if (this.state.name === 'loading') this.state = { name: 'idle' };
+      return this.markReady();
+    }
+    const active = this.active(message.runId);
+    if (!active) return void this.rejected++;
+    const { context, collector } = active;
 
     switch (message.type) {
       case 'request':
-        void this.forward(message.requestId, message.request, current);
+        void this.forward(message.requestId, message.request, context);
         break;
       case 'event':
-        this.collector?.events.push(message.event);
-        this.onExchange?.({ runId: current.runId, actor: current.viewer, kind: 'render', route: current.route, events: [message.event] });
+        collector?.events.push(message.event);
+        this.onExchange?.({ runId: context.runId, actor: context.viewer, kind: 'render', route: context.route, events: [message.event] });
         break;
       case 'rendered':
-        current.route = message.route;
-        this.collector?.rendered(message.route);
-        this.onExchange?.({ runId: current.runId, actor: current.viewer, kind: 'render', route: message.route, events: [] });
+        context.route = message.route;
+        collector?.rendered(message.route);
+        this.onExchange?.({ runId: context.runId, actor: context.viewer, kind: 'render', route: message.route, events: [] });
         break;
       case 'error':
-        this.collector?.failed(message.message);
+        collector?.failed(message.message);
         break;
     }
   }
 
-  private async forward(requestId: number, request: AppRequest, current: FrameContext): Promise<void> {
+  private async forward(requestId: number, request: AppRequest, context: FrameContext): Promise<void> {
     let response: AppResponse;
     let events: ObservedEvent[] = [];
     try {
-      ({ response, events } = await this.handleRequest(request, current.session, current.runId));
+      ({ response, events } = await this.handleRequest(request, context.session, context.runId));
     } catch (e) {
       response = { status: 503, body: { error: errorMessage(e) } };
     }
-    if (this.current?.runId !== current.runId) return;
-    this.collector?.events.push(...events);
-    this.onExchange?.({ runId: current.runId, actor: current.viewer, kind: 'request', request, response, events });
-    this.post({ type: 'response', runId: current.runId, requestId, response });
+    const active = this.active(context.runId);
+    if (!active) return;
+    active.collector?.events.push(...events);
+    this.onExchange?.({ runId: context.runId, actor: context.viewer, kind: 'request', request, response, events });
+    this.post({ type: 'response', runId: context.runId, requestId, response });
   }
 }
