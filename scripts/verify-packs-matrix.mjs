@@ -8,7 +8,7 @@ const titles = output
   .filter((line) => line.trim().startsWith('[chrome-verify]'))
   .map((line) => line.split(' › ').slice(2).join(' › '));
 if (titles.length === 0) throw new Error('出荷前検証のテストが 1 件もありません');
-// --grep に渡す正規表現。題名の記号をそのまま照合させる
+// --grep に渡す正規表現。題名の記号をそのまま照合させる。照合する文字列は題名のあとに印（@machine）が付くので、末尾は空白か行末にする
 /** @param {string} text */
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-console.log(JSON.stringify({ include: titles.map((title) => ({ title, grep: `${escape(title)}$` })) }));
+console.log(JSON.stringify({ include: titles.map((title) => ({ title, grep: `${escape(title)}(?: |$)` })) }));

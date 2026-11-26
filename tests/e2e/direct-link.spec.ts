@@ -52,9 +52,10 @@ test('演習中に「本文へ移動」を使っても、演習は続く', async
   const ticket = await page.locator('.ticket-id').textContent();
   await page.getByRole('link', { name: '本文へ移動' }).focus();
   await page.keyboard.press('Enter');
-  expect(hashOf(page)).toBe('#main');
+  // 押した直後は URL がまだ変わっていないことがあるので、変わるまで待つ
+  await expect.poll(() => hashOf(page)).toBe('#main');
   await page.goBack();
-  expect(hashOf(page)).toBe('#/missions/test-pack');
+  await expect.poll(() => hashOf(page)).toBe('#/missions/test-pack');
   await expect(page.locator('.exercise')).toBeVisible();
   await expect(page.locator('.ticket-id')).toHaveText(ticket ?? '');
 });
