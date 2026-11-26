@@ -130,7 +130,6 @@ function row(entry: MissionEntry, actions: MissionActions, mastery: MasterySumma
         { class: 'mission-main' },
         heading(manifest, titleId),
         details(entry, mastery),
-        entry.latest && !entry.resumable ? h('p', { class: 'note' }, '教材が新しくなったため、前回の続きからは始められません。') : null,
       ),
       h('p', { class: 'mission-difficulty' }, difficultyLabel(entry)),
       h('div', { class: 'mission-progress' }, status(label.kind, label.text), progress === 'todo' ? null : seals(sealStates(entry.latest, entry.defenseCurrent), 'small')),
