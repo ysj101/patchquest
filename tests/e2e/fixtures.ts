@@ -60,6 +60,22 @@ export const preview = (page: Page) => page.frameLocator('.preview-slot iframe')
 export const terminalInput = (page: Page) => preview(page).getByRole('textbox', { name: 'コマンド' });
 export const terminalOutput = (page: Page) => preview(page).getByRole('log', { name: '端末の出力' });
 
+/**
+ * 調べ方・操作のしかたのカードを 1 枚目から順に送り、出ているカードごとに、見出しとコードの文字を集める。
+ * 出ているカードは、いつも 1 枚だけであることも確かめる
+ */
+export async function readApproachCards(region: Locator): Promise<{ title: string; codes: string[] }[]> {
+  const shown = region.locator('.approach-card:visible');
+  const next = region.getByRole('button', { name: '次へ' });
+  const cards = [];
+  for (;;) {
+    await expect(shown).toHaveCount(1);
+    cards.push({ title: await shown.getByRole('heading').innerText(), codes: await shown.locator('code').allInnerTexts() });
+    if (await next.isDisabled()) return cards;
+    await next.click();
+  }
+}
+
 /** 端末にコマンド行を入力して Enter で送る。前のコマンドの応答が返るまで入力欄は使えないので、続けて呼べる */
 export async function typeCommand(page: Page, line: string): Promise<void> {
   await terminalInput(page).fill(line);

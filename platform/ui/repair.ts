@@ -6,7 +6,8 @@ import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
 import { verdictKind, whyDefenseFailed } from './verdict';
-import { approachNodes, expectedActual, radioOption, status } from './components';
+import { approachDeck } from './approach-deck';
+import { expectedActual, radioOption, status } from './components';
 import { fill, h, renderGuard } from './dom';
 import { headingWithInfo } from './info-popover';
 import { describersOf, type DescribingApp } from './investigation';
@@ -118,7 +119,7 @@ export class RepairPanel {
   /** テストの結果の区画。結果が出るまでは出さない */
   private readonly resultsSection = h('section', { class: 'tool-section', 'data-anchor': 'results', hidden: true }, this.resultsTitle, this.results);
   private readonly resultsGuard = renderGuard();
-  /** パックが操作のしかたを持つときだけ、① より先に見せる */
+  /** パックが操作のしかたを持つときだけ、① より先に見せる。カードを 1 枚ずつ出す */
   private readonly guide = h('section', { class: 'tool-section repair-guide', 'aria-labelledby': 'repair-guide-title', hidden: true });
   /** ① の区画。対策を選ぶ課題では候補、操作で直す課題では加えた変更の一覧を置く */
   private readonly choice = h('section', { class: 'tool-section', 'data-anchor': 'defense-panel' });
@@ -151,7 +152,7 @@ export class RepairPanel {
     this.selected = this.appliedId;
     this.reference.open = false;
     this.guide.hidden = !manifest.repairGuide;
-    if (manifest.repairGuide) fill(this.guide, ...approachNodes('repair-guide-title', '操作のしかた', manifest.repairGuide));
+    if (manifest.repairGuide) fill(this.guide, ...approachDeck('repair-guide-title', '操作のしかた', manifest.repairGuide));
     fill(this.choice, ...(this.record ? recordSection(this.record, this.changes) : this.choiceNodes()));
     const undone = this.record ? `${this.record.noun}を消し` : '使った対策を外し';
     this.resetNote.textContent = `${undone}、データも最初の状態に戻します。スタンプは残ります。`;

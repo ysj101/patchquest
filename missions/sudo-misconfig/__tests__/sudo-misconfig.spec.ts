@@ -2,7 +2,7 @@
 // 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。調べるのも直すのも、
 // ターミナルにコマンドを打って行う（visudo の編集画面で行をコメントにする）
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, startMission, terminalInput, terminalOutput, test, testRepair as verify, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, readApproachCards, repairPanel, startMission, terminalInput, terminalOutput, test, testRepair as verify, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'backup-cause': 'バックアップに必要な分をこえて、すべてのコマンドが許可されている',
@@ -101,11 +101,16 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   await startMission(page, 'sudo-misconfig');
   await page.getByRole('tab', { name: '調査' }).click();
   const approach = page.getByRole('region', { name: '調べ方' });
-  await expect(approach).toContainText('sudo は、許可された利用者が、コマンドを管理者（root）の権限で動かすための仕組みです');
-  await expect(approach.locator('.approach-steps li')).toHaveCount(4);
-  // 端末に打つコマンドは、地の文と区別したコードとして出る
-  await expect(approach.locator('code')).toHaveText(['whoami', 'cat runbook.txt', 'sudo -l', '(root) NOPASSWD: パス']);
+  // 最初に出るのは 1 枚目だけ。端末に打つコマンドは、地の文と区別したコードとして出る
+  await expect(approach.locator('.approach-card:visible')).toContainText('端末は運用担当（operator）として開いています。');
   await expect(approach.locator('code').first()).toHaveCSS('font-family', /monospace/);
+  // 「次へ」で 1 枚ずつ送ると、sudo の仕組みと、打つコマンドが順に出る
+  expect(await readApproachCards(approach)).toEqual([
+    { title: 'だれとして端末を使っているかを確かめる', codes: ['whoami'] },
+    { title: '運用メモを読む', codes: ['cat runbook.txt'] },
+    { title: 'sudo で動かせるコマンドを見る', codes: ['sudo -l', '(root) NOPASSWD: パス'] },
+    { title: '運用メモと許可の一覧を見くらべる', codes: [] },
+  ]);
   await expect(approach).not.toContainText('visudo');
 
   // 調べ方を読んでもヒントの利用には数えず、ヒントは調査タブからも開ける
@@ -117,9 +122,9 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   // 対策タブの先頭には、編集する道具の使い方が出る（答えを書いていないことは、全パック共通の tests/unit/pack-guides.test.ts で確かめる）
   await page.getByRole('tab', { name: '対策' }).click();
   const guide = page.getByRole('region', { name: '操作のしかた' });
-  await expect(guide.locator('code')).toContainText(['visudo', 'sudo ls /etc/sudoers.d', 'sudo cat ファイルのパス', 'sudo visudo -f ファイルのパス']);
-  // 名指ししているボタンは、対策タブに同じ名前で実在する
-  await expect(guide).toContainText('「最初の状態に戻す」');
+  expect((await readApproachCards(guide)).flatMap((card) => card.codes)).toEqual(['sudo ls /etc/sudoers.d', 'sudo cat ファイルのパス', '/etc/sudoers', '/etc/sudoers.d', 'sudo visudo -f ファイルのパス', 'visudo']);
+  // 最後のカードが名指ししているボタンは、対策タブに同じ名前で実在する
+  await expect(guide.locator('.approach-card:visible')).toContainText('「最初の状態に戻す」');
   await expect(page.getByRole('tabpanel', { name: '対策' }).getByRole('button', { name: '最初の状態に戻す' })).toBeVisible();
 
   // 対策タブのヒントは直し方だけ。調べ方（ヒント 2）を開いていなくても、すぐ開ける

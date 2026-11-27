@@ -123,15 +123,30 @@ export interface WorkedExample {
 }
 
 /**
- * 調べ方（approach）と操作のしかた（repairGuide）の形。前提の仕組みと手順だけを書き、修正方針は書かない
- * （ヒント 3 と solution に任せる）。常に表示するので、見てもヒントの利用には数えない。
- * `…` で囲んだ部分は、等幅のコードとして表示する
+ * 調べ方・操作のしかたのカード 1 枚。いま行うことを 1 つだけ書く（学習UIは、カードを 1 枚ずつ出す）。
+ * observe と note の `…` で囲んだ部分は、等幅のコードとして表示する
+ */
+export interface ApproachCard {
+  /** 何をするか。文にせず、短い見出しで書く */
+  title: string;
+  /** 端末に打つコマンド。1 行ずつ、等幅のコードで出す。打つものがないカードでは省く */
+  commands?: string[];
+  /** 見るところ・考えること */
+  observe: string;
+  /** そのカードで初めて出てくる記号や道具の意味。要らなければ省く */
+  note?: string;
+}
+
+/** カード 1 枚に書ける量の上限（title・observe・note は文字数、commands は件数）。超えると検証で止まる */
+export const APPROACH_CARD_LIMITS = { title: 30, observe: 120, note: 100, commands: 3 } as const;
+
+/**
+ * 調べ方（approach）と操作のしかた（repairGuide）の形。手順と道具の使い方だけを書き、修正方針は書かない
+ * （ヒント 3 と solution に任せる）。いつでも見られるので、見てもヒントの利用には数えない
  */
 export interface ApproachDef {
-  /** 前提となる仕組みの短い説明。例：sudo とは何か */
-  intro: string;
-  /** 手順。各 1〜2 文 */
-  steps: string[];
+  /** 行う順に並べたカード。1 枚以上 */
+  cards: ApproachCard[];
 }
 
 export interface HookRequirement {

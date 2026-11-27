@@ -44,6 +44,15 @@ export const shellTestPack: MissionPack = {
     actions: [],
     defenses: [],
     repair: { kind: 'record', record: STATE_CHANGING_COMMAND, noun: '加えた変更' },
+    // カードの出し方（1 枚ずつ・全体の流れ）を、機械を使わない E2E で確かめるためのもの
+    approach: {
+      cards: [
+        { title: '運用メモを読む', commands: ['cat runbook.txt'], observe: '運用担当の仕事を確かめる' },
+        { title: '許可の一覧を見る', commands: ['sudo -l'], observe: '`(root) NOPASSWD: パス` の行を探す', note: '`sudo -l` は、sudo で動かせるコマンドを表示する' },
+        { title: '見くらべる', observe: '仕事に必要な分より多い許可を探す' },
+      ],
+    },
+    repairGuide: { cards: [{ title: '設定ファイルを探す', commands: ['sudo ls /etc/sudoers.d'], observe: '直すファイルを探す' }] },
     probes: [
       {
         id: 'operator-runs-maintenance',
@@ -86,6 +95,8 @@ export const commentOut = (line: number): ReplayEntry => ({ as: 'admin', request
 export const shellTestVerification: PackVerificationData = {
   packId: 'shell-test-pack',
   implementations: {},
+  // 直し方（行をコメントにする）。調べ方と操作のしかたには書かない
+  answerTerms: ['コメント'],
   candidates: [
     { id: 'remove-maintenance', apply: [], replay: [commentOut(3)], expected: 'secure' },
     { id: 'remove-everything', apply: [], replay: [commentOut(2), commentOut(3)], expected: 'breaks-normal' },

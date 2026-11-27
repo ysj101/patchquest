@@ -2,7 +2,8 @@
 // 表示はすべてテキストで行い、教材データを HTML として挿入しない。実際のネットワーク通信ではないことを明示する
 import { HTTP_METHODS, errorMessage, type ActionDef, type ApproachDef, type AppRequest, type Exchange, type ExchangeDescription, type FieldDef, type HttpMethod, type JsonValue, type ObservedEvent, type WorkedExample } from '../contract';
 import { expandRequest, type Scope, type StepDescriber } from '../evaluator/scenario';
-import { approachNodes, status } from './components';
+import { approachDeck } from './approach-deck';
+import { status } from './components';
 import { fill, h } from './dom';
 import { headingWithInfo, infoPopover } from './info-popover';
 
@@ -137,7 +138,7 @@ export class InvestigationPanel {
   private readonly actionSection = h('section', { class: 'tool-section', 'aria-labelledby': 'actions-title', 'data-anchor': 'actions' }, h('h3', { id: 'actions-title' }, '操作'), this.actionList);
   /** パックが仕組みの例を持つときだけ、いちばん上に閉じた状態で置く */
   private readonly example = h('div', {});
-  /** パックが調べ方を持つときだけ、操作より先に見せる */
+  /** パックが調べ方を持つときだけ、操作より先に見せる。カードを 1 枚ずつ出す */
   private readonly approach = h('section', { class: 'tool-section approach', 'aria-labelledby': 'approach-title', hidden: true });
   private count = 0;
   private refs: Scope = {};
@@ -166,7 +167,7 @@ export class InvestigationPanel {
   setup({ workedExample: example, approach, actions }: { workedExample?: WorkedExample; approach?: ApproachDef; actions: ActionDef[] }, refs: Scope, describers: AppDescribers): void {
     fill(this.example, example ? workedExample(example) : null);
     this.approach.hidden = !approach;
-    if (approach) fill(this.approach, ...approachNodes('approach-title', '調べ方', approach));
+    if (approach) fill(this.approach, ...approachDeck('approach-title', '調べ方', approach));
     this.refs = refs;
     this.describers = describers;
     fill(this.actionList, ...actions.map((a) => this.actionForm(a)));

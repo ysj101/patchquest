@@ -2,7 +2,7 @@
 // 更新を書き換えると値が変わること、書き換えた更新が root の権限で動くことを再現する。確かめるだけでやめない直し方は不合格、
 // 取り込みそのものを止めると正常系の失敗で不合格（A05）、動かす前に sha256sum -c で確かめてやめる行を入れると合格する（A04）
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, resetToInitial, rewriteWithSudoedit, terminalEditor, terminalInput, terminalOutput, test, testRepair, ticketSeals as seals, typeCommand, verifyResults } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, readApproachCards, repairPanel, resetToInitial, rewriteWithSudoedit, terminalEditor, terminalInput, terminalOutput, test, testRepair, ticketSeals as seals, typeCommand, verifyResults } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'install-script-cause': '途中で書き換えられたスクリプトでも、気づかないまま root の権限で動かしてしまう',
@@ -42,7 +42,8 @@ test('ハッシュを計算して見くらべ、書き換えた更新を再現�
   // 調べ方は、ハッシュを自分で計算して見くらべる操作を示し、直し方は書かない
   await page.getByRole('tab', { name: '調査' }).click();
   const approach = page.getByRole('region', { name: '調べ方' });
-  await expect(approach.locator('code')).toContainText(['cat runbook.txt', 'cd /var/cache/updates', 'sha256sum update.sh', 'cat /etc/updates/SHA256SUMS', CHECK, 'update.sh: OK', `cat ${APPLY}`, 'echo 足す行 >> update.sh']);
+  const approachCodes = (await readApproachCards(approach)).flatMap((card) => card.codes);
+  for (const code of ['cat runbook.txt', 'cd /var/cache/updates', 'sha256sum update.sh', 'cat /etc/updates/SHA256SUMS', CHECK, 'update.sh: OK', `cat ${APPLY}`, 'echo 足す行 >> update.sh']) expect(approachCodes).toContain(code);
   await expect(approach).not.toContainText('sudoedit');
 
   // 調べる：運用メモに、置き場・取り込みのコマンド・ハッシュの一覧の場所がある
@@ -75,9 +76,9 @@ test('ハッシュを計算して見くらべ、書き換えた更新を再現�
   // 更新を書き換えた操作は、機械の設定の変更ではないので「加えた変更」に並ばない
   await page.getByRole('tab', { name: '対策' }).click();
   await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
-  // 操作のしかたは、編集する道具の使い方を、名指ししているボタンと同じ名前で案内する
-  await expect(page.getByRole('region', { name: '操作のしかた' }).locator('code')).toContainText(['sudoedit', 'ls -l ファイルのパス', 'sudoedit ファイルのパス', "sed -i '$d' /var/cache/updates/update.sh"]);
-  await expect(page.getByRole('region', { name: '操作のしかた' })).toContainText('「最初の状態に戻す」');
+  // 操作のしかたは、編集する道具の開き方と、足した行の消し方を、カードで案内する
+  const guideCodes = (await readApproachCards(page.getByRole('region', { name: '操作のしかた' }))).flatMap((card) => card.codes);
+  for (const code of ['ls -l ファイルのパス', 'sudoedit ファイルのパス', 'sudoedit', "sed -i '$d' /var/cache/updates/update.sh"]) expect(guideCodes).toContain(code);
 
   // A05：運用担当の sudo の許可（2 行目）を外して取り込みそのものを止めると、ふだんの使い方が壊れて合格しない
   await loginToTerminal(page, 'admin');
