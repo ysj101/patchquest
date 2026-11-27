@@ -1,6 +1,6 @@
 // ヘッダーの PatchQuest ロゴから課題一覧へ戻る（#123）
 import type { Page } from '@playwright/test';
-import { enterWorkbench, expect, openHome, openRecords, preflightHeading, tabTo, test } from './fixtures';
+import { enterAndReproduce, enterWorkbench, expect, openHome, openRecords, preflightHeading, tabTo, test } from './fixtures';
 
 const logo = (page: Page) => page.getByRole('button', { name: 'PatchQuest（課題一覧へ戻る）' });
 const missionHeading = (page: Page) => page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true });
@@ -64,11 +64,9 @@ test('演習画面・準備画面・記録ページからロゴで課題一覧�
   await logo(page).click();
   await expect(missionHeading(page)).toBeFocused();
 
-  const resume = testPack(page).getByRole('button', { name: '続きから始める' });
-  await (await resume.isVisible() ? resume : testPack(page).getByRole('button', { name: 'この課題を始める' })).click();
-  await enterWorkbench(page);
-  const ticket = await page.locator('.ticket-id').textContent();
-  if (!ticket) throw new Error('演習票がありません');
+  // 準備の途中で戻った記録には達成印がないので、ボタンは「この課題を始める」のまま
+  await testPack(page).getByRole('button', { name: 'この課題を始める' }).click();
+  const ticket = await enterAndReproduce(page);
   await logo(page).click();
   await expect(missionHeading(page)).toBeFocused();
   await testPack(page).getByRole('button', { name: '続きから始める' }).click();

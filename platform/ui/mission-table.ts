@@ -1,7 +1,7 @@
 // 課題の表（spec §9, §10）。練習課題を先頭に、課題を難易度順（同じ難易度ではカタログの順）に並べ、
-// 各行に脆弱性名・題名・難易度・進捗（記録どおりの達成印）・目安・開始を置く。順番は見せ方だけで、どの課題もロックしない
+// 各行に脆弱性名・題名・難易度・進捗（記録どおりの達成印）・目安・開始を置く。開始のボタンは達成印から決める（3 つとも未＝始める、途中＝続きから／最初から、3 つとも済＝もう一度解く）。順番は見せ方だけで、どの課題もロックしない
 import { DIFFICULTIES, type AttemptRecord, type MissionPack, type VulnerabilityDef } from '../contract';
-import { allBadgesAchieved, recordedSeals } from '../progress/stages';
+import { allBadgesAchieved, progressOf, recordedSeals } from '../progress/stages';
 import { seals } from './components';
 import { h } from './dom';
 import { DIFFICULTY_LABEL } from './labels';
@@ -14,7 +14,7 @@ export interface MissionEntry {
   pack: MissionPack;
   /** この課題の直近の記録 */
   latest?: AttemptRecord;
-  /** 続きから始められるか（教材の版が記録と同じ） */
+  /** 直近の記録の教材の版が、いまの教材と同じか。違う記録からは続きを始められない */
   resumable: boolean;
   /** 再現・防御・理解がそろった記録があるか。完了した行の習熟度に使う */
   completed: boolean;
@@ -68,15 +68,18 @@ function infoFor(manifest: MissionPack['manifest'], vulnerability: Vulnerability
   );
 }
 
+/** 続きから始める記録。途中（達成印が 1 つか 2 つ）で、教材の版が記録と同じときだけある */
+export const resumeTarget = (entry: MissionEntry): AttemptRecord | undefined => (entry.resumable && progressOf(entry.latest) === 'doing' ? entry.latest : undefined);
+
+/** 開始のボタン。3 つとも未なら「この課題を始める」、3 つとも済なら「もう一度解く」、途中なら「続きから始める」（続けられる記録のときだけ）と「最初から始める」 */
 function buttons(entry: MissionEntry, actions: MissionActions): HTMLElement[] {
-  const { manifest } = entry.pack;
-  const { latest } = entry;
-  return latest && entry.resumable
-    ? [
-        h('button', { type: 'button', class: 'button', on: { click: () => actions.resume(latest) } }, '続きから始める'),
-        h('button', { type: 'button', class: 'button button-quiet', on: { click: () => actions.start(manifest.id) } }, '最初から始める'),
-      ]
-    : [h('button', { type: 'button', class: 'button', on: { click: () => actions.start(manifest.id) } }, 'この課題を始める')];
+  const start = (label: string, quiet = false) => h('button', { type: 'button', class: quiet ? 'button button-quiet' : 'button', on: { click: () => actions.start(entry.pack.manifest.id) } }, label);
+  const progress = progressOf(entry.latest);
+  if (progress === 'todo') return [start('この課題を始める')];
+  if (progress === 'done') return [start('もう一度解く')];
+  const target = resumeTarget(entry);
+  if (!target) return [start('最初から始める')];
+  return [h('button', { type: 'button', class: 'button', on: { click: () => actions.resume(target) } }, '続きから始める'), start('最初から始める', true)];
 }
 
 /** 概要は畳んでおき、行は名前だけで読めるようにする（一言の説明と学習目標は ⓘ にある）。習熟度は完了した課題にだけ添える */

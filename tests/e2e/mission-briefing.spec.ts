@@ -1,6 +1,6 @@
 // ミッション導入の表示・読み直しと、続きから始めるときのスキップを確かめる
 import type { Page } from '@playwright/test';
-import { backToList, expect, expectWorkbench, launchButton, openMission, reopenBriefing, test, ticketSeals, openHome } from './fixtures';
+import { backToList, expect, expectWorkbench, launchButton, openMission, reopenBriefing, reproduceNoteLeak, test, ticketSeals, openHome } from './fixtures';
 
 const briefing = (page: Page) => page.locator('[data-anchor="briefing"]');
 
@@ -44,13 +44,17 @@ test('初回の事件と依頼、フッターの注意書きと演習票を表�
 
 test('同じ課題の再挑戦では導入を再び表示し、続きからは飛ばし、別の課題でも表示する', async ({ page }) => {
   await openHome(page);
-  await openMission(page, 'idor');
+  await openMission(page, 'test-pack');
   await launchButton(page).click();
   await backToList(page).click();
-  await openMission(page, 'idor');
+  await openMission(page, 'test-pack');
   await expect(briefing(page)).toBeVisible();
+  // 続きから始められるのは、達成印が 1 つ付いてから
+  await launchButton(page).click();
+  await page.getByRole('tab', { name: '調査' }).click();
+  await reproduceNoteLeak(page);
   await backToList(page).click();
-  await openMission(page, 'idor', { resume: true });
+  await openMission(page, 'test-pack', { resume: true });
   await expectWorkbench(page);
   await backToList(page).click();
   await openMission(page, 'sqli');

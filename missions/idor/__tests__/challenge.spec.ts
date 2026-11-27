@@ -1,4 +1,4 @@
-// 完走しても「別条件で挑戦する」は出さない。やり直しは課題一覧の「最初から始める」で行う。
+// 完走しても「別条件で挑戦する」は出さない。やり直しは課題一覧の「もう一度解く」で行う。
 import { backToList, expect, openHome, startMission, test } from '../../../tests/e2e/fixtures';
 import { answerTransferCheck, reproduceByPreviousMemo, secureByOwnerCheck } from './idor-flow';
 
@@ -19,6 +19,6 @@ test('完走した振り返りと課題の表に、別条件で挑戦するボ�
   const card = page.locator('[data-mission="idor"]');
   await expect(card).toHaveCount(1);
   await expect(card.getByRole('button', { name: '別条件で挑戦する' })).toHaveCount(0);
-  await expect(card.getByRole('button', { name: '続きから始める' })).toBeVisible();
-  await expect(card.getByRole('button', { name: '最初から始める' })).toBeVisible();
+  // 達成印が 3 つそろった課題のボタンは「もう一度解く」だけ
+  await expect(card.locator('.mission-actions').getByRole('button')).toHaveText(['もう一度解く']);
 });
