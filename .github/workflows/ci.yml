@@ -1,8 +1,11 @@
 # CI。push（main）と PR ごとに、品質ゲート（pnpm run check：型・lint・重複・未使用コード・ユニットテストとカバレッジ）と
-# ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）、Chrome の E2E・パックの出荷前検証・配布物の確認を行う。
-# E2E と出荷前検証は、ここ（CI）だけで走らせる。本物の Linux を動かす「機械」を使うテストは CPU を使い切るので同じ機械の上では並べられない
-# （Issue #173）。そこで別のランナーに分けて並べる：通常の E2E・機械を使う E2E・パックごとの出荷前検証・配布物の確認。
-# 出荷前検証はテストの一覧（パックごとに 1 件）から matrix を作るので、パックを足しても、このファイルを直さずに済む
+# ビルド（DOM 安全性・依存の境界・外部参照の検査を含む）、配布物の確認を行う。PR で走るのはこの 2 つだけ。
+# Chrome の E2E とパックの出荷前検証は時間がかかるので、main へのマージ後（push）にだけ走らせる。本物の Linux を動かす「機械」を使う
+# テストは CPU を使い切るので同じ機械の上では並べられない（Issue #173）。そこで別のランナーに分けて並べる：
+# 通常の E2E・機械を使う E2E・パックごとの出荷前検証。出荷前検証はテストの一覧（パックごとに 1 件）から matrix を作るので、
+# パックを足しても、このファイルを直さずに済む。
+# マージ後のジョブが落ちたら、最後のジョブが Issue を作る（同じ印の開いた Issue があれば、コメントを足す）。
+# 公開サイトは、マージ後のジョブがすべて通ったあとに pages.yml が配信する。
 # 既存の lint 違反は eslint-suppressions.json に記録済みなので、ここで止まるのは新しく増えた問題だけ
 name: CI
 
@@ -16,9 +19,11 @@ on:
 permissions:
   contents: read
 
+# PR は同じ PR の古い実行を取り消す。main への push は取り消さない（続けてマージしても、途中のコミットの結果を残す）。
+# main の実行を同じ group に入れると、待っている実行が新しいものに置き換わって捨てられるので、コミットごとに group を分ける
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
@@ -66,6 +71,7 @@ jobs:
 
   e2e:
     name: E2E（機械を使わないもの）
+    if: github.event_name == 'push' # マージ後だけ
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -98,6 +104,7 @@ jobs:
 
   e2e-machine:
     name: E2E（機械を使うもの）
+    if: github.event_name == 'push' # マージ後だけ
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -129,6 +136,7 @@ jobs:
 
   verify-plan:
     name: 出荷前検証の一覧
+    if: github.event_name == 'push' # マージ後だけ
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -150,8 +158,9 @@ jobs:
   verify-packs:
     name: 出荷前検証（${{ matrix.title }}）
     needs: verify-plan
+    if: github.event_name == 'push' # マージ後だけ
     runs-on: ubuntu-latest
-    # 本物の Linux を動かす課題の出荷前検証は、機械の中でコマンドを実行する分だけ時間がかかる。1 パックの上限はテストごとに 10 分
+    # 本物の Linux を動かす課題の出荷前検証は、機械の中でコマンドを実行する分だけ時間がかかる。テスト自体に時間の上限は置かず（tests/e2e/pack-verification.spec.ts）、固まったときはここで打ち切る
     timeout-minutes: 20
     strategy:
       fail-fast: false # 1 つのパックが落ちても、ほかのパックの結果は最後まで見る
@@ -215,3 +224,53 @@ jobs:
           name: test-results-dist
           path: test-results/
           retention-days: 7
+
+  # マージ後のジョブが落ちたときだけ、Issue で知らせる（取り消し・skip では作らない）。
+  # 同じ失敗を何個も作らないよう、印（ラベル）の付いた開いている Issue があれば、コメントを足す
+  notify-failure:
+    name: 失敗の通知（Issue）
+    needs: [e2e, e2e-machine, verify-plan, verify-packs]
+    if: ${{ always() && github.event_name == 'push' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: ci-failure-issue
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read # 失敗したジョブの名前を読む
+      pull-requests: read # コミットの PR を読む
+      issues: write
+    steps:
+      # 外から来る文字列は env 経由で渡す（スクリプトインジェクション対策）。checkout はしない
+      - name: Issue を作る、または既存の Issue にコメントする
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          LABEL: ci-failure
+        run: |
+          set -euo pipefail
+          failed=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | select(.conclusion == "failure") | "- " + .name')
+          pr=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '.[0].number // empty')
+          if [ -n "$pr" ]; then commit_line="コミット: $SHA（PR #$pr）"; else commit_line="コミット: $SHA"; fi
+          {
+            echo "main へのマージ後の検査（E2E・出荷前検証）が失敗した。"
+            echo
+            echo "失敗したジョブ:"
+            echo "$failed"
+            echo
+            echo "$commit_line"
+            echo "実行: $RUN_URL"
+          } > body.md
+          gh label create "$LABEL" --repo "$REPO" --color d73a4a --description "main へのマージ後の CI の失敗" --force
+          existing=$(gh issue list --repo "$REPO" --label "$LABEL" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$REPO" --body-file body.md
+          else
+            gh issue create --repo "$REPO" --label "$LABEL" \
+              --title "main へのマージ後の CI が失敗している" --body-file body.md
+          fi

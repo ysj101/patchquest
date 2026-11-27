@@ -1,4 +1,4 @@
-// パック出荷前検証（pnpm run verify:packs。CI ではパックごとに別のランナーで走らせる）。検証対象のパックごとに 1 件のテストを作り、
+// パック出荷前検証（pnpm run verify:packs。CI では main へのマージ後に、パックごとに別のランナーで走らせる）。検証対象のパックごとに 1 件のテストを作り、
 // そのパックがどの seed でも基準・レシピ・対策の期待どおりかを確かめる。テストの一覧は検証対象（tests/support/verification-catalog.ts）から作るので、
 // パックを足すとテストも CI のジョブも自動で増える
 import { verificationCatalog } from '../support/verification-catalog';
@@ -9,8 +9,8 @@ const TITLE_PREFIX = '出荷前検証：';
 
 for (const { manifest } of verificationCatalog.packs) {
   test(`${TITLE_PREFIX}${manifest.id}`, MACHINE, async ({ page }) => {
-    // 8 パックを順に検証すると CI の機械で 8.6〜10 分だった。パックごとに分けたので、1 パックの分として余裕を持たせる
-    test.setTimeout(600_000);
+    // テストの上限は置かない。遅いだけなら最後まで走らせ、固まったときは CI のジョブの timeout-minutes で止まる
+    test.setTimeout(0);
     await openTestPage(page, 'pack-verification');
     const started = Date.now();
     const results = await page.evaluate((packId) => window.verifyPackById(packId), manifest.id);

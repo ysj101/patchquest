@@ -88,9 +88,12 @@ pnpm run test:coverage      # ユニットテストとカバレッジの下限
 
 push（main）と PR ごとに、GitHub Actions（`.github/workflows/ci.yml`）が次を実行します。
 - 品質ゲート（`pnpm run check`）とビルド（DOM 安全性・依存の境界・外部参照の検査を含む）
-- Chrome の E2E（機械を使わないもの・使うものを別のジョブで）、パックの出荷前検証（パックごとに別のジョブ）、配布物の確認
+- 配布物の確認
 
-E2E と出荷前検証は CI で確かめます（手元で通すのは `pnpm run check`）。出荷前検証のジョブはテストの一覧から作るので、パックを足しても ci.yml を直す必要はありません。
+main へのマージ後（push）だけ、次も実行します。
+- Chrome の E2E（機械を使わないもの・使うものを別のジョブで）、パックの出荷前検証（パックごとに別のジョブ）
+
+E2E と出荷前検証は、マージ後の CI で確かめます（手元で通すのは `pnpm run check`）。落ちると Issue が自動で作られます。公開サイト（GitHub Pages）は、これらが通ったあとに配信します。出荷前検証のジョブはテストの一覧から作るので、パックを足しても ci.yml を直す必要はありません。
 
 課題パックの作り方は [docs/pack-authoring.md](docs/pack-authoring.md) を参照してください。
 

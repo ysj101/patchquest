@@ -214,12 +214,12 @@ repair: {
    - パックが読み込めるのは `platform/contract` と教材アプリ（`apps/`）、自分のディレクトリの中だけ。他のパックの実装やデータは使わない。
 2. `catalog/` にパックを登録する。コアUIに課題 ID の条件分岐を書かない。プラットフォーム（`platform/`・`runtimes/`）はパックを `@catalog` 経由でだけ扱い、教材アプリはパックに依存しない。これらは `pnpm run check:boundaries`（ビルドと CI でも実行）で確かめる。
 3. `validatePack(pack, { app, appTestIds, sharedImplementations })` がエラーなしで通ることを確かめる。
-4. パック出荷前検証（`pnpm run verify:packs`。完了の条件としては求めず、CI で確かめる）で、次の 3 点を確かめる。対策は `expected` どおりの結果になることも確かめる。
+4. パック出荷前検証（`pnpm run verify:packs`。完了の条件としては求めず、マージ後の CI で確かめる）で、次の 3 点を確かめる。対策は `expected` どおりの結果になることも確かめる。
    - 基準状態 S で全テストが通る。
    - 脆弱な状態 V では `tests.target` のテストだけが失敗し、`verify.probes` の攻撃が成立する。
    - `expected: 'secure'` の対策を適用すると全テストが通る。
 
-   出荷前検証は、カタログの全パックを `VERIFICATION_SEEDS` の各 seed で行う。初期データ（利用者・メモの ID や内容）が変わっても結果が変わらないことを確かめるためである。ブラウザの `verify:packs`（CI ではパックごとに別のジョブ。`pnpm run test:e2e` には含まない）が全テストを検証する。`pnpm run check` のユニットテストでも、描画を含まないテストだけで同じ検証を行う。パックごとにこの検証を書く必要はない。
+   出荷前検証は、カタログの全パックを `VERIFICATION_SEEDS` の各 seed で行う。初期データ（利用者・メモの ID や内容）が変わっても結果が変わらないことを確かめるためである。ブラウザの `verify:packs`（CI ではマージ後に、パックごとに別のジョブ。`pnpm run test:e2e` には含まない）が全テストを検証する。`pnpm run check` のユニットテストでも、描画を含まないテストだけで同じ検証を行う。パックごとにこの検証を書く必要はない。
 5. 特定の利用者名や ID をハードコードした誤った修正などを見逃さないことを確かめたいときは、`__tests__/verification.ts` に検証データ（`PackVerificationData`）を書き、`tests/support/catalog.ts` の `verifications` に加える。
    - `candidates` は学習画面に出ない対策候補で、出荷前検証がパックの対策候補と同じ基準で `expected` どおりかを確かめる。
    - 実装 ID は `<パックID>/…` で始める。誤った修正は `defenses` には入れない（学習画面に出てしまうため）。
