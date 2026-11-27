@@ -1,10 +1,15 @@
 #!/bin/sh
 # コミット前の品質ゲート。pnpm install の prepare で有効になる。
 # 速さのため lint はキャッシュを使い、重複はこのコミットで増えたものだけを見る。
-# キャッシュでは他のファイルの型の変更を拾えないことがあるので、全体は CI（pnpm run check）で確かめる。
+# ユニットテストは、stage したファイルに関係するものだけを走らせる（scripts/test-related.mjs。import をたどれない変更は全件）。
+# キャッシュや絞り込みでは他のファイルへの影響を拾えないことがあるので、全体は pnpm run check と CI で確かめる。
 set -e
 pnpm run --silent typecheck
 pnpm run --silent lint --cache --cache-strategy content --cache-location node_modules/.cache/eslint/
 pnpm exec jscpd --baseline-from-ref HEAD --fail-on-new-clones --silent
 pnpm run --silent check:unused
-pnpm run --silent test
+# 改名は削除と追加に分け、-z で空白・日本語を含む名前も崩さずに渡す。パイプにしないのは、git diff の失敗を見逃さないため
+changed=$(mktemp)
+trap 'rm -f "$changed"' EXIT
+git diff --cached --name-only --no-renames -z > "$changed"
+pnpm run --silent test:related < "$changed"
