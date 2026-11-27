@@ -40,9 +40,10 @@
 
 | 用途 | 場所 |
 | - | - |
-| 学習UIの DOM を組み立てる | `platform/ui/dom.ts`（`h`・`fill`・`renderGuard`・`announce`） |
+| 学習UIの DOM を組み立てる | `platform/ui/dom.ts`（`h`・`fill`・`sentenceLines`・`renderGuard`・`announce`） |
 | 学習UIの部品（状態表示・確認ダイアログ・タブなど） | `platform/ui/components.ts` |
-| 教材アプリの DOM を組み立てる | `apps/shared/dom.ts`（`el`） |
+| 教材アプリの DOM を組み立てる | `apps/shared/dom.ts`（`el`・`sentenceLines`） |
+| 文を句点で区切る | `platform/contract`（`splitSentences`） |
 | 教材アプリの JSON 応答 | `apps/shared/http.ts`（`json`） |
 | seed から決まる乱数 | `apps/shared/random.ts`（`random`） |
 | 契約の型と検証 | `platform/contract`（`index.ts` から import する） |
@@ -56,6 +57,14 @@
 - 仕様や契約に書いていないことを推測で埋めない。決める前に確認する。
 - 関数やファイルの大きさ・複雑さ、名前の長さ、`enum` の禁止などの機械的な基準は `eslint.config.mjs` にあり、lint が止める。上限を超えたら分ける。
 - ファイルの先頭に役割を1行で書く。名前だけで意図が伝わらない公開関数・型には `/** */` で目的と注意点を日本語で書く。
+
+## 画面の文章
+
+画面に出す文章は、句点（。）ごとに行を改める。1 行に何文も続けない。
+
+- 学習UIでは、`h`・`fill` で `p`・`li`・`dd`・`figcaption`・`blockquote` に入れた文字列が、自動で句点ごとに改行される。文章はこれらの要素に入れる。`span` など別の要素に何文も入れるときは、子を `sentenceLines` に通す。`textContent` に何文も入れない。
+- 教材アプリの案内文は、`apps/shared/dom.ts` の `sentenceLines` に通す。利用者が書いたデータ（メモの本文など）には使わない。
+- 改行しないのは、丸かっこ（）の中の句点、閉じかっこ（」』）の直前の句点、見出し・ボタン・ラベルなどの短い表示、読み上げ用の通知。区切り方は `splitSentences` が決める。文言の側に改行文字を入れて調整しない。
 
 ## テスト
 

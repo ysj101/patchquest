@@ -2,7 +2,7 @@
 // 教材データは textContent で表示する。コメント本文だけは交換点 comment.render が描き、描画後の文字列を記録する
 import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
-import { el } from '../shared/dom';
+import { el, sentenceLines } from '../shared/dom';
 import type { PickNeighbors, PrepareTitleInput, RenderComment } from './hooks';
 import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
 
@@ -23,7 +23,7 @@ const alert = (message: string) => el('p', { className: 'error' }, message);
 async function header(root: HTMLElement, ctx: ViewContext): Promise<boolean> {
   root.append(el('p', { className: 'badge' }, '学習用の架空サービス'));
   if (!ctx.viewer) {
-    root.append(el('h1', {}, 'メモ帳'), el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
+    root.append(el('h1', {}, 'メモ帳'), el('p', { className: 'muted' }, ...sentenceLines('ログインしていません。演習画面で利用者を選んでください。')));
     return false;
   }
   const me = await ctx.request({ method: 'GET', path: '/api/me' });

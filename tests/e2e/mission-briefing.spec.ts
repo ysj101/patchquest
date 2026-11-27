@@ -22,8 +22,10 @@ test('初回の事件と依頼、フッターの注意書きと演習票を表�
   const frame = page.locator('.preview-slot iframe');
   await expect(frame).toHaveCount(1);
   const original = await frame.elementHandle();
-  const incident = await briefing(page).locator('.incident').innerText();
-  const goal = await briefing(page).locator('.briefing-goal').innerText();
+  // 文は句点ごとに行を改めて出るので、見た目の改行を含まない文字で比べる
+  const incident = await briefing(page).locator('.incident').textContent();
+  const goal = await briefing(page).locator('.briefing-goal').textContent();
+  if (!incident || !goal) throw new Error('導入に事件か依頼の文がありません');
   await expect(briefing(page)).not.toContainText('守るもの');
   await page.keyboard.press('Escape');
   await expectWorkbench(page);

@@ -5,7 +5,7 @@
 // 出力は textContent で表示し、端末のエスケープや HTML を解釈しない。キーボードだけで操作できる
 import type { AppResponse } from '../../platform/contract';
 import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
-import { el } from '../shared/dom';
+import { el, sentenceLines } from '../shared/dom';
 import { complete, completeName, nameDir, type Completion } from './completion';
 import { editorPanel } from './editor-view';
 import type { LineEdit } from './edits';
@@ -34,7 +34,7 @@ const KEY_GUIDE = ['↑↓ キーで前に入力したコマンドを呼び出�
 
 /** 端末の使い方と、それを開け閉めするボタン。閉じた状態で置き、困ったときだけ開く（開いている間は、そのぶん端末が縮む） */
 function helpPanel(guide: readonly string[]): HTMLElement[] {
-  const list = el('ul', { className: 'term-help', id: 'term-help', hidden: true }, ...[...guide, ...KEY_GUIDE].map((line) => el('li', {}, line)));
+  const list = el('ul', { className: 'term-help', id: 'term-help', hidden: true }, ...[...guide, ...KEY_GUIDE].map((line) => el('li', {}, ...sentenceLines(line))));
   const toggle = el('button', { type: 'button', className: 'link', ariaExpanded: 'false' }, '端末の使い方');
   toggle.setAttribute('aria-controls', list.id);
   toggle.addEventListener('click', () => {
@@ -255,7 +255,7 @@ const opened = { dataGeneration: -1, terminals: new Map<string, Terminal>() };
 export function terminalView(guide: readonly string[]): AppModule['render'] {
   return async (root, _route, ctx) => {
     const badge = el('p', { className: 'badge' }, BADGE);
-    if (!ctx.viewer) return void root.append(badge, el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
+    if (!ctx.viewer) return void root.append(badge, el('p', { className: 'muted' }, ...sentenceLines('ログインしていません。演習画面で利用者を選んでください。')));
     const res = await ctx.request({ method: 'GET', path: '/sh' });
     if (res.status !== 200) return void root.append(badge, el('p', { className: 'error' }, errorMessage(res)));
     if (opened.dataGeneration !== ctx.dataGeneration) {
