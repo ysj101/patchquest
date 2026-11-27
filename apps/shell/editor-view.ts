@@ -2,7 +2,7 @@
 // 本物のエディタと同じく、開いている間は端末の出力の代わりに表示する。
 // 内容は入力欄の値として扱い、HTML として解釈しない。キーボードだけで操作できる
 // （Tab で行を移り、Enter で下に行を足し、空の行で Backspace を押すとその行を消す。Ctrl+S で保存、Esc で閉じる）
-import { el } from '../shared/dom';
+import { el, sentenceLines } from '../shared/dom';
 import type { LineEdit } from './edits';
 import type { EditorFile } from './shell';
 
@@ -169,7 +169,7 @@ export function editorPanel(tool: string, file: EditorFile, actions: EditorActio
   const element = el(
     'section',
     { className: 'term-editor', ariaLabel: `${file.path} の編集` },
-    el('p', { className: 'term-note' }, `${tool}: ${file.path} を編集しています。${tool === VISUDO ? '行の先頭に # を付けると、その行は設定として読まれなくなります（コメント）。' : ''}`),
+    el('p', { className: 'term-note' }, ...sentenceLines(`${tool}: ${file.path} を編集しています。${tool === VISUDO ? '行の先頭に # を付けると、その行は設定として読まれなくなります（コメント）。' : ''}`)),
     el('p', { className: 'term-note' }, '行の右の ＋（または Enter）で下に行を足し、×（または空にした行で Backspace）でその行を消します。'),
     list,
     el('div', { className: 'term-edit-actions' }, saveButton, cancelButton, first),

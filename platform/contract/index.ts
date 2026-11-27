@@ -8,6 +8,7 @@ export * from './validate';
 export * from './version';
 export * from './hash';
 export * from './inline-code';
+export * from './sentences';
 export * from './security-status';
 export * from './attempt-progress';
 export * from './challenge';

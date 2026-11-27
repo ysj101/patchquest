@@ -1,10 +1,11 @@
 // 擬似シェルの画面（ターミナル）。隔離 iframe の中で動き、コマンド行を 1 行ずつ ctx.request（Host 経由）で送る。
 // エディタを開くコマンド（visudo・sudoedit）では、入力欄の代わりに編集画面を出し、保存するときに同じコマンド行へ書き換えた行を付けて送る。
 // 利用者の表示を切り替えて戻ったときは、その利用者の端末（出力・入力の履歴）をそのまま出し直す。
+// 端末の使い方は、最初から出力に並べず、札の横の「端末の使い方」を開いたときだけ見せる。
 // 出力は textContent で表示し、端末のエスケープや HTML を解釈しない。キーボードだけで操作できる
 import type { AppResponse } from '../../platform/contract';
 import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
-import { el } from '../shared/dom';
+import { el, sentenceLines } from '../shared/dom';
 import { complete, completeName, nameDir, type Completion } from './completion';
 import { editorPanel } from './editor-view';
 import type { LineEdit } from './edits';
@@ -28,6 +29,20 @@ interface CommandResult {
 }
 
 const BADGE = '学習用の架空サーバ（ターミナル）';
+/** 端末の画面そのものの使い方（どのアプリでも同じ）。アプリごとの案内のあとに並べる */
+const KEY_GUIDE = ['↑↓ キーで前に入力したコマンドを呼び出せます。', 'Tab キーでコマンド名とファイル名を補完できます。'];
+
+/** 端末の使い方と、それを開け閉めするボタン。閉じた状態で置き、困ったときだけ開く（開いている間は、そのぶん端末が縮む） */
+function helpPanel(guide: readonly string[]): HTMLElement[] {
+  const list = el('ul', { className: 'term-help', id: 'term-help', hidden: true }, ...[...guide, ...KEY_GUIDE].map((line) => el('li', {}, ...sentenceLines(line))));
+  const toggle = el('button', { type: 'button', className: 'link', ariaExpanded: 'false' }, '端末の使い方');
+  toggle.setAttribute('aria-controls', list.id);
+  toggle.addEventListener('click', () => {
+    list.hidden = !list.hidden;
+    toggle.ariaExpanded = String(!list.hidden);
+  });
+  return [toggle, list];
+}
 
 function errorMessage(res: AppResponse): string {
   const body = res.body as { error?: unknown } | null;
@@ -59,8 +74,8 @@ class Terminal {
   private readonly input = el('input', { className: 'term-input', ariaLabel: 'コマンド', autocomplete: 'off', autocapitalize: 'off', spellcheck: false });
   private readonly entry = el('label', { className: 'term-entry' }, this.prompt, this.input);
   private readonly box = el('div', { className: 'terminal' }, this.output, this.entry);
-  /** 端末と、その上の札。プレビューの枠の高さいっぱいに広げる */
-  readonly element = el('div', { className: 'term-screen' }, el('p', { className: 'badge' }, BADGE), this.box);
+  /** 端末と、その上の札・端末の使い方。プレビューの枠の高さいっぱいに広げる */
+  readonly element: HTMLElement;
   private readonly history = lineHistory(this.input);
   private cwd: string;
   /**
@@ -70,7 +85,8 @@ class Terminal {
    */
   private mode: 'prompt' | 'running' | 'editing' = 'prompt';
 
-  constructor(private ctx: ViewContext, private readonly session: Session, guide: string) {
+  constructor(private ctx: ViewContext, private readonly session: Session, guide: readonly string[]) {
+    this.element = el('div', { className: 'term-screen' }, el('div', { className: 'term-head' }, el('p', { className: 'badge' }, BADGE), ...helpPanel(guide)), this.box);
     this.cwd = session.cwd;
     // sandbox ではフォーム送信が禁止されているため、submit ではなく Enter キーで送る
     this.input.addEventListener('keydown', (event) => this.onKey(event));
@@ -79,7 +95,6 @@ class Terminal {
       if (this.mode === 'prompt' && window.getSelection()?.isCollapsed !== false) this.input.focus();
     });
     this.prompt.textContent = this.promptText();
-    this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。`);
   }
 
   /**
@@ -236,11 +251,11 @@ function editorTool(line: string): string {
  */
 const opened = { dataGeneration: -1, terminals: new Map<string, Terminal>() };
 
-/** 端末の画面を作る。guide は、端末を開いたときに最初に出す案内のうち、アプリごとに違う部分（使えるコマンドの調べ方など） */
-export function terminalView(guide: string): AppModule['render'] {
+/** 端末の画面を作る。guide は、「端末の使い方」に並べる案内のうち、アプリごとに違う部分（使えるコマンドの調べ方など）。1 文ずつ渡す */
+export function terminalView(guide: readonly string[]): AppModule['render'] {
   return async (root, _route, ctx) => {
     const badge = el('p', { className: 'badge' }, BADGE);
-    if (!ctx.viewer) return void root.append(badge, el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
+    if (!ctx.viewer) return void root.append(badge, el('p', { className: 'muted' }, ...sentenceLines('ログインしていません。演習画面で利用者を選んでください。')));
     const res = await ctx.request({ method: 'GET', path: '/sh' });
     if (res.status !== 200) return void root.append(badge, el('p', { className: 'error' }, errorMessage(res)));
     if (opened.dataGeneration !== ctx.dataGeneration) {

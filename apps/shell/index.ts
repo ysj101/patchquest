@@ -23,7 +23,7 @@ export const shellApp: AppModule = {
   implementations: BASELINE,
   tests: SHELL_TESTS,
   handle,
-  render: terminalView('help と入力すると、使えるコマンドを表示します。'),
+  render: terminalView(['help と入力すると、使えるコマンドを表示します。']),
   describeEvent,
   eventLabels: Object.values(EVENT_LABELS),
   describeRequest,

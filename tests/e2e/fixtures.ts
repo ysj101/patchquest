@@ -76,6 +76,14 @@ export async function readApproachCards(region: Locator): Promise<{ title: strin
   }
 }
 
+/** 端末の札の横の「端末の使い方」を開き、並んだ案内（1 文ずつ）を返す。開くまでは、案内は見えない */
+export async function openTerminalHelp(page: Page) {
+  const lines = preview(page).locator('.term-help li');
+  await expect(lines.first()).toBeHidden();
+  await preview(page).getByRole('button', { name: '端末の使い方' }).click();
+  return lines;
+}
+
 /** 端末にコマンド行を入力して Enter で送る。前のコマンドの応答が返るまで入力欄は使えないので、続けて呼べる */
 export async function typeCommand(page: Page, line: string): Promise<void> {
   await terminalInput(page).fill(line);
