@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 test('端末でコマンドを実行でき、未実装のコマンドや対応していない書き方は理由を示して断る', async ({ page }) => {
   // 最初の案内は、使えるコマンドを調べる help を勧める
-  await expect(terminalOutput(page).locator('.term-note')).toHaveText('help と入力すると、使えるコマンドを表示します。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。');
+  await expect(terminalOutput(page).locator('.term-note')).toHaveText('help と入力すると、使えるコマンドを表示します。\n↑↓ キーで前に入力したコマンドを呼び出せます。\nTab キーでコマンド名とファイル名を補完できます。');
   await type(page, 'whoami');
   await expect(terminalOutput(page).locator('.term-out')).toHaveText(/^[a-z]+$/);
   await type(page, 'cd /etc');

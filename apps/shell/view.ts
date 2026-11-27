@@ -2,9 +2,9 @@
 // エディタを開くコマンド（visudo・sudoedit）では、入力欄の代わりに編集画面を出し、保存するときに同じコマンド行へ書き換えた行を付けて送る。
 // 利用者の表示を切り替えて戻ったときは、その利用者の端末（出力・入力の履歴）をそのまま出し直す。
 // 出力は textContent で表示し、端末のエスケープや HTML を解釈しない。キーボードだけで操作できる
-import type { AppResponse } from '../../platform/contract';
+import { splitSentences, type AppResponse } from '../../platform/contract';
 import type { AppModule, ViewContext } from '../../runtimes/browser/app-module';
-import { el } from '../shared/dom';
+import { el, sentenceLines } from '../shared/dom';
 import { complete, completeName, nameDir, type Completion } from './completion';
 import { editorPanel } from './editor-view';
 import type { LineEdit } from './edits';
@@ -79,7 +79,7 @@ class Terminal {
       if (this.mode === 'prompt' && window.getSelection()?.isCollapsed !== false) this.input.focus();
     });
     this.prompt.textContent = this.promptText();
-    this.print('term-note', `${guide}↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。`);
+    this.print('term-note', splitSentences(`${guide}↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。`).join('\n'));
   }
 
   /**
@@ -240,7 +240,7 @@ const opened = { dataGeneration: -1, terminals: new Map<string, Terminal>() };
 export function terminalView(guide: string): AppModule['render'] {
   return async (root, _route, ctx) => {
     const badge = el('p', { className: 'badge' }, BADGE);
-    if (!ctx.viewer) return void root.append(badge, el('p', { className: 'muted' }, 'ログインしていません。演習画面で利用者を選んでください。'));
+    if (!ctx.viewer) return void root.append(badge, el('p', { className: 'muted' }, ...sentenceLines('ログインしていません。演習画面で利用者を選んでください。')));
     const res = await ctx.request({ method: 'GET', path: '/sh' });
     if (res.status !== 200) return void root.append(badge, el('p', { className: 'error' }, errorMessage(res)));
     if (opened.dataGeneration !== ctx.dataGeneration) {

@@ -9,7 +9,8 @@ const CORRECT_CHOICES: Record<string, string> = {
   'deploy-defense': '利用者アカウントの管理の許可だけを外し、サービスの再起動の許可は残す',
 };
 
-const GUIDE = 'help と入力すると、よく使うコマンドを表示します。ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。vi や less のように画面全体を使うプログラムは動きません。↑↓ キーで前に入力したコマンドを呼び出せます。Tab キーでコマンド名とファイル名を補完できます。';
+// 端末の案内は、句点ごとに行を改めて出る
+const GUIDE = 'help と入力すると、よく使うコマンドを表示します。\nls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。\nvi や less のように画面全体を使うプログラムは動きません。\n↑↓ キーで前に入力したコマンドを呼び出せます。\nTab キーでコマンド名とファイル名を補完できます。';
 /** 管理者の端末で、運用担当向けの設定の行を visudo でコメントにして保存する */
 const disableLines = (page: Page, ...lines: number[]) => commentOutWithVisudo(page, '/etc/sudoers.d/operators', lines);
 
