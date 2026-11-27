@@ -1,6 +1,6 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { backToList, blockIndexedDb, enterWorkbench, expect, launchButton, preflightHeading, settingsButton, tabTo, test, openHome, openMissions } from './fixtures';
+import { backToList, blockIndexedDb, enterAndReproduce, enterWorkbench, expect, launchButton, preflightHeading, settingsButton, tabTo, test, openHome, openMissions } from './fixtures';
 
 const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
@@ -154,15 +154,22 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
 test('進捗を保存し、続きから始め、書き出し・読み込み・削除ができる', async ({ page }) => {
   await card(page, 'test-pack').getByRole('button', { name: 'この課題を始める' }).click();
   await enterWorkbench(page);
-  const ticket = await page.locator('.ticket-id').textContent();
+  // 始めただけ（達成印が 3 つとも未）の記録では、ボタンは「この課題を始める」のまま
   await backToList(page).click();
-  await expect(card(page, 'test-pack').getByRole('button', { name: '続きから始める' })).toBeVisible();
   await expect(card(page, 'test-pack').getByRole('list', { name: 'スタンプ' })).toContainText('再現：未達成');
+  await expect(card(page, 'test-pack').locator('.mission-actions').getByRole('button')).toHaveText(['この課題を始める']);
+
+  // 達成印が 1 つ付くと「続きから始める」と「最初から始める」になる
+  await card(page, 'test-pack').getByRole('button', { name: 'この課題を始める' }).click();
+  const ticket = await enterAndReproduce(page);
+  await backToList(page).click();
+  await expect(card(page, 'test-pack').getByRole('list', { name: 'スタンプ' })).toContainText('再現：達成');
+  await expect(card(page, 'test-pack').locator('.mission-actions').getByRole('button')).toHaveText(['続きから始める', '最初から始める']);
 
   // 続きから始めると、同じ演習票（同じ seed）で環境を作り直す
   await card(page, 'test-pack').getByRole('button', { name: '続きから始める' }).click();
   await enterWorkbench(page);
-  await expect(page.locator('.ticket-id')).toHaveText(ticket!);
+  await expect(page.locator('.ticket-id')).toHaveText(ticket);
   await backToList(page).click();
 
   // 課題一覧に進捗の区画はなく、見出しの移動にも「進捗」はない
@@ -178,7 +185,7 @@ test('進捗を保存し、続きから始め、書き出し・読み込み・�
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^patchquest-progress-\d{4}-\d{2}-\d{2}\.json$/);
   const exported = JSON.parse(await (await file.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8')));
-  expect(exported).toMatchObject({ format: 'patchquest-progress', attempts: [expect.objectContaining({ missionId: 'test-pack' })] });
+  expect(exported).toMatchObject({ format: 'patchquest-progress', attempts: expect.arrayContaining([expect.objectContaining({ missionId: 'test-pack' })]) });
 
   // 不正なファイルは拒否し、今の進捗を残す
   await dialog.locator('input[type=file]').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"format":"other"}') });

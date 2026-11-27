@@ -18,6 +18,7 @@ import { describersFor } from './investigation';
 import { GuidePanel } from './guide';
 import { missionList } from './mission-list';
 import { missionEntries } from './mission-entries';
+import { resumeTarget } from './mission-table';
 import { recordsPage } from './records';
 import { siteNav } from './site-nav';
 import { progressActions } from './progress-actions';
@@ -190,14 +191,14 @@ export async function startApp(root: HTMLElement): Promise<void> {
     settle(recordsView, 'records', message);
   }
 
-  /** URL が指す画面を開く。課題は、続きから始められる記録があれば続きから、なければ最初から始める。開けない URL は、理由を添えて課題一覧を出す */
+  /** URL が指す画面を開く。課題は、途中で続きから始められる記録があれば続きから、なければ最初から始める。開けない URL は、理由を添えて課題一覧を出す */
   async function openRoute(route: Route | null): Promise<void> {
     if (route?.page === 'list') return showList();
     if (route?.page === 'records') return showRecords();
     const records = await saved.then(() => store.list());
     const entry = missionEntries(records).find(({ pack }) => pack.manifest.id === route?.missionId);
     if (!route || !entry) return showList(undefined, route ? `URL の課題「${route.missionId}」は見つかりませんでした。課題一覧から選んでください。` : 'この URL は開けませんでした。課題一覧から選んでください。');
-    return begin(route.missionId, entry.resumable ? entry.latest : undefined);
+    return begin(route.missionId, resumeTarget(entry));
   }
 
   async function begin(packId: string, resume?: AttemptRecord): Promise<void> {

@@ -201,17 +201,20 @@ export async function openMissions(page: Page): Promise<void> {
   await expect(pageHeading(page, 'PatchQuest')).toBeVisible();
 }
 
+/** 一覧のカードで、新しい演習を始めるボタン。達成印が 3 つとも未なら「この課題を始める」、途中なら「最初から始める」、3 つとも済なら「もう一度解く」 */
+export const START_BUTTON = /この課題を始める|最初から始める|もう一度解く/;
+
 /** 課題一覧のカードから新規・再挑戦・再開を選び、開始前チェックを終えて演習画面を開く。記録ページにいれば一覧へ戻ってから選ぶ */
 export async function openMission(page: Page, missionId: string, options: { resume?: boolean } = {}): Promise<void> {
   await openMissions(page);
-  const name = options.resume ? '続きから始める' : /この課題を始める|最初から始める/;
+  const name = options.resume ? '続きから始める' : START_BUTTON;
   await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name }).click();
   await beginExercise(page);
 }
 
 /** 本物の Linux を動かす課題を、一覧のカードから始める。準備の間は長く待つことを先に伝え、合格するとボタンを押さずに演習画面へ進む */
 export async function beginMachineMission(page: Page, missionId: string): Promise<void> {
-  await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name: /この課題を始める|最初から始める/ }).click();
+  await page.locator(`[data-mission="${missionId}"]`).getByRole('button', { name: START_BUTTON }).click();
   await expect(page.locator('[data-anchor="preflight"]')).toContainText('30 秒程度かかります。');
   await beginExercise(page);
 }
@@ -354,4 +357,14 @@ export async function reproduceNoteLeak(page: Page): Promise<void> {
   await page.getByLabel('ノート ID').fill(String(id));
   await page.getByRole('button', { name: '送る', exact: true }).click();
   await expect(ticketSeals(page)).toContainText('再現：達成');
+}
+
+/** test-pack の作業台に入り、再現の印を付けて、演習票を返す。一覧で「続きから始める」が出るのは、達成印が 1 つ付いてから */
+export async function enterAndReproduce(page: Page): Promise<string> {
+  await enterWorkbench(page);
+  const ticket = await page.locator('.ticket-id').textContent();
+  if (!ticket) throw new Error('演習票がありません');
+  await page.getByRole('tab', { name: '調査' }).click();
+  await reproduceNoteLeak(page);
+  return ticket;
 }

@@ -52,7 +52,9 @@ test('IDOR の導入から調査・再現・対策・理解確認まで五段階
 
 test('到達記録は再開・再読み込み・別環境への取り込みで保ち、最初から始めると導入を表示して段階は最初に戻る', async ({ page, browser }) => {
   await startMission(page, 'idor');
-  await apply(page);
+  // 続きから始められるのは、達成印が 1 つ付いてから。防御の印を付けておく
+  await verifyWith(page, '取り出すときに、ログイン中の利用者が持ち主かを確かめる');
+  await expect(ticketSeals(page)).toContainText('防御：達成');
   await count(page, 2);
   await expect(stages(page).locator('li').nth(1)).toHaveAttribute('aria-current', 'step');
   const before = await stages(page).allTextContents();

@@ -28,7 +28,7 @@ test('ヒントなしで完走すると五つの実績を日時付きで表示�
   for (const name of ['初めて防御', 'ヒントなしで防御', 'ふだんの使い方を壊さず防御', '一度のテストで防御']) {
     await expect(toast(page)).toContainText(`実績解除：${name}`);
   }
-  await answerTransferCheck(page, TEST_PACK_ANSWERS);
+  // 理解の確認は最後に答える（達成印が 3 つそろうと、一覧から続きを開けなくなる）
   await back(page);
   await expect(section(page)).toContainText('称号：修理担当（実績 5 / 6）');
   for (const id of ['first-reproduction', 'first-defense', 'no-hint-defense', 'clean-repair', 'first-try']) {
@@ -44,6 +44,7 @@ test('ヒントなしで完走すると五つの実績を日時付きで表示�
   await expect(toast(page)).toBeEmpty();
   await defended(page);
   await expect(toast(page)).toBeEmpty();
+  await answerTransferCheck(page, TEST_PACK_ANSWERS);
   await back(page);
   if (!at) throw new Error('解除日時がありません');
   await expect(item(page, 'clean-repair').locator('time')).toHaveText(at);

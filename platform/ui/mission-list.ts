@@ -3,7 +3,7 @@
 // XP・復習・週間目標の保存値は残すが、このページには出さない。
 import type { AttemptRecord } from '../contract';
 import { settingsButton } from './components';
-import { missionTable, nextEntry, type MissionEntry } from './mission-table';
+import { missionTable, nextEntry, resumeTarget, type MissionEntry } from './mission-table';
 import type { MasterySummary } from '../progress/mastery';
 import { h } from './dom';
 import { storageWarningBanner } from './progress-feedback';
@@ -30,8 +30,8 @@ function nextAction(entries: MissionEntry[], actions: MissionListActions): HTMLE
     return h('button', { type: 'button', class: 'button button-primary button-big', on: { click: () => actions.start(tutorial.pack.manifest.id) } }, label);
   }
   const next = nextEntry(entries);
-  const record = next?.latest;
-  if (!next || !record || !next.resumable) return null;
+  const record = next && resumeTarget(next);
+  if (!next || !record) return null;
   const name = next.pack.manifest.vulnerability?.name ?? next.pack.manifest.title;
   return h('button', { type: 'button', class: 'button button-primary button-big', on: { click: () => actions.resume(record) } }, `続きから：${name}`);
 }

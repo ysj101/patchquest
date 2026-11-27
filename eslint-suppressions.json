@@ -491,9 +491,6 @@
     }
   },
   "tests/e2e/ui-shell.spec.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
     },

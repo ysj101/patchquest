@@ -1,6 +1,6 @@
 // 課題へ直接入る URL（#/missions/<課題ID>）と、アドレス欄・戻る・進むが画面と揃うことを確かめる
 import type { Page } from '@playwright/test';
-import { enterWorkbench, expect, openHome, openRecords, test } from './fixtures';
+import { enterAndReproduce, enterWorkbench, expect, openHome, openRecords, test } from './fixtures';
 
 const heading = (page: Page, name: string) => page.getByRole('heading', { level: 1, name, exact: true });
 const testPack = (page: Page) => page.locator('[data-mission="test-pack"]');
@@ -14,9 +14,8 @@ test('課題の URL を開くと、その課題が始まる', async ({ page }) =
 
 test('途中の記録がある課題の URL を開くと、続きから始まる', async ({ page }) => {
   await page.goto('/#/missions/test-pack');
-  await enterWorkbench(page);
-  const ticket = await page.locator('.ticket-id').textContent();
-  if (!ticket) throw new Error('演習票がありません');
+  // 途中になるのは、達成印が 1 つ付いてから
+  const ticket = await enterAndReproduce(page);
   // 記録の保存は一覧へ戻るときに待つので、一覧を経てから読み込み直す
   await page.getByRole('button', { name: 'PatchQuest（課題一覧へ戻る）' }).click();
   await expect(testPack(page).getByRole('button', { name: '続きから始める' })).toBeVisible();
