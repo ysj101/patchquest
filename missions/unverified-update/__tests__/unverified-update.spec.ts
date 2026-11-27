@@ -2,7 +2,7 @@
 // 更新を書き換えると値が変わること、書き換えた更新が root の権限で動くことを再現する。確かめるだけでやめない直し方は不合格、
 // 取り込みそのものを止めると正常系の失敗で不合格（A05）、動かす前に sha256sum -c で確かめてやめる行を入れると合格する（A04）
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, resetToInitial, rewriteWithSudoedit, terminalEditor, terminalInput, terminalOutput, test, testRepair, ticketSeals as seals, typeCommand, verifyResults } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, resetToInitial, rewriteWithSudoedit, terminalEditor, terminalInput, terminalOutput, test, testRepair, ticketSeals as seals, typeCommand, verifyResults } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'install-script-cause': '途中で書き換えられたスクリプトでも、気づかないまま root の権限で動かしてしまう',
@@ -34,8 +34,8 @@ test('ハッシュを計算して見くらべ、書き換えた更新を再現�
   const card = page.locator('[data-mission="unverified-update"]');
   await expect(card.getByRole('heading', { name: '更新を、確かめてから取り込む' })).toBeVisible();
   await expect(card).toContainText('確かめない更新');
-  await card.getByRole('button', { name: /この課題を始める|最初から始める/ }).click();
-  await expect(page.locator('.exercise')).toBeVisible({ timeout: 60_000 });
+  // 準備の間は、ほかの課題より長く待つことを先に伝える
+  await beginMachineMission(page, 'unverified-update');
   await enterWorkbench(page);
   await expect(terminalInput(page)).toBeVisible();
 

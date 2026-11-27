@@ -1,6 +1,6 @@
 // 学習UI：アプリシェル・ミッション一覧・開始前チェック（Issue #11）
 import type { Page } from '@playwright/test';
-import { backToList, blockIndexedDb, enterWorkbench, expect, launchButton, settingsButton, tabTo, test, openHome, openMissions } from './fixtures';
+import { backToList, blockIndexedDb, enterWorkbench, expect, launchButton, preflightHeading, settingsButton, tabTo, test, openHome, openMissions } from './fixtures';
 
 const card = (page: Page, id: string) => page.locator(`[data-mission="${id}"]`);
 
@@ -119,14 +119,19 @@ test('課題は練習を先頭に難易度順に並び、難易度と進捗を�
 test('キーボードだけで課題一覧から始めると、開始前チェックに合格したところでそのまま導入へ進む', async ({ page }) => {
   await tabTo(page, 'この課題を始める');
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeVisible();
-  // 確かめたことはふだん畳んである
-  await expect(page.locator('.preflight-details summary')).toContainText('確かめたこと');
+  // 見出しは課題名。長く待つ課題ではないので、待ち時間の案内は出さない
+  await expect(preflightHeading(page)).toBeVisible();
+  await expect(preflightHeading(page)).not.toHaveText('');
+  await expect(page.locator('[data-anchor="preflight"]')).toContainText('準備しています…');
+  await expect(page.locator('[data-anchor="preflight"]')).not.toContainText('秒程度かかります');
+  // 準備の内容はふだん畳んである
+  await expect(page.locator('.preflight-details summary')).toHaveText('準備の内容');
+  await expect(page.locator('.preflight-details')).not.toHaveAttribute('open', '');
 
   // 合格すると、ボタンを押さずに導入へ進み、「ミッション開始」にフォーカスが移る
   await expect(launchButton(page)).toBeFocused({ timeout: 15_000 });
   await expect(page.locator('.check .status-passed')).toHaveCount(4);
-  await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeHidden();
+  await expect(preflightHeading(page)).toBeHidden();
   await page.keyboard.press('Enter');
   await expect(page.locator('#exercise-title')).toBeFocused();
   await expect(page.locator('footer .fictional-label')).toContainText('学習用に、わざとセキュリティホールを入れた架空のサービスです。');
@@ -139,7 +144,7 @@ test('攻撃が成立しない課題は開始できず、理由と次の操作�
   await expect(alert).toContainText('開始できません（あなたの不合格には数えません）', { timeout: 15_000 });
   await expect(alert).toContainText('注入後に攻撃が成立しませんでした');
   await expect(page.locator('.check').filter({ hasText: 'セキュリティホールを入れると' }).locator('.status')).toHaveText(/不合格/);
-  await page.getByRole('button', { name: 'もう一度チェックする' }).click();
+  await page.getByRole('button', { name: 'もう一度試す' }).click();
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
   await backToList(page).click();
   await expect(page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true })).toBeVisible();

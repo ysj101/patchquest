@@ -23,8 +23,11 @@ export type Capability = (typeof CAPABILITIES)[number];
  */
 export const MACHINE_TIME_SCALE = 4;
 
+/** 必要機能に、本物の Linux を動かす演習用の機械（linux-vm）が入っているか。入っている課題は、準備と検証に時間がかかる */
+export const usesMachine = (capabilities: readonly Capability[]): boolean => capabilities.includes('linux-vm');
+
 /** 必要機能から決まる、検証の時間の上限の倍率 */
-export const timeScaleFor = (capabilities: readonly Capability[]): number => (capabilities.includes('linux-vm') ? MACHINE_TIME_SCALE : 1);
+export const timeScaleFor = (capabilities: readonly Capability[]): number => (usesMachine(capabilities) ? MACHINE_TIME_SCALE : 1);
 
 /** server は Worker 内の教材ロジック、view は隔離 iframe 内の表示で実行される */
 export type HookRealm = 'server' | 'view';

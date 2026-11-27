@@ -2,7 +2,7 @@
 // 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。調べるのも直すのも、
 // ターミナルにコマンドを打って行う（visudo の編集画面で行をコメントにする）
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, startMission, terminalInput, terminalOutput, test, testRepair as verify, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, startMission, terminalInput, terminalOutput, test, testRepair as verify, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'backup-cause': 'バックアップに必要な分をこえて、すべてのコマンドが許可されている',
@@ -22,9 +22,7 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await expect(card).toContainText('過剰な sudo 権限');
   // 開始前チェックの間は、ほかの課題より長く待つことを先に伝える
   const started = Date.now();
-  await card.getByRole('button', { name: /この課題を始める|最初から始める/ }).click();
-  await expect(page.locator('[data-anchor="preflight"]')).toContainText('この課題は、ブラウザの中で本物の Linux を動かします。準備に 10〜30 秒ほどかかります。');
-  await expect(page.locator('.exercise')).toBeVisible({ timeout: 60_000 });
+  await beginMachineMission(page, 'sudo-misconfig');
   // 所要時間を記録に残す（Issue #171。CI のログで見る）
   console.log(`sudo-misconfig の開始前チェック：${((Date.now() - started) / 1000).toFixed(1)} 秒`);
   await enterWorkbench(page);
@@ -146,7 +144,7 @@ test('調査タブの先頭に、sudo の仕組みと最初に打つコマンド
   await expect(terminalOutput(page)).toContainText('# 運用担当に sudo で許可する操作');
 });
 
-test('機械の配布物を一度読めなくても、止まった理由が示され、「もう一度チェックする」で始められる', MACHINE, async ({ page }) => {
+test('機械の配布物を一度読めなくても、止まった理由が示され、「もう一度試す」で始められる', MACHINE, async ({ page }) => {
   test.setTimeout(180_000);
   // 最初の 1 回だけ、機械の状態の取得を失敗させる（配信の入れ替え中や、通信が一瞬切れたとき）
   await page.route('**/linux.state.zst', (route) => route.fulfill({ status: 404, body: '' }), { times: 1 });
@@ -157,6 +155,6 @@ test('機械の配布物を一度読めなくても、止まった理由が示�
   // 題名を並べるのではなく、理由を 1 つにまとめて示す
   await expect(preflight.getByRole('alert')).not.toContainText('ログインした利用者として端末を使える');
 
-  await preflight.getByRole('button', { name: 'もう一度チェックする' }).click();
+  await preflight.getByRole('button', { name: 'もう一度試す' }).click();
   await expect(page.locator('.exercise')).toBeVisible({ timeout: 90_000 });
 });

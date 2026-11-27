@@ -1,6 +1,6 @@
 // ヘッダーの PatchQuest ロゴから課題一覧へ戻る（#123）
 import type { Page } from '@playwright/test';
-import { enterWorkbench, expect, openHome, openRecords, tabTo, test } from './fixtures';
+import { enterWorkbench, expect, openHome, openRecords, preflightHeading, tabTo, test } from './fixtures';
 
 const logo = (page: Page) => page.getByRole('button', { name: 'PatchQuest（課題一覧へ戻る）' });
 const missionHeading = (page: Page) => page.getByRole('heading', { level: 1, name: 'PatchQuest', exact: true });
@@ -60,7 +60,7 @@ test('演習画面・準備画面・記録ページからロゴで課題一覧�
 
   // 点検の途中でも、ロゴで一覧へ戻れる
   await testPack(page).getByRole('button', { name: 'この課題を始める' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeVisible();
+  await expect(preflightHeading(page)).toHaveText('検証用パック');
   await logo(page).click();
   await expect(missionHeading(page)).toBeFocused();
 
@@ -95,7 +95,7 @@ test('ロゴはキーボードで操作でき、フォーカスが見える', as
   await expectListKept(page);
 
   await testPack(page).getByRole('button', { name: 'この課題を始める' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: '開始前チェック' })).toBeVisible();
+  await expect(preflightHeading(page)).toHaveText('検証用パック');
   await tabToLogo(page);
   await page.keyboard.press('Space');
   await expect(missionHeading(page)).toBeFocused();

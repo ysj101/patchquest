@@ -90,7 +90,7 @@ EnterIfReady(id) ==
        ELSE UNCHANGED <<screen, entered, error>>
   /\ UNCHANGED <<attempt, check, aborting>>
 
-\* 開始不可のあと、もう一度チェックする（開始前チェックの画面のボタン）
+\* 開始不可のあと、もう一度試す（開始前チェックの画面のボタン）
 Retry ==
   /\ screen = "preflight" /\ check = "blocked"
   /\ check' = "running"
