@@ -19,7 +19,7 @@ test('途中の記録がある課題の URL を開くと、続きから始まる
   if (!ticket) throw new Error('演習票がありません');
   // 記録の保存は一覧へ戻るときに待つので、一覧を経てから読み込み直す
   await page.getByRole('button', { name: 'PatchQuest（課題一覧へ戻る）' }).click();
-  await expect(testPack(page)).toHaveAttribute('data-progress', 'doing');
+  await expect(testPack(page).getByRole('button', { name: '続きから始める' })).toBeVisible();
 
   await page.goto('/#/missions/test-pack');
   await page.reload();

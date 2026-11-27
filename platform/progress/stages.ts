@@ -39,6 +39,9 @@ export function sealStates(attempt: AttemptRecord | undefined, defenseCurrent: b
   };
 }
 
+/** 記録どおりの達成印。課題一覧のように、いまの構成を持たない場所で使う（防御も、記録にあれば「済」） */
+export const recordedSeals = (attempt: AttemptRecord | undefined): Record<BadgeKind, SealState> => sealStates(attempt, true);
+
 /** 達成印の最後の時刻。時刻のない達成印しかなければ演習の作成時刻に遡る */
 export function achievedAt(attempt: AttemptRecord): string {
   const times = Object.values(attempt.badges).flatMap((badge) => badge.at ?? []).sort();

@@ -1,8 +1,8 @@
 // 課題の表（spec §9, §10）。練習課題を先頭に、課題を難易度順（同じ難易度ではカタログの順）に並べ、
-// 各行に脆弱性名・題名・難易度・進捗（未着手／途中／完了と達成印）・目安・開始を置く。順番は見せ方だけで、どの課題もロックしない
+// 各行に脆弱性名・題名・難易度・進捗（記録どおりの達成印）・目安・開始を置く。順番は見せ方だけで、どの課題もロックしない
 import { DIFFICULTIES, type AttemptRecord, type MissionPack, type VulnerabilityDef } from '../contract';
-import { STAGES, allBadgesAchieved, sealStates, stageStates } from '../progress/stages';
-import { seals, status, type StatusKind } from './components';
+import { allBadgesAchieved, recordedSeals } from '../progress/stages';
+import { seals } from './components';
 import { h } from './dom';
 import { DIFFICULTY_LABEL } from './labels';
 import type { MasterySummary } from '../progress/mastery';
@@ -14,8 +14,6 @@ export interface MissionEntry {
   pack: MissionPack;
   /** この課題の直近の記録 */
   latest?: AttemptRecord;
-  /** 直近の記録の防御が、現在の構成で確認済みか */
-  defenseCurrent: boolean;
   /** 続きから始められるか（教材の版が記録と同じ） */
   resumable: boolean;
   /** 再現・防御・理解がそろった記録があるか。完了した行の習熟度に使う */
@@ -70,21 +68,6 @@ function infoFor(manifest: MissionPack['manifest'], vulnerability: Vulnerability
   );
 }
 
-/** 未着手・途中・完了を、ステージの到達数（直近の記録）から導く。記録がなければ未着手 */
-type RowProgress = 'todo' | 'doing' | 'done';
-const PROGRESS_LABEL: Record<RowProgress, { kind: StatusKind; text: string }> = {
-  todo: { kind: 'idle', text: '未着手' },
-  doing: { kind: 'running', text: '途中' },
-  done: { kind: 'passed', text: '完了' },
-};
-
-function progressOf(entry: MissionEntry): RowProgress {
-  const stages = entry.latest ? stageStates(entry.latest, entry.defenseCurrent) : [];
-  const done = stages.filter((stage) => stage.state === 'done').length;
-  if (done === 0) return 'todo';
-  return done === STAGES.length ? 'done' : 'doing';
-}
-
 function buttons(entry: MissionEntry, actions: MissionActions): HTMLElement[] {
   const { manifest } = entry.pack;
   const { latest } = entry;
@@ -116,12 +99,10 @@ function difficultyLabel(entry: MissionEntry): HTMLElement {
 
 function row(entry: MissionEntry, actions: MissionActions, mastery: MasterySummary): HTMLElement {
   const { manifest } = entry.pack;
-  const progress = progressOf(entry);
-  const label = PROGRESS_LABEL[progress];
   const titleId = `mission-${manifest.id}`;
   return h(
     'li',
-    { class: 'mission-row', 'data-mission': manifest.id, 'data-progress': progress },
+    { class: 'mission-row', 'data-mission': manifest.id },
     h(
       'article',
       { class: 'mission-card', 'aria-labelledby': titleId },
@@ -132,7 +113,8 @@ function row(entry: MissionEntry, actions: MissionActions, mastery: MasterySumma
         details(entry, mastery),
       ),
       h('p', { class: 'mission-difficulty' }, difficultyLabel(entry)),
-      h('div', { class: 'mission-progress' }, status(label.kind, label.text), progress === 'todo' ? null : seals(sealStates(entry.latest, entry.defenseCurrent), 'small')),
+      // 進捗は達成印だけで示す。未着手の行にも「未」の印を出し、どの行も同じ形にする
+      h('div', { class: 'mission-progress' }, seals(recordedSeals(entry.latest), 'small')),
       h('p', { class: 'meta mission-time' }, `目安 ${manifest.estimatedMinutes} 分`),
       h('div', { class: 'actions mission-actions' }, ...buttons(entry, actions)),
     ),

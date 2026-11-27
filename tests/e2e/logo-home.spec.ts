@@ -71,7 +71,6 @@ test('演習画面・準備画面・記録ページからロゴで課題一覧�
   if (!ticket) throw new Error('演習票がありません');
   await logo(page).click();
   await expect(missionHeading(page)).toBeFocused();
-  await expect(testPack(page)).toHaveAttribute('data-progress', 'doing');
   await testPack(page).getByRole('button', { name: '続きから始める' }).click();
   await enterWorkbench(page);
   await expect(page.locator('.ticket-id')).toHaveText(ticket);

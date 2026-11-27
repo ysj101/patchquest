@@ -67,8 +67,14 @@ test('「まずは練習」から、操作ガイドに沿って最後まで進�
   // 練習を終えたら、一覧の「まずは練習」は出さない
   await expect(guide(page)).toBeHidden();
   await expect(page.getByRole('button', { name: /まずは練習/ })).toHaveCount(0);
-  await expect(page.locator('[data-mission="onboarding"] .mission-progress')).toContainText('完了');
-  await expect(page.locator('[data-mission="onboarding"]').getByRole('list', { name: 'スタンプ' })).toContainText('理解：達成');
+  const stamps = page.locator('[data-mission="onboarding"]').getByRole('list', { name: 'スタンプ' });
+  await expect(stamps).toContainText('防御：達成');
+  await expect(stamps).toContainText('理解：達成');
+  // ページを開き直しても、一覧の印は記録どおり「達成」のまま（「再」に戻らない）
+  await page.reload();
+  await expect(stamps).toContainText('再現：達成');
+  await expect(stamps).toContainText('防御：達成');
+  await expect(stamps).toContainText('理解：達成');
 });
 
 test('調査で送ったメモが、プレビューの最初の画面に出る', async ({ page }) => {
