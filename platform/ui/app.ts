@@ -165,7 +165,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     fill(
       listView,
       notice ? h('p', { class: 'banner banner-error', role: 'alert' }, notice) : null,
-      missionList(missionEntries(records, orchestrator.snapshot), {
+      missionList(missionEntries(records), {
         openSettings,
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
@@ -195,7 +195,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (route?.page === 'list') return showList();
     if (route?.page === 'records') return showRecords();
     const records = await saved.then(() => store.list());
-    const entry = missionEntries(records, orchestrator.snapshot).find(({ pack }) => pack.manifest.id === route?.missionId);
+    const entry = missionEntries(records).find(({ pack }) => pack.manifest.id === route?.missionId);
     if (!route || !entry) return showList(undefined, route ? `URL の課題「${route.missionId}」は見つかりませんでした。課題一覧から選んでください。` : 'この URL は開けませんでした。課題一覧から選んでください。');
     return begin(route.missionId, entry.resumable ? entry.latest : undefined);
   }
