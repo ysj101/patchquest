@@ -1,6 +1,6 @@
 // 擬似シェル（ターミナル）と、操作で直す課題の学習UI。端末で調べて再現し、visudo で設定を書き換えた操作が記録され、検証の前に再生されることを確かめる
 import type { Page } from '@playwright/test';
-import { commentOutWithVisudo, currentStage, expect, loginToTerminal as loginAs, preview, resetToInitial, startMission, terminalEditor as editor, terminalInput as commandInput, terminalOutput, test, ticketSeals as seals, typeCommand as type, verifyResults } from './fixtures';
+import { commentOutWithVisudo, currentStage, expect, loginToTerminal as loginAs, openTerminalHelp, preview, resetToInitial, startMission, terminalEditor as editor, terminalInput as commandInput, terminalOutput, test, ticketSeals as seals, typeCommand as type, verifyResults } from './fixtures';
 
 const OPERATORS = '/etc/sudoers.d/operators';
 const repairPanel = (page: Page) => page.getByRole('tabpanel', { name: '対策' });
@@ -14,8 +14,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('端末でコマンドを実行でき、未実装のコマンドや対応していない書き方は理由を示して断る', async ({ page }) => {
-  // 最初の案内は、使えるコマンドを調べる help を勧める
-  await expect(terminalOutput(page).locator('.term-note')).toHaveText('help と入力すると、使えるコマンドを表示します。\n↑↓ キーで前に入力したコマンドを呼び出せます。\nTab キーでコマンド名とファイル名を補完できます。');
+  // 端末の使い方は、最初は出さない。「端末の使い方」を開くと、使えるコマンドを調べる help を勧める
+  await expect(terminalOutput(page)).toBeEmpty();
+  await expect(await openTerminalHelp(page)).toHaveText(['help と入力すると、使えるコマンドを表示します。', '↑↓ キーで前に入力したコマンドを呼び出せます。', 'Tab キーでコマンド名とファイル名を補完できます。']);
   await type(page, 'whoami');
   await expect(terminalOutput(page).locator('.term-out')).toHaveText(/^[a-z]+$/);
   await type(page, 'cd /etc');
@@ -252,7 +253,7 @@ test('利用者を切り替えて戻ると、その利用者の端末の出力�
 
   // 別の利用者の端末は、その利用者のもの。運用担当の出力は混ざらない
   await loginAs(page, 'admin');
-  await expect(terminalOutput(page).locator('pre')).toHaveCount(1);
+  await expect(terminalOutput(page).locator('pre')).toHaveCount(0);
   await type(page, 'whoami');
   await expect(terminalOutput(page).locator('.term-out')).toHaveText(/^[a-z]+$/);
   const adminLines = await terminalOutput(page).locator('pre').allInnerTexts();
@@ -274,9 +275,9 @@ test('利用者を切り替えて戻ると、その利用者の端末の出力�
   // 最初の状態に戻すと、機械も戻るので、どの利用者の端末も開いたばかりの状態になる
   await page.getByRole('tab', { name: '対策' }).click();
   await resetToInitial(page);
-  await expect(terminalOutput(page).locator('pre')).toHaveCount(1);
+  await expect(terminalOutput(page).locator('pre')).toHaveCount(0);
   await loginAs(page, 'operator');
-  await expect(terminalOutput(page).locator('pre')).toHaveCount(1);
+  await expect(terminalOutput(page).locator('pre')).toHaveCount(0);
   await expect(preview(page).locator('.term-prompt')).not.toHaveText(/:\/etc\$$/);
 });
 
@@ -359,5 +360,5 @@ test('絞りすぎるとふだんの使い方の失敗で合格せず、最初�
 
   await resetToInitial(page);
   await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
-  await expect(terminalOutput(page).locator('pre')).toHaveCount(1);
+  await expect(terminalOutput(page).locator('pre')).toHaveCount(0);
 });

@@ -2,15 +2,14 @@
 // 再現し、絞りすぎると正常系の失敗で不合格（A05）、保守の操作の許可だけを外すと合格する（A04）。調べるのも直すのも、
 // ターミナルにコマンドを打って行う（visudo の編集画面で行をコメントにする）
 import type { Page } from '@playwright/test';
-import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, repairPanel, startMission, terminalInput, terminalOutput, test, testRepair as verify, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
+import { MACHINE, answerTransferCheck, beginMachineMission, commentOutWithVisudo, enterWorkbench, expect, expectBrokenNormalThenReset, expectDefended, loginToTerminal, openHome, openTerminalHelp, repairPanel, startMission, terminalInput, terminalOutput, test, testRepair as verify, ticketSeals as seals, typeCommand, verifyResults as results } from '../../../tests/e2e/fixtures';
 
 const CORRECT_CHOICES: Record<string, string> = {
   'backup-cause': 'バックアップに必要な分をこえて、すべてのコマンドが許可されている',
   'deploy-defense': '利用者アカウントの管理の許可だけを外し、サービスの再起動の許可は残す',
 };
 
-// 端末の案内は、句点ごとに行を改めて出る
-const GUIDE = 'help と入力すると、よく使うコマンドを表示します。\nls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。\nvi や less のように画面全体を使うプログラムは動きません。\n↑↓ キーで前に入力したコマンドを呼び出せます。\nTab キーでコマンド名とファイル名を補完できます。';
+const GUIDE = ['help と入力すると、よく使うコマンドを表示します。', 'ls・cat・grep などのコマンドやパイプ（|）もそのまま使えます。', 'vi や less のように画面全体を使うプログラムは動きません。', '↑↓ キーで前に入力したコマンドを呼び出せます。', 'Tab キーでコマンド名とファイル名を補完できます。'];
 /** 管理者の端末で、運用担当向けの設定の行を visudo でコメントにして保存する */
 const disableLines = (page: Page, ...lines: number[]) => commentOutWithVisudo(page, '/etc/sudoers.d/operators', lines);
 
@@ -29,8 +28,8 @@ test('ターミナルで過剰な許可を見つけて再現し、絞りすぎ�
   await enterWorkbench(page);
   await expect(terminalInput(page)).toBeVisible();
 
-  // 最初の案内は、本物の Linux で通じる内容。案内どおりに help と打つと、調べるのに使うコマンドが分かる
-  await expect(terminalOutput(page).locator('.term-note')).toHaveText(GUIDE);
+  // 「端末の使い方」を開くと出る案内は、本物の Linux で通じる内容。案内どおりに help と打つと、調べるのに使うコマンドが分かる
+  await expect(await openTerminalHelp(page)).toHaveText(GUIDE);
   await typeCommand(page, 'help');
   await expect(terminalOutput(page)).toContainText('sudo -l     sudo で実行できる操作の一覧');
   // Tab キーで、機械にあるコマンドの名前を補完できる（パイプの後ろも）
