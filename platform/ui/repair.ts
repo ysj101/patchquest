@@ -7,7 +7,7 @@ import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
 import { securityComparison } from './security-comparison';
 import { verdictKind, whyDefenseFailed } from './verdict';
 import { approachNodes, expectedActual, radioOption, status } from './components';
-import { fill, h, renderGuard } from './dom';
+import { fill, h, renderGuard, sentenceLines } from './dom';
 import { headingWithInfo } from './info-popover';
 import { describersOf, type DescribingApp } from './investigation';
 import { GROUP_LABEL, STALE_VERIFICATION, VERDICT_REASON, VERDICT_SUCCESS, VERDICT_TITLE } from './labels';
@@ -154,13 +154,13 @@ export class RepairPanel {
     if (manifest.repairGuide) fill(this.guide, ...approachNodes('repair-guide-title', '操作のしかた', manifest.repairGuide));
     fill(this.choice, ...(this.record ? recordSection(this.record, this.changes) : this.choiceNodes()));
     const undone = this.record ? `${this.record.noun}を消し` : '使った対策を外し';
-    this.resetNote.textContent = `${undone}、データも最初の状態に戻します。スタンプは残ります。`;
+    fill(this.resetNote, `${undone}、データも最初の状態に戻します。スタンプは残ります。`);
     fill(
       this.choices,
       ...this.defenses.map((defense) =>
         radioOption(
           { name: 'defense', value: defense.id, checked: defense.id === this.selected, className: 'defense-option', onChange: () => void this.choose(defense.id) },
-          h('span', { class: 'defense-text' }, h('strong', {}, defense.label), h('span', { class: 'note' }, defense.description)),
+          h('span', { class: 'defense-text' }, h('strong', {}, defense.label), h('span', { class: 'note' }, ...sentenceLines([defense.description]))),
         ),
       ),
     );
