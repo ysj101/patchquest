@@ -336,7 +336,22 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .worked-example summary { cursor: pointer; display: grid; gap: 4px; }
 .worked-example summary h3 { display: inline; }
 .worked-example[open] summary { margin-bottom: 6px; }
-.worked-example-steps, .approach-steps { padding-left: 1.4em; display: grid; gap: 6px; }
+.worked-example-steps { padding-left: 1.4em; display: grid; gap: 6px; }
+/* 調べ方・操作のしかた。カードを 1 枚ずつ出す（approach-deck.ts） */
+.approach-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.approach-count { color: var(--muted); font-size: 0.87rem; font-variant-numeric: tabular-nums; }
+.approach-head .button { margin-left: auto; min-height: 32px; padding-block: 2px; }
+.approach-cards, .approach-commands, .approach-flow { list-style: none; margin: 0; padding: 0; }
+.approach-card { display: grid; gap: 8px; }
+.approach-card h4 { font-size: 1rem; }
+.approach-commands { display: grid; gap: 4px; }
+.approach-commands .inline-code { display: block; padding: 6px 10px; overflow-wrap: anywhere; }
+.approach-note { color: var(--muted); font-size: 0.87rem; border-left: 3px solid var(--line); padding-left: 10px; }
+.approach-actions { justify-content: space-between; }
+.approach-flow { display: grid; counter-reset: approach-card; }
+.approach-flow .button { width: 100%; text-align: left; color: var(--ink); font-weight: 400; }
+.approach-flow .button::before { counter-increment: approach-card; content: counter(approach-card) '　'; color: var(--muted); }
+.approach-flow .button[aria-current] { background: var(--sunken); font-weight: 700; }
 .incident { border-left: 3px solid var(--warn); padding-left: 12px; }
 
 /* 利用者の切り替え */

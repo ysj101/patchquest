@@ -16,16 +16,23 @@ export interface PackVerificationData {
   answerTerms?: string[];
 }
 
-/** 常に表示する説明（調べ方・操作のしかた）の文。パスは契約の検証と同じ書き方にする */
+/** 調べ方・操作のしかたのカードの文（見出し・コマンド・見るところ・記号の意味）。出していないカードの文も含める。パスは契約の検証と同じ書き方にする */
 function guideTexts(manifest: MissionManifest): [string, string][] {
-  return (['approach', 'repairGuide'] as const).flatMap((key) => {
-    const guide = manifest[key];
-    return guide ? [[`${key}.intro`, guide.intro], ...guide.steps.map((step, i): [string, string] => [`${key}.steps[${i}]`, step])] : [];
-  });
+  return (['approach', 'repairGuide'] as const).flatMap((key) =>
+    (manifest[key]?.cards ?? []).flatMap((card, i): [string, string][] => {
+      const at = `${key}.cards[${i}]`;
+      return [
+        [`${at}.title`, card.title],
+        ...(card.commands ?? []).map((command, j): [string, string] => [`${at}.commands[${j}]`, command]),
+        [`${at}.observe`, card.observe],
+        ...(card.note === undefined ? [] : [[`${at}.note`, card.note] satisfies [string, string]]),
+      ];
+    }),
+  );
 }
 
 /**
- * 常に表示する説明に、答えが書かれていないかを確かめ、問題を理由付きで返す。説明を持たないパックは何も返さない。
+ * 調べ方・操作のしかたに、答えが書かれていないかを確かめ、問題を理由付きで返す。説明を持たないパックは何も返さない。
  * 答えを示す語がない・答えと関係のない語がある・説明に答えの語がある、のどれも問題として返す
  */
 export function guideAnswerProblems(manifest: MissionManifest, answerTerms: string[] | undefined): string[] {

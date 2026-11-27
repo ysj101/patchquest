@@ -148,34 +148,48 @@ describe('validatePack', () => {
     expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`story.workedExample.${path}:`)]);
   });
 
-  it('調べ方は省略でき、説明と手順が非空なら受け付ける', () => {
+  it('調べ方は省略でき、カードが 1 枚以上あれば受け付ける（コマンドと記号の意味は省ける）', () => {
     const pack = samplePack();
     expect(pack.manifest.approach).toBeUndefined();
     expect(validatePack(pack, { app })).toEqual([]);
-    pack.manifest.approach = { intro: '前提の仕組み', steps: ['最初に打つコマンド', '比べるもの'] };
+    pack.manifest.approach = { cards: [{ title: '運用メモを読む', commands: ['cat runbook.txt'], observe: '置き場を探す', note: '`cat` は中身を表示する' }, { title: '見くらべる', observe: '比べるもの' }] };
     expect(validatePack(pack, { app })).toEqual([]);
   });
 
   it.each([
-    ['intro', { intro: ' ', steps: ['手順'] }],
-    ['steps', { intro: '前提の仕組み', steps: [] }],
-    ['steps[0]', { intro: '前提の仕組み', steps: [''] }],
+    ['cards', { cards: [] }],
+    ['cards[0].title', { cards: [{ title: ' ', observe: '見るところ' }] }],
+    ['cards[0].observe', { cards: [{ title: '見出し', observe: '' }] }],
+    ['cards[1].note', { cards: [{ title: '見出し', observe: '見るところ' }, { title: '見出し', observe: '見るところ', note: '' }] }],
+    ['cards[0].commands', { cards: [{ title: '見出し', commands: [], observe: '見るところ' }] }],
+    ['cards[0].commands[1]', { cards: [{ title: '見出し', commands: ['ls', ''], observe: '見るところ' }] }],
   ])('調べ方の %s が空なら拒否する', (path, approach) => {
     const pack = samplePack();
     pack.manifest.approach = approach;
     expect(validatePack(pack, { app })).toEqual([expect.stringContaining(`approach.${path}:`)]);
   });
 
-  it('調べ方の説明と手順は、バッククォートで囲んだコードを含めても受け付ける', () => {
+  it.each([
+    ['title', { title: 'あ'.repeat(31), observe: '見るところ' }, '30 文字以内で書いてください（いまは 31 文字）'],
+    ['observe', { title: '見出し', observe: 'あ'.repeat(121) }, '120 文字以内で書いてください（いまは 121 文字）'],
+    ['note', { title: '見出し', observe: '見るところ', note: 'あ'.repeat(101) }, '100 文字以内で書いてください（いまは 101 文字）'],
+    ['commands', { title: '見出し', commands: ['a', 'b', 'c', 'd'], observe: '見るところ' }, '3 件以内にしてください（カードを分ける）'],
+  ])('調べ方のカードの %s が上限をこえたら拒否する', (key, card, message) => {
     const pack = samplePack();
-    pack.manifest.approach = { intro: '`sudo` は権限を切り替える', steps: ['`sudo -l` で一覧を見る', '囲まない手順'] };
+    pack.manifest.approach = { cards: [card] };
+    expect(validatePack(pack, { app })).toEqual([`approach.cards[0].${key}: ${message}`]);
+  });
+
+  it('上限ちょうどのカードは受け付ける', () => {
+    const pack = samplePack();
+    pack.manifest.approach = { cards: [{ title: 'あ'.repeat(30), commands: ['a', 'b', 'c'], observe: 'あ'.repeat(120), note: 'あ'.repeat(100) }] };
     expect(validatePack(pack, { app })).toEqual([]);
   });
 
   it.each([
-    ['intro', { intro: '`sudo は閉じていない', steps: ['手順'] }],
-    ['steps[1]', { intro: '前提の仕組み', steps: ['手順', '空の `` がある'] }],
-    ['steps[0]', { intro: '前提の仕組み', steps: ['空白だけの ` ` がある'] }],
+    ['cards[0].observe', { cards: [{ title: '見出し', observe: '`sudo は閉じていない' }] }],
+    ['cards[1].note', { cards: [{ title: '見出し', observe: '見るところ' }, { title: '見出し', observe: '見るところ', note: '空の `` がある' }] }],
+    ['cards[0].note', { cards: [{ title: '見出し', observe: '見るところ', note: '空白だけの ` ` がある' }] }],
   ])('調べ方の %s のコードの囲みが閉じていないか空なら拒否する', (path, approach) => {
     const pack = samplePack();
     pack.manifest.approach = approach;
@@ -185,10 +199,10 @@ describe('validatePack', () => {
   it('操作のしかたは省略でき、調べ方と同じ形で検証する', () => {
     const pack = samplePack();
     expect(pack.manifest.repairGuide).toBeUndefined();
-    pack.manifest.repairGuide = { intro: '`visudo` で編集する', steps: ['保存して閉じる'] };
+    pack.manifest.repairGuide = { cards: [{ title: '`visudo` で開く', observe: '保存して閉じる' }] };
     expect(validatePack(pack, { app })).toEqual([]);
-    pack.manifest.repairGuide = { intro: '', steps: ['`閉じていない'] };
-    expect(validatePack(pack, { app })).toEqual([expect.stringContaining('repairGuide.intro:'), expect.stringContaining('repairGuide.steps[0]: コードは')]);
+    pack.manifest.repairGuide = { cards: [{ title: '', observe: '`閉じていない' }] };
+    expect(validatePack(pack, { app })).toEqual([expect.stringContaining('repairGuide.cards[0].title:'), expect.stringContaining('repairGuide.cards[0].observe: コードは')]);
     Object.assign(pack.manifest, { repairGuide: '手順' });
     expect(validatePack(pack, { app })).toContain('repairGuide: オブジェクトが必要です');
   });

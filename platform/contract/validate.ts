@@ -1,5 +1,6 @@
 // 課題パックの検証。演習の開始前（事前検証）とテストで実行し、作者の記述ミスを開始前に止める
 import {
+  APPROACH_CARD_LIMITS,
   DEFENSE_EXPECTATIONS,
   DIFF_LANGUAGES,
   FIELD_INPUTS,
@@ -286,11 +287,24 @@ function checkVulnerability(checker: Checker, value: unknown): void {
   checker.oneOf('vulnerability.category', vulnerability.category, VULNERABILITY_CATEGORIES);
 }
 
-/** 調べ方・操作のしかた。説明と手順が非空で、コードの囲みに書き誤りがないこと */
+/** 調べ方・操作のしかた。カードが 1 枚以上あり、どのカードも上限に収まり、コードの囲みに書き誤りがないこと */
 function checkApproach(checker: Checker, path: string, value: unknown): void {
-  const approach = checker.obj(path, value);
-  checkInlineCode(checker, `${path}.intro`, checker.text(`${path}.intro`, approach.intro));
-  checker.texts(`${path}.steps`, approach.steps, true).forEach((step, i) => checkInlineCode(checker, `${path}.steps[${i}]`, step));
+  checker.list(`${path}.cards`, checker.obj(path, value).cards, true).forEach((raw, i) => {
+    const at = `${path}.cards[${i}]`;
+    const card = checker.obj(at, raw);
+    /** 空でなく、上限の文字数に収まる文 */
+    const limited = (key: 'title' | 'observe' | 'note'): string => {
+      const text = checker.text(`${at}.${key}`, card[key]);
+      if (text.length > APPROACH_CARD_LIMITS[key]) checker.fail(`${at}.${key}`, `${APPROACH_CARD_LIMITS[key]} 文字以内で書いてください（いまは ${text.length} 文字）`);
+      return text;
+    };
+    limited('title');
+    checkInlineCode(checker, `${at}.observe`, limited('observe'));
+    if (card.note !== undefined) checkInlineCode(checker, `${at}.note`, limited('note'));
+    if (card.commands === undefined) return;
+    const commands = checker.texts(`${at}.commands`, card.commands, true);
+    if (commands.length > APPROACH_CARD_LIMITS.commands) checker.fail(`${at}.commands`, `${APPROACH_CARD_LIMITS.commands} 件以内にしてください（カードを分ける）`);
+  });
 }
 
 /** `…` で囲んだコードの書き誤り（閉じていない・中身が空）を止める */
