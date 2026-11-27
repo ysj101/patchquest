@@ -4,7 +4,7 @@ trap 'printf "%s\n%s\n" "$?" "$PWD" >&3' EXIT
 # visudo と sudoedit が開くエディタ。画面を持つエディタ（vi）は、この端末では入力を受け取れない
 export EDITOR=/usr/lib/pq/editor VISUAL=/usr/lib/pq/editor SUDO_EDITOR=/usr/lib/pq/editor
 # シェルの組み込みの help は、組み込みコマンドの名前を並べるだけで、調べるのに使うコマンド（cat や sudo）が出てこない。
-# 端末の最初の案内が help を勧めているので、この端末でよく使うコマンドの案内に差し替える
+# 「端末の使い方」が help を勧めているので、この端末でよく使うコマンドの案内に差し替える
 help() { cat /usr/lib/pq/help; }
 # 画面を持つエディタ（vi）は、この端末では入力を受け取れず、画面を描く制御文字だけを出して終わる。
 # 対話的なプログラムには対応しないので（Issue #172）、使えないことと、代わりの方法を伝える

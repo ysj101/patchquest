@@ -75,7 +75,10 @@
       /* 擬似シェルのターミナル */
       /* 端末は、プレビューの枠の高さいっぱいに広げる（32px は body の上下の余白）。出力の欄が伸び縮みし、入力欄は下の端に付く */
       .term-screen { display: flex; flex-direction: column; height: calc(100vh - 32px); min-height: 300px; }
-      .term-screen .badge { flex: none; align-self: flex-start; }
+      /* 札と「端末の使い方」。使い方を開くと、そのぶん端末が縮む */
+      .term-head { flex: none; display: flex; flex-wrap: wrap; gap: 0 12px; align-items: baseline; }
+      .term-head button.link { font-size: 0.85rem; margin: 0 0 8px; }
+      .term-help { flex: 1 1 100%; margin: 0 0 8px; padding-left: 1.4em; font-size: 0.85rem; }
       /* 編集画面は、行が多くて枠に収まらないときに、枠ごと縦に送れるようにする（保存のボタンまで届く） */
       .term-screen.term-editing { height: auto; min-height: calc(100vh - 32px); }
       .terminal { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; border-radius: 8px; background: #14171c; color: #e6e9ef; font-family: ui-monospace, 'SF Mono', 'Menlo', 'Consolas', 'BIZ UDGothic', monospace; font-size: 0.9rem; }
