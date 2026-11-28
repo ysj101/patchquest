@@ -16,6 +16,7 @@ import {
   type Memo,
   type User,
 } from './model';
+import { changeName } from './profile';
 
 const UNAUTHENTICATED = json(401, { error: 'ログインが必要です' });
 
@@ -123,6 +124,7 @@ export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
   if (resource === 'me' && idSegment === undefined && req.method === 'GET') {
     return user ? json(200, { user: { id: user.id, key: user.key, name: user.name } }) : UNAUTHENTICATED;
   }
+  if (resource === 'me' && idSegment === undefined && req.method === 'PUT') return user ? changeName(ctx, req, user) : UNAUTHENTICATED;
   if (resource === 'pages' || resource === 'search') {
     if (!user) return UNAUTHENTICATED;
     if (resource === 'search' && idSegment === undefined && req.method === 'GET') return search(ctx, query, user);

@@ -7,6 +7,7 @@
   "packageManager": "pnpm@11.28.2",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:pcre2": "node scripts/build-pcre2.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",

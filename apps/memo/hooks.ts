@@ -2,6 +2,7 @@
 import type { HookDescriptor, ImplementationRegistry } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
 import { TITLE_MAX_LENGTH, emitDecision, findMemo, lengthError, type Memo, type User } from './model';
+import { NAME_PATTERN, validateNameWith } from './profile';
 
 export type ReadResult = { status: 'ok'; memo: Memo } | { status: 'unauthenticated' | 'not-found' | 'forbidden' };
 
@@ -75,6 +76,13 @@ export const HOOKS: HookDescriptor[] = [
     baseline: 'memo/neighbors-own',
     description: 'メモの詳細画面の「前のメモ」「次のメモ」の移動先を決める処理',
   },
+  {
+    id: 'profile.name.validate',
+    realm: 'server',
+    contract: 1,
+    baseline: 'memo/name-pattern',
+    description: '変更する表示名の入力チェック（使える文字と並び）',
+  },
 ];
 
 /**
@@ -141,4 +149,5 @@ export const BASELINE: ImplementationRegistry = {
   'memo/title-max-length': { hook: 'memo.title.validate', run: titleMaxLength },
   'memo/title-input-max-length': { hook: 'memo.title.input', run: titleInputMaxLength },
   'memo/neighbors-own': { hook: 'memo.detail.neighbors', run: neighborsOwn },
+  'memo/name-pattern': { hook: 'profile.name.validate', run: validateNameWith(NAME_PATTERN) },
 };

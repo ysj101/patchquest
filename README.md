@@ -107,6 +107,7 @@ E2E と出荷前検証は、マージ後の CI で確かめます（手元で通
 | apps/shell/ | 教材アプリ「擬似シェル」と「Linux 端末」（`linux/`。本物の Linux を WASM のエミュレータで動かす）、交換フック（ターミナルで設定を調べて直す課題の土台） |
 | missions/ | 課題パック。開発用の固有テストと検証データは各パックの `__tests__/` |
 | catalog/ | 同梱パックの登録 |
+| vendor/ | リポジトリに入れてある、ビルド済みの同梱物（正規表現エンジン PCRE2。[docs/pcre2-wasm.md](docs/pcre2-wasm.md)） |
 | tests/ | 共通のユニットテスト（tests/unit）と E2E テスト（tests/e2e）、テスト用の部品（tests/support） |
 | scripts/ | ビルドと検査のスクリプト、効果の検証の集計（`pnpm run metrics`。[docs/evaluation-metrics.md](docs/evaluation-metrics.md)） |
 
@@ -116,6 +117,7 @@ E2E と出荷前検証は、マージ後の CI で確かめます（手元で通
 | - | - | - |
 | SQLite（`@sqlite.org/sqlite-wasm` に同梱） | 教材アプリのデータベース（配布物に同梱） | パブリックドメイン |
 | `@sqlite.org/sqlite-wasm` | SQLite の WebAssembly 版ラッパー（配布物に同梱） | Apache License 2.0 |
+| PCRE2 10.49（公式のソースから WebAssembly にビルドしたもの。`vendor/pcre2/`） | 教材アプリの入力チェックの正規表現エンジン（配布物に同梱） | BSD-3-Clause WITH PCRE2-exception |
 | v86 | 演習用の機械（x86 のエミュレータ。配布物に同梱） | BSD-2-Clause |
 | SeaBIOS rel-1.16.2 と、その VGA BIOS（v86 のリポジトリにあるビルド済みのもの） | 演習用の機械の BIOS（配布物に同梱） | LGPL-3.0 |
 | Linux カーネル 6.18.64（Alpine Linux の `linux-virt`） | 演習用の機械の中身（起動を済ませた状態として配布物に同梱。以下同じ） | GPL-2.0 |
@@ -129,6 +131,8 @@ E2E と出荷前検証は、マージ後の CI で確かめます（手元で通
 | eslint-plugin-sonarjs | 開発時の静的検査（配布物には含まない） | LGPL-3.0 |
 
 演習用の機械に入っているソフトウェアの一覧は、実物（最小構成のパッケージのデータベースと、足したパッケージの情報）と照合してあります（`scripts/machine-licenses.mjs`。`tests/unit/machine-licenses.test.ts` が、版を上げたときの食い違いを止めます）。配布物には、この一覧・ソースコードの入手先・ライセンスの全文を `assets/linux-machine.LEGAL.txt` として同梱します。
+
+正規表現エンジン PCRE2 は、公式のソースから自分でビルドしたものを同梱します（[docs/pcre2-wasm.md](docs/pcre2-wasm.md)）。配布物には、版・ソースコードの入手先・ライセンスの全文を `assets/pcre2.LEGAL.txt` として同梱します。
 
 GPL・LGPL・MPL のソフトウェアに対応するソースコード（上流のソースと、Alpine Linux のビルド定義）は、このリポジトリのリリース [machine-sources-1](https://github.com/ysj101/patchquest/releases/tag/machine-sources-1) に、バイナリと一緒に置いてあります。
 

@@ -6,7 +6,7 @@ import { readMachineAsset } from './machine-assets';
 
 export class EngineRuntime implements RuntimeAdapter {
   readonly id = 'engine';
-  readonly capabilities = ['sqlite', 'linux-vm'] as const;
+  readonly capabilities = ['sqlite', 'linux-vm', 'pcre2'] as const;
   private readonly engine = new AppEngine(readMachineAsset);
 
   prepare(options: PrepareOptions): Promise<FixtureData> {

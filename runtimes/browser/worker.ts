@@ -5,10 +5,10 @@ import { lockdown } from './lockdown';
 import type { AssetLoader } from './machine';
 import type { WorkerEnvelope, WorkerReply, WorkerRequest, WorkerResult } from './protocol';
 
-/** 演習用の機械の配布物は、この Worker と同じディレクトリにある。通信を塞ぐ前（最初の準備の中）で取得する */
+/** 演習用の機械と正規表現エンジンの配布物は、この Worker と同じディレクトリにある。通信を塞ぐ前（最初の準備の中）で取得する */
 const fetchAsset: AssetLoader = async (name) => {
   const response = await fetch(new URL(name, import.meta.url));
-  if (!response.ok) throw new RuntimeError('crashed', `演習用の機械の配布物 ${name} を読めません（${response.status}）`);
+  if (!response.ok) throw new RuntimeError('crashed', `配布物 ${name} を読めません（${response.status}）`);
   return response.arrayBuffer();
 };
 
@@ -18,7 +18,7 @@ async function handle(request: WorkerRequest): Promise<WorkerResult> {
   switch (request.op) {
     case 'prepare': {
       const fixture = await engine.prepare(request.options);
-      // SQLite WASM と（使うアプリでは）演習用の機械の読み込みを終えたので、以降は通信・保存の API を使えなくする
+      // SQLite WASM と（使うアプリでは）演習用の機械・正規表現エンジンの読み込みを終えたので、以降は通信・保存の API を使えなくする
       lockdown();
       return fixture;
     }

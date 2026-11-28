@@ -33,6 +33,7 @@ export const VULNERABILITY_CATEGORY_LABEL: Record<VulnerabilityCategory, string>
   'output-encoding': '画面への表示',
   'data-access': 'データの取り出し',
   misconfiguration: '設定',
+  'input-validation': '入力のチェック',
 };
 
 /** 分類の一言説明。初めての人が分類名だけで意味を取れないときの手がかり */
@@ -41,6 +42,7 @@ export const VULNERABILITY_CATEGORY_NOTE: Record<VulnerabilityCategory, string> 
   'output-encoding': '受け取った文字を画面に出すときの扱いの問題',
   'data-access': 'データベースへの問い合わせの組み立て方の問題',
   misconfiguration: '権限や公開範囲の設定が、必要以上に広くなっている問題',
+  'input-validation': '受け取った入力を確かめる処理が、細工した入力に耐えられない問題',
 };
 
 /** CWE が何かの説明。略語を初回の説明なしに出さないために、CWE の番号には必ず添える */
