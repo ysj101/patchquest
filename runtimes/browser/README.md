@@ -6,9 +6,11 @@
 | - | - |
 | `adapter.ts` | Host 側の `BrowserRuntimeAdapter`。Worker とプレビューを持ち、呼び出しに attemptId・runId を付けて照合する。タイムアウト時は Worker を破棄する |
 | `worker.ts` | 教材ロジックを動かす Worker の入口。Host からの呼び出しを `engine.ts` へ渡し、初期化後に `lockdown.ts` で外への手段を塞ぐ |
-| `engine.ts` | 教材ロジックと SQLite（メモリ DB）を動かす本体（`AppEngine`）。セッションは演習ハーネスの `session` 呼び出しでだけ発行する。Worker に依存しないので Node のテストでも使う |
+| `engine.ts` | 教材ロジックと SQLite（メモリ DB）・XML のパーサー（libxml2）を動かす本体（`AppEngine`）。セッションは演習ハーネスの `session` 呼び出しでだけ発行する。Worker に依存しないので Node のテストでも使う |
 | `machine.ts` | 演習用の機械（v86 で動かす本物の Linux）の起動と、シリアル回線越しのやり取り |
 | `sqlite.ts` | SQLite（wasm）のメモリ DB を開く |
+| `libxml2.ts` | XML のパーサー libxml2（wasm。`libxml2-wasm`）を読み込む。外部の資源は、呼び出し側が渡す読み手（メモリ内のファイル）からだけ渡し、求められた資源と渡したバイト数を記録する |
+| `xml.ts` | XML の解析の形（オプションの定数・結果・読み手）。libxml2 そのものは読み込まないので、教材アプリと課題パックから使える |
 | `protocol.ts` | Host・Worker・プレビューの間で交わすメッセージの型 |
 | `preview/` | 教材アプリの画面を動かす隔離 iframe（`sandbox="allow-scripts"`）。CSP は自身のスクリプトと `pqMarker()` だけをハッシュで許可する |
 | `preview-host.ts` | プレビューとのメッセージを送信元ウィンドウ・スキーマ・runId で照合する |

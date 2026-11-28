@@ -17,11 +17,14 @@ import type {
 } from '../../platform/contract';
 import type { Machine } from './machine';
 import type { Database } from './sqlite';
+import type { XmlParser } from './xml';
 
 export type HookFunction = (...args: never[]) => unknown;
 
 export interface ServerContext {
   db: Database;
+  /** XML のパーサー（libxml2）。外部の資源は、呼び出し側が渡す読み手からだけ読む */
+  xml: XmlParser;
   /** セッションから解決した利用者。未ログインや不明なセッションは null。リクエストの値からは決まらない */
   principal: ActorKey | null;
   /** フックの現在の実装 */

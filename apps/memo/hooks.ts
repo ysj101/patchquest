@@ -1,6 +1,7 @@
 // メモアプリが公開する交換点（フック）と、その安全な基準実装
 import type { HookDescriptor, ImplementationRegistry } from '../../platform/contract';
 import type { ServerContext } from '../../runtimes/browser/app-module';
+import { XmlParseOption, type XmlParseResult } from '../../runtimes/browser/xml';
 import { TITLE_MAX_LENGTH, emitDecision, findMemo, lengthError, type Memo, type User } from './model';
 
 export type ReadResult = { status: 'ok'; memo: Memo } | { status: 'unauthenticated' | 'not-found' | 'forbidden' };
@@ -31,6 +32,15 @@ export type PrepareTitleInput = (input: HTMLInputElement) => void;
  * ownIds は閲覧者自身のメモの ID。画面のリンクを決めるだけで、取得してよいかの判断（認可）はしない。契約 1
  */
 export type PickNeighbors = (input: { id: number; ownIds: number[] }) => { prev: number | null; next: number | null };
+
+/**
+ * 取り込む XML を、パーサー（libxml2）に渡す処理。parse の第 2 引数が、パーサーのオプション（XmlParseOption の組み合わせ）。
+ * 解析の結果をそのまま返す。取り込みを断るときは、parse を呼ばずに ok: false の結果を返す。契約 1
+ */
+export type ParseImport = (parse: (source: string, options: number) => XmlParseResult, source: string) => XmlParseResult;
+
+/** 課題パックが、パーサーのオプションを名前で書くためのもの */
+export { XmlParseOption };
 
 export const HOOKS: HookDescriptor[] = [
   {
@@ -74,6 +84,13 @@ export const HOOKS: HookDescriptor[] = [
     contract: 1,
     baseline: 'memo/neighbors-own',
     description: 'メモの詳細画面の「前のメモ」「次のメモ」の移動先を決める処理',
+  },
+  {
+    id: 'memo.import.parse',
+    realm: 'server',
+    contract: 1,
+    baseline: 'memo/import-no-xxe',
+    description: '取り込む XML を、パーサー（libxml2）に渡す処理（パーサーのオプション）',
   },
 ];
 
@@ -134,6 +151,9 @@ const neighborsOwn: PickNeighbors = ({ id, ownIds }) => {
   return { prev: before.length > 0 ? Math.max(...before) : null, next: after.length > 0 ? Math.min(...after) : null };
 };
 
+/** 実体は置き換えるが、外部実体（別の資源を指す実体）と外部の DTD は読まない */
+const importNoXxe: ParseImport = (parse, source) => parse(source, XmlParseOption.XML_PARSE_NOENT | XmlParseOption.XML_PARSE_NO_XXE);
+
 export const BASELINE: ImplementationRegistry = {
   'memo/read-owner-check': { hook: 'memo.read.authorize', run: readOwnerCheck },
   'memo/search-parameterized': { hook: 'memo.search.query', run: searchParameterized },
@@ -141,4 +161,5 @@ export const BASELINE: ImplementationRegistry = {
   'memo/title-max-length': { hook: 'memo.title.validate', run: titleMaxLength },
   'memo/title-input-max-length': { hook: 'memo.title.input', run: titleInputMaxLength },
   'memo/neighbors-own': { hook: 'memo.detail.neighbors', run: neighborsOwn },
+  'memo/import-no-xxe': { hook: 'memo.import.parse', run: importNoXxe },
 };

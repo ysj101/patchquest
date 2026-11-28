@@ -14,6 +14,28 @@ import { machineLegalText } from './machine-licenses.mjs';
 const outdir = 'dist';
 const testMode = process.argv.includes('--test');
 const sqliteWasm = 'node_modules/@sqlite.org/sqlite-wasm/dist/sqlite3.wasm';
+const libxml2 = 'node_modules/libxml2-wasm';
+
+/**
+ * XML のパーサー libxml2（WASM。libxml2-wasm のスクリプトに埋め込まれていて、assets/libxml2.js に入る）のライセンスの全文とソースコードの入手先。
+ * どちらのライセンスも、複製に著作権表示と許諾の文を含めることを求める
+ */
+async function libxml2LegalText() {
+  const version = /"version": "([^"]+)"/.exec(await readFile(`${libxml2}/package.json`, 'utf8'))?.[1];
+  if (!version) throw new Error(`${libxml2}/package.json から版を読めません`);
+  const [wrapper, library] = await Promise.all(['LICENSE', 'LICENSE.libxml2'].map((name) => readFile(`${libxml2}/${name}`, 'utf8')));
+  return [
+    `libxml2-wasm ${version}（XML のパーサー libxml2 を WebAssembly にしたものと、そのラッパー）。assets/libxml2.js に入っています。`,
+    'ソースコード：https://github.com/jameslan/libxml2-wasm（ラッパー）、https://github.com/jameslan/libxml2（libxml2。上流は https://gitlab.gnome.org/GNOME/libxml2）',
+    '',
+    '---- libxml2-wasm（ラッパー）のライセンス ----',
+    wrapper.trim(),
+    '',
+    '---- libxml2 のライセンス ----',
+    library.trim(),
+    '',
+  ].join('\n');
+}
 
 const common = {
   alias: { '@catalog': resolve(testMode ? 'tests/support/catalog.ts' : 'catalog/index.ts') },
@@ -69,7 +91,16 @@ await mkdir(`${outdir}/assets`, { recursive: true });
 const tasks = [
   build({
     ...common,
-    entryPoints: { main: 'platform/main.ts', styles: 'platform/styles.css', 'runtime-worker': 'runtimes/browser/worker.ts' },
+    entryPoints: { main: 'platform/main.ts', styles: 'platform/styles.css' },
+    outdir: `${outdir}/assets`,
+  }),
+  // Worker は、libxml2 を別のファイル（libxml2.js）に分けて、準備のときに読み込む。libxml2-wasm のモジュールは、互いに参照し合いながら
+  // 最上位で読み込みを待つ（top-level await）。1 つのファイルにまとめると、esbuild が遅らせて初期化する形に包み、待ち合ったまま止まる
+  build({
+    ...common,
+    entryPoints: { 'runtime-worker': 'runtimes/browser/worker.ts', libxml2: `${libxml2}/lib/index.mjs` },
+    splitting: true,
+    chunkNames: 'runtime-shared-[hash]',
     outdir: `${outdir}/assets`,
   }),
   buildSandboxDocument('runtimes/browser/preview/preview.sandbox.html', `${outdir}/assets/preview.html`),
@@ -82,6 +113,7 @@ const tasks = [
   ...MACHINE_FILES.map((file) => cp(join(MACHINE_DIR, file), `${outdir}/assets/${file}`)),
   // 機械に入っているソフトウェアの一覧・ソースコードの入手先・ライセンスの全文
   machineLegalText().then((text) => writeFile(`${outdir}/assets/linux-machine.LEGAL.txt`, text)),
+  libxml2LegalText().then((text) => writeFile(`${outdir}/assets/libxml2.LEGAL.txt`, text)),
 ];
 
 if (testMode) {

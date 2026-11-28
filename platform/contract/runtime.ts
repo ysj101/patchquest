@@ -13,8 +13,8 @@ export type SessionToken = string;
 
 export const ANONYMOUS: ActorKey = 'anonymous';
 
-/** 実行環境が提供する機能。パックは必要な機能を宣言する。linux-vm は、本物の Linux を WASM のエミュレータで動かす演習用の機械 */
-export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm'] as const;
+/** 実行環境が提供する機能。パックは必要な機能を宣言する。linux-vm は、本物の Linux を WASM のエミュレータで動かす演習用の機械。libxml2 は、XML のパーサー libxml2（WASM） */
+export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm', 'libxml2'] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
 /**

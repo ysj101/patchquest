@@ -116,6 +116,8 @@ E2E と出荷前検証は、マージ後の CI で確かめます（手元で通
 | - | - | - |
 | SQLite（`@sqlite.org/sqlite-wasm` に同梱） | 教材アプリのデータベース（配布物に同梱） | パブリックドメイン |
 | `@sqlite.org/sqlite-wasm` | SQLite の WebAssembly 版ラッパー（配布物に同梱） | Apache License 2.0 |
+| libxml2 2.15.1（`libxml2-wasm` に同梱） | XML のパーサー（課題「XML の取り込みで、サーバのファイルが混ざるのを防ぐ」で使う。配布物に同梱） | MIT |
+| `libxml2-wasm` 0.7.2 | libxml2 の WebAssembly 版とラッパー（配布物に同梱。ライセンスの全文は `assets/libxml2.LEGAL.txt`） | MIT |
 | v86 | 演習用の機械（x86 のエミュレータ。配布物に同梱） | BSD-2-Clause |
 | SeaBIOS rel-1.16.2 と、その VGA BIOS（v86 のリポジトリにあるビルド済みのもの） | 演習用の機械の BIOS（配布物に同梱） | LGPL-3.0 |
 | Linux カーネル 6.18.64（Alpine Linux の `linux-virt`） | 演習用の機械の中身（起動を済ませた状態として配布物に同梱。以下同じ） | GPL-2.0 |

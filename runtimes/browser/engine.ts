@@ -17,9 +17,11 @@ import {
   type SessionToken,
 } from '../../platform/contract';
 import type { AppModule, ServerContext } from './app-module';
+import { loadXmlParser } from './libxml2';
 import { Machine, type AssetLoader } from './machine';
 import { checkImplementation, findApp, resolveHook, splitByRealm } from './registry';
 import { openMemoryDatabase, type Database } from './sqlite';
+import type { XmlParser } from './xml';
 
 /** 動いている機械と、反映した初期データ（アプリと hash） */
 interface Running {
@@ -30,6 +32,8 @@ interface Running {
 interface State {
   app: AppModule;
   db: Database;
+  /** XML のパーサー（libxml2）。実行環境に 1 つで、演習をまたいで使い回す */
+  xml: XmlParser;
   /** 演習用の機械。使わないアプリでは持たない */
   machine: Running | undefined;
   options: PrepareOptions;
@@ -74,6 +78,7 @@ export class AppEngine {
     const generate = app.fixtures[options.fixture.generator];
     if (!generate) throw new RuntimeError('unknown-app', `fixture ${options.fixture.generator} はありません`);
 
+    const xml = await loadXmlParser();
     const db = await openMemoryDatabase();
     db.exec(app.schema);
     // 生成器には server のフックの現在の実装を渡す。レシピが注入した実装なら、初期データに問題が仕込まれる
@@ -85,7 +90,7 @@ export class AppEngine {
     const machine = app.machine ? await this.machineFor(app, app.machine, db, hash, previous?.machine) : undefined;
     if (!app.machine) await previous?.machine?.machine.destroy();
     previous?.db.close();
-    this.state = { app, db, machine, options, selection: server, sessions: new Map() };
+    this.state = { app, db, xml, machine, options, selection: server, sessions: new Map() };
     return { refs, hash };
   }
 
@@ -155,6 +160,7 @@ export class AppEngine {
 
     const ctx: ServerContext = {
       db: s.db,
+      xml: s.xml,
       // 主体はセッションからだけ決まる。不明なセッションは未ログインとして扱う
       principal: (call.session && s.sessions.get(call.session)) ?? null,
       hook: (id) => resolveHook(s.app, s.selection, id),
