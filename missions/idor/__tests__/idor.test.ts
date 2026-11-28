@@ -5,34 +5,19 @@ import { describe, expect, it } from 'vitest';
 import { memoApp } from '../../../apps/memo';
 import type { PickNeighbors } from '../../../apps/memo/hooks';
 import { idorPack } from '..';
-import type { Exchange, ImplementationSelection } from '../../../platform/contract';
+import type { Exchange } from '../../../platform/contract';
 import { detectReproduction } from '../../../platform/evaluator/evaluator';
 import type { CatalogApp } from '../../../platform/orchestrator/orchestrator';
 import { VERIFICATION_SEEDS } from '../../../platform/orchestrator/pack-verification';
-import { buildSubject, withChanges } from '../../../platform/orchestrator/subject';
-import { EngineRuntime, nodeEvaluator } from '../../../tests/support/engine-runtime';
+import { buildSubject } from '../../../platform/orchestrator/subject';
+import { defenseSuite } from '../../../tests/support/defense-suite';
+import { EngineRuntime } from '../../../tests/support/engine-runtime';
 import { requestOnly } from '../../../tests/support/request-only';
 import { ALICE_PRIVATE_ID_SEED_1 } from './verification';
 
 const app: CatalogApp = { ...memoApp, tests: requestOnly(memoApp.tests) };
 const { manifest } = idorPack;
-const [recipe] = manifest.mutationRecipes;
-if (!recipe) throw new Error('IDOR パックに注入レシピがない');
-const vulnerable = withChanges({}, recipe.apply);
-
-function defense(id: string): ImplementationSelection {
-  const found = manifest.defenses.find((candidate) => candidate.id === id);
-  if (!found) throw new Error(`対策 ${id} がない`);
-  return withChanges(vulnerable, found.apply);
-}
-
-async function runSuite(implementations: ImplementationSelection, seed: number) {
-  const evaluator = nodeEvaluator();
-  const subject = buildSubject(app, idorPack, `idor-${seed}`, seed, implementations);
-  const report = await evaluator.runSuite(subject, [...app.tests, ...manifest.tests.cases], manifest.tests.target, `idor-${seed}`, '');
-  await evaluator.dispose();
-  return report.outcomes.filter((outcome) => !outcome.passed);
-}
+const { vulnerable, defense, failures: runSuite } = defenseSuite(app, idorPack);
 
 describe.each(VERIFICATION_SEEDS)('IDOR パック（seed %i）', (seed) => {
   it('画面のリンクだけを隠しても、別の利用者が ID 指定でメモを直接取得できて不合格になる（A06）', async () => {

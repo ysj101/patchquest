@@ -72,6 +72,17 @@
       nav.row { margin-bottom: 8px; }
       .stack > * + * { margin-top: 12px; }
       .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      /* メモ帳のログイントークン。3 つの部分を、色と下線の種類で見分けられるようにする */
+      .token { display: block; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 0.85rem; overflow-wrap: anywhere; background: #f6f7f9; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+      .token-header { color: #a3264b; text-decoration: underline dotted; }
+      .token-payload { color: #6a3fb5; text-decoration: underline solid; }
+      .token-signature { color: #0b6e8f; text-decoration: underline dashed; }
+      .token-dot { font-weight: 700; padding: 0 2px; }
+      .token-part { border-left: 3px solid var(--line); padding-left: 10px; }
+      .token-part h4 { margin: 0 0 4px; }
+      .token-part p { margin: 4px 0 0; }
+      .token-part p code { font-size: 0.9rem; }
+      .token-part textarea { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
       /* 擬似シェルのターミナル */
       /* 端末は、プレビューの枠の高さいっぱいに広げる（32px は body の上下の余白）。出力の欄が伸び縮みし、入力欄は下の端に付く */
       .term-screen { display: flex; flex-direction: column; height: calc(100vh - 32px); min-height: 300px; }

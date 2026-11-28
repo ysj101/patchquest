@@ -11,8 +11,8 @@ import { render } from './view';
 export const memoApp: AppModule = {
   descriptor: {
     id: 'memo',
-    version: '1.3.0',
-    features: ['memo', 'comments', 'search'],
+    version: '1.4.0',
+    features: ['memo', 'comments', 'search', 'login-token'],
     users: [...USERS],
     entryRoute: '/memos',
     hooks: HOOKS,

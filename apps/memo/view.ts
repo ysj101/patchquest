@@ -5,6 +5,7 @@ import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el, sentenceLines } from '../shared/dom';
 import type { PickNeighbors, PrepareTitleInput, RenderComment } from './hooks';
 import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
+import { tokenView } from './token-view';
 
 /** 画面内の移動はフレームを遷移させず、アプリ内で描画し直す */
 function linkButton(label: string, onClick: () => void): HTMLButtonElement {
@@ -37,6 +38,7 @@ async function header(root: HTMLElement, ctx: ViewContext): Promise<boolean> {
       linkButton('メモ', () => ctx.navigate('/memos')),
       linkButton('共有ページ', () => ctx.navigate('/pages')),
       linkButton('検索', () => ctx.navigate('/search')),
+      linkButton('ログイントークン', () => ctx.navigate('/token')),
     ),
   );
   return true;
@@ -199,6 +201,7 @@ export async function render(root: HTMLElement, route: string, ctx: ViewContext)
   const [path, query] = route.split('?');
   const [, section, id, action] = path!.split('/');
   if (section === 'pages') return id === undefined ? pageList(root, ctx) : page(root, ctx, id);
+  if (section === 'token') return void tokenView(root, ctx);
   if (section === 'search') return searchView(root, ctx, new URLSearchParams(query ?? '').get('q') ?? '');
   if (section !== 'memos' || id === undefined) return list(root, ctx);
   if (id === 'new') return form(root, ctx);
