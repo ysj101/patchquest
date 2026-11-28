@@ -33,7 +33,7 @@ describe('結果の通知', () => {
 });
 
 it('三種類の音を区別し、設定した音量を反映し、オフなら音を作らない', () => {
-  const settings = { motion: 'system' as const, sound: true, volume: 0.4 };
+  const settings = { motion: 'system' as const, sound: true, volume: 0.4, showBeta: false };
   const plans = (['reproduced', 'secured', 'insufficient'] as const).map((kind) => soundPlan(kind, settings));
   expect(plans).toEqual([
     { frequency: 330, endFrequency: 165, gain: 0.08 },

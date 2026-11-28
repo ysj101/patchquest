@@ -8,6 +8,7 @@ import { profileOptions } from './profile-options';
 import { ProgressStore } from '../progress/store';
 import { BrowserRuntimeAdapter } from '../../runtimes/browser/adapter';
 import { browserEffects } from './browser-effects';
+import { onShowBetaChange } from './effect-settings';
 import { openSettings as openSettingsDialog } from './effect-settings-panel';
 import { confirmDialog } from './components';
 import { AddressBar } from './address';
@@ -17,7 +18,7 @@ import { actorLabel, ExerciseView } from './exercise';
 import { describersFor } from './investigation';
 import { GuidePanel } from './guide';
 import { missionList } from './mission-list';
-import { missionEntries } from './mission-entries';
+import { missionEntries, visiblePacks } from './mission-entries';
 import { resumeTarget } from './mission-table';
 import { recordsPage } from './records';
 import { siteNav } from './site-nav';
@@ -35,6 +36,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
   const effectWarning = h('p', { class: 'banner banner-warn', role: 'status' });
   const effects = browserEffects(document.documentElement, effectWarning);
   const openSettings = () => openSettingsDialog(effects, progress);
+  const showBeta = () => effects.effectSettings().showBeta;
   const store = await ProgressStore.open(profileOptions);
   const live = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   const say = (message: string) => announce(live, message);
@@ -166,7 +168,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     fill(
       listView,
       notice ? h('p', { class: 'banner banner-error', role: 'alert' }, notice) : null,
-      missionList(missionEntries(records), {
+      missionList(missionEntries(records, showBeta()), {
         openSettings,
         start: (packId) => void begin(packId),
         resume: (record) => void begin(record.missionId, record),
@@ -186,7 +188,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
 
   async function showRecords(message?: string): Promise<void> {
     const { profile } = await loadRecords();
-    fill(recordsView, recordsPage(profile, catalog.packs, store.unavailableReason, openSettings));
+    fill(recordsView, recordsPage(profile, visiblePacks(showBeta()), store.unavailableReason, openSettings));
     address.show({ page: 'records' });
     settle(recordsView, 'records', message);
   }
@@ -196,7 +198,7 @@ export async function startApp(root: HTMLElement): Promise<void> {
     if (route?.page === 'list') return showList();
     if (route?.page === 'records') return showRecords();
     const records = await saved.then(() => store.list());
-    const entry = missionEntries(records).find(({ pack }) => pack.manifest.id === route?.missionId);
+    const entry = missionEntries(records, showBeta()).find(({ pack }) => pack.manifest.id === route?.missionId);
     if (!route || !entry) return showList(undefined, route ? `URL の課題「${route.missionId}」は見つかりませんでした。課題一覧から選んでください。` : 'この URL は開けませんでした。課題一覧から選んでください。');
     return begin(route.missionId, resumeTarget(entry));
   }
@@ -344,7 +346,11 @@ export async function startApp(root: HTMLElement): Promise<void> {
   }
 
   // 進捗を読み込む・削除すると記録が変わるので、演習の途中でも演習を止めて課題一覧へ戻す（消えた記録の演習を続けさせない）
-  const progress = progressActions({ store, view: document.body, guide, refresh: (message) => screen === 'records' ? showRecords(message) : showList(message), announce: say });
+  const refresh = (message?: string) => screen === 'records' ? showRecords(message) : showList(message);
+  const progress = progressActions({ store, view: document.body, guide, refresh, announce: say });
+
+  // 設定でベータ版の表示を切り替えたら、開いている一覧・記録ページをすぐ描き直す。演習の途中では止めず、次に一覧へ戻ったときに反映する
+  onShowBetaChange(effects, () => void (screen === 'list' || screen === 'records' ? refresh() : undefined));
 
   await openRoute(address.read());
 }

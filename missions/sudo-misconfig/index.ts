@@ -17,6 +17,7 @@ export const sudoMisconfigPack: MissionPack = {
     id: 'sudo-misconfig',
     version: '2.7.0',
     kind: 'mission',
+    release: 'stable',
     title: '広すぎる sudo の許可を絞る',
     summary:
       '運用担当が、管理者だけのはずの保守の操作までできてしまった、という報告を調べます。ターミナルで sudo の設定を調べ、いらない許可だけを外します。端末の中では、本物の Linux と本物の sudo が動きます。',

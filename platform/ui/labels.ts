@@ -84,3 +84,8 @@ export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   intermediate: '基本',
   advanced: '応用',
 };
+
+/** ベータ版の課題に付ける札。一覧の題名の後に出す */
+export const BETA_LABEL = 'ベータ版';
+/** ベータ版が何かの説明。設定の切り替えに添える */
+export const BETA_NOTE = 'ベータ版は、作っている途中の課題です。内容が変わったり、うまく動かなかったりすることがあります。一覧では「ベータ版」の札が付きます。';

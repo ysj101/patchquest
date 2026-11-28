@@ -33,6 +33,13 @@ export interface VulnerabilityDef {
 export const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 
+/**
+ * 課題の公開の段階。beta（ベータ版）の課題は、設定で「ベータ版の課題を表示する」を有効にした人にだけ一覧に出す。
+ * 新しく作る課題は beta で登録し、開発者の指示があってから stable にする（AGENTS.md）
+ */
+export const RELEASE_STAGES = ['beta', 'stable'] as const;
+export type ReleaseStage = (typeof RELEASE_STAGES)[number];
+
 export interface MissionManifest {
   schemaVersion: typeof MANIFEST_SCHEMA_VERSION;
   /** 小文字・数字・ハイフン。例: 'idor' */
@@ -40,6 +47,8 @@ export interface MissionManifest {
   /** 不変のパック版（x.y.z）。内容を変えたら必ず上げる */
   version: string;
   kind: PackKind;
+  /** 公開の段階。beta は、設定で表示を有効にするまで一覧に出さない */
+  release: ReleaseStage;
   title: string;
   summary: string;
   learningObjectives: string[];

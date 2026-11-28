@@ -9,6 +9,7 @@ import {
   MANIFEST_SCHEMA_VERSION,
   PACK_KINDS,
   DIFFICULTIES,
+  RELEASE_STAGES,
   VULNERABILITY_CATEGORIES,
   type MissionPack,
 } from './manifest';
@@ -37,6 +38,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   if (!PACK_ID.test(c.text('id', m.id))) c.fail('id', '小文字・数字・ハイフンで、英字から始めてください');
   if (!isVersion(c.text('version', m.version))) c.fail('version', 'x.y.z 形式が必要です');
   c.oneOf('kind', m.kind, PACK_KINDS);
+  c.oneOf('release', m.release, RELEASE_STAGES);
   c.text('title', m.title);
   c.text('summary', m.summary);
   c.text('solution', m.solution);

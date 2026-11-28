@@ -1,18 +1,18 @@
-// 演出設定の検証・保存失敗・購読を DOM なしで確かめる。
+// 端末ごとの設定（演出とベータ版の課題の表示）の検証・保存失敗・購読を DOM なしで確かめる。
 import { describe, expect, it } from 'vitest';
-import { EffectSettingsStore, readEffectSettings, type EffectSettings } from '../../platform/ui/effect-settings';
+import { EffectSettingsStore, onShowBetaChange, readEffectSettings, type EffectSettings } from '../../platform/ui/effect-settings';
 
-const defaults: EffectSettings = { motion: 'system', sound: false, volume: 0.5 };
-const chosen = { motion: 'off', sound: true, volume: 0.8 } as const;
+const defaults: EffectSettings = { motion: 'system', sound: false, volume: 0.5, showBeta: false };
+const chosen = { motion: 'off', sound: true, volume: 0.8, showBeta: true } as const;
 
 describe('演出設定', () => {
-  it('未保存なら OS に従い、効果音はオフ、音量は半分にする', () => {
+  it('未保存なら OS に従い、効果音はオフ、音量は半分にし、ベータ版の課題は表示しない', () => {
     expect(readEffectSettings(null)).toEqual({ settings: defaults, reason: null });
   });
 
   it.each(['system', 'on', 'off'])('動きの指定 %s と音量の両端を読み取る', (motion) => {
     for (const volume of [0, 1]) {
-      const settings = { motion, sound: true, volume };
+      const settings = { motion, sound: true, volume, showBeta: true };
       expect(readEffectSettings(JSON.stringify(settings))).toEqual({ settings, reason: null });
     }
   });
@@ -21,10 +21,31 @@ describe('演出設定', () => {
     '{"motion":"on","sound":"true","volume":0.5}',
     '{"motion":"on","sound":true,"volume":-0.1}',
     '{"motion":"on","sound":true,"volume":1.1}',
-    '{"motion":"on","sound":true,"volume":1e999}'])('不正な保存値 %s は理由を付けて既定値に戻す', (raw) => {
+    '{"motion":"on","sound":true,"volume":1e999}',
+    '{"motion":"on","sound":true,"volume":0.5,"showBeta":"true"}'])('不正な保存値 %s は理由を付けて既定値に戻す', (raw) => {
     const result = readEffectSettings(raw);
     expect(result.settings).toEqual(defaults);
     expect(result.reason, '既定値に戻した理由').toBeTruthy();
+  });
+
+  it('ベータ版の表示の項目がない保存値（項目を足す前の保存）は、ほかの設定を残して、表示しないとして読む', () => {
+    expect(readEffectSettings('{"motion":"off","sound":true,"volume":0.8}')).toEqual({ settings: { ...chosen, showBeta: false }, reason: null });
+  });
+
+  it('ベータ版の表示の切り替えは、表示が変わったときだけ伝え、演出だけの変更では伝えない', () => {
+    const store = new EffectSettingsStore(() => ({ getItem: () => null, setItem: () => undefined }));
+    let calls = 0;
+    const unsubscribe = onShowBetaChange(store, () => { calls += 1; });
+    store.update({ ...defaults, sound: true });
+    expect(calls, '演出だけの変更').toBe(0);
+    store.update({ ...defaults, showBeta: true });
+    store.update({ ...defaults, showBeta: true, volume: 1 });
+    expect(calls, '有効にした').toBe(1);
+    store.update(defaults);
+    expect(calls, '無効に戻した').toBe(2);
+    unsubscribe();
+    store.update(chosen);
+    expect(calls, '解除後は伝えない').toBe(2);
   });
 
   it('変更を保存して購読者に伝え、購読を解除できる', () => {

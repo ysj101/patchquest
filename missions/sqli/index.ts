@@ -25,6 +25,7 @@ export const sqliPack: MissionPack = {
     id: 'sqli',
     version: '1.11.0',
     kind: 'mission',
+    release: 'stable',
     title: '検索から他人のメモがもれるのを防ぐ',
     estimatedMinutes: 15,
     vulnerability: { name: 'SQL インジェクション', plain: '検索の言葉に細工をすると、見えないはずのデータまで取り出せてしまう問題', fullName: 'SQL コマンドの不適切な無害化', cwe: 'CWE-89', category: 'data-access' },

@@ -1,8 +1,9 @@
-// 設定のモーダル。演出の変更はすぐ適用し、進捗の書き出し・読み込み・削除もここから行う。
+// 設定のモーダル。演出とベータ版の課題の表示の変更はすぐ適用し、進捗の書き出し・読み込み・削除もここから行う。
 import { bindReason } from './browser-effects';
 import { radioOption, showDialog } from './components';
 import { h } from './dom';
 import type { EffectSettings, EffectSettingsStore } from './effect-settings';
+import { BETA_NOTE } from './labels';
 import type { ProgressToolActions } from './progress-actions';
 
 /** 進捗の書き出し・読み込み・削除。保存先の注記はここだけに置く */
@@ -43,6 +44,7 @@ export function openSettings(store: EffectSettingsStore, progress: ProgressToolA
   const warning = h('p', { role: 'status', class: 'note' });
   const update = (change: Partial<EffectSettings>) => store.update({ ...store.effectSettings(), ...change });
   const sound = h('input', { type: 'checkbox', checked: settings.sound, on: { change: () => update({ sound: sound.checked }) } });
+  const showBeta = h('input', { type: 'checkbox', checked: settings.showBeta, on: { change: () => update({ showBeta: showBeta.checked }) } });
   const volume = h('input', { type: 'range', min: '0', max: '1', step: '0.1', value: String(settings.volume), 'aria-label': '音量', on: { change: () => update({ volume: Number(volume.value) }) } });
   const dialog = h(
     'dialog', { class: 'dialog effect-settings', 'aria-labelledby': 'settings-title' },
@@ -53,6 +55,7 @@ export function openSettings(store: EffectSettingsStore, progress: ProgressToolA
       ...([['system', 'OS の設定に従う'], ['on', 'オン'], ['off', 'オフ']] as const).map(([value, label]) =>
         radioOption({ name: 'effect-motion', value, checked: settings.motion === value, className: 'effect-option', autoFocus: value === 'system', onChange: () => update({ motion: value }) }, label))),
     h('fieldset', {}, h('legend', {}, '効果音'), h('label', { class: 'effect-option' }, sound, '効果音を鳴らす'), h('label', {}, '音量', volume)),
+    h('fieldset', {}, h('legend', {}, '課題'), h('label', { class: 'effect-option' }, showBeta, 'ベータ版の課題を表示する'), h('p', { class: 'note' }, BETA_NOTE)),
     warning,
     h('button', { type: 'button', class: 'button', on: { click: () => dialog.close() } }, '閉じる'),
   );

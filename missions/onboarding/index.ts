@@ -23,6 +23,7 @@ export const onboardingPack: MissionPack = {
     id: 'onboarding',
     version: '1.9.0',
     kind: 'tutorial',
+    release: 'stable',
     title: '練習：はじめての修正',
     summary: 'わざと穴を残したメモアプリで「体験する → なおす → たしかめる」を一周します。操作ガイドつきで、前提知識は要りません。',
     learningObjectives: ['不具合を自分の操作で起こしてみる', '直し方を選び、自動テストで確かめる', 'なぜ起きたかをふりかえる'],
