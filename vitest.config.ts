@@ -29,6 +29,9 @@ export default defineConfig({
         'runtimes/browser/preview-host.ts',
         'runtimes/browser/worker.ts',
         'runtimes/browser/preview/**',
+        'runtimes/browser/http/frame.ts',
+        'runtimes/browser/http/service-worker.ts',
+        'runtimes/browser/http/service-worker-scope.ts',
       ],
       // 下がったら失敗する。上がったら数字を引き上げる（2026-11-23 時点の実測は 95.0・90.9・95.0・97.5）
       thresholds: { statements: 94, branches: 90, functions: 94, lines: 97 },

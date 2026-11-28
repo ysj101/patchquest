@@ -25,8 +25,15 @@ const ALLOWED_PATTERNS = [
   /^http:\/\/host$/,
 ];
 
+/**
+ * 教材の文とテストに出てくる架空のサイト（教材アプリ「社内ポータル」、リダイレクトの行き先の例、ポータルの名前で始まる別のサイトの例）。
+ * .example は予約済みの名前で、名前解決されない。読み込みには使わず、枠が移動しようとしても学習UIの CSP（frame-src 'self'）が止める
+ * （E2E で通信ゼロを実測する）
+ */
+const FICTIONAL_SITES = [/^https:\/\/portal\.example(?:\/|$)/, /^https:\/\/evil\.example\//, /^https:\/\/portal\.example\.attacker\.example\//];
+
 /** @type {(url: string) => boolean} */
-const isAllowed = (url) => ALLOWED_PREFIXES.some((prefix) => url.startsWith(prefix)) || ALLOWED_PATTERNS.some((pattern) => pattern.test(url));
+const isAllowed = (url) => ALLOWED_PREFIXES.some((prefix) => url.startsWith(prefix)) || [...ALLOWED_PATTERNS, ...FICTIONAL_SITES].some((pattern) => pattern.test(url));
 
 const ABSOLUTE_URL = /\bhttps?:\/\/[^\s"'`<>()\\]+/gi;
 // プロトコル相対URL（//host/...）はHTML属性とCSSのurl()・@importで外部読み込みになる

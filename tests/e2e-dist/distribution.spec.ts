@@ -12,7 +12,7 @@ test('展開した配布物を localhost で開くと課題一覧が表示され
 
 test('演習に必要なファイルがすべて同梱され、検証用のページは含まれない', async ({ page, request }) => {
   await page.goto('/');
-  for (const path of ['/assets/main.js', '/assets/styles.css', '/assets/runtime-worker.js', '/assets/preview.html', '/README.md']) {
+  for (const path of ['/assets/main.js', '/assets/styles.css', '/assets/runtime-worker.js', '/assets/http-server.js', '/assets/preview.html', '/README.md']) {
     expect((await request.get(path)).status(), path).toBe(200);
   }
   for (const path of ['/assets/avatars/patch.svg', '/assets/avatars/requester.svg']) {

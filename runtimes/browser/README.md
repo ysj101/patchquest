@@ -11,6 +11,7 @@
 | `sqlite.ts` | SQLite（wasm）のメモリ DB を開く |
 | `protocol.ts` | Host・Worker・プレビューの間で交わすメッセージの型 |
 | `preview/` | 教材アプリの画面を動かす隔離 iframe（`sandbox="allow-scripts"`）。CSP は自身のスクリプトと `pqMarker()` だけをハッシュで許可する |
+| `http/` | 画面を HTTP 応答として出す教材アプリ（`AppModule.http`、必要機能 `http`）の枠。`service-worker.ts`（配布物では `assets/http-server.js`）が `assets/http/` の下へのリクエストを受け、学習UIのページへ中身を問い合わせて、本物の HTTP 応答にする。`frame.ts` が Host 側で、問い合わせに閲覧者のセッションを付けて Worker の教材ロジックへ渡す。`mount.ts` が、リクエスト・応答の変換と、すべての応答に付ける隔離のヘッダを持つ。設計の根拠は [docs/poc/service-worker-http.md](../../docs/poc/service-worker-http.md) |
 | `preview-host.ts` | プレビューとのメッセージを送信元ウィンドウ・スキーマ・runId で照合する |
 | `registry.ts` | カタログに登録された教材アプリと実装の解決 |
 | `lockdown.ts` | Worker の初期化後に通信・保存の API を使えなくする |

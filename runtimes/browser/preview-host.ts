@@ -66,11 +66,24 @@ export interface RenderParams {
   settleMs: number;
 }
 
-interface FrameContext {
+export interface FrameContext {
   runId: string;
   viewer: ActorKey;
   session: SessionToken | null;
   route: string;
+}
+
+/**
+ * 教材アプリの画面を出す枠。dom は、隔離 iframe の中でアプリの render を動かす（PreviewFrame）。
+ * http は、Service Worker が返す本物の HTTP 応答を開く（http/frame.ts の HttpFrame）
+ */
+export interface Preview {
+  readonly kind: 'dom' | 'http';
+  /** 照合に失敗して破棄したメッセージの件数（検証用） */
+  readonly rejected: number;
+  render(params: RenderParams): Promise<ObservedEvent[]>;
+  detach(): void;
+  dispose(): void;
 }
 
 interface Collector {
@@ -90,7 +103,8 @@ type FrameState =
   | { name: 'rendering'; context: FrameContext; collector: Collector }
   | { name: 'showing'; context: FrameContext };
 
-export class PreviewFrame {
+export class PreviewFrame implements Preview {
+  readonly kind = 'dom';
   readonly element = document.createElement('iframe');
   /** 照合に失敗して破棄したメッセージの件数（検証用） */
   rejected = 0;

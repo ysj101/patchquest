@@ -104,6 +104,7 @@ E2E と出荷前検証は、マージ後の CI で確かめます（手元で通
 | platform/ | 共通UI、実行制御、評価、保存 |
 | runtimes/browser/ | ブラウザ用 RuntimeAdapter |
 | apps/memo/ | 教材アプリ「メモ帳」と交換フック |
+| apps/portal/ | 教材アプリ「社内ポータル」と交換フック。画面を、Service Worker が返す本物の HTTP 応答として出す（HTTP の応答で起きる問題を扱う課題の土台） |
 | apps/shell/ | 教材アプリ「擬似シェル」と「Linux 端末」（`linux/`。本物の Linux を WASM のエミュレータで動かす）、交換フック（ターミナルで設定を調べて直す課題の土台） |
 | missions/ | 課題パック。開発用の固有テストと検証データは各パックの `__tests__/` |
 | catalog/ | 同梱パックの登録 |

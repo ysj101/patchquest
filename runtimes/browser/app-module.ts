@@ -77,7 +77,14 @@ export interface AppModule {
    * 使うパックは runtime.capabilities に linux-vm を挙げる
    */
   machine?: { provision(machine: Machine, db: Database): Promise<void>; reset(machine: Machine): Promise<void> };
-  render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
+  /** 隔離 iframe の中で画面を描く。画面を HTTP 応答として出すアプリ（http）は持たない */
+  render?(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
+  /**
+   * true にすると、画面を Service Worker が返す本物の HTTP 応答として開く（使うパックは runtime.capabilities に http を挙げる）。
+   * handle は、どのリクエストにも、ヘッダと HTML（http/mount.ts の HttpBody）を本文にした応答を返す。ブラウザは、その応答のステータスとヘッダに従う
+   * （リダイレクトなら移動する）。画面はリンクとフォームだけで動かす（文書の中でスクリプトは動かない）。Cookie とブラウザのキャッシュは使えない
+   */
+  http?: true;
   /** アプリが記録する観測イベントの説明（調査パネルで表示する）。知らない種類は null */
   describeEvent?(event: ObservedEvent): string | null;
   /**
