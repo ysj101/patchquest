@@ -18,6 +18,7 @@ import {
 } from '../../platform/contract';
 import type { AppModule, ServerContext } from './app-module';
 import { Machine, type AssetLoader } from './machine';
+import { REGEX_ASSET, RegexEngine } from './regex';
 import { checkImplementation, findApp, resolveHook, splitByRealm } from './registry';
 import { openMemoryDatabase, type Database } from './sqlite';
 
@@ -32,6 +33,8 @@ interface State {
   db: Database;
   /** 演習用の機械。使わないアプリでは持たない */
   machine: Running | undefined;
+  /** 正規表現エンジン（PCRE2）。使わないアプリでは持たない */
+  regex: RegexEngine | undefined;
   options: PrepareOptions;
   selection: ImplementationSelection;
   sessions: Map<SessionToken, ActorKey>;
@@ -53,7 +56,10 @@ export class AppEngine {
    */
   private lifecycle: Promise<unknown> = Promise.resolve();
 
-  /** loadAsset は、演習用の機械の配布物を読む手段。機械を使うアプリを動かすときに要る */
+  /** 一度読んだ正規表現エンジンの配布物。Worker では、通信を塞いだあとの作り直し（リセット）でも使えるようにする */
+  private regexAsset: Promise<ArrayBuffer> | undefined;
+
+  /** loadAsset は、演習用の機械と正規表現エンジンの配布物を読む手段。それらを使うアプリを動かすときに要る */
   constructor(private readonly loadAsset?: AssetLoader) {}
 
   /** fixture と seed から初期データを作る。server のフックの実装だけを保持する */
@@ -74,6 +80,8 @@ export class AppEngine {
     const generate = app.fixtures[options.fixture.generator];
     if (!generate) throw new RuntimeError('unknown-app', `fixture ${options.fixture.generator} はありません`);
 
+    // 照合のたびに使うメモリを前の演習から引き継がないよう、準備のたびに新しい実体を作る
+    const regex = app.regex ? await this.regexFor(app.regex.matchLimit) : undefined;
     const db = await openMemoryDatabase();
     db.exec(app.schema);
     // 生成器には server のフックの現在の実装を渡す。レシピが注入した実装なら、初期データに問題が仕込まれる
@@ -85,7 +93,7 @@ export class AppEngine {
     const machine = app.machine ? await this.machineFor(app, app.machine, db, hash, previous?.machine) : undefined;
     if (!app.machine) await previous?.machine?.machine.destroy();
     previous?.db.close();
-    this.state = { app, db, machine, options, selection: server, sessions: new Map() };
+    this.state = { app, db, machine, regex, options, selection: server, sessions: new Map() };
     return { refs, hash };
   }
 
@@ -97,6 +105,19 @@ export class AppEngine {
       previous?.db.close();
       await previous?.machine?.machine.destroy();
     });
+  }
+
+  /** 正規表現エンジンを用意する。配布物を読むのは最初の 1 回だけ */
+  private async regexFor(matchLimit: number): Promise<RegexEngine> {
+    if (!this.loadAsset) throw new RuntimeError('crashed', 'この実行環境は、正規表現エンジンを動かせません');
+    this.regexAsset ??= this.loadAsset(REGEX_ASSET);
+    try {
+      return await RegexEngine.load(await this.regexAsset, matchLimit);
+    } catch (error) {
+      // 読めなかった結果は覚えない（次の準備で読み直せるようにする）
+      this.regexAsset = undefined;
+      throw error;
+    }
   }
 
   /**
@@ -160,6 +181,7 @@ export class AppEngine {
       hook: (id) => resolveHook(s.app, s.selection, id),
       emit: (type, data) => events.push({ type, data }),
       ...(s.machine && { machine: s.machine.machine }),
+      ...(s.regex && { regex: s.regex }),
     };
     let response;
     try {

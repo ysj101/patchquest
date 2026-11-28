@@ -4,7 +4,7 @@ import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el, sentenceLines } from '../shared/dom';
 import type { PickNeighbors, PrepareTitleInput, RenderComment } from './hooks';
-import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
+import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, NAME_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
 
 /** 画面内の移動はフレームを遷移させず、アプリ内で描画し直す */
 function linkButton(label: string, onClick: () => void): HTMLButtonElement {
@@ -37,6 +37,7 @@ async function header(root: HTMLElement, ctx: ViewContext): Promise<boolean> {
       linkButton('メモ', () => ctx.navigate('/memos')),
       linkButton('共有ページ', () => ctx.navigate('/pages')),
       linkButton('検索', () => ctx.navigate('/search')),
+      linkButton('表示名', () => ctx.navigate('/profile')),
     ),
   );
   return true;
@@ -194,12 +195,37 @@ async function searchView(root: HTMLElement, ctx: ViewContext, initial: string):
   if (initial) await search();
 }
 
+/** 表示名の変更。使える文字の決まりは教材ロジックが確かめ、断られたときは理由をそのまま示す */
+function profile(root: HTMLElement, ctx: ViewContext, saved: boolean): void {
+  const input = el('input', { name: 'name', maxLength: NAME_MAX_LENGTH, autocomplete: 'off', spellcheck: false });
+  const change = el('button', { type: 'button' }, '変更する');
+  const message = el('p', { className: 'error', role: 'alert' });
+  const submit = async () => {
+    const res = await ctx.request({ method: 'PUT', path: '/api/me', body: { name: input.value } });
+    // 変えたあとは描き直して、上の「〜 さんとしてログイン中」にも新しい名前を出す
+    if (res.status === 200) ctx.navigate('/profile?saved=1');
+    else message.replaceChildren(...sentenceLines(errorMessage(res)));
+  };
+  change.addEventListener('click', () => void submit());
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') void submit();
+  });
+  root.append(
+    el('h2', {}, '表示名を変える'),
+    el('p', { className: 'muted' }, ...sentenceLines(`半角の英小文字と数字を使えます。記号（. _ -）は、文字と文字の間に 1 つずつ入れられます。${NAME_MAX_LENGTH} 文字までです。`)),
+    el('div', { className: 'row' }, el('label', {}, '新しい表示名', input), change),
+    ...(saved ? [el('p', { className: 'muted', role: 'status' }, '表示名を変えました。')] : []),
+    message,
+  );
+}
+
 export async function render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void> {
   if (!(await header(root, ctx))) return;
   const [path, query] = route.split('?');
   const [, section, id, action] = path!.split('/');
   if (section === 'pages') return id === undefined ? pageList(root, ctx) : page(root, ctx, id);
   if (section === 'search') return searchView(root, ctx, new URLSearchParams(query ?? '').get('q') ?? '');
+  if (section === 'profile') return void profile(root, ctx, new URLSearchParams(query ?? '').has('saved'));
   if (section !== 'memos' || id === undefined) return list(root, ctx);
   if (id === 'new') return form(root, ctx);
   if (action === 'edit') return form(root, ctx, id);

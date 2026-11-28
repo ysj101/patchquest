@@ -11,8 +11,8 @@ import { render } from './view';
 export const memoApp: AppModule = {
   descriptor: {
     id: 'memo',
-    version: '1.3.0',
-    features: ['memo', 'comments', 'search'],
+    version: '1.4.0',
+    features: ['memo', 'comments', 'search', 'profile'],
     users: [...USERS],
     entryRoute: '/memos',
     hooks: HOOKS,
@@ -22,6 +22,8 @@ export const memoApp: AppModule = {
   implementations: BASELINE,
   tests: MEMO_TESTS,
   handle,
+  // 表示名の入力チェックは、本物の正規表現エンジンで照合する。上限は PHP の既定値（pcre.backtrack_limit）と同じ
+  regex: { matchLimit: 1_000_000 },
   render,
   describeEvent,
   eventLabels: Object.values(EVENT_LABELS),

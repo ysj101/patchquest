@@ -20,6 +20,7 @@ export const TITLE_MAX_LENGTH = 40;
 export const BODY_MAX_LENGTH = 1000;
 export const COMMENT_MAX_LENGTH = 500;
 export const QUERY_MAX_LENGTH = 100;
+export const NAME_MAX_LENGTH = 20;
 
 /** 文字数の上限を超えていれば、利用者に示す説明を返す。文字数はコードポイントで数える */
 export function lengthError(label: string, value: string, max: number): string | null {

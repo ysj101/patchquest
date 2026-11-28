@@ -6,8 +6,8 @@ import { V86 } from 'v86';
 /** 機械の配布物（scripts/build-machine.mjs が作る）。Worker と同じディレクトリから読む */
 export const MACHINE_ASSETS = ['v86.wasm', 'seabios.bin', 'vgabios.bin', 'linux.state.zst'] as const;
 export type MachineAsset = (typeof MACHINE_ASSETS)[number];
-/** 配布物を読む手段。ブラウザでは通信を塞ぐ前に取得し、Node のテストではファイルから読む */
-export type AssetLoader = (name: MachineAsset) => Promise<ArrayBuffer>;
+/** 配布物（機械のもの・正規表現エンジンのもの）を読む手段。ブラウザでは通信を塞ぐ前に取得し、Node のテストではファイルから読む */
+export type AssetLoader = (name: string) => Promise<ArrayBuffer>;
 
 /** 機械のメモリ。状態を保存したとき（scripts/build-machine.mjs）と同じ値にする */
 const MEMORY_BYTES = 96 * 1024 * 1024;

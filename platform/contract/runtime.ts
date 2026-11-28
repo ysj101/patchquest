@@ -13,8 +13,11 @@ export type SessionToken = string;
 
 export const ANONYMOUS: ActorKey = 'anonymous';
 
-/** 実行環境が提供する機能。パックは必要な機能を宣言する。linux-vm は、本物の Linux を WASM のエミュレータで動かす演習用の機械 */
-export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm'] as const;
+/**
+ * 実行環境が提供する機能。パックは必要な機能を宣言する。linux-vm は、本物の Linux を WASM のエミュレータで動かす演習用の機械。
+ * pcre2 は、処理の上限（match limit）を付けて照合できる正規表現エンジン PCRE2（WASM）
+ */
+export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm', 'pcre2'] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
 /**

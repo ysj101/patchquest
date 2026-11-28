@@ -2,6 +2,7 @@
 // ID や名前はハードコードせず fixture の値（{{キー}}）で参照し、複数の seed で同じテストが通るようにする
 import type { TestCase } from '../../platform/contract';
 import { TITLE_MAX_LENGTH } from './model';
+import { PROFILE_TESTS } from './profile-tests';
 
 const ALICE_PRIVATE = '/api/memos/{{memos.alice.private.id}}';
 const PAGE = '/api/pages/{{pages.shared.id}}';
@@ -301,4 +302,5 @@ export const MEMO_TESTS: TestCase[] = [
       },
     ],
   },
+  ...PROFILE_TESTS,
 ];

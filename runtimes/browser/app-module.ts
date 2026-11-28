@@ -16,6 +16,7 @@ import type {
   TestCase,
 } from '../../platform/contract';
 import type { Machine } from './machine';
+import type { RegexEngine } from './regex';
 import type { Database } from './sqlite';
 
 export type HookFunction = (...args: never[]) => unknown;
@@ -30,6 +31,8 @@ export interface ServerContext {
   emit(type: string, data: Record<string, JsonValue>): void;
   /** 演習用の機械（本物の Linux）。machine を宣言したアプリにだけ渡る */
   machine?: Machine;
+  /** 正規表現エンジン（PCRE2）。regex を宣言したアプリにだけ渡る */
+  regex?: RegexEngine;
 }
 
 export interface ViewContext {
@@ -77,6 +80,11 @@ export interface AppModule {
    * 使うパックは runtime.capabilities に linux-vm を挙げる
    */
   machine?: { provision(machine: Machine, db: Database): Promise<void>; reset(machine: Machine): Promise<void> };
+  /**
+   * 正規表現エンジン PCRE2（WASM）を使うアプリが宣言する。matchLimit は照合 1 回あたりの処理の上限（PCRE2 の match limit）で、
+   * 達した照合は、結論が出ないまま打ち切られる。使うパックは runtime.capabilities に pcre2 を挙げる
+   */
+  regex?: { matchLimit: number };
   render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
   /** アプリが記録する観測イベントの説明（調査パネルで表示する）。知らない種類は null */
   describeEvent?(event: ObservedEvent): string | null;

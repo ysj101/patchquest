@@ -26,6 +26,20 @@ test('演習に必要なファイルがすべて同梱され、検証用のペ�
   expect((await request.get('/test/runtime.html')).status()).toBe(404);
 });
 
+test('正規表現エンジン PCRE2 と、その版・ソースコードの入手先・ライセンスの全文が同梱されている', async ({ request }) => {
+  const wasm = await request.get('/assets/pcre2.wasm');
+  expect(wasm.status()).toBe(200);
+  expect(wasm.headers()['content-type']).toBe('application/wasm');
+  const legal = await request.get('/assets/pcre2.LEGAL.txt');
+  expect(legal.status()).toBe(200);
+  const text = await legal.text();
+  expect(text).toContain('ライセンス：BSD-3-Clause WITH PCRE2-exception');
+  expect(text).toContain('https://github.com/PCRE2Project/pcre2/releases/download/');
+  expect(text).toContain('Redistributions in binary form must reproduce the above copyright');
+  // README からも、同じファイルを案内する
+  expect(await (await request.get('/README.md')).text()).toContain('assets/pcre2.LEGAL.txt');
+});
+
 test('演習用の機械に入っているソフトウェアの一覧・ソースコードの入手先・ライセンスの全文が同梱されている', async ({ request }) => {
   const legal = await request.get('/assets/linux-machine.LEGAL.txt');
   expect(legal.status()).toBe(200);

@@ -10,6 +10,7 @@ import { assertBoundaries } from './check-boundaries.mjs';
 import { assertDomSafety } from './check-dom-safety.mjs';
 import { MACHINE_DIR, MACHINE_FILES, ensureMachine } from './build-machine.mjs';
 import { machineLegalText } from './machine-licenses.mjs';
+import { PCRE2_DIR, PCRE2_WASM, pcre2LegalText } from './pcre2-source.mjs';
 
 const outdir = 'dist';
 const testMode = process.argv.includes('--test');
@@ -82,6 +83,9 @@ const tasks = [
   ...MACHINE_FILES.map((file) => cp(join(MACHINE_DIR, file), `${outdir}/assets/${file}`)),
   // 機械に入っているソフトウェアの一覧・ソースコードの入手先・ライセンスの全文
   machineLegalText().then((text) => writeFile(`${outdir}/assets/linux-machine.LEGAL.txt`, text)),
+  // 正規表現エンジン PCRE2（リポジトリに入れてあるビルド済みのもの）と、その版・ソースコードの入手先・ライセンスの全文
+  cp(join(PCRE2_DIR, PCRE2_WASM), `${outdir}/assets/${PCRE2_WASM}`),
+  pcre2LegalText().then((text) => writeFile(`${outdir}/assets/pcre2.LEGAL.txt`, text)),
 ];
 
 if (testMode) {

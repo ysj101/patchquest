@@ -42,5 +42,6 @@
 ## 同梱しているソフトウェア
 
 - SQLite（パブリックドメイン）と、その WebAssembly 版のラッパー `@sqlite.org/sqlite-wasm`（Apache License 2.0）。ライセンスの全文は `assets/runtime-worker.js.LEGAL.txt` を参照してください。
+- 正規表現エンジン PCRE2 10.49（BSD-3-Clause WITH PCRE2-exception）。`assets/pcre2.wasm` は、PCRE2 の公式のソースコードを WebAssembly にビルドしたものです。ソースコードの入手先とライセンスの全文は `assets/pcre2.LEGAL.txt` を参照してください。
 - 演習用の機械（ブラウザの中で動く Linux）：エミュレータ v86（BSD-2-Clause）、SeaBIOS とその VGA BIOS（LGPL-3.0）、Linux カーネル（GPL-2.0）、Alpine Linux 3.24.4 の最小構成（BusyBox・apk-tools・pax-utils・alpine-baselayout は GPL-2.0、musl は MIT、OpenSSL は Apache License 2.0、ca-certificates は MPL-2.0 ほか）、sudo（ISC ほか）、zlib（Zlib）。`assets/linux.state.zst` は、これらを起動した状態を保存したものです。版ごとの一覧とライセンスの全文は `assets/linux-machine.LEGAL.txt` を参照してください。
 - GPL・LGPL・MPL のソフトウェアに対応するソースコードは、https://github.com/ysj101/patchquest/releases/tag/machine-sources-1 から入手できます（上流のソースと、Alpine Linux のビルド定義。ファイル名は `assets/linux-machine.LEGAL.txt` の一覧にあります）。そのほかのソースコードは、Alpine Linux（https://alpinelinux.org/）と v86（https://github.com/copy/v86）の配布元から入手できます。
