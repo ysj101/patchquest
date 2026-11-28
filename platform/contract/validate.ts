@@ -1,6 +1,7 @@
 // 課題パックの検証。演習の開始前（事前検証）とテストで実行し、作者の記述ミスを開始前に止める
 import {
   APPROACH_CARD_LIMITS,
+  HINT_LIMITS,
   DEFENSE_EXPECTATIONS,
   DIFF_LANGUAGES,
   FIELD_INPUTS,
@@ -39,7 +40,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
   c.oneOf('kind', m.kind, PACK_KINDS);
   c.text('title', m.title);
   c.text('summary', m.summary);
-  c.text('solution', m.solution);
+  checkInlineCode(c, 'solution', limitedText(c, 'solution', m.solution, HINT_LIMITS.solution));
   c.texts('learningObjectives', m.learningObjectives, true);
   if (typeof m.estimatedMinutes !== 'number' || !(m.estimatedMinutes > 0)) c.fail('estimatedMinutes', '正の数が必要です');
   if (m.kind === 'mission' && m.vulnerability === undefined) c.fail('vulnerability', 'kind が mission のパックでは必須です');
@@ -212,7 +213,7 @@ export function validatePack(pack: MissionPack, ctx: ValidationContext = {}): st
 
   const levels = c.list('hints', m.hints).map((raw, i) => {
     const h = c.obj(`hints[${i}]`, raw);
-    c.text(`hints[${i}].text`, h.text);
+    checkInlineCode(c, `hints[${i}].text`, limitedText(c, `hints[${i}].text`, h.text, HINT_LIMITS.hint));
     return h.level;
   });
   if (levels.length !== 3 || ![1, 2, 3].every((l) => levels.includes(l))) c.fail('hints', 'level 1・2・3 を1件ずつ定義してください');
@@ -292,12 +293,7 @@ function checkApproach(checker: Checker, path: string, value: unknown): void {
   checker.list(`${path}.cards`, checker.obj(path, value).cards, true).forEach((raw, i) => {
     const at = `${path}.cards[${i}]`;
     const card = checker.obj(at, raw);
-    /** 空でなく、上限の文字数に収まる文 */
-    const limited = (key: 'title' | 'observe' | 'note'): string => {
-      const text = checker.text(`${at}.${key}`, card[key]);
-      if (text.length > APPROACH_CARD_LIMITS[key]) checker.fail(`${at}.${key}`, `${APPROACH_CARD_LIMITS[key]} 文字以内で書いてください（いまは ${text.length} 文字）`);
-      return text;
-    };
+    const limited = (key: 'title' | 'observe' | 'note'): string => limitedText(checker, `${at}.${key}`, card[key], APPROACH_CARD_LIMITS[key]);
     limited('title');
     checkInlineCode(checker, `${at}.observe`, limited('observe'));
     if (card.note !== undefined) checkInlineCode(checker, `${at}.note`, limited('note'));
@@ -305,6 +301,13 @@ function checkApproach(checker: Checker, path: string, value: unknown): void {
     const commands = checker.texts(`${at}.commands`, card.commands, true);
     if (commands.length > APPROACH_CARD_LIMITS.commands) checker.fail(`${at}.commands`, `${APPROACH_CARD_LIMITS.commands} 件以内にしてください（カードを分ける）`);
   });
+}
+
+/** 空でなく、上限の文字数に収まる文 */
+function limitedText(checker: Checker, path: string, value: unknown, max: number): string {
+  const text = checker.text(path, value);
+  if (text.length > max) checker.fail(path, `${max} 文字以内で書いてください（いまは ${text.length} 文字）`);
+  return text;
 }
 
 /** `…` で囲んだコードの書き誤り（閉じていない・中身が空）を止める */

@@ -26,7 +26,7 @@ export const unverifiedUpdatePack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'unverified-update',
-    version: '2.1.0',
+    version: '2.2.0',
     kind: 'mission',
     title: '更新を、確かめてから取り込む',
     summary:

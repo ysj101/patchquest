@@ -249,8 +249,12 @@ export type DefenseDef = SecureDefense | WrongDefense;
 /** 1: 着眼点、2: 調査方法、3: 修正方針（spec §9） */
 export interface HintDef {
   level: 1 | 2 | 3;
+  /** 開いたときに出す文。打つコマンドやファイルのパスは `…` で囲む（等幅で出る） */
   text: string;
 }
+
+/** ヒント 1 件（hint）と解法（solution）に書ける文字数の上限。超えると検証で止まる */
+export const HINT_LIMITS = { hint: 120, solution: 160 } as const;
 
 /** 演習と異なる利用者・データ・入力の状況で、原因と有効な対策を判断できるかを問う */
 export interface TransferQuestion {
