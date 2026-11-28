@@ -5,6 +5,7 @@ import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el, sentenceLines } from '../shared/dom';
 import type { PickNeighbors, PrepareTitleInput, RenderComment } from './hooks';
 import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
+import { closeStampScreen, stampScreen } from './stamp-view';
 
 /** 画面内の移動はフレームを遷移させず、アプリ内で描画し直す */
 function linkButton(label: string, onClick: () => void): HTMLButtonElement {
@@ -168,7 +169,7 @@ async function page(root: HTMLElement, ctx: ViewContext, id: string): Promise<vo
     count,
     list,
     el('label', {}, 'コメントを書く', input),
-    el('div', { className: 'row' }, post),
+    el('div', { className: 'row' }, post, linkButton('スタンプを送る', () => ctx.navigate(`/pages/${id}/stamps`))),
     message,
   );
 }
@@ -195,11 +196,15 @@ async function searchView(root: HTMLElement, ctx: ViewContext, initial: string):
 }
 
 export async function render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void> {
+  // 前の画面が「スタンプを送る」画面なら、メッセージの受け取りをやめる
+  closeStampScreen();
   if (!(await header(root, ctx))) return;
   const [path, query] = route.split('?');
   const [, section, id, action] = path!.split('/');
+  const params = new URLSearchParams(query ?? '');
+  if (section === 'pages' && id !== undefined && action === 'stamps') return stampScreen(root, ctx, id, params.get('press'));
   if (section === 'pages') return id === undefined ? pageList(root, ctx) : page(root, ctx, id);
-  if (section === 'search') return searchView(root, ctx, new URLSearchParams(query ?? '').get('q') ?? '');
+  if (section === 'search') return searchView(root, ctx, params.get('q') ?? '');
   if (section !== 'memos' || id === undefined) return list(root, ctx);
   if (id === 'new') return form(root, ctx);
   if (action === 'edit') return form(root, ctx, id);

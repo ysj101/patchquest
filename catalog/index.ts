@@ -4,6 +4,7 @@ import { memoApp } from '../apps/memo';
 import { linuxApp } from '../apps/shell/linux';
 import { idorPack } from '../missions/idor';
 import { onboardingPack } from '../missions/onboarding';
+import { postmessageOriginPack } from '../missions/postmessage-origin';
 import { storedXssPack } from '../missions/stored-xss';
 import { sqliPack } from '../missions/sqli';
 import { sudoMisconfigPack } from '../missions/sudo-misconfig';
@@ -12,5 +13,5 @@ import type { Catalog } from '../runtimes/browser/app-module';
 
 export const catalog: Catalog = {
   apps: [memoApp, linuxApp],
-  packs: [onboardingPack, idorPack, storedXssPack, sqliPack, sudoMisconfigPack, unverifiedUpdatePack],
+  packs: [onboardingPack, idorPack, storedXssPack, sqliPack, sudoMisconfigPack, unverifiedUpdatePack, postmessageOriginPack],
 };

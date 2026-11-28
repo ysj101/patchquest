@@ -50,7 +50,18 @@ export interface ViewContext {
    * 教材データは文字列のまま渡し、Host の DOM へ HTML としては入れない
    */
   emit(type: string, data: Record<string, JsonValue>): void;
+  /**
+   * 埋め込みページ（AppModule.embeds の name）を開く URL。画面が iframe の src に入れる。
+   * param は埋め込みページへそのまま渡す文字列（省くと空）
+   */
+  embedSrc(name: string, param?: string): string;
 }
+
+/**
+ * 教材アプリの画面が、iframe でさらに埋め込むページ（部品・外部のページ）を描く処理。
+ * 画面とは別の文書として開かれ、オリジンも別（不透明）になる。画面とのやり取りは、本物の postMessage で行う
+ */
+export type EmbedRenderer = (root: HTMLElement, param: string) => void;
 
 /** フックの現在の実装を解決する。初期データ生成器が、注入され得る処理（例：配備時の設定）を呼ぶのに使う */
 export type HookAccessor = ServerContext['hook'];
@@ -78,6 +89,8 @@ export interface AppModule {
    */
   machine?: { provision(machine: Machine, db: Database): Promise<void>; reset(machine: Machine): Promise<void> };
   render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
+  /** 画面が iframe で埋め込むページ（名前 → 描く処理）。ViewContext.embedSrc の URL で開く。使わないアプリは省く */
+  embeds?: Record<string, EmbedRenderer>;
   /** アプリが記録する観測イベントの説明（調査パネルで表示する）。知らない種類は null */
   describeEvent?(event: ObservedEvent): string | null;
   /**

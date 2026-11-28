@@ -8,7 +8,12 @@ export const EVENT_LABELS = {
   'sql.error': 'SQL の失敗',
   'validation.failed': '入力検証',
   'comment.rendered': '画面に出たコメント',
+  'message.received': '届いたメッセージ',
 } as const;
+
+/** 「スタンプを送る」画面にメッセージを送った窓（message.received の sender）の、観測ログでの呼び名 */
+export const MESSAGE_SENDERS = { picker: 'スタンプの部品', ad: '広告の枠', other: 'そのほかの窓' } as const;
+export type MessageSender = keyof typeof MESSAGE_SENDERS;
 
 export function describeEvent(event: ObservedEvent): string | null {
   const d = event.data;
@@ -25,6 +30,14 @@ export function describeEvent(event: ObservedEvent): string | null {
       const text = d.text;
       return typeof text === 'string' ? `${EVENT_LABELS['comment.rendered']}：${text}` : null;
     }
+    case 'message.received':
+      // 1 行目は観測ログの見出しにも出る。開かなくても、受け入れたか捨てたかが分かるようにする
+      return [
+        `${EVENT_LABELS['message.received']}：${typeof d.data === 'string' ? d.data : JSON.stringify(d.data)} → ${d.accepted === true ? '受け入れた' : '捨てた'}`,
+        `送り主の窓（event.source）：${MESSAGE_SENDERS[d.sender as MessageSender]}`,
+        `送り主のオリジン（event.origin）：${JSON.stringify(d.origin)}`,
+        d.accepted === true ? '結果：受け入れた（スタンプを書き込んだ）' : '結果：捨てた（何も書き込まない）',
+      ].join('\n');
     default:
       return null;
   }

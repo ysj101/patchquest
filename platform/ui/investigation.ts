@@ -76,17 +76,22 @@ function describeEvent(event: ObservedEvent, describeApp: EventDescriber): strin
   return `${event.type} ${JSON.stringify(event.data)}`;
 }
 
-/** ログの 1 行目：状態と、誰が何をしたか。described はアプリによるやり取りの説明で、なければ状態コードを示す */
-function headline(exchange: Exchange, actorLabel: string, describe: AppDescribers['request'], described: ExchangeDescription | null): { mark: HTMLElement; summary: string } {
+/**
+ * ログの 1 行目：状態と、誰が何をしたか。described はアプリによるやり取りの説明で、なければ状態コードを示す。
+ * 画面で出来事が起きた記録は、開かなくても見分けられるよう、最初の出来事の 1 行目を添える
+ */
+function headline(exchange: Exchange, actorLabel: string, describers: AppDescribers, described: ExchangeDescription | null): { mark: HTMLElement; summary: string } {
   if (exchange.kind === 'render') {
+    const first = exchange.events[0];
+    const screen = `画面 ${exchange.route ?? ''}`;
     return {
       mark: status(exchange.events.some((e) => e.type === 'dom.marker') ? 'error' : 'idle', '画面'),
-      summary: `${actorLabel} が画面 ${exchange.route ?? ''} を表示`,
+      summary: first ? `${actorLabel} の${screen} で：${describeEvent(first, describers.event).split('\n')[0] ?? ''}` : `${actorLabel} が${screen} を表示`,
     };
   }
   const code = exchange.response?.status ?? 0;
   const mark = described?.mark ?? { ok: code < 400, text: String(code) };
-  return { mark: status(mark.ok ? 'passed' : 'failed', mark.text), summary: `${actorLabel} → ${exchange.request ? requestLabel(exchange.request, describe) : ''}` };
+  return { mark: status(mark.ok ? 'passed' : 'failed', mark.text), summary: `${actorLabel} → ${exchange.request ? requestLabel(exchange.request, describers.request) : ''}` };
 }
 
 /** 記録を開いたときの、やり取りの中身。アプリが説明しないものは、リクエストと応答をそのまま示す */
@@ -188,7 +193,7 @@ export class InvestigationPanel {
     if (exchange.request && describers.background(exchange.request)) return;
     this.count++;
     const described = exchange.request && exchange.response ? describers.exchange(exchange.request, exchange.response) : null;
-    const { mark, summary } = headline(exchange, actorLabel, describers.request, described);
+    const { mark, summary } = headline(exchange, actorLabel, describers, described);
     const details = h('details', { class: 'log-entry' }, h('summary', {}, h('span', { class: 'log-no' }, `#${this.count}`), mark, h('span', { class: 'log-summary mono' }, summary)));
     // 中身は開いたときに 1 回だけ組み立てる（ほとんどの記録は開かれない）
     details.addEventListener(
