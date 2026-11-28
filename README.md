@@ -50,7 +50,7 @@ pnpm run test:dist      # ZIP を展開して localhost で開き、Chrome で�
 node scripts/check-dom-safety.mjs  # 学習UIが HTML として挿入する API を使っていないか（ビルドでも実行）
 ```
 
-演習用の機械（本物の Linux を動かす課題で使う）の配布物は、ビルドとユニットテストの前に `.machine/` へ自動で作ります（`node scripts/build-machine.mjs` でも作れます）。初回は、Alpine Linux の最小構成・sudo・カーネルと v86 の BIOS を、版とハッシュを固定して取得します（約 31MB。取得したものは `.machine/cache/` に残し、次からは取りに行きません）。取得元は、このリポジトリのリリース（[machine-sources-1](https://github.com/ysj101/patchquest/releases/tag/machine-sources-1)）に保管したものです。Alpine Linux の配布元から古い版が消えても、ビルドできます。版を上げる手順は [docs/machine-sources.md](docs/machine-sources.md) にあります。取得するのはこのときだけで、配布物は実行時に外へ取りに行きません。
+演習用の機械（本物の Linux を動かす課題で使う）の配布物は、ビルドとユニットテストの前に `.machine/` へ自動で作ります（`node scripts/build-machine.mjs` でも作れます）。初回は、Alpine Linux の最小構成・sudo・git・ssh-keygen・カーネルと v86 の BIOS を、版とハッシュを固定して取得します（約 35MB。取得したものは `.machine/cache/` に残し、次からは取りに行きません）。取得元は、このリポジトリのリリース（[machine-sources-1](https://github.com/ysj101/patchquest/releases/tag/machine-sources-1)）に保管したものです。Alpine Linux の配布元から古い版が消えても、ビルドできます。版を上げる手順は [docs/machine-sources.md](docs/machine-sources.md) にあります。取得するのはこのときだけで、配布物は実行時に外へ取りに行きません。
 
 ### 品質ゲート
 
@@ -124,6 +124,8 @@ E2E と出荷前検証は、マージ後の CI で確かめます（手元で通
 | OpenSSL 3.5.9（libcrypto・libssl） | Alpine Linux 3.24.4 の最小構成 | Apache License 2.0 |
 | ca-certificates 20261020・Alpine Linux の署名鍵とリリース情報 | Alpine Linux 3.24.4 の最小構成 | MPL-2.0 / MIT |
 | sudo 1.9.17p2・zlib 1.3.2 と 1.4 | 演習用の機械の中身（zlib 1.3.2 は最小構成、ほかは足したパッケージ） | ISC ほか（sudo）/ Zlib |
+| git 2.54.1（本体だけ。通信する部品は入れていない） | 演習用の機械の中身（足したパッケージ） | GPL-2.0（一部は LGPL-2.1 以降） |
+| PCRE2 10.49・OpenSSH 10.3p1（ssh-keygen だけ） | 演習用の機械の中身（足したパッケージ） | BSD-3-Clause / BSD ほか（OpenSSH） |
 | esbuild・Vitest・Playwright・TypeScript | 開発時のビルドとテスト（配布物には含まない） | MIT / Apache License 2.0 |
 | ESLint・typescript-eslint・eslint-plugin-import-x・eslint-import-resolver-typescript・globals・jscpd・knip | 開発時の静的検査（配布物には含まない） | MIT / ISC |
 | eslint-plugin-sonarjs | 開発時の静的検査（配布物には含まない） | LGPL-3.0 |

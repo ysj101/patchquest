@@ -80,7 +80,8 @@ export function putProgram(db: Database, path: string, needsRoot: boolean, outpu
   db.exec({ sql: 'INSERT INTO programs (path, needs_root, output) VALUES (?, ?, ?)', bind: [path, needsRoot ? 1 : 0, output] });
 }
 
-function addAccount(db: Database, account: NewAccount): void {
+/** 利用者を足す。actor が null の利用者は、演習画面からは選べない（機械の中にだけいる） */
+export function addAccount(db: Database, account: NewAccount): void {
   db.exec({ sql: 'INSERT INTO accounts (name, actor, uid, home) VALUES (?, ?, ?, ?)', bind: [account.name, account.actor, account.uid, account.home] });
   for (const group of account.groups) db.exec({ sql: 'INSERT INTO memberships (account, grp) VALUES (?, ?)', bind: [account.name, group] });
 }
