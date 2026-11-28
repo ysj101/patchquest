@@ -2,6 +2,7 @@
 // 各パックの開発用の検証データ（missions/<課題>/__tests__/verification.ts）の実装を登録する
 import { shellApp } from '../../apps/shell';
 import { catalog as bundled } from '../../catalog';
+import { cspVerification } from '../../missions/csp/__tests__/verification';
 import { idorVerification } from '../../missions/idor/__tests__/verification';
 import { sudoMisconfigVerification } from '../../missions/sudo-misconfig/__tests__/verification';
 import { unverifiedUpdateVerification } from '../../missions/unverified-update/__tests__/verification';
@@ -14,7 +15,7 @@ import { testPack } from './test-pack';
 import { shellTestPack, shellTestVerification } from './shell-pack';
 import type { PackVerificationData } from './verification-data';
 
-const verifications: PackVerificationData[] = [idorVerification, sudoMisconfigVerification, unverifiedUpdateVerification, shellTestVerification];
+const verifications: PackVerificationData[] = [idorVerification, cspVerification, sudoMisconfigVerification, unverifiedUpdateVerification, shellTestVerification];
 
 /** パックの出荷前検証だけで確かめる対策候補（誤った修正など） */
 export const verificationCandidates = (packId: string): VerificationCandidate[] =>

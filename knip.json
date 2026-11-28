@@ -4,6 +4,8 @@
     "platform/main.ts",
     "runtimes/browser/worker.ts",
     "runtimes/browser/preview/preview.inline.ts",
+    "runtimes/browser/pages/service-worker.ts",
+    "runtimes/browser/pages/page.ts",
     "tests/pages/*.ts",
     "tests/support/catalog.ts"
   ],

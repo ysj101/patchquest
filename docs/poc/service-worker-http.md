@@ -21,7 +21,7 @@ Issue #232。Service Worker をサーバ役にして、教材アプリへのリ�
 | 端末 | Apple M2、macOS 27.2.1 |
 | ブラウザ | Google Chrome 158.0.8127.37 |
 | 静的サーバ | Python 3.15.0 `http.server`（`--bind 127.0.0.1`） |
-| 再現手順 | `node scripts/build.mjs --test` のあと `npx playwright test tests/e2e/poc-sw.spec.ts --project chrome`。検証ページは `tests/pages/poc-sw.html`・`poc-sw.ts`、Service Worker は `tests/pages/poc-sw-worker.ts` |
+| 再現手順 | PoC の検証ページと E2E（`tests/pages/poc-sw*`・`tests/e2e/poc-sw.spec.ts`）は、製品の実装（`runtimes/browser/pages/`）に置き換わったあとで削除した。当時のものは git の履歴にある |
 
 検証ページ（Host）は `/test/poc-sw.html`、Service Worker のスコープは `/test/poc-sw/`。スコープの下の URL を `<インスタンス>/<経路>` として受け、応答に付けるヘッダは検証ページが指定する。枠の中の文書は、自分から見えたものを Host へ知らせる。
 
@@ -88,7 +88,20 @@ Issue #232。Service Worker をサーバ役にして、教材アプリへのリ�
 - **学習者が DevTools を開く案内。** 画面の案内だけで開けるか。開かなくても同じ情報（ステータス・ヘッダ）を観測ログに出すか。
 - **スクリプトを文書に埋め込む制約。** 教材アプリの画面のスクリプトを、応答の文書へ埋め込む作り（いまの `buildSandboxDocument` に近い）にできるか。
 
-## 実装へ進む場合の反映
+## 実装への反映（Issue #234）
+
+結論の構成を、必要機能 `http-pages` として実装した（`runtimes/browser/pages/`）。最初の教材アプリは「掲示板」（`apps/board`）、最初の課題は CSP の付け忘れ（`missions/csp`）。PoC のあとで確かめたこと・決めたことは次のとおり。
+
+- **CSP の `'self'` は、隔離した文書でも、ページの URL と同じ場所の静的ファイルに合う。** 文書は不透明なオリジンだが、`script-src 'self'` を付けたページで、静的サーバが配る `<script src>` は動き、文書の中に書かれたスクリプトは止まった。`securitypolicyviolation` で、止めたものも知らせてくる。そこで、ページのスクリプトとスタイルは、文書に埋めこまず、静的ファイル（`assets/page.js`・`assets/<アプリ>-pages.css`）にした（「残っていること」の「スクリプトを文書に埋め込む制約」は、埋めこまない形で解けた）。
+- **読み込みの完了は、枠の `load` で知る。** スクリプトを止めたページからは知らせが来ないため。
+- **303 のあとの移動も Service Worker を通る。** フォームの POST に 303 を返すと、ブラウザは `Location` のページを GET で開き直した。
+- **`Location` は、アプリの中のパスだけを通す。** Service Worker が同じ札の下の URL へ書き換え、それ以外は 502 にする。
+- **検証用のインスタンス。** 見えない枠でも同じように動く。CSP のパックの出荷前検証（3 つの seed、候補 10 件）は 43 秒だった。
+- **自由入力は置かない。** 攻撃の文字列は固定で、教材用の実行マーカーを呼ぶだけ。隔離の CSP は `sandbox` だけにし、通信を絞る指定は足していない（教材アプリが付ける CSP と混ざって、学習者に見えるヘッダが分かりにくくなるため）。
+
+まだ確かめていないのは、GitHub Pages での動作、古い Service Worker の残留、放置による実際の停止、別のサイトの枠に入れる場面、学習者が DevTools を開く案内。
+
+## 実装へ進む場合の反映（PoC の時点の見立て）
 
 - 新しい必要機能（または RuntimeAdapter）として足す。いまのプレビュー（`sandbox` 属性の枠＋メッセージ）とは枠の作りが違うので、同じ枠は使い回せない。
 - 教材アプリは、リクエストを受けて HTML を返す形（リンクとフォーム）で作る。いまの教材アプリ（画面のスクリプトが `fetch` 相当の呼び出しをする形）とは作りが違う。
