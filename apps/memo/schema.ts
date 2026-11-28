@@ -21,4 +21,8 @@ export const SCHEMA = `
     author_id INTEGER NOT NULL REFERENCES users (id),
     body TEXT NOT NULL
   );
+  CREATE TABLE token_keys (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    secret TEXT NOT NULL
+  );
 `;

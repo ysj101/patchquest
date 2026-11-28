@@ -16,6 +16,7 @@ import {
   type Memo,
   type User,
 } from './model';
+import { handleToken } from './token';
 
 const UNAUTHENTICATED = json(401, { error: 'ログインが必要です' });
 
@@ -114,12 +115,14 @@ function search(ctx: ServerContext, query: string, user: User): AppResponse {
   return json(200, { results: rows.map((r) => ({ id: r.id, ownerId: r.ownerId, title: r.title })) });
 }
 
-export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
+export function handle(ctx: ServerContext, req: AppRequest): AppResponse | Promise<AppResponse> {
   const [path, query = ''] = req.path.split('?');
   const [, api, resource, idSegment, sub, ...rest] = path!.split('/');
   if (api !== 'api' || rest.length > 0) return json(404, { error: '見つかりません' });
   const user = currentUser(ctx);
 
+  // ログイントークンの発行と、トークンでのメモの取り出し。署名の計算を待つので、応答はあとから返る
+  if (resource === 'token' && sub === undefined) return handleToken(ctx, req, user, idSegment);
   if (resource === 'me' && idSegment === undefined && req.method === 'GET') {
     return user ? json(200, { user: { id: user.id, key: user.key, name: user.name } }) : UNAUTHENTICATED;
   }

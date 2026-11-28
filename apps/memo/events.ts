@@ -8,7 +8,17 @@ export const EVENT_LABELS = {
   'sql.error': 'SQL の失敗',
   'validation.failed': '入力検証',
   'comment.rendered': '画面に出たコメント',
+  'token.checked': 'トークン',
 } as const;
+
+/** トークンの判断と、教材ロジックが測った署名の照合の結果 */
+function describeToken(data: ObservedEvent['data']): string {
+  const decision = data.decision === 'accept' ? '受け付けた' : '断った';
+  const reason = typeof data.reason === 'string' ? data.reason : '理由の記録なし';
+  const subject = typeof data.subject === 'string' ? data.subject : '読めない';
+  const signature = data.signatureValid === true ? '鍵で計算した値と合う' : '鍵で計算した値と合わない';
+  return `${EVENT_LABELS['token.checked']}：${decision}（${reason}）・トークンに書かれた利用者 ${subject}・署名 ${signature}`;
+}
 
 export function describeEvent(event: ObservedEvent): string | null {
   const d = event.data;
@@ -25,6 +35,8 @@ export function describeEvent(event: ObservedEvent): string | null {
       const text = d.text;
       return typeof text === 'string' ? `${EVENT_LABELS['comment.rendered']}：${text}` : null;
     }
+    case 'token.checked':
+      return describeToken(d);
     default:
       return null;
   }

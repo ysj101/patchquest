@@ -21,6 +21,7 @@ export default defineConfig({
         'platform/main.ts',
         'platform/ui/**',
         'apps/memo/view.ts',
+        'apps/memo/token-view.ts',
         'apps/shell/view.ts',
         'apps/shell/editor-view.ts',
         'apps/shared/dom.ts',

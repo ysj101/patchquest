@@ -2,6 +2,7 @@
 import type { JsonPrimitive } from '../../platform/contract';
 import type { FixtureGenerator } from '../../runtimes/browser/app-module';
 import { random } from '../shared/random';
+import { TOKEN_HEADER, composeToken, toBase64Url } from './jwt';
 
 const SECRETS = ['合言葉は「ひまわり」', '金庫の番号は 4821', '旅行の行き先は 小樽', '誕生日の贈り物は 万年筆'];
 const TOPICS = [
@@ -13,6 +14,23 @@ const TOPICS = [
 ];
 
 export const USERS = ['alice', 'bob', 'carol'] as const;
+
+/** 乱数の列を、メモなどの初期データと分けるための値。鍵を足しても、ほかの初期データ（ID・内容）が変わらないようにする */
+const TOKEN_STREAM = 0x4a57;
+
+/**
+ * ログイントークンの署名の鍵と、鍵を知らずに作ったトークンを用意する。鍵は seed から決まるので、同じ seed からは同じトークンが発行される。
+ * forged は中身を利用者の名前にして、でたらめな署名を付けたもの。unsigned は「署名なし」（alg: none）を名乗り、署名を付けないもの
+ */
+function tokenFixture(db: Parameters<FixtureGenerator>[0], seed: number, refs: Record<string, JsonPrimitive>): void {
+  const next = random(seed ^ TOKEN_STREAM);
+  const bytes = () => toBase64Url(Uint8Array.from({ length: 32 }, () => Math.floor(next() * 256)));
+  db.exec({ sql: 'INSERT INTO token_keys (id, secret) VALUES (1, ?)', bind: [bytes()] });
+  for (const key of USERS) {
+    refs[`tokens.${key}.forged`] = composeToken(TOKEN_HEADER, { sub: key }, bytes());
+    refs[`tokens.${key}.unsigned`] = composeToken({ alg: 'none', typ: 'JWT' }, { sub: key }, '');
+  }
+}
 
 export const memoFixture: FixtureGenerator = (db, seed) => {
   const next = random(seed);
@@ -64,5 +82,6 @@ export const memoFixture: FixtureGenerator = (db, seed) => {
     refs[`comments.${author}.id`] = commentId++;
     refs[`comments.${author}.body`] = body;
   }
+  tokenFixture(db, seed, refs);
   return refs;
 };
