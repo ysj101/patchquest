@@ -1,14 +1,8 @@
 // 調べ方・操作のしかたのカード。いま行うことを 1 枚だけ出し、「次へ」「戻る」で送る。
 // 「全体の流れ」を押すと、カードの見出しだけの一覧に替わり、どのカードへも移れる
-import { splitInlineCode, type ApproachCard, type ApproachDef } from '../contract';
+import type { ApproachCard, ApproachDef } from '../contract';
+import { withCode } from './components';
 import { h } from './dom';
-
-/** `…` で囲んだ部分を等幅のコードにした、文の部品。パックは読み込み時に検証済みなので、書き誤りは例外にする */
-function withCode(text: string): (HTMLElement | string)[] {
-  const parts = splitInlineCode(text);
-  if (!parts) throw new Error(`コードの囲みが閉じていません：${text}`);
-  return parts.map((part) => (part.code ? h('code', { class: 'inline-code' }, part.text) : part.text));
-}
 
 /** カード 1 枚。見出し・打つコマンド・見るところ・記号の意味の順に並べる */
 function cardItem(card: ApproachCard): HTMLElement {

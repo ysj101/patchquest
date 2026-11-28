@@ -81,20 +81,20 @@ export const REPAIR_GUIDE: ApproachDef = {
 export const HINTS: HintDef[] = [
   {
     level: 1,
-    text: '取り込みのプログラムは、更新を動かす行（sh ./update.sh）の前に、中身を確かめているでしょうか。すぐ上の行を読んでみましょう。確かめていなければ、更新に何が書いてあっても、そのまま root の権限で動きます。',
+    text: '取り込みのプログラムは、更新を動かす行（`sh ./update.sh`）の前に、中身を確かめていますか。確かめていなければ、更新に何が書いてあっても root の権限で動きます。',
   },
   {
     level: 2,
-    text: '運用担当（operator）の端末で、置き場の更新に 1 行足してみましょう。運用メモにある、管理者だけが行う保守の操作のパスを使います。echo 保守の操作のパス >> /var/cache/updates/update.sh と入力して足します。sha256sum /var/cache/updates/update.sh でハッシュを計算し直すと、足す前とはまったく別の値になっています。そのまま sudo apply-update で取り込み、観測ログの「プログラムの実行」で、保守の操作がどの権限で動いたかを確かめます。',
+    text: '運用担当（operator）の端末で、置き場の更新 `/var/cache/updates/update.sh` に、保守の操作のパスを 1 行足します。`sudo apply-update` で取り込み、観測ログで権限を確かめます。',
   },
   {
     level: 3,
-    text: '画面の「表示する利用者」を admin に切り替え、sudoedit /usr/local/bin/apply-update で取り込みのプログラムを開きます。6 行目（確かめる行を外したときのメモ）を、sha256sum -c /etc/updates/SHA256SUMS || exit 1 に書き換えて、保存します。調査で自分の手で行った確認を、プログラムが、更新を動かす前に行うようになります。|| exit 1 は、「合わなければ、ここでやめる」という意味です。',
+    text: '利用者を admin に替え、`sudoedit /usr/local/bin/apply-update` で 6 行目を `sha256sum -c /etc/updates/SHA256SUMS || exit 1` に書き換えます。',
   },
 ];
 
 export const SOLUTION =
-  '画面の「表示する利用者」を admin に切り替え、sudoedit /usr/local/bin/apply-update で取り込みのプログラムを開きます。6 行目を sha256sum -c /etc/updates/SHA256SUMS || exit 1 に書き換えて保存します。書き換えられた更新は、ハッシュが一覧と合わないので、動かす前に止まります。|| exit 1 を付けないと、合わないと分かったあとも次の行へ進み、更新を動かしてしまいます。置き場のファイルを書き換えられないようにするだけでは足りません。配布元で書き換えられた更新は、そのまま届くからです。取り込みそのものを止めると、正しい更新も取り込めなくなります。';
+  '6 行目で、更新を動かす前に、ハッシュを一覧と照らします。`|| exit 1` がないと、合わなくても次の行へ進みます。置き場を書き換えられなくするだけでは、配布元で書き換えられた更新を防げません。';
 
 export const TRANSFER_CHECK: TransferQuestion[] = [
   {

@@ -16,7 +16,7 @@ export const storedXssPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'stored-xss',
-    version: '1.11.0',
+    version: '1.12.0',
     kind: 'mission',
     title: 'コメントが勝手に動くのを防ぐ',
     summary:

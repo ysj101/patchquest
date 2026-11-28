@@ -101,6 +101,8 @@ test('ヒントは段階的に開け、解法は確認してから表示する',
   await expect(page.getByRole('dialog')).toContainText('記録に残ります');
   await page.getByRole('dialog').getByRole('button', { name: '解法を見る' }).click();
   await expect(hints).toContainText('note.read で所有者を照合する');
+  // `…` で囲んだ部分は、ヒントでも解法でも等幅のコードで出る
+  await expect(hints.locator('.hint code')).toHaveText(['note.read', 'note.read']);
   // 押したボタンがなくなっても、フォーカスは開いた解法に残る
   await expect(hints.locator('.hint-solution')).toBeFocused();
 });

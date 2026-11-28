@@ -26,7 +26,7 @@ export const idorPack: MissionPack = {
   manifest: {
     schemaVersion: 1,
     id: 'idor',
-    version: '1.11.0',
+    version: '1.12.0',
     kind: 'mission',
     title: '非公開メモを守る',
     summary:

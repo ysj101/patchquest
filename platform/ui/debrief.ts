@@ -4,7 +4,7 @@ import { askedQuestions } from '../contract';
 import type { TransferQuestion, VulnerabilityDef } from '../contract';
 import { isCurrent } from '../evaluator/evaluator';
 import type { ExerciseSnapshot } from '../orchestrator/orchestrator';
-import { confirmDialog, radioOption, status } from './components';
+import { confirmDialog, radioOption, status, withCode } from './components';
 import { fill, h, renderGuard } from './dom';
 import { headingWithInfo } from './info-popover';
 import { securityHistory } from './security-history';
@@ -71,7 +71,7 @@ export class HintsPanel {
       ...shown.map((hint) =>
         hint === next
           ? h('button', { type: 'button', class: 'button', on: { click: () => this.actions.openHint(hint.level) } }, `ヒント ${hint.level}（${HINT_LABEL[hint.level]}）を見る`)
-          : h('div', { class: 'hint' }, h('p', { class: 'eyebrow' }, `ヒント ${hint.level}：${HINT_LABEL[hint.level]}`), h('p', {}, hint.text)),
+          : h('div', { class: 'hint' }, h('p', { class: 'eyebrow' }, `ヒント ${hint.level}：${HINT_LABEL[hint.level]}`), h('p', {}, ...withCode(hint.text))),
       ),
       next ? null : this.solutionNode(snapshot),
     );
@@ -81,7 +81,7 @@ export class HintsPanel {
 
   /** 置き場所のヒントをすべて開いたあとに出す。解法は、確認してから見せる */
   private solutionNode({ attempt, pack }: ExerciseSnapshot): HTMLElement {
-    if (attempt.solutionViewed) return h('div', { class: 'hint hint-solution', tabIndex: -1 }, h('p', { class: 'eyebrow' }, '解法'), h('p', {}, pack.manifest.solution));
+    if (attempt.solutionViewed) return h('div', { class: 'hint hint-solution', tabIndex: -1 }, h('p', { class: 'eyebrow' }, '解法'), h('p', {}, ...withCode(pack.manifest.solution)));
     return h('button', { type: 'button', class: 'button button-quiet', on: { click: () => void this.revealSolution() } }, '解法を見る');
   }
 

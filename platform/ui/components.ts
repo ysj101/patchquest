@@ -1,5 +1,5 @@
 // 学習UIの共通部品。合否や状態は色だけでなく記号と言葉でも示す（spec §10）
-import { BADGE_KINDS, type BadgeKind } from '../contract';
+import { BADGE_KINDS, splitInlineCode, type BadgeKind } from '../contract';
 import type { SealState } from '../progress/stages';
 import { h } from './dom';
 import { BADGE_HINT, BADGE_LABEL } from './labels';
@@ -186,4 +186,11 @@ export function tabs(name: string, specs: TabSpec[]): { element: HTMLElement; se
 /** テストの「正しい結果」と「実際の結果」を、見出しと値を分けて並べる */
 export function expectedActual(expected: string, actual: string): HTMLElement {
   return h('dl', { class: 'outcome-detail' }, h('dt', {}, '正しい結果'), h('dd', { class: 'mono' }, expected), h('dt', {}, '実際の結果'), h('dd', { class: 'mono' }, actual));
+}
+
+/** `…` で囲んだ部分を等幅のコードにした、文の部品。パックは読み込み時に検証済みなので、書き誤りは例外にする */
+export function withCode(text: string): (HTMLElement | string)[] {
+  const parts = splitInlineCode(text);
+  if (!parts) throw new Error(`コードの囲みが閉じていません：${text}`);
+  return parts.map((part) => (part.code ? h('code', { class: 'inline-code' }, part.text) : part.text));
 }

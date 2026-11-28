@@ -131,9 +131,9 @@ export const testPack: MissionPack = {
     hints: [
       { level: 1, text: 'ID を変えると何が返るか' },
       { level: 2, text: '別の利用者で同じ ID を要求する' },
-      { level: 3, text: '取得時に所有者を照合する' },
+      { level: 3, text: '取得時（`note.read`）に所有者を照合する' },
     ],
-    solution: 'note.read で所有者を照合する',
+    solution: '`note.read` で所有者を照合する',
     transferCheck: [
       {
         id: 'q1',
