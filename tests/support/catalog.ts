@@ -3,6 +3,7 @@
 import { shellApp } from '../../apps/shell';
 import { catalog as bundled } from '../../catalog';
 import { idorVerification } from '../../missions/idor/__tests__/verification';
+import { openRedirectVerification } from '../../missions/open-redirect/__tests__/verification';
 import { sudoMisconfigVerification } from '../../missions/sudo-misconfig/__tests__/verification';
 import { unverifiedUpdateVerification } from '../../missions/unverified-update/__tests__/verification';
 import type { MissionPack } from '../../platform/contract';
@@ -14,7 +15,7 @@ import { testPack } from './test-pack';
 import { shellTestPack, shellTestVerification } from './shell-pack';
 import type { PackVerificationData } from './verification-data';
 
-const verifications: PackVerificationData[] = [idorVerification, sudoMisconfigVerification, unverifiedUpdateVerification, shellTestVerification];
+const verifications: PackVerificationData[] = [idorVerification, sudoMisconfigVerification, unverifiedUpdateVerification, openRedirectVerification, shellTestVerification];
 
 /** パックの出荷前検証だけで確かめる対策候補（誤った修正など） */
 export const verificationCandidates = (packId: string): VerificationCandidate[] =>

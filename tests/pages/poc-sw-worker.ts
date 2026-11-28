@@ -1,25 +1,7 @@
 // PoC（Issue #232）：Service Worker をサーバ役にして、本物の HTTP 応答を返す。検証ページ poc-sw.html が登録する。
 // スコープ（poc-sw/）の下の URL を「<インスタンス>/<経路>」として受け、インスタンスごとに状態を分ける
 
-/** lib.dom にない Service Worker の型のうち、この PoC で使う分 */
-interface FetchEventLike {
-  request: Request;
-  respondWith(response: Promise<Response>): void;
-}
-interface LifecycleEventLike {
-  waitUntil(work: Promise<unknown>): void;
-}
-interface WindowClientLike {
-  url: string;
-  postMessage(message: unknown, transfer: Transferable[]): void;
-}
-interface ServiceWorkerScope {
-  registration: { scope: string };
-  clients: { claim(): Promise<void>; matchAll(options: { type: 'window'; includeUncontrolled: boolean }): Promise<WindowClientLike[]> };
-  skipWaiting(): Promise<void>;
-  addEventListener(type: 'fetch', listener: (event: FetchEventLike) => void): void;
-  addEventListener(type: 'install' | 'activate', listener: (event: LifecycleEventLike) => void): void;
-}
+import { serve, type ServiceWorkerScope } from '../../runtimes/browser/http/service-worker-scope';
 
 /** 検証ページ（Host）が relay の問い合わせに返す応答 */
 export interface RelayedResponse {
@@ -28,7 +10,6 @@ export interface RelayedResponse {
   body: string;
 }
 
-const sw = self as unknown as ServiceWorkerScope;
 const RELAY_TIMEOUT_MS = 3000;
 
 /** インスタンスごとの、api が呼ばれた回数。Service Worker のメモリにだけ置く（止まると消えることを PoC で確かめる） */
@@ -89,7 +70,7 @@ const posting = (search: string) =>
   page(`<form method="post" action="echo${search}"><input name="memo" value="hello"></form><script>document.forms[0].submit()</script>`);
 
 /** 検証ページへ応答の中身を問い合わせる。教材ロジックを Service Worker の外（既存の Worker）に置く構成を想定した経路 */
-async function relay(path: string): Promise<Response> {
+async function relay(sw: ServiceWorkerScope, path: string): Promise<Response> {
   const windows = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
   const host = windows.find((client) => new URL(client.url).pathname.endsWith('/poc-sw.html'));
   if (!host) return new Response('検証ページが見つかりません', { status: 502 });
@@ -113,7 +94,7 @@ function html(body: string, url: URL): Response {
   return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8', ...headers } });
 }
 
-async function respond(request: Request): Promise<Response> {
+async function respond(request: Request, sw: ServiceWorkerScope): Promise<Response> {
   const url = new URL(request.url);
   const [instance = '', route = ''] = url.href.slice(sw.registration.scope.length).split('?')[0]?.split('/') ?? [];
   switch (route) {
@@ -134,18 +115,10 @@ async function respond(request: Request): Promise<Response> {
     case 'redirect':
       return new Response(null, { status: 302, headers: { location: url.searchParams.get('to') ?? 'doc' } });
     case 'relay':
-      return relay(`${instance}/${route}`);
+      return relay(sw, `${instance}/${route}`);
     default:
       return new Response('not found', { status: 404 });
   }
 }
 
-sw.addEventListener('install', (event) => {
-  event.waitUntil(sw.skipWaiting());
-});
-sw.addEventListener('activate', (event) => {
-  event.waitUntil(sw.clients.claim());
-});
-sw.addEventListener('fetch', (event) => {
-  event.respondWith(respond(event.request));
-});
+serve(respond);

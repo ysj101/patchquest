@@ -3,6 +3,7 @@
   "entry": [
     "platform/main.ts",
     "runtimes/browser/worker.ts",
+    "runtimes/browser/http/service-worker.ts",
     "runtimes/browser/preview/preview.inline.ts",
     "tests/pages/*.ts",
     "tests/support/catalog.ts"

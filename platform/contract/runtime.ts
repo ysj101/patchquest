@@ -13,8 +13,11 @@ export type SessionToken = string;
 
 export const ANONYMOUS: ActorKey = 'anonymous';
 
-/** 実行環境が提供する機能。パックは必要な機能を宣言する。linux-vm は、本物の Linux を WASM のエミュレータで動かす演習用の機械 */
-export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm'] as const;
+/**
+ * 実行環境が提供する機能。パックは必要な機能を宣言する。linux-vm は、本物の Linux を WASM のエミュレータで動かす演習用の機械。
+ * http は、教材アプリの画面を、Service Worker が返す本物の HTTP 応答（ステータス・ヘッダ・本文）として開く
+ */
+export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm', 'http'] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
 /**

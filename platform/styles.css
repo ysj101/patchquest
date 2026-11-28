@@ -285,6 +285,17 @@ main > section > * + * { margin-top: 16px; }
 .preview-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .preview-slot { padding: 10px; }
 .preview-slot iframe { display: block; width: 100%; height: clamp(440px, 56vh, 620px); border: 0; border-radius: 6px; background: #fff; }
+/* 画面を HTTP 応答として出す教材アプリの枠（runtimes/browser/http/frame.ts）。ブラウザのように、枠の上にアドレス欄を置く */
+.http-preview { display: grid; gap: 8px; }
+.http-address { display: flex; gap: 8px; align-items: center; }
+.http-address label { flex: none; font-size: 0.8rem; color: var(--muted); }
+.http-address input { flex: 1 1 auto; min-width: 0; }
+/* 外のサイトへ移動するところだったときに、枠の上に重ねて出す知らせ。枠は隠さない */
+.http-stage { position: relative; }
+.http-external { position: absolute; inset: 0; display: grid; align-content: center; gap: 10px; box-sizing: border-box; padding: 24px; border: 2px solid var(--warn); border-radius: 6px; background: var(--warn-bg); overflow: auto; }
+.http-external h3 { color: var(--warn); }
+.http-external-url { padding: 8px 10px; border-radius: 6px; background: var(--sunken); overflow-wrap: anywhere; }
+.http-external .button { justify-self: start; }
 .log-section { border-top: 1px solid var(--line); padding: 12px; display: grid; gap: 6px; }
 .log-section h3 { font-size: 0.75rem; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; }
 .tools { display: grid; gap: 16px; }

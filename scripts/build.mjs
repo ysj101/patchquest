@@ -69,7 +69,8 @@ await mkdir(`${outdir}/assets`, { recursive: true });
 const tasks = [
   build({
     ...common,
-    entryPoints: { main: 'platform/main.ts', styles: 'platform/styles.css', 'runtime-worker': 'runtimes/browser/worker.ts' },
+    // http-server は、教材アプリへのリクエストに本物の HTTP 応答を返す Service Worker。受け持つ範囲（assets/http/）は、このファイルの場所からの相対で決まる
+    entryPoints: { main: 'platform/main.ts', styles: 'platform/styles.css', 'runtime-worker': 'runtimes/browser/worker.ts', 'http-server': 'runtimes/browser/http/service-worker.ts' },
     outdir: `${outdir}/assets`,
   }),
   buildSandboxDocument('runtimes/browser/preview/preview.sandbox.html', `${outdir}/assets/preview.html`),

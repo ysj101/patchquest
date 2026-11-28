@@ -1,4 +1,5 @@
-// ブラウザ用 RuntimeAdapter（spec §11.2, §14）。教材ロジックと SQLite は Worker、画面は隔離 iframe で動かす
+// ブラウザ用 RuntimeAdapter（spec §11.2, §14）。教材ロジックと SQLite は Worker、画面は隔離 iframe で動かす。
+// 画面を HTTP 応答として出すアプリ（AppModule.http）では、Service Worker が返す本物の HTTP 応答を枠で開く
 import {
   ANONYMOUS,
   CAPABILITIES,
@@ -18,7 +19,8 @@ import {
   type SessionToken,
 } from '../../platform/contract';
 import type { AppModule } from './app-module';
-import { PreviewFrame } from './preview-host';
+import { HttpFrame, canServeHttp } from './http/frame';
+import { PreviewFrame, type FrameRequestHandler, type Preview } from './preview-host';
 import type { WorkerEnvelope, WorkerReply, WorkerRequest, WorkerResult } from './protocol';
 import { checkImplementation, findApp, hookDescriptor, splitByRealm } from './registry';
 
@@ -76,7 +78,8 @@ const inputSize = (request: AppRequest) => new TextEncoder().encode(JSON.stringi
 
 export class BrowserRuntimeAdapter implements RuntimeAdapter {
   readonly id = 'browser';
-  readonly capabilities = CAPABILITIES;
+  /** http（Service Worker が返す本物の HTTP 応答）は、Service Worker を使えるアドレス（localhost か HTTPS）でだけ提供する */
+  readonly capabilities = CAPABILITIES.filter((capability) => capability !== 'http' || canServeHttp());
   private readonly limits: RuntimeLimits;
   private readonly assetsBase: URL;
   private phase: Phase = { name: 'idle' };
@@ -86,7 +89,8 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   private viewSelection: ImplementationSelection = {};
   /** 発行したセッションの利用者。画面に閲覧者として表示する */
   private readonly sessionActors = new Map<SessionToken, ActorKey>();
-  private frame: PreviewFrame | undefined;
+  private frame: Preview | undefined;
+  private started = false;
   /** 教材データの世代。用意し直す・初期状態へ戻すたびに進め、画面が前のデータのときの表示を持ち越さないようにする */
   private dataGeneration = 0;
 
@@ -100,6 +104,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     const app = findApp(options.app.id, options.app.version);
     const { view } = splitByRealm(app, options.implementations);
     this.frame?.detach();
+    if (this.started) this.frameFor(app);
     // 演習用の機械（本物の Linux）は起動直後の動きが遅いので、同じアプリを準備し直すときは Worker ごと使い回す
     // （初期データの置き直しは Worker の中で行う）。それ以外は、前の状態を残さないよう Worker を作り直す
     const reusable = this.phase.name === 'ready' && app.machine && this.phase.prepared.app === app ? this.phase.worker : undefined;
@@ -118,12 +123,22 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
 
   async start(): Promise<void> {
     this.assertAlive();
-    this.frame ??= new PreviewFrame(
-      new URL('preview.html', this.assetsBase),
-      this.options.container ?? null,
-      (request, session, runId) => this.forwardFromFrame(request, session, runId),
-      this.options.onExchange,
-    );
+    this.started = true;
+    this.frameFor(this.phase.name === 'ready' || this.phase.name === 'halted' ? this.phase.prepared.app : undefined);
+  }
+
+  /**
+   * アプリの画面の出し方に合う枠を返す。合う枠がまだなければ作り、違う種類の枠が残っていれば捨てる。
+   * アプリが決まる前（準備の前）は、隔離 iframe の枠を用意しておく
+   */
+  private frameFor(app: AppModule | undefined): Preview {
+    const kind = app?.http ? 'http' : 'dom';
+    if (this.frame?.kind === kind) return this.frame;
+    this.frame?.dispose();
+    const container = this.options.container ?? null;
+    const forward: FrameRequestHandler = (request, session, runId) => this.forwardFromFrame(request, session, runId);
+    this.frame = kind === 'http' ? new HttpFrame(this.assetsBase, container, forward, this.options.onExchange) : new PreviewFrame(new URL('preview.html', this.assetsBase), container, forward, this.options.onExchange);
+    return this.frame;
   }
 
   async invoke(call: InvokeCall, options: InvokeOptions): Promise<InvokeResult> {
@@ -173,6 +188,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     await this.stop();
     this.frame?.dispose();
     this.frame = undefined;
+    this.started = false;
     this.phase = { name: 'disposed' };
   }
 
@@ -183,10 +199,10 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
 
   private async render(route: string, session: SessionToken | null, runId: string, timeoutMs: number, settleMs: number): Promise<InvokeResult> {
     const { app } = this.requirePrepared();
-    if (!this.frame) throw new RuntimeError('not-prepared', 'プレビューが開始されていません');
+    if (!this.started) throw new RuntimeError('not-prepared', 'プレビューが開始されていません');
     const started = performance.now();
     const viewer = (session && this.sessionActors.get(session)) ?? ANONYMOUS;
-    const events = await this.frame.render({
+    const events = await this.frameFor(app).render({
       runId,
       appId: app.descriptor.id,
       route,

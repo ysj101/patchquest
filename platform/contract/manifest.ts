@@ -11,9 +11,9 @@ export type PackKind = (typeof PACK_KINDS)[number];
 /**
  * 課題が扱う脆弱性の分類。一覧・マップ・習熟度はこの分類だけで組み立て、課題 ID で分岐しない（spec §11.3）。
  * authorization: 認可（誰のものかの照合） / output-encoding: 出力（文字として表示する） / data-access: データアクセス（値をバインドする）
- * misconfiguration: 設定（権限や公開範囲を必要な分だけに絞る）
+ * misconfiguration: 設定（権限や公開範囲を必要な分だけに絞る） / input-validation: 入力の確かめ（受け取った値を、使う前に確かめる）
  */
-export const VULNERABILITY_CATEGORIES = ['authorization', 'output-encoding', 'data-access', 'misconfiguration'] as const;
+export const VULNERABILITY_CATEGORIES = ['authorization', 'output-encoding', 'data-access', 'misconfiguration', 'input-validation'] as const;
 export type VulnerabilityCategory = (typeof VULNERABILITY_CATEGORIES)[number];
 
 /** 課題が扱う脆弱性の種類。一覧のカードで題名より先に見せる */

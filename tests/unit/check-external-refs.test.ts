@@ -28,6 +28,13 @@ describe('findExternalRefs', () => {
     expect(violations).toEqual([]);
   });
 
+  it('教材の文とテストに出てくる架空のサイト（予約済みの .example）は、決めた名前だけを許可する', () => {
+    const violations = findExternalRefs([
+      { path: 'main.js', content: 'const site="https://portal.example";const fake="https://evil.example/login";const like="https://portal.example.attacker.example/login";const other="https://portal.example.other.example/";fetch("https://evil.example")' },
+    ]);
+    expect(violations.map((violation) => violation.match)).toEqual(['https://portal.example.other.example/', 'https://evil.example']);
+  });
+
   it('エミュレータ v86 の、通らない分岐にある URL だけを個別に許可する', () => {
     const violations = findExternalRefs([
       { path: 'runtime-worker.js', content: 'fetch(`https://${b.doh_server||"x"}/dns-query`);new URL("http://host"+p);fetch(`https://${b.other||"x"}/`);new URL("http://hostile.example/")' },

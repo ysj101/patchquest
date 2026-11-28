@@ -40,6 +40,7 @@ const LAYERS = [
   { target: 'apps/shared', allow: ['platform/contract'], role: '教材アプリの共通部品' },
   { target: 'apps/memo', allow: ['platform/contract', 'runtimes/browser', 'apps/shared'], role: '教材アプリ' },
   { target: 'apps/shell', allow: ['platform/contract', 'runtimes/browser', 'apps/shared'], role: '教材アプリ（擬似シェル）' },
+  { target: 'apps/portal', allow: ['platform/contract', 'runtimes/browser', 'apps/shared'], role: '教材アプリ（社内ポータル。画面を HTTP 応答として出す）' },
   { target: 'missions', allow: ['platform/contract', 'apps'], role: '課題パック' },
   { target: 'catalog', allow: ['apps', 'missions', 'runtimes/browser'], role: '同梱パックの登録' },
 ];
