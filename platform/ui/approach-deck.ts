@@ -10,13 +10,48 @@ function withCode(text: string): (HTMLElement | string)[] {
   return parts.map((part) => (part.code ? h('code', { class: 'inline-code' }, part.text) : part.text));
 }
 
+/** コピーの結果を出しておく時間。過ぎたら、ボタンを元の表示に戻す */
+const COPY_RESULT_MS = 2000;
+const COPY_RESULT_TEXT = { copied: 'コピーしました', failed: 'コピーできませんでした' };
+
+/** 打つコマンド 1 行と、それをクリップボードへ入れるボタン。結果は、ボタンの印と読み上げで伝える */
+function commandItem(command: string): HTMLElement {
+  const status = h('span', { class: 'visually-hidden', role: 'status' });
+  let timer: number | undefined;
+  const button = h('button', { type: 'button', class: 'copy-command', title: 'コピー', 'aria-label': `コピー：${command}`, on: { click: () => void copy() } }, h('span', { class: 'copy-icon', 'aria-hidden': true }));
+
+  function showResult(result: keyof typeof COPY_RESULT_TEXT): void {
+    button.dataset.result = result;
+    button.title = status.textContent = COPY_RESULT_TEXT[result];
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      delete button.dataset.result;
+      button.title = 'コピー';
+      status.textContent = '';
+    }, COPY_RESULT_MS);
+  }
+
+  async function copy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(command);
+    } catch {
+      // ブラウザがクリップボードへの書き込みを許さなかった。黙って終えず、できなかったことを見せる
+      showResult('failed');
+      return;
+    }
+    showResult('copied');
+  }
+
+  return h('li', {}, h('code', { class: 'inline-code' }, command), button, status);
+}
+
 /** カード 1 枚。見出し・打つコマンド・見るところ・記号の意味の順に並べる */
 function cardItem(card: ApproachCard): HTMLElement {
   return h(
     'li',
     { class: 'approach-card', hidden: true },
     h('h4', {}, card.title),
-    card.commands ? h('ul', { class: 'approach-commands' }, ...card.commands.map((command) => h('li', {}, h('code', { class: 'inline-code' }, command)))) : null,
+    card.commands ? h('ul', { class: 'approach-commands' }, ...card.commands.map(commandItem)) : null,
     h('p', {}, ...withCode(card.observe)),
     card.note ? h('p', { class: 'approach-note' }, ...withCode(card.note)) : null,
   );
