@@ -10,8 +10,9 @@
 | `machine.ts` | 演習用の機械（v86 で動かす本物の Linux）の起動と、シリアル回線越しのやり取り |
 | `sqlite.ts` | SQLite（wasm）のメモリ DB を開く |
 | `protocol.ts` | Host・Worker・プレビューの間で交わすメッセージの型 |
-| `preview/` | 教材アプリの画面を動かす隔離 iframe（`sandbox="allow-scripts"`）。CSP は自身のスクリプトと `pqMarker()` だけをハッシュで許可する |
+| `preview/` | 教材アプリの画面を動かす隔離 iframe（`sandbox="allow-scripts"`）。CSP は自身のスクリプトと `pqMarker()` だけをハッシュで許可する。URL に `#` が付いているときは、教材アプリの画面がさらに埋め込んだページとして動く（枠に開けるのは同じ配信元の文書だけ。[PoC](../../docs/poc/postmessage-origin.md)） |
 | `preview-host.ts` | プレビューとのメッセージを送信元ウィンドウ・スキーマ・runId で照合する |
+| `embed.ts` | 教材アプリの画面が埋め込むページ（`AppModule.embeds`）を指す、URL の `#` 以降の組み立てと読み取り |
 | `registry.ts` | カタログに登録された教材アプリと実装の解決 |
 | `lockdown.ts` | Worker の初期化後に通信・保存の API を使えなくする |
 | `app-module.ts` | 教材アプリが満たす形（`AppModule`）とカタログの型 |

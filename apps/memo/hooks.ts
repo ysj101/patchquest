@@ -32,6 +32,28 @@ export type PrepareTitleInput = (input: HTMLInputElement) => void;
  */
 export type PickNeighbors = (input: { id: number; ownIds: number[] }) => { prev: number | null; next: number | null };
 
+/** スタンプの部品で選べるスタンプ。押すと、この文字がコメントとして書き込まれる */
+export const STAMPS = ['いいね！', 'ありがとう！', 'おつかれさま！'] as const;
+
+/** スタンプの部品が画面へ送るメッセージの形 */
+export interface StampMessage {
+  type: 'stamp';
+  stamp: string;
+}
+
+/**
+ * 「スタンプを送る」画面に届いたメッセージ（本物の MessageEvent）を、スタンプとして受け入れるかを決める処理（画面側）。
+ * 受け入れるならスタンプの文字、捨てるなら null を返す。picker は、画面がスタンプの部品を開いた iframe。契約 1
+ */
+export type AcceptStamp = (event: MessageEvent, picker: HTMLIFrameElement) => string | null;
+
+/** メッセージの中身が、選べるスタンプを 1 つ指す形（StampMessage）なら、そのスタンプを返す。課題パックの実装もこれで中身を確かめる */
+export function readStamp(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null) return null;
+  const { type, stamp } = data as Partial<StampMessage>;
+  return type === 'stamp' && typeof stamp === 'string' && (STAMPS as readonly string[]).includes(stamp) ? stamp : null;
+}
+
 export const HOOKS: HookDescriptor[] = [
   {
     id: 'memo.read.authorize',
@@ -74,6 +96,13 @@ export const HOOKS: HookDescriptor[] = [
     contract: 1,
     baseline: 'memo/neighbors-own',
     description: 'メモの詳細画面の「前のメモ」「次のメモ」の移動先を決める処理',
+  },
+  {
+    id: 'stamp.message.accept',
+    realm: 'view',
+    contract: 1,
+    baseline: 'memo/stamp-from-picker',
+    description: '「スタンプを送る」画面に届いたメッセージを、スタンプとして受け入れるかを決める処理',
   },
 ];
 
@@ -134,6 +163,12 @@ const neighborsOwn: PickNeighbors = ({ id, ownIds }) => {
   return { prev: before.length > 0 ? Math.max(...before) : null, next: after.length > 0 ? Math.min(...after) : null };
 };
 
+/** 送り主の窓が、自分で開いたスタンプの部品のときだけ受け入れる。メッセージはどの窓からでも届くので、中身より先に送り主を確かめる */
+const stampFromPicker: AcceptStamp = (event, picker) => {
+  if (event.source !== picker.contentWindow) return null;
+  return readStamp(event.data);
+};
+
 export const BASELINE: ImplementationRegistry = {
   'memo/read-owner-check': { hook: 'memo.read.authorize', run: readOwnerCheck },
   'memo/search-parameterized': { hook: 'memo.search.query', run: searchParameterized },
@@ -141,4 +176,5 @@ export const BASELINE: ImplementationRegistry = {
   'memo/title-max-length': { hook: 'memo.title.validate', run: titleMaxLength },
   'memo/title-input-max-length': { hook: 'memo.title.input', run: titleInputMaxLength },
   'memo/neighbors-own': { hook: 'memo.detail.neighbors', run: neighborsOwn },
+  'memo/stamp-from-picker': { hook: 'stamp.message.accept', run: stampFromPicker },
 };
