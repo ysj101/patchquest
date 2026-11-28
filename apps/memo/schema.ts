@@ -21,4 +21,8 @@ export const SCHEMA = `
     author_id INTEGER NOT NULL REFERENCES users (id),
     body TEXT NOT NULL
   );
+  CREATE TABLE server_files (
+    path TEXT PRIMARY KEY,
+    body TEXT NOT NULL
+  );
 `;

@@ -4,6 +4,7 @@ import type { AppResponse } from '../../platform/contract';
 import type { ViewContext } from '../../runtimes/browser/app-module';
 import { el, sentenceLines } from '../shared/dom';
 import type { PickNeighbors, PrepareTitleInput, RenderComment } from './hooks';
+import { IMPORT_MAX_LENGTH, PLAIN_XML } from './import-xml';
 import { BODY_MAX_LENGTH, COMMENT_MAX_LENGTH, QUERY_MAX_LENGTH } from './model';
 
 /** 画面内の移動はフレームを遷移させず、アプリ内で描画し直す */
@@ -37,6 +38,7 @@ async function header(root: HTMLElement, ctx: ViewContext): Promise<boolean> {
       linkButton('メモ', () => ctx.navigate('/memos')),
       linkButton('共有ページ', () => ctx.navigate('/pages')),
       linkButton('検索', () => ctx.navigate('/search')),
+      linkButton('取り込み', () => ctx.navigate('/import')),
     ),
   );
   return true;
@@ -194,11 +196,42 @@ async function searchView(root: HTMLElement, ctx: ViewContext, initial: string):
   if (initial) await search();
 }
 
+/** XML からの取り込み。取り込んだメモは、タイトルと本文をその場に出す（何が保存されたかを、開き直さずに確かめられる） */
+function importView(root: HTMLElement, ctx: ViewContext): void {
+  const input = el('textarea', { name: 'xml', className: 'mono', maxLength: IMPORT_MAX_LENGTH, rows: 7, spellcheck: false });
+  const sample = el('button', { type: 'button' }, '見本を入れる');
+  sample.addEventListener('click', () => {
+    input.value = PLAIN_XML;
+  });
+  const run = el('button', { type: 'button' }, '取り込む');
+  const results = el('div', { className: 'stack' });
+  const importXml = async () => {
+    results.replaceChildren();
+    const res = await ctx.request({ method: 'POST', path: '/api/import', body: { xml: input.value } });
+    if (res.status !== 201) return void results.append(alert(errorMessage(res)));
+    const imported = (res.body as { imported: { id: number; title: string; body: string }[] }).imported;
+    results.append(
+      el('p', { role: 'status' }, `${imported.length} 件のメモを取り込みました。`),
+      ...imported.map((memo) => el('article', { className: 'memo' }, el('h3', {}, linkButton(memo.title, () => ctx.navigate(`/memos/${memo.id}`))), el('p', { className: 'memo-body' }, memo.body))),
+    );
+  };
+  // 結果は入力欄の下に出る。枠の外にはみ出すので、見える位置まで送る
+  run.addEventListener('click', () => void importXml().then(() => results.scrollIntoView({ block: 'nearest' })));
+  root.append(
+    el('h2', {}, 'メモを取り込む'),
+    el('p', { className: 'muted' }, ...sentenceLines('ほかのメモアプリから書き出した XML を貼り付けて、自分のメモとして取り込みます。<memos> の中に、<title> と <body> を持つ <memo> を並べます。')),
+    el('label', {}, '取り込む XML', input),
+    el('div', { className: 'row' }, sample, run),
+    results,
+  );
+}
+
 export async function render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void> {
   if (!(await header(root, ctx))) return;
   const [path, query] = route.split('?');
   const [, section, id, action] = path!.split('/');
   if (section === 'pages') return id === undefined ? pageList(root, ctx) : page(root, ctx, id);
+  if (section === 'import') return void importView(root, ctx);
   if (section === 'search') return searchView(root, ctx, new URLSearchParams(query ?? '').get('q') ?? '');
   if (section !== 'memos' || id === undefined) return list(root, ctx);
   if (id === 'new') return form(root, ctx);

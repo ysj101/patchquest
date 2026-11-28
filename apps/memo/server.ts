@@ -4,6 +4,8 @@ import { errorMessage, isObj, type AppRequest, type AppResponse } from '../../pl
 import type { ServerContext } from '../../runtimes/browser/app-module';
 import type { BuildSearchQuery, ReadMemo, ValidateTitle } from './hooks';
 import { json } from '../shared/http';
+import { importMemos } from './import';
+import { IMPORT_MAX_LENGTH } from './import-xml';
 import {
   BODY_MAX_LENGTH,
   COMMENT_MAX_LENGTH,
@@ -114,6 +116,12 @@ function search(ctx: ServerContext, query: string, user: User): AppResponse {
   return json(200, { results: rows.map((r) => ({ id: r.id, ownerId: r.ownerId, title: r.title })) });
 }
 
+/** メモの取り込み。XML は文字列で受け取り、大きさだけをここで確かめる */
+function importRequest(ctx: ServerContext, req: AppRequest, user: User): AppResponse {
+  const xml = text(ctx, 'xml', (req.body as { xml?: unknown } | undefined)?.xml, '取り込む内容', IMPORT_MAX_LENGTH);
+  return typeof xml === 'string' ? importMemos(ctx, user, xml) : xml;
+}
+
 export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
   const [path, query = ''] = req.path.split('?');
   const [, api, resource, idSegment, sub, ...rest] = path!.split('/');
@@ -123,8 +131,9 @@ export function handle(ctx: ServerContext, req: AppRequest): AppResponse {
   if (resource === 'me' && idSegment === undefined && req.method === 'GET') {
     return user ? json(200, { user: { id: user.id, key: user.key, name: user.name } }) : UNAUTHENTICATED;
   }
-  if (resource === 'pages' || resource === 'search') {
+  if (resource === 'pages' || resource === 'search' || resource === 'import') {
     if (!user) return UNAUTHENTICATED;
+    if (resource === 'import' && idSegment === undefined && req.method === 'POST') return importRequest(ctx, req, user);
     if (resource === 'search' && idSegment === undefined && req.method === 'GET') return search(ctx, query, user);
     if (resource === 'pages' && idSegment === undefined && req.method === 'GET') return listPages(ctx);
     if (resource === 'pages' && idSegment !== undefined && sub === undefined && req.method === 'GET') return getPage(ctx, idSegment);

@@ -8,9 +8,10 @@ import { storedXssPack } from '../missions/stored-xss';
 import { sqliPack } from '../missions/sqli';
 import { sudoMisconfigPack } from '../missions/sudo-misconfig';
 import { unverifiedUpdatePack } from '../missions/unverified-update';
+import { xxePack } from '../missions/xxe';
 import type { Catalog } from '../runtimes/browser/app-module';
 
 export const catalog: Catalog = {
   apps: [memoApp, linuxApp],
-  packs: [onboardingPack, idorPack, storedXssPack, sqliPack, sudoMisconfigPack, unverifiedUpdatePack],
+  packs: [onboardingPack, idorPack, storedXssPack, sqliPack, sudoMisconfigPack, unverifiedUpdatePack, xxePack],
 };

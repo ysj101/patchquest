@@ -1,7 +1,9 @@
 // 架空の初期データ。seed から利用者の ID、メモの ID・内容を決める（spec §5.4）。利用者の表示名はキー（alice など）と同じ
 import type { JsonPrimitive } from '../../platform/contract';
 import type { FixtureGenerator } from '../../runtimes/browser/app-module';
+import type { Database } from '../../runtimes/browser/sqlite';
 import { random } from '../shared/random';
+import { SERVER_FILES } from './import-xml';
 
 const SECRETS = ['合言葉は「ひまわり」', '金庫の番号は 4821', '旅行の行き先は 小樽', '誕生日の贈り物は 万年筆'];
 const TOPICS = [
@@ -13,6 +15,19 @@ const TOPICS = [
 ];
 
 export const USERS = ['alice', 'bob', 'carol'] as const;
+
+/**
+ * サーバの中のファイル（架空）。取り込む XML が読みに行けてしまうかを確かめるのに使う。サーバの名前とパスワードは seed ごとに変わり、
+ * テストが応答に混ざっていないかを見る目印になる
+ */
+function insertServerFiles(db: Database, next: () => number): Record<string, JsonPrimitive> {
+  const hostname = `memo-app-${10 + Math.floor(next() * 90)}`;
+  const password = `pq-${Math.floor(next() * 0x1000000).toString(16).padStart(6, '0')}`;
+  const insertFile = (path: string, body: string) => db.exec({ sql: 'INSERT INTO server_files (path, body) VALUES (?, ?)', bind: [path, body] });
+  insertFile(SERVER_FILES.hostname, `${hostname}\n`);
+  insertFile(SERVER_FILES.env, `APP_ENV=production\nMAIL_PASSWORD=${password}\n`);
+  return { 'server.hostname': hostname, 'server.env.password': password };
+}
 
 export const memoFixture: FixtureGenerator = (db, seed) => {
   const next = random(seed);
@@ -64,5 +79,6 @@ export const memoFixture: FixtureGenerator = (db, seed) => {
     refs[`comments.${author}.id`] = commentId++;
     refs[`comments.${author}.body`] = body;
   }
+  Object.assign(refs, insertServerFiles(db, next));
   return refs;
 };
