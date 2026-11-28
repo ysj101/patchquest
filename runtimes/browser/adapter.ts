@@ -18,7 +18,8 @@ import {
   type SessionToken,
 } from '../../platform/contract';
 import type { AppModule } from './app-module';
-import { PreviewFrame } from './preview-host';
+import { PagesFrame } from './pages/pages-host';
+import { PreviewFrame, type FrameRequestHandler } from './preview-host';
 import type { WorkerEnvelope, WorkerReply, WorkerRequest, WorkerResult } from './protocol';
 import { checkImplementation, findApp, hookDescriptor, splitByRealm } from './registry';
 
@@ -86,7 +87,8 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
   private viewSelection: ImplementationSelection = {};
   /** 発行したセッションの利用者。画面に閲覧者として表示する */
   private readonly sessionActors = new Map<SessionToken, ActorKey>();
-  private frame: PreviewFrame | undefined;
+  /** 教材アプリの画面を出す枠。画面を描くアプリは隔離 iframe、ページを返すアプリ（pages）は Service Worker が配るページを開く枠 */
+  private frame: PreviewFrame | PagesFrame | undefined;
   /** 教材データの世代。用意し直す・初期状態へ戻すたびに進め、画面が前のデータのときの表示を持ち越さないようにする */
   private dataGeneration = 0;
 
@@ -118,12 +120,25 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
 
   async start(): Promise<void> {
     this.assertAlive();
-    this.frame ??= new PreviewFrame(
-      new URL('preview.html', this.assetsBase),
-      this.options.container ?? null,
-      (request, session, runId) => this.forwardFromFrame(request, session, runId),
-      this.options.onExchange,
-    );
+    const prepared = this.phase.name === 'ready' || this.phase.name === 'halted' ? this.phase.prepared : undefined;
+    this.frameFor(prepared?.app);
+  }
+
+  /**
+   * アプリに合う枠を返す。画面を描くアプリは隔離 iframe、ページを返すアプリ（pages）は Service Worker が配るページを開く枠。
+   * 前に準備したアプリと種類が違うときは、枠を作り直す。準備の前（アプリがまだない）は隔離 iframe にする
+   */
+  private frameFor(app: AppModule | undefined): PreviewFrame | PagesFrame {
+    const kind = app?.pages ? 'pages' : 'preview';
+    if (this.frame?.kind === kind) return this.frame;
+    this.frame?.dispose();
+    const container = this.options.container ?? null;
+    const forward: FrameRequestHandler = (request, session, runId) => this.forwardFromFrame(request, session, runId);
+    this.frame =
+      kind === 'pages'
+        ? new PagesFrame(this.assetsBase, container, forward, this.options.onExchange)
+        : new PreviewFrame(new URL('preview.html', this.assetsBase), container, forward, this.options.onExchange);
+    return this.frame;
   }
 
   async invoke(call: InvokeCall, options: InvokeOptions): Promise<InvokeResult> {
@@ -186,7 +201,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
     if (!this.frame) throw new RuntimeError('not-prepared', 'プレビューが開始されていません');
     const started = performance.now();
     const viewer = (session && this.sessionActors.get(session)) ?? ANONYMOUS;
-    const events = await this.frame.render({
+    const events = await this.frameFor(app).render({
       runId,
       appId: app.descriptor.id,
       route,

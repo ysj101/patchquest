@@ -52,6 +52,21 @@ export interface ViewContext {
   emit(type: string, data: Record<string, JsonValue>): void;
 }
 
+/** ページの中で動く、アプリ自身のスクリプトに渡すもの */
+export interface PageContext {
+  /** ページで実際に起きたことを観測イベントとして記録する */
+  emit(type: string, data: Record<string, JsonValue>): void;
+}
+
+/**
+ * HTTP の応答としてページを返すアプリ（必要機能 http-pages）の、ページの側で動く部分。
+ * ページは handle が返した HTML で、ブラウザがそのまま開く。スクリプトは、ページと同じ場所から配る静的ファイル（assets/page.js）が呼ぶ
+ */
+export interface PagesSpec {
+  /** ページの DOM ができたあとに 1 回呼ばれる、アプリ自身のスクリプト。ブラウザがスクリプトを止めた（CSP）ページでは呼ばれない */
+  enhance(document: Document, ctx: PageContext): void;
+}
+
 /** フックの現在の実装を解決する。初期データ生成器が、注入され得る処理（例：配備時の設定）を呼ぶのに使う */
 export type HookAccessor = ServerContext['hook'];
 
@@ -77,7 +92,10 @@ export interface AppModule {
    * 使うパックは runtime.capabilities に linux-vm を挙げる
    */
   machine?: { provision(machine: Machine, db: Database): Promise<void>; reset(machine: Machine): Promise<void> };
-  render(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
+  /** 隔離 iframe の中に画面を描く（dom-preview）。ページを返すアプリ（pages を持つアプリ）は持たない */
+  render?(root: HTMLElement, route: string, ctx: ViewContext): Promise<void>;
+  /** 宣言すると、画面を描く代わりに、handle の応答を本物の HTTP 応答としてブラウザに渡し、ページとして開く。使うパックは runtime.capabilities に http-pages を挙げる */
+  pages?: PagesSpec;
   /** アプリが記録する観測イベントの説明（調査パネルで表示する）。知らない種類は null */
   describeEvent?(event: ObservedEvent): string | null;
   /**

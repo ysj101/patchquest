@@ -49,6 +49,7 @@ async function show(route: string): Promise<void> {
     emit: (type, data) => send({ type: 'event', runId: ctx.runId, event: { type, data } }),
   };
   try {
+    if (!ctx.app.render) throw new Error(`教材アプリ ${ctx.app.descriptor.id} は、この枠に描く画面を持ちません`);
     await ctx.app.render(root, route, view);
     if (current === ctx) send({ type: 'rendered', runId: ctx.runId, route });
   } catch (e) {

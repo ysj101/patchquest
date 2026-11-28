@@ -13,8 +13,11 @@ export type SessionToken = string;
 
 export const ANONYMOUS: ActorKey = 'anonymous';
 
-/** 実行環境が提供する機能。パックは必要な機能を宣言する。linux-vm は、本物の Linux を WASM のエミュレータで動かす演習用の機械 */
-export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm'] as const;
+/**
+ * 実行環境が提供する機能。パックは必要な機能を宣言する。linux-vm は、本物の Linux を WASM のエミュレータで動かす演習用の機械。
+ * http-pages は、教材アプリの応答を本物の HTTP 応答（ステータス・ヘッダ・本文）としてブラウザに渡し、ページとして開く仕組み
+ */
+export const CAPABILITIES = ['sqlite', 'dom-preview', 'linux-vm', 'http-pages'] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
 /**
@@ -85,7 +88,10 @@ export interface ReplayEntry {
 
 export interface AppResponse {
   status: number;
+  /** ページを返すアプリ（http-pages）では、文字列の本文を HTML としてそのまま返す */
   body: JsonValue;
+  /** 応答ヘッダ（名前は小文字）。ページを返すアプリ（http-pages）では、ブラウザがこのヘッダに従う。location は、アプリの中のパス（/ で始まる）だけを書ける */
+  headers?: Record<string, string>;
 }
 
 /** 計測した事象。type はアプリとフックが定義する（例: 'sql.query', 'authz.decision', 'dom.marker'） */

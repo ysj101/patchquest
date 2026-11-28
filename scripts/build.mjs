@@ -3,6 +3,7 @@
 // E2E用の検証ページ（tests/pages/）を dist/test/ に追加する。配布物には含めない。
 import { build } from 'esbuild';
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { assertNoExternalRefs } from './check-external-refs.mjs';
@@ -58,6 +59,16 @@ async function buildSandboxDocument(template, out) {
   await writeFile(out, html);
 }
 
+/** ページを返すアプリのスタイルシート（apps/<アプリ>/pages.css）。assets/<アプリ>-pages.css として配る */
+async function pageStylesheets() {
+  const entries = {};
+  for (const app of await readdir('apps')) {
+    const file = `apps/${app}/pages.css`;
+    if (existsSync(file)) entries[`${app}-pages`] = file;
+  }
+  return entries;
+}
+
 await assertDomSafety();
 await assertBoundaries();
 // 演習用の機械（本物の Linux）の配布物。元になるものが変わっていなければ作り直さない
@@ -69,9 +80,18 @@ await mkdir(`${outdir}/assets`, { recursive: true });
 const tasks = [
   build({
     ...common,
-    entryPoints: { main: 'platform/main.ts', styles: 'platform/styles.css', 'runtime-worker': 'runtimes/browser/worker.ts' },
+    entryPoints: {
+      main: 'platform/main.ts',
+      styles: 'platform/styles.css',
+      'runtime-worker': 'runtimes/browser/worker.ts',
+      // ページを返すアプリ（http-pages）のサーバ役。スコープは assets/pages/
+      'pages-sw': 'runtimes/browser/pages/service-worker.ts',
+      ...(await pageStylesheets()),
+    },
     outdir: `${outdir}/assets`,
   }),
+  // ページが読み込む静的スクリプト。ページは不透明なオリジンになるので、モジュールではなくクラシックスクリプトにする
+  build({ ...common, entryPoints: { page: 'runtimes/browser/pages/page.ts' }, format: 'iife', outdir: `${outdir}/assets` }),
   buildSandboxDocument('runtimes/browser/preview/preview.sandbox.html', `${outdir}/assets/preview.html`),
   cp('platform/ui/avatars', `${outdir}/assets/avatars`, { recursive: true }),
   cp('platform/ui/brand', `${outdir}/assets/brand`, { recursive: true }),
