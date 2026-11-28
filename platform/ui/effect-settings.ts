@@ -1,15 +1,16 @@
-// 端末ごとの演出設定を検証・保存する。DOM とブラウザのグローバルには依存しない。
+// 端末ごとの設定（演出と、ベータ版の課題の表示）を検証・保存する。DOM とブラウザのグローバルには依存しない。
 import { Checker, errorMessage } from '../contract';
 
-/** 保存する好み。system は OS の動きの設定に従う。音量は 0〜1。 */
+/** 保存する好み。system は OS の動きの設定に従う。音量は 0〜1。showBeta は、ベータ版の課題を一覧に出すか。 */
 export interface EffectSettings {
   motion: 'system' | 'on' | 'off';
   sound: boolean;
   volume: number;
+  showBeta: boolean;
 }
 
 const MOTIONS = ['system', 'on', 'off'] as const;
-const DEFAULTS: EffectSettings = { motion: 'system', sound: false, volume: 0.5 };
+const DEFAULTS: EffectSettings = { motion: 'system', sound: false, volume: 0.5, showBeta: false };
 const STORAGE_KEY = 'patchquest.effect-settings.v1';
 type SettingsStorage = {
   getItem(key: string): string | null;
@@ -22,7 +23,9 @@ function checkSettings(check: Checker, value: unknown): EffectSettings {
   const raw = check.obj('演出設定', value);
   const volume = check.num('volume', raw.volume);
   if (volume < 0 || volume > 1) check.fail('volume', '0 以上 1 以下が必要です');
-  return { motion: check.oneOf('motion', raw.motion, MOTIONS), sound: check.bool('sound', raw.sound), volume };
+  // showBeta を足す前に保存した設定には項目がない。ほかの設定を既定値に戻さないよう、ない場合は表示しない（既定）として読む
+  const showBeta = raw.showBeta === undefined ? DEFAULTS.showBeta : check.bool('showBeta', raw.showBeta);
+  return { motion: check.oneOf('motion', raw.motion, MOTIONS), sound: check.bool('sound', raw.sound), volume, showBeta };
 }
 
 /** 未保存なら既定値、不正な保存文字列なら既定値と復旧理由を返す。 */
@@ -87,4 +90,15 @@ export class EffectSettingsStore {
   private storageFailure(error: unknown): string {
     return `演出設定をブラウザに保存できません。この画面を閉じると変更は失われます：${errorMessage(error)}`;
   }
+}
+
+/** ベータ版の課題の表示が切り替わったときだけ listener を呼ぶ（演出だけの変更では呼ばない）。戻り値を呼ぶと購読を解除する */
+export function onShowBetaChange(store: EffectSettingsStore, listener: () => void): () => void {
+  let shown = store.effectSettings().showBeta;
+  return store.onChange(() => {
+    const { showBeta } = store.effectSettings();
+    if (showBeta === shown) return;
+    shown = showBeta;
+    listener();
+  });
 }

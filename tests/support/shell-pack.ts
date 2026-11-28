@@ -18,6 +18,7 @@ export const shellTestPack: MissionPack = {
     id: 'shell-test-pack',
     version: '1.0.0',
     kind: 'mission',
+    release: 'stable',
     title: '擬似シェルの検証用パック',
     summary: '操作で直す課題の土台の検証に使う',
     learningObjectives: ['検証用'],

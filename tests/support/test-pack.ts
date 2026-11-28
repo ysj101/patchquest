@@ -8,6 +8,7 @@ export const testPack: MissionPack = {
     id: 'test-pack',
     version: '1.0.0',
     kind: 'mission',
+    release: 'stable',
     title: '検証用パック',
     summary: '基盤の検証に使う',
     learningObjectives: ['検証用'],

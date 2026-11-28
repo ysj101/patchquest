@@ -18,6 +18,7 @@ export const storedXssPack: MissionPack = {
     id: 'stored-xss',
     version: '1.11.0',
     kind: 'mission',
+    release: 'stable',
     title: 'コメントが勝手に動くのを防ぐ',
     summary:
       '共有ページのコメントが、ほかの人の画面でプログラムとして動いてしまう問い合わせを調べます。コメントを、ただの文字として表示するように直します。',

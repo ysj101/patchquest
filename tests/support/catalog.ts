@@ -9,6 +9,7 @@ import type { MissionPack } from '../../platform/contract';
 import type { VerificationCandidate } from '../../platform/orchestrator/pack-verification';
 import type { Catalog } from '../../runtimes/browser/app-module';
 import { testApp } from './test-app';
+import { betaPack } from './beta-pack';
 import { brokenPack } from './broken-pack';
 import { testPack } from './test-pack';
 import { shellTestPack, shellTestVerification } from './shell-pack';
@@ -31,5 +32,5 @@ const withVerification = (pack: MissionPack): MissionPack => {
 
 export const catalog: Catalog = {
   apps: [...bundled.apps, shellApp, testApp],
-  packs: [...bundled.packs.map(withVerification), testPack, shellTestPack, brokenPack],
+  packs: [...bundled.packs.map(withVerification), testPack, shellTestPack, brokenPack, betaPack],
 };

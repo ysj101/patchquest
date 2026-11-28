@@ -220,6 +220,7 @@ main > section > * + * { margin-top: 16px; }
 .mission-summary { font-size: 0.87rem; color: var(--muted); max-width: 46em; }
 .objectives { margin: 0; padding-left: 1.2em; font-size: 0.87rem; }
 .difficulty-label { display: inline-block; font-size: 0.75rem; font-weight: 700; border-radius: 4px; padding: 1px 8px; background: var(--raised); color: var(--muted); border: 1px solid var(--line); }
+.beta-label { display: inline-block; margin-left: 8px; font-size: 0.75rem; font-weight: 700; border-radius: 4px; padding: 1px 8px; white-space: nowrap; color: #c9b6f5; border: 1px solid #54407f; }
 .difficulty-label[data-difficulty='beginner'] { color: #9fd7b1; border-color: #2d5a3c; }
 .difficulty-label[data-difficulty='intermediate'] { color: #f2c97d; border-color: #6b5420; }
 .difficulty-label[data-difficulty='advanced'] { color: #f0a0a0; border-color: #6b2d2d; }

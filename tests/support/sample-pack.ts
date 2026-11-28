@@ -18,6 +18,7 @@ export function samplePack(): MissionPack {
     id: 'sample',
     version: '1.0.0',
     kind: 'mission',
+    release: 'stable',
     title: 'サンプル',
     summary: '契約の検証用',
     learningObjectives: ['所有者の照合を説明できる'],

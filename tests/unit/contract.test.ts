@@ -35,6 +35,8 @@ describe('validatePack', () => {
     ['CWE の ID の形式が不正', (manifest) => Object.assign(manifest.vulnerability ?? {}, { cwe: '639' }), /^vulnerability\.cwe: /],
     ['未知の脆弱性の分類', (manifest) => Object.assign(manifest.vulnerability ?? {}, { category: 'crypto' }), /^vulnerability\.category: /],
     ['一言でいうとが空', (manifest) => Object.assign(manifest.vulnerability ?? {}, { plain: '' }), /^vulnerability\.plain: /],
+    ['公開の段階がない', (manifest) => delete (manifest as Partial<MissionManifest>).release, /^release: /],
+    ['未知の公開の段階', (manifest) => (manifest.release = 'alpha' as never), /^release: /],
     ['課題なのに難易度がない', (manifest) => delete manifest.difficulty, /^difficulty: kind が mission/],
     ['未知の難易度', (manifest) => (manifest.difficulty = 'expert' as never), /^difficulty: /],
     ['バリエーションが未定義のレシピを参照', (m) => (m.fixtures.variants[0]!.recipe = 'missing'), /未定義のレシピ「missing」/],

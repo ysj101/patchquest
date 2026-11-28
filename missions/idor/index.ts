@@ -28,6 +28,7 @@ export const idorPack: MissionPack = {
     id: 'idor',
     version: '1.11.0',
     kind: 'mission',
+    release: 'stable',
     title: '非公開メモを守る',
     summary:
       '「知らない人の非公開メモが見えた」という問い合わせを調べます。番号を変えるだけで他人のメモが読める原因を見つけて、直します。',

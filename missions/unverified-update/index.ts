@@ -28,6 +28,7 @@ export const unverifiedUpdatePack: MissionPack = {
     id: 'unverified-update',
     version: '2.1.0',
     kind: 'mission',
+    release: 'stable',
     title: '更新を、確かめてから取り込む',
     summary:
       '配布元が乗っ取られ、書き換えられた更新が配られる事故が起きています。このサーバが、書き換えられた更新を受け取っても止められるかを調べます。端末の中では、本物の Linux が動きます。',

@@ -4,7 +4,7 @@ import { DIFFICULTIES, type AttemptRecord, type MissionPack, type VulnerabilityD
 import { allBadgesAchieved, progressOf, recordedSeals } from '../progress/stages';
 import { seals } from './components';
 import { h } from './dom';
-import { DIFFICULTY_LABEL } from './labels';
+import { BETA_LABEL, DIFFICULTY_LABEL } from './labels';
 import type { MasterySummary } from '../progress/mastery';
 import { masteryLine } from './mastery';
 import { infoPopover } from './info-popover';
@@ -42,15 +42,19 @@ function tableOrder(entries: MissionEntry[]): MissionEntry[] {
 /** 次に進むおすすめ。表の順で、まだ完了していない最初の課題 */
 export const nextEntry = (entries: MissionEntry[]): MissionEntry | undefined => tableOrder(entries).find((entry) => !entry.completed);
 
-/** 行の見出し。脆弱性の通称と題名を「IDOR - 非公開メモを守る」の 1 行にし、「一言でいうと」・正式名・分類・CWE は ⓘ の説明に畳む。練習課題は題名だけ */
+/**
+ * 行の見出し。脆弱性の通称と題名を「IDOR - 非公開メモを守る」の 1 行にし、「一言でいうと」・正式名・分類・CWE は ⓘ の説明に畳む。練習課題は題名だけ。
+ * ベータ版の課題には、題名の後に「ベータ版」の札を付ける（読み上げでも行の名前に入るよう、見出しの中に置く）
+ */
 function heading(manifest: MissionPack['manifest'], titleId: string): HTMLElement {
   const { vulnerability } = manifest;
   const title = h('span', { class: 'mission-title' }, manifest.title);
-  if (!vulnerability) return h('div', { class: 'mission-heading' }, h('h3', { id: titleId }, title));
+  const beta = manifest.release === 'beta' ? h('span', { class: 'beta-label' }, BETA_LABEL) : null;
+  if (!vulnerability) return h('div', { class: 'mission-heading' }, h('h3', { id: titleId }, title, beta));
   return h(
     'div',
     { class: 'mission-heading' },
-    h('h3', { id: titleId }, h('strong', { class: 'vulnerability-name' }, vulnerability.name), h('span', { class: 'mission-title-separator' }, ' - '), title),
+    h('h3', { id: titleId }, h('strong', { class: 'vulnerability-name' }, vulnerability.name), h('span', { class: 'mission-title-separator' }, ' - '), title, beta),
     infoFor(manifest, vulnerability),
   );
 }
