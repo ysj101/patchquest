@@ -345,7 +345,26 @@ h1[tabindex='-1']:focus, h3[tabindex='-1']:focus { outline: none; }
 .approach-card { display: grid; gap: 8px; }
 .approach-card h4 { font-size: 1rem; }
 .approach-commands { display: grid; gap: 4px; }
-.approach-commands .inline-code { display: block; padding: 6px 10px; overflow-wrap: anywhere; }
+.approach-commands li { display: flex; gap: 4px; align-items: stretch; }
+.approach-commands .inline-code { flex: 1; min-width: 0; padding: 6px 10px; overflow-wrap: anywhere; }
+/* コマンドをコピーするボタン。印は 2 枚の紙の重なりを CSS で描き、結果が出ている間は ✓・✕ に替える */
+.copy-command {
+  flex: none; width: 34px; min-height: 32px; display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--muted);
+}
+.copy-command:hover { background: var(--raised); color: var(--ink); }
+.copy-icon { position: relative; width: 14px; height: 14px; }
+.copy-icon::before, .copy-icon::after { content: ''; position: absolute; width: 9px; height: 10px; border: 1.5px solid currentColor; border-radius: 2px; box-sizing: border-box; }
+/* 後ろの紙は、前の紙に隠れない上と左の辺だけを描く */
+.copy-icon::before { left: 1px; top: 0; border-width: 1.5px 0 0 1.5px; border-radius: 2px 0 0; }
+.copy-icon::after { right: 1px; bottom: 0; }
+.copy-command[data-result] .copy-icon { width: auto; height: auto; font-weight: 700; line-height: 1; }
+.copy-command[data-result] .copy-icon::before { content: none; }
+.copy-command[data-result] .copy-icon::after { position: static; width: auto; height: auto; border: 0; background: none; }
+.copy-command[data-result='copied'] { color: var(--ok); border-color: var(--ok); }
+.copy-command[data-result='copied'] .copy-icon::after { content: '✓'; }
+.copy-command[data-result='failed'] { color: var(--fail); border-color: var(--fail); }
+.copy-command[data-result='failed'] .copy-icon::after { content: '✕'; }
 .approach-note { color: var(--muted); font-size: 0.87rem; border-left: 3px solid var(--line); padding-left: 10px; }
 .approach-actions { justify-content: space-between; }
 .approach-flow { display: grid; counter-reset: approach-card; }

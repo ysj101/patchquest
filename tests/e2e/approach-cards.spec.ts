@@ -1,4 +1,4 @@
-// 調べ方・操作のしかたのカード（platform/ui/approach-deck.ts）。カードを持つ検証用の端末パックで、1 枚ずつ出ること・送り方・全体の流れを確かめる
+// 調べ方・操作のしかたのカード（platform/ui/approach-deck.ts）。カードを持つ検証用の端末パックで、1 枚ずつ出ること・送り方・全体の流れ・コマンドのコピーを確かめる
 import { expect, readApproachCards, startMission, terminalInput, test } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
@@ -57,4 +57,31 @@ test('調べ方と操作のしかたは、カードを 1 枚ずつ出し、「�
   const guide = page.getByRole('region', { name: '操作のしかた' });
   expect(await readApproachCards(guide)).toEqual([{ title: '設定ファイルを探す', codes: ['sudo ls /etc/sudoers.d'] }]);
   await expect(guide.getByRole('button', { name: '戻る' })).toBeDisabled();
+});
+
+test('カードのコマンドは、横のボタンでコピーして端末に貼り付けられ、コピーできなかったときはそう伝える', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByRole('tab', { name: '調査' }).click();
+  const approach = page.getByRole('region', { name: '調べ方' });
+  const copy = approach.getByRole('button', { name: 'コピー：cat runbook.txt' });
+  const status = approach.locator('.approach-card:visible').getByRole('status');
+
+  await copy.click();
+  await expect(copy).toHaveAttribute('data-result', 'copied');
+  await expect(status).toHaveText('コピーしました');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('cat runbook.txt');
+  await terminalInput(page).focus();
+  await page.keyboard.press('ControlOrMeta+V');
+  await expect(terminalInput(page)).toHaveValue('cat runbook.txt');
+  // 結果の表示は、しばらくすると元に戻る
+  await expect(copy).not.toHaveAttribute('data-result');
+  await expect(status).toHaveText('');
+
+  // ブラウザが書き込みを許さなかったときは、黙って終えない
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = () => Promise.reject(new Error('許可されていません'));
+  });
+  await copy.click();
+  await expect(copy).toHaveAttribute('data-result', 'failed');
+  await expect(status).toHaveText('コピーできませんでした');
 });
