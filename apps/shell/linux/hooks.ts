@@ -1,6 +1,7 @@
 // 教材アプリ「Linux 端末」が公開する交換点（フック）と、その安全な基準実装。処理の形は擬似シェルと同じ
 import type { HookDescriptor, ImplementationRegistry } from '../../../platform/contract';
 import { leastPrivilege } from '../hooks';
+import { DEPLOY_KEYS_HOOK, rotatedKeyOnly } from './repo';
 import { UPDATE_HOOK, verifyBeforeApply } from './update';
 
 /** 配備時に、運用担当へ sudo で許可するコマンドを決める処理（apps/shell/hooks.ts の ProvisionSudoers）。契約 1 */
@@ -21,9 +22,17 @@ export const HOOKS: HookDescriptor[] = [
     baseline: 'linux/update-verify',
     description: '配備時に、取り込みのプログラムが更新を動かす前に行う確認を決める処理（取り込みのプログラムの行になる。更新の取り込みを持つ機械だけが使う）',
   },
+  {
+    id: DEPLOY_KEYS_HOOK,
+    realm: 'server',
+    contract: 1,
+    baseline: 'linux/deploy-rotated-key',
+    description: '配備時に、デプロイ用の利用者へのログインを許す公開鍵を決める処理（authorized_keys の行になる。リポジトリとデプロイ用の鍵を持つ機械だけが使う）',
+  },
 ];
 
 export const BASELINE: ImplementationRegistry = {
   'linux/sudoers-least-privilege': { hook: PROVISION_HOOK, run: leastPrivilege },
   'linux/update-verify': { hook: UPDATE_HOOK, run: verifyBeforeApply },
+  'linux/deploy-rotated-key': { hook: DEPLOY_KEYS_HOOK, run: rotatedKeyOnly },
 };

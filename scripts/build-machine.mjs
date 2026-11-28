@@ -1,5 +1,5 @@
 // 演習用の機械（本物の Linux を WASM のエミュレータ v86 で動かす）の配布物を .machine/ に作る。
-// Alpine Linux の最小構成・sudo・カーネルと BIOS を、版とハッシュを固定して取得し（scripts/machine-sources.mjs）、起動を済ませた状態を保存する。
+// Alpine Linux の最小構成・sudo・git・ssh-keygen・カーネルと BIOS を、版とハッシュを固定して取得し（scripts/machine-sources.mjs）、起動を済ませた状態を保存する。
 // 取得するのはビルドのときだけで、配布物は実行時に外へ取りに行かない（spec §12）。
 // --sources を付けると、取得物を用意して、その場所を 1 行ずつ出す（保管場所へ置くときに使う。docs/machine-sources.md）
 import { createHash } from 'node:crypto';
@@ -32,6 +32,12 @@ const READY = '\u0002PQ ready\n';
 const BOOT_TIMEOUT_MS = 120_000;
 /** apk に入っている、パッケージ管理用のファイル。機械には置かない */
 const APK_METADATA = /^\.(?:PKGINFO|SIGN\.|pre-|post-|trigger)/;
+
+/**
+ * git のパッケージから機械に置くもの。git 本体（log・show・commit などは、すべてこの 1 つに入っている）だけを置く。
+ * HTTP で通信する部品（git-remote-http など。libcurl が要る）と、接続を受ける部品（git-shell など）は置かない。機械は外と通信しない
+ */
+const GIT_FILES = new Set(['usr', 'usr/bin', 'usr/bin/git']);
 
 /** 取得したものを残しておく場所。次からは取りに行かない */
 const CACHE_DIR = join(MACHINE_DIR, 'cache');
@@ -85,11 +91,12 @@ function kernelFile(entries, path) {
  * @returns {Promise<Buffer>}
  */
 async function buildInitrd(sources, kernelEntries) {
-  const packages = [sources.zlib, sources.sudo].flatMap((apk) => readTar(gunzipSync(apk)).filter((entry) => !APK_METADATA.test(entry.path)));
+  const packages = [sources.zlib, sources.sudo, sources.pcre2, sources.sshKeygen].flatMap((apk) => readTar(gunzipSync(apk)).filter((entry) => !APK_METADATA.test(entry.path)));
+  const git = readTar(gunzipSync(sources.git)).filter((entry) => GIT_FILES.has(entry.path));
   // 層の重ね合わせ（overlayfs）は、カーネルのモジュールとして入っている。起動のときに読み込めるよう、展開して置く
   /** @type {Entry} */
   const overlay = { path: `${GUEST_LIB}/overlay.ko`, type: 'file', mode: 0o644, data: gunzipSync(kernelFile(kernelEntries, OVERLAY_MODULE)) };
-  return cpioArchive([...readTar(gunzipSync(sources.rootfs)), ...packages, ...(await guestEntries()), overlay]);
+  return cpioArchive([...readTar(gunzipSync(sources.rootfs)), ...packages, ...git, ...(await guestEntries()), overlay]);
 }
 
 /**

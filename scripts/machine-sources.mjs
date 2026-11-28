@@ -21,6 +21,10 @@ export const SOURCES = {
   rootfs: { file: 'alpine-minirootfs-3.24.4-x86.tar.gz', upstream: `${ALPINE}/releases/x86/alpine-minirootfs-3.24.4-x86.tar.gz`, sha256: 'df793865bf166c10acaad3a4d5d40498f9ee3f89fa405d39c7f540464fb3b0c1' },
   zlib: { file: 'zlib-1.4-r0.apk', upstream: `${ALPINE}/main/x86/zlib-1.4-r0.apk`, sha256: '909b895b67a2de227c694764f697a8679570a603560100d050c3193154150396' },
   sudo: { file: 'sudo-1.9.17_p2-r2.apk', upstream: `${ALPINE}/community/x86/sudo-1.9.17_p2-r2.apk`, sha256: '19f34845b079844e8e1b0630e9748a197c1a4d350e87840bc9ebd02b32c257e1' },
+  // git と、git が使う正規表現のライブラリ（zlib は上のものを使う）。ssh-keygen は、最小構成に入っている libcrypto を使う
+  git: { file: 'git-2.54.1-r0.apk', upstream: `${ALPINE}/main/x86/git-2.54.1-r0.apk`, sha256: '3099a952b8b1af5b141a445080e44425d0a348ffe5401e3f2522e40c1f2a1884' },
+  pcre2: { file: 'pcre2-10.49-r0.apk', upstream: `${ALPINE}/main/x86/pcre2-10.49-r0.apk`, sha256: '1b5ba9a5570d267b57ff81805887cc7eca915bda4a4be16acc597a5ea4183590' },
+  sshKeygen: { file: 'openssh-keygen-10.3_p1-r2.apk', upstream: `${ALPINE}/main/x86/openssh-keygen-10.3_p1-r2.apk`, sha256: '72a6f71b908d3b7cb819c0f1096f3deea2723d6d51ce1f6313fb0e9c5ee652ee' },
   kernel: { file: 'linux-virt-6.18.64-r0.apk', upstream: `${ALPINE}/main/x86/linux-virt-6.18.64-r0.apk`, sha256: '738a314414f3a9e7e7dd6f23dd480e86a35bb8d3a373c36ef29d2c110fcce5a3' },
   seabios: { file: 'seabios.bin', upstream: `${V86_REPO}/bios/seabios.bin`, sha256: '73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98' },
   vgabios: { file: 'vgabios.bin', upstream: `${V86_REPO}/bios/vgabios.bin`, sha256: 'a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880' },

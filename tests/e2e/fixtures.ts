@@ -76,6 +76,11 @@ export async function readApproachCards(region: Locator): Promise<{ title: strin
   }
 }
 
+/** 調査タブの「調べ方」か、対策タブの「操作のしかた」のカードを 1 枚目から順に送り、出てきたコードの文字を集める */
+export async function guideCodes(page: Page, name: '調べ方' | '操作のしかた'): Promise<string[]> {
+  return (await readApproachCards(page.getByRole('region', { name }))).flatMap((card) => card.codes);
+}
+
 /** 端末の札の横の「端末の使い方」を開き、並んだ案内（1 文ずつ）を返す。開くまでは、案内は見えない */
 export async function openTerminalHelp(page: Page) {
   const lines = preview(page).locator('.term-help li');
@@ -141,6 +146,15 @@ export async function testRepair(page: Page): Promise<void> {
 /** 絞りすぎ・止めすぎの修正が、ふだんの使い方の失敗で不合格になったことを確かめ、最初の状態へ戻す（加えた変更も消える） */
 export async function expectBrokenNormalThenReset(page: Page): Promise<void> {
   await expect(verifyResults(page)).toContainText('まだ合格ではありません ふだんの使い方が壊れています。', { timeout: 90_000 });
+  await expect(ticketSeals(page)).toContainText('防御：未達成');
+  await resetToInitial(page);
+  await expect(repairPanel(page)).toContainText('加えた変更はまだありません');
+}
+
+/** 足りない修正が、攻撃阻止のテスト（title）の失敗で不合格になったことを確かめ、最初の状態へ戻す（加えた変更も消える） */
+export async function expectStillVulnerableThenReset(page: Page, title: string): Promise<void> {
+  await expect(verifyResults(page)).toContainText('まだ合格ではありません', { timeout: 90_000 });
+  await expect(verifyResults(page)).toContainText(title);
   await expect(ticketSeals(page)).toContainText('防御：未達成');
   await resetToInitial(page);
   await expect(repairPanel(page)).toContainText('加えた変更はまだありません');

@@ -11,7 +11,7 @@ const COPYLEFT = /GPL|MPL/;
 
 /** 機械に入っているパッケージを、実物から読む（最小構成に入っているものと、ビルドで足すもの） */
 async function installedPackages() {
-  const [rootfs, ...apks] = await Promise.all([SOURCES.rootfs, SOURCES.kernel, SOURCES.sudo, SOURCES.zlib].map((source) => fetchSource(source, { cacheDir: CACHE_DIR })));
+  const [rootfs, ...apks] = await Promise.all([SOURCES.rootfs, SOURCES.kernel, SOURCES.sudo, SOURCES.zlib, SOURCES.git, SOURCES.pcre2, SOURCES.sshKeygen].map((source) => fetchSource(source, { cacheDir: CACHE_DIR })));
   if (!rootfs) throw new Error('最小構成を取得できません');
   return [...rootfsPackages(rootfs), ...apks.map((apk) => apkPackage(apk))];
 }
@@ -35,7 +35,7 @@ describe('演習用の機械に同梱するソフトウェアの一覧', () => {
 
   it('GPL・LGPL・MPL のものは、ライセンス文と、保管場所に置いたソースコードを挙げている', () => {
     const copyleft = COMPONENTS.filter((component) => COPYLEFT.test(component.license));
-    expect(copyleft.map((component) => component.name)).toHaveLength(8);
+    expect(copyleft.map((component) => component.name)).toHaveLength(9);
     for (const component of copyleft) {
       expect(component.texts, component.name).not.toEqual([]);
       expect(component.source, component.name).not.toEqual([]);
@@ -63,5 +63,9 @@ describe('演習用の機械に同梱するソフトウェアの一覧', () => {
     expect(text).toContain('Sudo is distributed under the following license');
     expect(text).toContain('Jean-loup Gailly and Mark Adler');
     expect(text).toContain('Copyright (c) 1996, 1998 The NetBSD Foundation, Inc.');
+    expect(text).toContain('Note that the only valid version of the GPL as far as this project');
+    expect(text).toContain('GNU LESSER GENERAL PUBLIC LICENSE\n                       Version 2.1, February 1999');
+    expect(text).toContain('PCRE2 Licence');
+    expect(text).toContain('This file is part of the OpenSSH software.');
   });
 });

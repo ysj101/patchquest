@@ -78,11 +78,13 @@ bash を動かすのではなく、固定のコマンド集合を機械の状態
 | `linux/server.ts` | 教材ロジック。要求の形は擬似シェルと同じ（`POST /sh { line, cwd?, edits? }`）で、コマンド行を機械の中で、ログインした利用者として実行する |
 | `linux/provision.ts` | 初期データ（SQLite の表）を機械へ反映するスクリプトを組み立てる。利用者・ファイル・プログラム・sudo の設定を置く |
 | `linux/events.ts` | 機械の中の記録（プログラムの実行・sudo の記録・変わったファイル）を観測イベントにする |
-| `linux/hooks.ts` | 交換点 `linux.sudoers.provision`（処理の形は `shell.sudoers.provision` と同じ。契約 1）と、`linux.update.verify`（配備時に、取り込みのプログラムが更新を動かす前に行う確認を決める。契約 1） |
+| `linux/hooks.ts` | 交換点 `linux.sudoers.provision`（処理の形は `shell.sudoers.provision` と同じ。契約 1）と、`linux.update.verify`（配備時に、取り込みのプログラムが更新を動かす前に行う確認を決める。契約 1）、`linux.deploy.authorize`（配備時に、デプロイ用の利用者へのログインを許す公開鍵を決める。契約 1） |
 | `linux/update.ts` | 初期データ `linux.update`。共通の機械に、更新の取り込みを足す。受け取った更新の置き場（`/var/cache/updates/`）、配布元が知らせたハッシュの一覧（`/etc/updates/SHA256SUMS`。名前と書式は、配布元が公開するものと同じ）、取り込むプログラム（`apply-update`。運用担当が sudo で実行するシェルスクリプトで、管理者が `sudoedit` で書き換える）を置く。中身の確認は、本物の `sha256sum -c` が行う。独自の設定ファイルは置かない（確かめるかどうかは、取り込みのプログラムに確かめる行があるかどうかで決まる） |
+| `linux/repo.ts` | 初期データ `linux.repo`。共通の機械に、デプロイ用の利用者（`deploy`）と、ログインを許す鍵の一覧（`/home/deploy/.ssh/authorized_keys`。場所と書式は、本物の sshd が読むものと同じ）、運用担当の手元の git のリポジトリ（`~/app`）を足す。リポジトリの履歴には、まちがってコミットした秘密の鍵と、それを消したコミットが残っている。履歴は、本物の git が作る（`git fast-import`。作者と日時を固定するので、同じ seed からは同じコミットの番号になる）。鍵は、教材のためだけに `ssh-keygen` で作ったもので、どこの機械にも登録していない |
+| `linux/script.ts` | 機械の中で実行するシェルスクリプトを組み立てる部品（語の引用・ヒアドキュメント） |
 | `linux/guest/` | 機械の中で動くシェルスクリプト。`init`（起動）、`agent`（要求を受ける係）、`run`（利用者としてコマンド行を実行）、`editor`（visudo と sudoedit が呼ぶエディタ） |
 
-機械の配布物（エミュレータ・BIOS・起動を済ませた状態）は `scripts/build-machine.mjs` が `.machine/` に作る。Alpine Linux の最小構成・sudo・カーネルを、版とハッシュを固定して、このリポジトリのリリースに保管したものから取得する（`scripts/machine-sources.mjs`。版を上げる手順は [docs/machine-sources.md](../../docs/machine-sources.md)）。ビルド（`pnpm run build`）とユニットテストの前に、必要なら自動で作る。機械を動かす部品は `runtimes/browser/machine.ts`。
+機械の配布物（エミュレータ・BIOS・起動を済ませた状態）は `scripts/build-machine.mjs` が `.machine/` に作る。Alpine Linux の最小構成・sudo・git・ssh-keygen・カーネルを、版とハッシュを固定して、このリポジトリのリリースに保管したものから取得する（`scripts/machine-sources.mjs`。版を上げる手順は [docs/machine-sources.md](../../docs/machine-sources.md)）。ビルド（`pnpm run build`）とユニットテストの前に、必要なら自動で作る。機械を動かす部品は `runtimes/browser/machine.ts`。
 
 ### 機械の中の仕組み
 
@@ -90,6 +92,9 @@ bash を動かすのではなく、固定のコマンド集合を機械の状態
 - ファイルシステムは 3 層の重ね合わせ（overlayfs）にする。下から、起動したときの `/`、初期データ、利用者の操作。利用者のコマンドは、重ね合わせた場所を `/` として実行する。初期状態へ戻すときは、利用者の操作の層を捨てる（テストごとのリセットが 0.2 秒ほどで済む）。
 - `changed` は、利用者の操作の層にあるもののうち、初期状態と中身・所有者・許可が違うものが、コマンドの前後で変わったときに `true` になる。見るのは `/etc`・`/home`・`/root`・`/usr/local`・`/opt`・`/srv`・`/var/log`。`/tmp` などの変化は数えない。
 - `shell.exec` は、初期データが置いたプログラムが root だけが書ける記録に残したものから作る。`sudo.decision` は、本物の sudo の記録（`logfile`）から作る。`file.changed` はパスだけを持つ（どの行かは分からない）。
+- 初期データは、ファイルの表では表せないもの（git の履歴など）を作るスクリプトを持てる（表 `setup`）。初期データを反映する最後に、root として実行する。
+- 機械には、git（本体だけ）と ssh-keygen を入れてある。外と通信する部品（git の HTTP の部品・ssh・sshd）は入れていない。機械にネットワークの装置はないので、鍵でログインできるかどうかは、sshd と同じく、ログインを許す鍵の一覧にその鍵が登録されているかで確かめる（`ssh-keygen -lf` が出す指紋を見くらべる）。
+- `git status` と `git diff` は、調べるだけでも、作業の覚え（`.git/index`）を書き直すことがある。調べただけで `changed` が `true` にならないよう、`guest/run` が、git に元からある設定（`GIT_OPTIONAL_LOCKS=0` と `diff.autoRefreshIndex=false`）で書き直しをやめさせている。`git add`・`git commit` は、今までどおり書く。
 - `/etc/sudoers` の末尾に、この機械のための設定を足す（パスワードを尋ねない・sudo の記録を取る・`/etc/sudoers.d` を読む）。`sudo -l` には、この設定も表示される。
 - visudo の編集は、擬似シェルと同じ編集画面で行う。開くときは `guest/editor` が中身を画面へ渡し、保存するときは編集（行の書き換え・削除・追加）を当てはめる。構文は本物の visudo が確かめ、読めない内容は保存しない。
 

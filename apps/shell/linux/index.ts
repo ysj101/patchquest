@@ -9,14 +9,15 @@ import { terminalView } from '../view';
 import { describeEvent } from './events';
 import { BASELINE, HOOKS, PROVISION_HOOK } from './hooks';
 import { provision, reset } from './provision';
+import { repoAddition } from './repo';
 import { handle } from './server';
 import { updateAddition } from './update';
 
 export const linuxApp: AppModule = {
   descriptor: {
     id: 'linux',
-    version: '1.6.0',
-    features: ['terminal', 'sudo', 'update'],
+    version: '1.7.0',
+    features: ['terminal', 'sudo', 'update', 'git'],
     users: [...ACTORS],
     entryRoute: '/terminal',
     hooks: HOOKS,
@@ -24,7 +25,8 @@ export const linuxApp: AppModule = {
   // 初期データは擬似シェルと同じ表に作り、それを機械へ反映する。同じ seed なら、擬似シェルと同じ顔ぶれの機械になる
   schema: SCHEMA,
   // linux.update は、同じ機械に更新の取り込み（置き場・ハッシュの一覧・取り込むプログラム）を足したもの
-  fixtures: { 'linux.default': machineFixture(PROVISION_HOOK), 'linux.update': machineFixture(PROVISION_HOOK, updateAddition) },
+  // linux.repo は、同じ機械に git のリポジトリとデプロイ用の鍵（デプロイ用の利用者・ログインを許す鍵の一覧）を足したもの
+  fixtures: { 'linux.default': machineFixture(PROVISION_HOOK), 'linux.update': machineFixture(PROVISION_HOOK, updateAddition), 'linux.repo': machineFixture(PROVISION_HOOK, repoAddition) },
   implementations: BASELINE,
   // 擬似シェルと同じテストが、本物の Linux でも通る
   tests: SHELL_TESTS,

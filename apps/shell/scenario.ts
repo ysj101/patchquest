@@ -1,5 +1,5 @@
 // 擬似シェルのテスト・攻撃の成立条件・修正の記録を、手順のデータとして書くための部品。アプリ共通のテストと課題パックで使う
-import type { AppRequest, EventExpectation, ExchangeMatcher, MissionManifest, ProbeDef, ResponseExpectation, Step } from '../../platform/contract';
+import type { AppRequest, EventExpectation, ExchangeMatcher, MissionManifest, ProbeDef, ResponseExpectation, Step, TestCase } from '../../platform/contract';
 import type { LineEdit } from './edits';
 
 /** コマンドが成功した（終了コード 0） */
@@ -77,3 +77,48 @@ export const TERMINAL_REPAIR = {
   defenses: [],
   repair: { kind: 'record', record: STATE_CHANGING_COMMAND, noun: '加えた変更' },
 } satisfies Pick<MissionManifest, 'actions' | 'defenses' | 'repair'>;
+
+/** Linux 端末の課題の、脆弱な状態の作り方と確かめ方 */
+interface TerminalMission {
+  /** 対象の教材アプリの版（semver の範囲）と、課題が使う機能 */
+  versions: string;
+  features: string[];
+  /** 初期データ生成器の名前 */
+  fixture: string;
+  /** 脆弱な状態を作るレシピ。交換点 hook へ、実装 implementation を注入する */
+  recipe: { id: string; version: string; hook: string; implementation: string };
+  probes: ProbeDef[];
+  /** 攻撃阻止のテスト（脆弱な状態では失敗する）と、パック固有のテストのすべて（攻撃阻止のものを含む） */
+  targets: TestCase[];
+  cases: TestCase[];
+}
+
+/**
+ * 教材アプリ「Linux 端末」（本物の Linux）のターミナルで調べて直す課題の、manifest の共通部分。
+ * 脆弱な状態は、初期データ生成器が呼ぶ交換点 1 つ（契約 1）へ実装を注入して作り、操作そのものを修正として記録する
+ */
+export function linuxTerminalMission({ versions, features, fixture, recipe, probes, targets, cases }: TerminalMission) {
+  const app = { appId: 'linux', versions };
+  const hooks = [{ id: recipe.hook, contract: 1 }];
+  return {
+    appCompatibility: app,
+    runtime: { adapter: 'browser', capabilities: ['sqlite', 'dom-preview', 'linux-vm'] },
+    prerequisites: { features },
+    hooks,
+    conflicts: [],
+    fixtures: { generator: fixture, variants: [{ id: 'default', label: '標準', recipe: recipe.id }] },
+    mutationRecipes: [
+      {
+        id: recipe.id,
+        version: recipe.version,
+        appliesTo: { ...app, hooks },
+        apply: [{ hook: recipe.hook, implementation: recipe.implementation }],
+        verify: { probes: probes.map((probe) => probe.id) },
+        revert: 'baseline',
+      },
+    ],
+    ...TERMINAL_REPAIR,
+    probes,
+    tests: { target: targets.map((test) => test.id), cases },
+  } satisfies Partial<MissionManifest>;
+}

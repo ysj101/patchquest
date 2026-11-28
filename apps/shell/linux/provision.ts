@@ -3,6 +3,7 @@
 import type { Machine } from '../../../runtimes/browser/machine';
 import type { Database } from '../../../runtimes/browser/sqlite';
 import { ROOT, SUDOERS_FILE, hostname } from '../model';
+import { heredoc, quote } from './script';
 
 /** 機械の中で、利用者のコマンドと係（guest/agent）がファイルを受け渡す場所 */
 const WORK_DIR = '/run/pq';
@@ -39,9 +40,6 @@ interface FileRow {
   output: string | null;
 }
 
-/** シェルの 1 語として、そのままの文字列を渡す */
-const ESCAPED_QUOTE = String.raw`'\''`;
-const quote = (value: string): string => `'${value.replaceAll("'", ESCAPED_QUOTE)}'`;
 
 /** 機械に置くもの。content がなければディレクトリ */
 interface Placement {
@@ -51,12 +49,8 @@ interface Placement {
   content?: string;
 }
 
-/** 内容をヒアドキュメントで書く（終わりの印は、内容に現れない行にする） */
-function writeFile(path: string, content: string): string[] {
-  let marker = 'PQ_END';
-  while (content.split('\n').includes(marker)) marker += '_';
-  return [`cat > ${quote(path)} <<'${marker}'`, content, marker];
-}
+/** 内容をファイルに書く */
+const writeFile = (path: string, content: string): string[] => heredoc(`cat > ${quote(path)}`, content);
 
 /** 同じ値（所有者・許可）のものを、1 つのコマンドにまとめる。機械の中ではプロセスを起こすのが遅いので、コマンドの数を減らす */
 function grouped(command: string, placements: Placement[], key: (placement: Placement) => string): string[] {
@@ -129,6 +123,8 @@ function provisionScript(db: Database): string {
     `echo ${quote(hosts)} > /etc/hosts`,
     ...accountCommands(db),
     ...fileCommands(db),
+    // ファイルの表では表せないもの（git の履歴など）を、初期データが決めたスクリプトで作る
+    ...(db.selectValues('SELECT script FROM setup ORDER BY step') as string[]),
     // 置いた設定を sudo が読めることを確かめる。読めなければここで止まる
     'visudo -c > /dev/null',
   ].join('\n');

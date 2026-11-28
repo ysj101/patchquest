@@ -30,4 +30,10 @@ export const SCHEMA = `
     needs_root INTEGER NOT NULL,
     output TEXT NOT NULL
   );
+  -- 初期データを機械へ反映する最後に、機械の中で root として実行するシェルスクリプト（ファイルの表では表せないもの。例：git の履歴）。
+  -- 本物の Linux で動かす apps/shell/linux だけが使う
+  CREATE TABLE setup (
+    step INTEGER PRIMARY KEY,
+    script TEXT NOT NULL
+  );
 `;
